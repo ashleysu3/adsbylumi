@@ -481,7 +481,7 @@ export function CreativeChecklistCard({
                     </div>
                   )}
 
-                  {/* Text Overlays */}
+                  {/* Text Overlays — Editable (same flow as B-Roll) */}
                   {item.text_overlays && item.text_overlays.length > 0 && (
                     <div className="space-y-2">
                       <h5 className="text-xs font-semibold text-muted-foreground uppercase">📝 Text Overlays</h5>
@@ -498,19 +498,79 @@ export function CreativeChecklistCard({
                               !overlay.type && "bg-muted/50"
                             )}
                           >
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                {overlay.type && (
-                                  <Badge variant="outline" className="text-[10px] uppercase">
-                                    {overlay.type}
-                                  </Badge>
-                                )}
-                                <span>"{overlay.text}"</span>
+                            {editingOverlayIdx === idx ? (
+                              <div className="space-y-1.5">
+                                <div className="flex items-center gap-1.5">
+                                  {overlay.type && (
+                                    <Badge variant="outline" className="text-[10px] uppercase shrink-0">
+                                      {overlay.type}
+                                    </Badge>
+                                  )}
+                                  <span className="text-xs text-muted-foreground shrink-0">
+                                    ⏱️ {overlay.timing}
+                                  </span>
+                                </div>
+                                <Input
+                                  value={editOverlayText}
+                                  onChange={(e) => setEditOverlayText(e.target.value)}
+                                  className="h-8 text-sm"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      const updated = [...(item.text_overlays || [])];
+                                      updated[idx] = { ...updated[idx], text: editOverlayText };
+                                      onOverlaysChange?.(updated);
+                                      setEditingOverlayIdx(null);
+                                    } else if (e.key === "Escape") {
+                                      setEditingOverlayIdx(null);
+                                    }
+                                  }}
+                                />
+                                <div className="flex gap-1 justify-end">
+                                  <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setEditingOverlayIdx(null)}>
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="h-6 text-[10px]"
+                                    onClick={() => {
+                                      const updated = [...(item.text_overlays || [])];
+                                      updated[idx] = { ...updated[idx], text: editOverlayText };
+                                      onOverlaysChange?.(updated);
+                                      setEditingOverlayIdx(null);
+                                    }}
+                                  >
+                                    <Check className="h-3 w-3 mr-0.5" />
+                                    Save
+                                  </Button>
+                                </div>
                               </div>
-                              <span className="text-xs text-muted-foreground shrink-0">
-                                ⏱️ {overlay.timing}
-                              </span>
-                            </div>
+                            ) : (
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  {overlay.type && (
+                                    <Badge variant="outline" className="text-[10px] uppercase shrink-0">
+                                      {overlay.type}
+                                    </Badge>
+                                  )}
+                                  <span className="truncate">"{overlay.text}"</span>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <span className="text-xs text-muted-foreground">⏱️ {overlay.timing}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    onClick={() => {
+                                      setEditingOverlayIdx(idx);
+                                      setEditOverlayText(overlay.text);
+                                    }}
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -526,15 +586,148 @@ export function CreativeChecklistCard({
                     </div>
                   )}
 
-                  {/* Caption Reminder */}
-                  {item.caption_reminder !== false && (
-                    <Alert className="border-amber-500/30 bg-amber-500/5">
-                      <Volume2 className="h-4 w-4 text-amber-600" />
-                      <AlertDescription className="text-amber-700 text-sm">
-                        🔇 85% of viewers watch without sound — always add captions!
-                      </AlertDescription>
-                    </Alert>
-                  )}
+                  {/* How this works — record + caption + upload, Lumi adds overlays */}
+                  <Alert className="border-amber-500/30 bg-amber-500/5">
+                    <Volume2 className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-amber-700 text-sm">
+                      Record yourself reading the script, burn in captions (85% of viewers watch muted), then upload below — Lumi layers the text overlays on top for you.
+                    </AlertDescription>
+                  </Alert>
+
+                  {/* Upload your recorded talking head + preview + Make my video */}
+                  {(() => {
+                    const oStyle: OverlayStyle = (brand as any)?.overlay_style || DEFAULT_OVERLAY_STYLE;
+                    const tOverlays: TextOverlay[] = (item.text_overlays || []).map((o: any) =>
+                      typeof o === "string" ? { text: o } : o
+                    );
+
+                    const handleTalkingHeadUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (!file.type.startsWith("video/")) {
+                        toast.error("Please upload a video file");
+                        return;
+                      }
+                      if (file.size > 250 * 1024 * 1024) {
+                        toast.error("File must be under 250MB");
+                        return;
+                      }
+                      setUploadingBroll(true);
+                      try {
+                        const { supabase } = await import("@/integrations/supabase/client");
+                        const brandId = (brand as any)?.id;
+                        const path = `${brandId}/talking-head/${Date.now()}_${file.name}`;
+                        const { error: uploadError } = await supabase.storage
+                          .from("creative-assets")
+                          .upload(path, file);
+                        if (uploadError) throw uploadError;
+                        const { data: urlData } = supabase.storage
+                          .from("creative-assets")
+                          .getPublicUrl(path);
+                        setCustomBrollUrl(urlData.publicUrl);
+                        setCustomBrollName(file.name);
+                        toast.success("Video uploaded!");
+                      } catch (err: any) {
+                        toast.error(err?.message || "Upload failed");
+                      } finally {
+                        setUploadingBroll(false);
+                      }
+                    };
+
+                    return (
+                      <div className="space-y-2">
+                        <h5 className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
+                          <Video className="h-3.5 w-3.5" />
+                          Your Recorded Talking Head
+                        </h5>
+
+                        {customBrollUrl ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground truncate max-w-[180px]">
+                                {customBrollName}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 text-[10px]"
+                                onClick={() => { setCustomBrollUrl(null); setCustomBrollName(null); }}
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                Remove
+                              </Button>
+                            </div>
+                            <div className="mx-auto w-[180px]">
+                              {tOverlays.length > 0 ? (
+                                <VideoTextPreview
+                                  videoUrl={customBrollUrl}
+                                  overlays={tOverlays}
+                                  style={oStyle}
+                                  compact
+                                  editable
+                                  onOverlayPositionChange={(idx, xy) => {
+                                    const updated = [...(item.text_overlays || [])];
+                                    updated[idx] = { ...updated[idx], xy };
+                                    onOverlaysChange?.(updated as TextOverlay[]);
+                                  }}
+                                  onOverlayResize={(idx, patch) => {
+                                    const updated = [...(item.text_overlays || [])];
+                                    updated[idx] = { ...updated[idx], ...patch };
+                                    onOverlaysChange?.(updated as TextOverlay[]);
+                                  }}
+                                />
+                              ) : (
+                                <video
+                                  src={customBrollUrl}
+                                  className="w-full aspect-[9/16] object-contain rounded-lg bg-black"
+                                  controls muted playsInline preload="metadata"
+                                />
+                              )}
+                            </div>
+                            {tOverlays.length > 0 && (
+                              <Button
+                                variant="lumi"
+                                size="sm"
+                                className="w-full gap-1.5 h-8 text-[11px]"
+                                onClick={() => {
+                                  onMakeVideo?.({
+                                    videoUrl: customBrollUrl,
+                                    sourceClipName: customBrollName || undefined,
+                                    overlays: tOverlays,
+                                    style: oStyle as unknown as RenderStyle,
+                                  });
+                                }}
+                              >
+                                <Film className="h-3 w-3" />
+                                Make my video
+                              </Button>
+                            )}
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
+                            {uploadingBroll ? (
+                              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                            ) : (
+                              <>
+                                <Upload className="h-5 w-5 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground text-center">
+                                  Upload your recorded talking head (with captions)
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">9:16 vertical · MP4 · up to 250MB</span>
+                              </>
+                            )}
+                            <input
+                              type="file"
+                              accept="video/*"
+                              className="hidden"
+                              onChange={handleTalkingHeadUpload}
+                              disabled={uploadingBroll}
+                            />
+                          </label>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
               
