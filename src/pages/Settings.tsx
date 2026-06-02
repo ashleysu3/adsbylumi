@@ -142,7 +142,7 @@ export default function Settings() {
     fatigue_action: 'notify_only' as 'auto_rotate' | 'notify_only',
   });
 
-  const [savingCopyStyle, setSavingCopyStyle] = useState(false);
+  
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   
   const { isLoading: subLoading, isSubscribed, tier, isAnnual, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription, isCodeBased, isTrial, status, discount, amountPaid, billingInterval } = useSubscription();
