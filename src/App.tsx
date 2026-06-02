@@ -97,6 +97,7 @@ import StrategyPlan from "./pages/StrategyPlan";
 import AdminStrategies from "./pages/admin/Strategies";
 import OfficeHours from "./pages/OfficeHours";
 import PartnerPortal from "./pages/PartnerPortal";
+import AdGenerator from "./pages/AdGenerator";
 
 function CreativeRedirect() {
   const location = useLocation();
@@ -160,6 +161,7 @@ const App = () => {
                   <Route path="/past-reports" element={<Navigate to="/ad-performance" replace />} />
                   <Route path="/production" element={<Navigate to="/campaigns" replace />} />
                   <Route path="/campaigns" element={<Campaigns />} />
+                  <Route path="/ad-generator" element={<AdGenerator />} />
                   <Route path="/workspace/:workspaceId" element={<WorkspaceRedirect />} />
                   <Route path="/campaigns/build" element={<CampaignBuilder />} />
                   <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
