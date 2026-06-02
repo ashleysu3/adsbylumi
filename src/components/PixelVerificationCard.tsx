@@ -728,6 +728,39 @@ export function PixelVerificationCard({
 
         {/* Embedded Form Tracking */}
         <EmbeddedFormTrackingSection copyCode={copyCode} />
+
+        {/* Stuck? Fallback options */}
+        <div className="pt-4 border-t space-y-3">
+          <div className="rounded-lg border border-border/60 bg-muted/30 p-4 space-y-3">
+            <div>
+              <h4 className="text-sm font-semibold">Can't get your pixel installed?</h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                You don't have to wait. Pick the option that works best for you:
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.location.href = '/office-hours'}
+              >
+                <ExternalLink className="h-3 w-3 mr-1" />
+                Book a 1:1 with Ashley
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.location.href = '/create?objective=traffic'}
+              >
+                <Zap className="h-3 w-3 mr-1" />
+                Launch a Traffic campaign instead
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Traffic campaigns send clicks to your page without requiring a working pixel — so you can keep momentum and start gathering data while we sort out tracking together.
+            </p>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

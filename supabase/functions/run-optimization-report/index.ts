@@ -201,6 +201,24 @@ Deno.serve(async (req) => {
 
       // Fetch Meta campaign insights
       try {
+        // First, verify campaign is LIVE on Meta — reports must only include active campaigns.
+        const statusUrl = `https://graph.facebook.com/v25.0/${campaignId}?fields=effective_status,status,name&access_token=${brand.meta_access_token}`;
+        const statusRes = await fetch(statusUrl);
+        const statusData = await statusRes.json();
+        const effectiveStatus = statusData?.effective_status || statusData?.status;
+        const liveStatuses = ['ACTIVE', 'IN_PROCESS', 'WITH_ISSUES'];
+        if (effectiveStatus && !liveStatuses.includes(effectiveStatus)) {
+          console.log('[run-optimization-report] Skipping non-live campaign', campaignId, effectiveStatus);
+          campaignResults.push({
+            workspace_id: workspace.id,
+            workspace_name: workspace.name,
+            status: 'paused',
+            has_goals: !!goals,
+            message: `Campaign is ${effectiveStatus} on Meta — excluded from live performance report.`,
+          });
+          continue;
+        }
+
         console.log('[run-optimization-report] Fetching Meta insights for campaign:', campaignId);
         const insightsUrl = `https://graph.facebook.com/v25.0/${campaignId}/insights?fields=spend,impressions,clicks,ctr,cpm,cpc,actions,cost_per_action_type,frequency,reach,purchase_roas&time_range={'since':'${dateRangeStart}','until':'${dateRangeEnd}'}&access_token=${brand.meta_access_token}`;
         const insightsRes = await fetch(insightsUrl);
