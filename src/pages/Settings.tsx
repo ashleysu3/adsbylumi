@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { 
   User, Bell, CreditCard, LogOut, Loader2, ExternalLink, Crown,
   Sliders, Mail, AlertTriangle, TrendingDown, Eye, BookOpen, RotateCcw,
-  Smile, X, Link2, CheckCircle2, XCircle, Lock, Users, Copy, Trash2, UserPlus
+  Link2, CheckCircle2, XCircle, Lock, Users, Copy, Trash2, UserPlus
 } from 'lucide-react';
 import { CancelSubscriptionModal } from '@/components/CancelSubscriptionModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
