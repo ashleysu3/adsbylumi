@@ -62,7 +62,7 @@ Keep subject lines under 55 chars. Make resend subjects feel different (curiosit
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
+        model: 'google/gemini-2.5-flash',
         messages: [{ role: 'user', content: prompt }],
         response_format: { type: 'json_object' },
       }),
