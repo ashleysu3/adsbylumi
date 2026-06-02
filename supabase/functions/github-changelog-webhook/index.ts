@@ -63,6 +63,13 @@ async function summarizeWithAI(commits: Commit[], repo: string, branch: string) 
 Below are raw git commit messages from a push to ${repo} (${branch}).
 Summarize them into ONE warm, clear entry users would actually care about.
 
+=== OUTCOME-FIRST WRITING (most important rule) ===
+Lead with the BENEFIT to the creator — the problem solved, time saved, stress removed, result achieved. Never lead with the feature/fix/tool itself.
+- Title: a benefit or relief in plain English. NOT "New X" / "Added Y" / "Fixed Z bug".
+- Body: 1 sentence on what changes in their day or business, then 1 short sentence pointing to where it lives in Lumi.
+- ✅ "Know your budget before you spend a dollar" — body: "Tell Lumi your goal and it shows you the budget needed to hit 50 conversions a week. In the campaign builder."
+- ❌ "New budget calculator added"
+
 === LUMI REALITY — HARD GUARDRAILS ===
 Lumi uses Advantage+ "Broad+" audiences ONLY. We do NOT do interest targeting, lookalikes, custom-interest audiences, retargeting funnels, landing page optimization, manual bidding, or audience A/B tests.
 NEVER write changelog copy that implies any of those exist. If a commit clearly maps to one of those, treat the push as "internal".
@@ -70,8 +77,8 @@ Anchor every entry in real Lumi surfaces: brand wizard, campaign builder, creati
 Never say "beta" — use "Founder Pricing" if pricing is involved.
 
 Rules:
-- Title: max 70 chars, plain English, no emojis, no commit hashes
-- Body: 1–3 short sentences. Focus on what changed for the user, not the code.
+- Title: max 70 chars, plain English, no emojis, no commit hashes, outcome-led (not feature-led)
+- Body: 1–3 short sentences. Focus on the user's win, not the code.
 - Skip pure refactors, formatting, dependency bumps, and merge commits — if EVERY commit is internal or maps to a banned topic above, return category "internal" and a brief note.
 - Category must be one of: feature, improvement, fix, announcement, internal
 - Return ONLY JSON: {"title":"","body":"","category":""}
