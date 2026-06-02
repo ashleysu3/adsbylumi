@@ -91,7 +91,7 @@ ${featuresText}
 === SIGNALS ===
 ${JSON.stringify(signals, null, 2)}
 
-Return JSON exactly: { "ideas": [ { "title": "short headline (max 60 chars)", "body": "1-2 sentence what changed + why it matters to a non-expert coach/creator", "category": "feature|improvement|fix|announcement" } ] }`
+Return JSON exactly: { "ideas": [ { "title": "outcome-led headline, max 60 chars, NOT a feature name", "body": "1 sentence on the result for the creator + 1 short sentence pointing to where it lives in Lumi", "category": "feature|improvement|fix|announcement" } ] }`
         }],
         response_format: { type: 'json_object' },
       }),
