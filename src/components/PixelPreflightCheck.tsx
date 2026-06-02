@@ -190,6 +190,7 @@ export function PixelPreflightCheck({
             <ExternalLink className="h-3 w-3 mr-1" />
             Go to Pixel Settings
           </Button>
+          <PixelStuckHelp onSwitchToTraffic={onSwitchToTraffic} />
         </AlertDescription>
       </Alert>
     );
