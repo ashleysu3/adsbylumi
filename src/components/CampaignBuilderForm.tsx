@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { ExistingPostPicker, type SelectedPost } from "@/components/ExistingPostPicker";
+import { BudgetCalculator } from "@/components/BudgetCalculator";
 
 interface CampaignBuilderFormProps {
   workspace: any;
@@ -253,6 +254,13 @@ export function CampaignBuilderForm({
               </Button>
             ))}
           </div>
+
+          {/* Budget Calculator — work backwards from a goal or set a fixed spend */}
+          <BudgetCalculator
+            objective={defaultObjective}
+            offerPrice={workspace?.offer_price}
+            onApply={(daily) => setBudget(daily)}
+          />
         </CardContent>
       </Card>
 
