@@ -74,7 +74,8 @@ export function PixelPreflightCheck({
   brandId, 
   landingPageUrl, 
   campaignGoal,
-  onStatusChange 
+  onStatusChange,
+  onSwitchToTraffic,
 }: PixelPreflightCheckProps) {
   const [loading, setLoading] = useState(true);
   const [pixelStatus, setPixelStatus] = useState<PixelStatus | null>(null);
