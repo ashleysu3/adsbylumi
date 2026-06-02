@@ -254,6 +254,13 @@ export function CampaignBuilderForm({
               </Button>
             ))}
           </div>
+
+          {/* Budget Calculator — work backwards from a goal or set a fixed spend */}
+          <BudgetCalculator
+            objective={defaultObjective}
+            offerPrice={workspace?.offer_price}
+            onApply={(daily) => setBudget(daily)}
+          />
         </CardContent>
       </Card>
 
