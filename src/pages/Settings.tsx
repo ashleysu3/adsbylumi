@@ -172,11 +172,6 @@ export default function Settings() {
       
       if (brandRes.data) {
         setBrand(brandRes.data);
-        // Load copy style
-        setCopyPerspective(brandRes.data.copy_perspective === 'We' ? 'We' : 'I');
-        setUseEmojis(brandRes.data.use_emojis ?? true);
-        setBrandEmojis(brandRes.data.brand_emojis || DEFAULT_EMOJIS);
-        setBulletEmoji(brandRes.data.bullet_emoji || '✅');
         
         if (brandRes.data.notification_preferences) {
           const prefs = brandRes.data.notification_preferences as any;
