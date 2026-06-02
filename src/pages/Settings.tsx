@@ -22,7 +22,6 @@ import { GlossaryTooltip } from '@/components/GlossaryTooltip';
 import { useNavigate } from 'react-router-dom';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers';
-import EmojiQuickPicker from '@/components/EmojiQuickPicker';
 import { CancellationPolicyBanner } from '@/components/CancellationPolicyBanner';
 import { FlodeskIntegrationCard } from '@/components/FlodeskIntegrationCard';
 import { PasswordChangeForm } from '@/components/PasswordChangeForm';
