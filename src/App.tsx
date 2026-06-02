@@ -97,6 +97,7 @@ import StrategyPlan from "./pages/StrategyPlan";
 import AdminStrategies from "./pages/admin/Strategies";
 import OfficeHours from "./pages/OfficeHours";
 import PartnerPortal from "./pages/PartnerPortal";
+import AdGenerator from "./pages/AdGenerator";
 
 function CreativeRedirect() {
   const location = useLocation();
