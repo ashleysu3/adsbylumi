@@ -65,9 +65,7 @@ Examples of right vs wrong:
   ✅ "Stop wondering if your pixel is actually working"
   ❌ "Pixel preflight check shipped"
 
-`,
 
-=== LUMI REALITY — HARD GUARDRAILS (read carefully) ===
 Lumi ONLY does the things listed below. If an idea references anything outside this list, it is WRONG and must be discarded:
 - Campaign structure: Advantage+ Shopping / Sales / Leads / Traffic with "Broad+" audience ONLY. Generic ad set names ("Ad Set {index}").
 - Audiences: Broad+ (Advantage+ targeting) is the default. Sometimes a simple warm/engagement audience or a geolocated audience. That's it.
