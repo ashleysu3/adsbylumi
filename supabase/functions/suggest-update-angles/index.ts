@@ -15,6 +15,10 @@ Deno.serve(async (req) => {
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
+    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const { data: roleRow } = await admin.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle();
+    if (!roleRow) return new Response(JSON.stringify({ error: 'Admin only' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
     const { title, body } = await req.json();
     const apiKey = Deno.env.get('LOVABLE_API_KEY')!;
     const aiRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -24,7 +28,10 @@ Deno.serve(async (req) => {
         model: 'google/gemini-2.5-flash',
         messages: [{
           role: 'user',
-          content: `For this Lumi product update, suggest 4 short angle ideas (5-10 words each) we could use to talk about it in a newsletter. Return JSON: { "angles": ["...", "...", "...", "..."] }\n\nTitle: ${title}\nBody: ${body || ''}`
+          content: `For this Lumi product update, suggest 4 short newsletter angle ideas (5-10 words each). Lumi is a Meta Ads app for non-expert coaches/creators using Advantage+ Broad audiences only — never reference interest targeting, lookalikes, retargeting funnels, or landing page optimization. Return JSON: { "angles": ["...", "...", "...", "..."] }
+
+Title: ${title}
+Body: ${body || ''}`
         }],
         response_format: { type: 'json_object' },
       }),
