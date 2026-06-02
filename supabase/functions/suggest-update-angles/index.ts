@@ -28,7 +28,21 @@ Deno.serve(async (req) => {
         model: 'google/gemini-2.5-flash',
         messages: [{
           role: 'user',
-          content: `For this Lumi product update, suggest 4 short newsletter angle ideas (5-10 words each). Lumi is a Meta Ads app for non-expert coaches/creators using Advantage+ Broad audiences only — never reference interest targeting, lookalikes, retargeting funnels, or landing page optimization. Return JSON: { "angles": ["...", "...", "...", "..."] }
+          content: `You write benefit-led newsletter angles for Lumi (Meta Ads app for non-expert coaches/creators on Advantage+ Broad audiences only).
+
+RULES:
+- Every angle must lead with the OUTCOME for the creator: more leads/sales, less time, less guesswork, less wasted spend, more confidence, faster launch, better client results. NEVER describe the feature itself.
+- No feature names, no jargon, no "we added / we built / new tool / introducing". Talk about what changes in their day, week, or business.
+- 5–10 words. Plain English. Warm, not hypey. No guarantees, no "overnight", no "secret".
+- Never reference interest targeting, lookalikes, retargeting, or landing page optimization.
+
+Examples of the right shape:
+  ✅ "Stop guessing what budget will actually work"
+  ✅ "Get to your first 50 conversions faster"
+  ❌ "New budget calculator is live"
+  ❌ "We added a budget tool"
+
+Return JSON: { "angles": ["...", "...", "...", "..."] }
 
 Title: ${title}
 Body: ${body || ''}`
