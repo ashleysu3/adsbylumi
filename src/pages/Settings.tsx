@@ -357,10 +357,6 @@ export default function Settings() {
               <User className="h-4 w-4" />
               Account
             </TabsTrigger>
-            <TabsTrigger value="copystyle" className="gap-2">
-              <Smile className="h-4 w-4" />
-              Copy Style
-            </TabsTrigger>
             <TabsTrigger value="notifications" className="gap-2">
               <Bell className="h-4 w-4" />
               Notifications
