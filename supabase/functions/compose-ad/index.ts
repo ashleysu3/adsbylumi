@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
-const cors = { "Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, content-type, apikey","Access-Control-Allow-Methods":"POST, OPTIONS" };
+const cors = { "Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, content-type, apikey, x-client-info","Access-Control-Allow-Methods":"POST, OPTIONS" };
 
 const SYSTEM = `You are a senior direct-response copywriter who writes Meta (Facebook/Instagram) ad creative for coaches, course creators, and service providers. You write scroll-stopping, specific, benefit-driven copy in the brand's OWN voice.
 
