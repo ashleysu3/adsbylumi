@@ -17,6 +17,8 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = false
   [functions.build-template]
     verify_jwt = true
+  [functions.process-template-requests]
+    verify_jwt = false
   [functions.build-meta-campaign]
     verify_jwt = true
   [functions.campaign-builder-chat]
