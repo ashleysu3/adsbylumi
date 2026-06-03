@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-const KEY = Deno.env.get("OPENAI_API_KEY")!;
+const KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const cors = { "Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, content-type, apikey, x-client-info","Access-Control-Allow-Methods":"POST, OPTIONS" };
 
 const CONTRACT = `You generate ONE self-contained HTML ad template for a render engine. Reproduce the LAYOUT/STYLE of the reference image (composition, type hierarchy, shapes, photo placement) — do NOT copy its exact text or photo. Output must follow this contract EXACTLY:
@@ -19,9 +19,9 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
     const { imageUrl, notes = "" } = await req.json();
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST", headers: { authorization: `Bearer ${KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({ model: "gpt-4o", temperature: 0.4, response_format: { type: "json_object" },
+      body: JSON.stringify({ model: "google/gemini-2.5-pro", response_format: { type: "json_object" },
         messages: [ { role: "system", content: CONTRACT },
           { role: "user", content: [ { type: "text", text: "Build a template matching this reference. Notes: " + notes }, { type: "image_url", image_url: { url: imageUrl } } ] } ] }),
     });
