@@ -220,7 +220,9 @@ ROWS (Audience Moment):
 COLUMNS (Format Diversity):
 - Column 1: "talking_head" - Person speaking to camera (vulnerable, real, unpolished)
 - Column 2: "broll" - B-roll with text overlay (lofi, everyday, phone-filmed — the copy does the selling, not the footage)
-- Column 3: "graphic" - Static image or graphic (bold, unexpected, thumb-stopping)
+- Column 3: graphic OR carousel — choose whichever fits the concept better.
+  - Use format "graphic" for a single thumb-stopping image/static ad (bold, unexpected).
+  - Use format "carousel" when the idea is naturally multi-beat (problem → framework → proof → CTA, swipeable lists, before/after sequences, mini-frameworks). Aim for at least ONE carousel per angle across the 3 angles.
 
 === TALKING HEAD FORMAT - DESIGNED FOR NON-ACTORS ===
 Your users are coaches, course creators, and service providers - NOT actors or professional content creators.
@@ -494,7 +496,7 @@ Each cell MUST include:
 - id: unique string (e.g., "angle_attention_talking_head")
 - angleId: the angle's id this belongs to
 - row: "attention" | "trust" | "action"
-- format: "talking_head" | "broll" | "graphic"
+- format: "talking_head" | "broll" | "graphic" | "carousel"
 - hook: One compelling, SPECIFIC sentence that names a micro-moment or specific scenario
 - guidance: Detailed production notes (camera angles, text overlays, timing, mood)
 - psychology_trigger: Which psychological lever this pulls (curiosity, fear, desire, social proof, etc.)
