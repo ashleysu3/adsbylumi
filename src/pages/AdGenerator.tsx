@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Download } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Loader2, Download, Images } from "lucide-react";
 import { toast } from "sonner";
 
 const EMPTY_COLORS = {
@@ -39,17 +40,23 @@ type BrandKitColors = { bg: string; ink: string; accent: string; pop: string; hi
 type BrandKitFonts = { displayItalicUrl?: string };
 type RenderImage = { placement: string; width: number; height: number; base64: string };
 
+type GalleryPhoto = { id: string; path: string; url: string };
+
 export default function AdGenerator() {
   const navigate = useNavigate();
   const [colors, setColors] = useState<BrandKitColors>(EMPTY_COLORS);
   const [fontUrl, setFontUrl] = useState<string>("");
   const [copy, setCopy] = useState(DEFAULT_COPY);
-  const [photoUrl, setPhotoUrl] = useState<string>("");
-  const [uploading, setUploading] = useState(false);
+  const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
+  const [selectedPhotoId, setSelectedPhotoId] = useState<string>("");
+  const [removeBackground, setRemoveBackground] = useState(true);
+  const [photosLoading, setPhotosLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState<RenderImage[]>([]);
   const [kitLoading, setKitLoading] = useState(true);
   const [hasKit, setHasKit] = useState(false);
+
+  const selectedPhoto = photos.find((p) => p.id === selectedPhotoId);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,31 +95,50 @@ export default function AdGenerator() {
     return () => { cancelled = true; };
   }, []);
 
-  const onPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const path = `ad-generator/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_")}`;
-      const { error } = await supabase.storage.from("ad-photos").upload(path, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-      if (error) throw error;
-      const { data, error: signErr } = await supabase.storage
-        .from("ad-photos")
-        .createSignedUrl(path, 60 * 60);
-      if (signErr || !data?.signedUrl) throw signErr || new Error("Could not sign URL");
-      setPhotoUrl(data.signedUrl);
-      toast.success("Photo uploaded");
-    } catch (err: any) {
-      toast.error(err.message || "Upload failed");
-    } finally {
-      setUploading(false);
-    }
-  };
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setPhotosLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("user_assets")
+          .select("id, original_url")
+          .eq("kind", "photo")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        const rows = data || [];
+        const paths = rows.map((r) => r.original_url as string);
+        let signed: { signedUrl: string }[] = [];
+        if (paths.length) {
+          const { data: s, error: se } = await supabase.storage
+            .from("ad-photos")
+            .createSignedUrls(paths, 60 * 60);
+          if (se) throw se;
+          signed = (s || []) as { signedUrl: string }[];
+        }
+        if (!cancelled) {
+          setPhotos(
+            rows.map((r, i) => ({
+              id: r.id as string,
+              path: r.original_url as string,
+              url: signed[i]?.signedUrl || "",
+            }))
+          );
+        }
+      } catch (e: any) {
+        toast.error(e?.message || "Failed to load photos");
+      } finally {
+        if (!cancelled) setPhotosLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const generate = async () => {
+    if (!selectedPhoto) {
+      toast.error("Pick a photo first");
+      return;
+    }
     setLoading(true);
     setImages([]);
     try {
@@ -126,7 +152,7 @@ export default function AdGenerator() {
             },
           },
           copy,
-          photo: { url: photoUrl, removeBackground: true },
+          photo: { url: selectedPhoto.url, removeBackground },
           placements: ["feed", "story"],
         },
       });
@@ -254,22 +280,67 @@ export default function AdGenerator() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Photo</CardTitle>
+                <CardTitle className="text-base flex items-center justify-between">
+                  <span>Photo</span>
+                  <Button size="sm" variant="outline" onClick={() => navigate("/photos")}>
+                    <Images className="h-3 w-3 mr-1" /> Manage photos
+                  </Button>
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Input type="file" accept="image/*" onChange={onPhoto} disabled={uploading} />
-                {uploading && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-2">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Uploading…
-                  </p>
+                {photosLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Loading your photos…
+                  </div>
+                ) : photos.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">
+                    No photos yet.{" "}
+                    <button
+                      type="button"
+                      className="text-primary underline"
+                      onClick={() => navigate("/photos")}
+                    >
+                      Upload some on My Photos
+                    </button>
+                    .
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-4 gap-2">
+                    {photos.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setSelectedPhotoId(p.id)}
+                        className={`relative aspect-square rounded border-2 overflow-hidden transition ${
+                          selectedPhotoId === p.id ? "border-primary" : "border-border hover:border-muted-foreground"
+                        }`}
+                      >
+                        <img src={p.url} alt="photo" className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
                 )}
-                {photoUrl && (
-                  <img src={photoUrl} alt="Uploaded" className="h-24 rounded border border-border object-cover" />
-                )}
+
+                <div className="flex items-center justify-between rounded border border-border p-3">
+                  <div>
+                    <Label className="text-sm">
+                      {removeBackground ? "Remove background" : "Use with background"}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {removeBackground
+                        ? "We'll cut your subject out of the photo."
+                        : "Keep the original photo as-is."}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={removeBackground}
+                    onCheckedChange={setRemoveBackground}
+                  />
+                </div>
               </CardContent>
             </Card>
 
-            <Button onClick={generate} disabled={loading || !photoUrl} size="lg" className="w-full">
+            <Button onClick={generate} disabled={loading || !selectedPhoto} size="lg" className="w-full">
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating…
