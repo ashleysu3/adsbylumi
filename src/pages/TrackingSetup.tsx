@@ -13,7 +13,7 @@ import {
   ArrowLeft, Activity, ShieldCheck, AlertTriangle, Sparkles,
   MessageCircle, ExternalLink, HelpCircle, Loader2, Link2Off
 } from 'lucide-react';
-import { useLumi } from '@/contexts/LumiContext';
+import { useLumiAssistant } from '@/components/LumiAssistant';
 
 export default function TrackingSetup() {
   const navigate = useNavigate();
