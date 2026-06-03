@@ -23,8 +23,8 @@ import { ProductionItem } from "./ProductionChecklistPanel";
 import { VideoTextPreview, DEFAULT_OVERLAY_STYLE } from "@/components/VideoTextPreview";
 import type { OverlayStyle, TextOverlay } from "@/components/VideoTextPreview";
 
-const formatIcons = { talking_head: Video, broll: Film, graphic: Image };
-const formatLabels = { talking_head: "Talking Head", broll: "B-Roll", graphic: "Graphic" };
+const formatIcons = { talking_head: Video, broll: Film, graphic: Image, carousel: Image };
+const formatLabels = { talking_head: "Talking Head", broll: "B-Roll", graphic: "Graphic", carousel: "Carousel" };
 
 // Hook technique labels and explanations
 const hookTechniqueLabels: Record<string, { label: string; color: string }> = {
