@@ -66,15 +66,22 @@ Deno.serve(async (req) => {
     const requestUrl = new URL(req.url);
     const proxyImageUrl = requestUrl.searchParams.get("proxy_image");
 
-    if (req.method === "GET" && proxyImageUrl) {
+    if ((req.method === "GET" || req.method === "HEAD") && proxyImageUrl) {
       const { bytes, contentType } = await fetchImage(proxyImageUrl);
+      const imageHeaders = {
+        ...corsHeaders,
+        "content-type": contentType,
+        "content-length": String(bytes.byteLength),
+        "cache-control": "no-store",
+      };
+
+      if (req.method === "HEAD") {
+        return new Response(null, { status: 200, headers: imageHeaders });
+      }
+
       return new Response(bytes, {
         status: 200,
-        headers: {
-          ...corsHeaders,
-          "content-type": contentType,
-          "cache-control": "no-store",
-        },
+        headers: imageHeaders,
       });
     }
 
