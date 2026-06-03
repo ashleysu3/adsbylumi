@@ -765,3 +765,12 @@ export function ProductionChecklistPanel({
     </TooltipProvider>
   );
 }
+
+function BriefRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="space-y-0.5">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">{label}</p>
+      <p className="text-xs leading-snug">{value}</p>
+    </div>
+  );
+}
