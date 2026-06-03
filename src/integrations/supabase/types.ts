@@ -2977,6 +2977,51 @@ export type Database = {
         }
         Relationships: []
       }
+      template_requests: {
+        Row: {
+          attempts: number
+          created_at: string
+          error: string | null
+          id: string
+          locked_at: string | null
+          notes: string | null
+          reference_url: string
+          requested_by: string
+          result: Json | null
+          source_path: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          locked_at?: string | null
+          notes?: string | null
+          reference_url: string
+          requested_by: string
+          result?: Json | null
+          source_path?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          locked_at?: string | null
+          notes?: string | null
+          reference_url?: string
+          requested_by?: string
+          result?: Json | null
+          source_path?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       templates: {
         Row: {
           copy_slots: Json
