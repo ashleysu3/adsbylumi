@@ -1,9 +1,11 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const ENGINE_URL = Deno.env.get("ENGINE_URL")!;
 const ENGINE_KEY = Deno.env.get("LUMI_ENGINE_KEY") ?? "";
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 const headers = {
   ...corsHeaders,
@@ -75,6 +77,25 @@ async function fetchImage(url: string) {
   return { bytes, contentType };
 }
 
+async function uploadPublicEngineImage(bytes: Uint8Array, contentType: string) {
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const extension = contentType.includes("jpeg") ? "jpg" : contentType.split("/")[1]?.split(";")[0] || "png";
+  const path = `ad-generator-render/${crypto.randomUUID()}.${extension}`;
+
+  const { error } = await admin.storage.from("broll-library").upload(path, bytes, {
+    cacheControl: "300",
+    contentType,
+    upsert: true,
+  });
+
+  if (error) {
+    throw new Error(`Could not prepare image for background removal: ${error.message}`);
+  }
+
+  const { data } = admin.storage.from("broll-library").getPublicUrl(path);
+  return data.publicUrl;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers });
   try {
@@ -104,10 +125,10 @@ Deno.serve(async (req) => {
     const shouldRemoveBackground = body?.photo?.removeBackground === true;
 
     if (shouldRemoveBackground && typeof photoUrl === "string" && photoUrl.startsWith("http")) {
-      await fetchImage(photoUrl);
+      const { bytes, contentType } = await fetchImage(photoUrl);
       body.photo = {
         ...body.photo,
-        url: makeProxyUrl(req, photoUrl),
+        url: await uploadPublicEngineImage(bytes, contentType),
       };
     }
 
