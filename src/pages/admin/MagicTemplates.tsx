@@ -188,11 +188,31 @@ export default function AdminMagicTemplates() {
   const handleRevalidate = async () => {
     setBusy(true);
     try {
-      // Save html edits first
       if (currentId) {
         await supabase.from("templates").update({ html: currentHtml }).eq("id", currentId);
       }
       await runValidate(currentHtml, currentType, currentCopySlots, currentNeedsPhoto);
+      // If validation now ok and no row yet, save a draft
+      // (read latest validation via state setter callback workaround)
+      setValidation(v => {
+        if (v?.ok && !currentId) {
+          (async () => {
+            const row = rows.find(r => r.id === currentId);
+            const { data: ins } = await supabase.from("templates").insert({
+              name: currentName || "Untitled template",
+              type: currentType,
+              html: currentHtml,
+              copy_slots: currentCopySlots,
+              needs_photo: currentNeedsPhoto,
+              source_image_url: row?.source_image_url || null,
+              status: "draft",
+            }).select("*").single();
+            if (ins) setCurrentId(ins.id);
+            await fetchList();
+          })();
+        }
+        return v;
+      });
       await fetchList();
     } catch (e: any) { toast.error(e.message); }
     finally { setBusy(false); }
