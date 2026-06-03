@@ -36,6 +36,11 @@ type CustomTemplate = {
 
 const BUILT_IN_TEMPLATES = ["cutout", "spotlight", "framed", "split", "highlighter", "overlay", "carousel"] as const;
 
+const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
+  cutout: "cutout", highlighter: "cutout",
+  spotlight: "with-background", framed: "with-background", split: "with-background", overlay: "with-background",
+};
+
 // Friendly labels for known slot keys (anything unknown falls back to the key)
 const SLOT_LABELS: Record<string, string> = {
   eyebrow: "Eyebrow",
@@ -157,6 +162,13 @@ export function GenerateCreativeDialog() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, brief]);
+
+  // Tie background removal to chosen template (except for generated-concept images, which stay full-bleed)
+  useEffect(() => {
+    if (brief?.imageSource === "generated") return;
+    const t = PHOTO_TREATMENT[template];
+    if (t) setRemoveBackground(t === "cutout");
+  }, [template, brief?.imageSource]);
 
   // Load brand kit + photos on first open
   useEffect(() => {
@@ -485,6 +497,20 @@ export function GenerateCreativeDialog() {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
                   <Loader2 className="h-4 w-4 animate-spin" /> Writing copy in your brand voice…
                 </div>
+              ) : !activeCustom && !isCarousel && singleOptions.length === 0 ? (
+                <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
+                  <p>We couldn't write copy for this concept. Want to try again?</p>
+                  <Button size="sm" variant="outline" onClick={compose}>
+                    <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
+                  </Button>
+                </div>
+              ) : !activeCustom && isCarousel && carouselOptions.length === 0 ? (
+                <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
+                  <p>We couldn't write carousel copy for this concept. Want to try again?</p>
+                  <Button size="sm" variant="outline" onClick={compose}>
+                    <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
+                  </Button>
+                </div>
               ) : isCarousel ? (
                 <CarouselEditor
                   options={carouselOptions}
@@ -575,8 +601,8 @@ export function GenerateCreativeDialog() {
                 disabled={
                   generating || composing || !selectedPhoto ||
                   (isCarousel
-                    ? editedSlides.length === 0
-                    : Object.values(editedSingle).filter((v) => typeof v === "string" && v.trim()).length === 0)
+                    ? !editedSlides.some((s) => (s?.headline || "").trim().length > 0)
+                    : !((editedSingle.headline || "").trim() || (editedSingle.headlineHL || "").trim()))
                 }
               >
                 {generating ? (
