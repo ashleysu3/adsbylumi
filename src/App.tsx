@@ -54,6 +54,7 @@ function ReferralCaptureMount() {
 }
 import Settings from "./pages/Settings";
 import MetaSettings from "./pages/MetaSettings";
+import TrackingSetup from "./pages/TrackingSetup";
 import WeeklyDigestPreview from "./pages/WeeklyDigestPreview";
 
 import Offers from "./pages/Offers";
