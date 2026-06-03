@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Upload, Wand2, Check, X, RefreshCw, Trash2 } from "lucide-react";
+import { Loader2, Wand2, Check, X, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface TemplateRow {
@@ -27,28 +27,28 @@ interface TemplateRow {
   created_at: string;
 }
 
+interface RequestRow {
+  id: string;
+  reference_url: string;
+  notes: string | null;
+  status: string;
+  result: any;
+  error: string | null;
+  attempts: number;
+  created_at: string;
+}
+
 export default function AdminMagicTemplates() {
   const navigate = useNavigate();
   const [authChecked, setAuthChecked] = useState(false);
   const [rows, setRows] = useState<TemplateRow[]>([]);
+  const [requests, setRequests] = useState<RequestRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Compose state
   const [file, setFile] = useState<File | null>(null);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
-  const [currentId, setCurrentId] = useState<string | null>(null);
-  const [currentRefUrl, setCurrentRefUrl] = useState<string | null>(null);
-  const [currentHtml, setCurrentHtml] = useState("");
-  const [currentName, setCurrentName] = useState("");
-  const [currentType, setCurrentType] = useState<"single" | "carousel">("single");
-  const [currentNeedsPhoto, setCurrentNeedsPhoto] = useState(true);
-  const [currentCopySlots, setCurrentCopySlots] = useState<any>([]);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [validation, setValidation] = useState<{ ok: boolean; errors: string[]; missingSlots: string[] } | null>(null);
-  const [attempt, setAttempt] = useState<number | null>(null);
-
-  const SAMPLE_PHOTO_URL = "https://sqwjbndgighjtifijgws.supabase.co/storage/v1/object/public/email-assets/sample-headshot.png";
 
   useEffect(() => {
     (async () => {
@@ -58,40 +58,44 @@ export default function AdminMagicTemplates() {
         .from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
       if (!roleRow) { navigate("/"); return; }
       setAuthChecked(true);
-      fetchList();
+      fetchAll();
     })();
   }, [navigate]);
 
-  const fetchList = async () => {
+  // Auto-refresh requests so admins see status update as worker runs
+  useEffect(() => {
+    if (!authChecked) return;
+    const t = setInterval(() => fetchRequests(), 8000);
+    return () => clearInterval(t);
+  }, [authChecked]);
+
+  const fetchAll = async () => {
     setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("templates")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      setRows((data || []) as TemplateRow[]);
-    } catch (e: any) {
-      toast.error(e.message || "Failed to load templates");
-    } finally {
-      setLoading(false);
-    }
+    await Promise.all([fetchList(), fetchRequests()]);
+    setLoading(false);
+  };
+
+  const fetchList = async () => {
+    const { data, error } = await supabase
+      .from("templates").select("*").order("created_at", { ascending: false });
+    if (error) { toast.error(error.message); return; }
+    setRows((data || []) as TemplateRow[]);
+  };
+
+  const fetchRequests = async () => {
+    const { data, error } = await supabase
+      .from("template_requests").select("*").order("created_at", { ascending: false }).limit(50);
+    if (error) return;
+    setRequests((data || []) as RequestRow[]);
   };
 
   const signUrl = async (path: string) => {
-    const { data, error } = await supabase.storage.from("template-refs").createSignedUrl(path, 60 * 60 * 24 * 7);
+    const { data, error } = await supabase.storage.from("template-refs").createSignedUrl(path, 60 * 60 * 24 * 30);
     if (error) throw error;
     return data.signedUrl;
   };
 
-  const resetCompose = () => {
-    setFile(null); setNotes(""); setCurrentId(null); setCurrentRefUrl(null);
-    setCurrentHtml(""); setCurrentName(""); setCurrentType("single");
-    setCurrentNeedsPhoto(true); setCurrentCopySlots([]);
-    setPreview(null); setValidation(null); setAttempt(null);
-  };
-
-  const handleGenerate = async () => {
+  const handleEnqueue = async () => {
     if (!file) { toast.error("Upload a reference image first"); return; }
     setBusy(true);
     try {
@@ -101,144 +105,63 @@ export default function AdminMagicTemplates() {
       const { error: upErr } = await supabase.storage.from("template-refs").upload(path, file, { upsert: false });
       if (upErr) throw upErr;
       const signedUrl = await signUrl(path);
-      setCurrentRefUrl(signedUrl);
 
-      await runBuild(signedUrl, path, notes);
+      const { error: insErr } = await supabase.from("template_requests").insert({
+        reference_url: signedUrl,
+        source_path: path,
+        notes,
+        requested_by: user!.id,
+        status: "pending",
+      });
+      if (insErr) throw insErr;
+
+      toast.success("Request queued — worker will build it shortly");
+      setFile(null); setNotes("");
+      await fetchRequests();
     } catch (e: any) {
-      toast.error(e.message || "Generation failed");
+      toast.error(e.message || "Failed to queue request");
     } finally {
       setBusy(false);
     }
   };
 
-  const runBuild = async (imageUrl: string, sourcePath: string, notesText: string) => {
-    setValidation(null); setPreview(null); setAttempt(null);
-    const { data, error } = await supabase.functions.invoke("build-template", {
-      body: { imageUrl, notes: notesText, samplePhotoUrl: SAMPLE_PHOTO_URL, tries: 3 },
-    });
-    if (error) throw error;
-    if (data?.error) throw new Error(`build-template: ${data.error}`);
+  const handleRetryRequest = async (id: string) => {
+    const { error } = await supabase
+      .from("template_requests")
+      .update({ status: "pending", error: null, locked_at: null, attempts: 0 })
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Re-queued");
+    fetchRequests();
+  };
 
-    const ok = !!data?.ok;
-    const name = data?.name || "Untitled template";
-    const type = (data?.type === "carousel" ? "carousel" : "single") as "single" | "carousel";
-    const needsPhoto = data?.needsPhoto ?? true;
-    const copySlots = data?.copySlots || [];
-    const html = typeof data?.html === "string" ? data.html : "";
-    const previewBase64 = data?.previewBase64 || null;
-    const errors = data?.errors || [];
-    const att = typeof data?.attempt === "number" ? data.attempt : null;
+  const handleDeleteRequest = async (id: string) => {
+    if (!confirm("Delete this request?")) return;
+    const { error } = await supabase.from("template_requests").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    fetchRequests();
+  };
 
-    if (!html) throw new Error("Engine returned no html.");
-
-    // Insert draft only if ok
-    let insertedId: string | null = null;
-    if (ok) {
-      const { data: ins, error: insErr } = await supabase.from("templates").insert({
-        name, type, html,
-        copy_slots: copySlots,
-        slide_slots: data?.slideSlots || [],
-        needs_photo: needsPhoto,
-        style_hint: data?.styleHint || null,
-        source_image_url: sourcePath,
-        status: "draft",
-      }).select("*").single();
-      if (insErr) throw insErr;
-      insertedId = ins.id;
+  const handleApprove = async (templateId: string, requestId?: string) => {
+    const { error } = await supabase.from("templates").update({ status: "approved" }).eq("id", templateId);
+    if (error) return toast.error(error.message);
+    if (requestId) {
+      await supabase.from("template_requests").update({ status: "ready" }).eq("id", requestId);
     }
-
-    setCurrentId(insertedId);
-    setCurrentName(name);
-    setCurrentType(type);
-    setCurrentNeedsPhoto(needsPhoto);
-    setCurrentCopySlots(copySlots);
-    setCurrentHtml(html);
-    setAttempt(att);
-    setValidation({ ok, errors, missingSlots: data?.missingSlots || [] });
-    if (previewBase64) setPreview(`data:image/png;base64,${previewBase64}`);
-    await fetchList();
-  };
-
-  const runValidate = async (html: string, type: string, copySlots: any, needsPhoto: boolean) => {
-    setValidation(null); setPreview(null);
-    const { data, error } = await supabase.functions.invoke("validate-template", {
-      body: { html, type, copySlots, needsPhoto, samplePhotoUrl: SAMPLE_PHOTO_URL },
-    });
-    if (error) { toast.error("Validation call failed"); return; }
-    const ok = !!data?.ok;
-    const errors = data?.errors || [];
-    const missingSlots = data?.missingSlots || [];
-    const previewBase64 = data?.previewBase64 || null;
-    setValidation({ ok, errors, missingSlots });
-    if (previewBase64) setPreview(`data:image/png;base64,${previewBase64}`);
-  };
-
-  const handleRegenerate = async () => {
-    if (!currentRefUrl) return;
-    setBusy(true);
-    try {
-      const row = rows.find(r => r.id === currentId);
-      const path = row?.source_image_url || "";
-      await runBuild(currentRefUrl, path, notes);
-    } catch (e: any) { toast.error(e.message); }
-    finally { setBusy(false); }
-  };
-
-
-  const handleRevalidate = async () => {
-    setBusy(true);
-    try {
-      if (currentId) {
-        await supabase.from("templates").update({ html: currentHtml }).eq("id", currentId);
-      }
-      await runValidate(currentHtml, currentType, currentCopySlots, currentNeedsPhoto);
-      // If validation now ok and no row yet, save a draft
-      // (read latest validation via state setter callback workaround)
-      setValidation(v => {
-        if (v?.ok && !currentId) {
-          (async () => {
-            const row = rows.find(r => r.id === currentId);
-            const { data: ins } = await supabase.from("templates").insert({
-              name: currentName || "Untitled template",
-              type: currentType,
-              html: currentHtml,
-              copy_slots: currentCopySlots,
-              needs_photo: currentNeedsPhoto,
-              source_image_url: row?.source_image_url || null,
-              status: "draft",
-            }).select("*").single();
-            if (ins) setCurrentId(ins.id);
-            await fetchList();
-          })();
-        }
-        return v;
-      });
-      await fetchList();
-    } catch (e: any) { toast.error(e.message); }
-    finally { setBusy(false); }
-  };
-
-  const handleApprove = async (id: string) => {
-    const { error } = await supabase.from("templates").update({ status: "approved" }).eq("id", id);
-    if (error) { toast.error(error.message); return; }
     toast.success("Template approved");
-    if (id === currentId) resetCompose();
-    fetchList();
+    fetchAll();
   };
 
   const handleReject = async (id: string) => {
     const { error } = await supabase.from("templates").update({ status: "rejected" }).eq("id", id);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Rejected");
+    if (error) return toast.error(error.message);
     fetchList();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this template?")) return;
     const { error } = await supabase.from("templates").delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Deleted");
-    if (id === currentId) resetCompose();
+    if (error) return toast.error(error.message);
     fetchList();
   };
 
@@ -246,17 +169,24 @@ export default function AdminMagicTemplates() {
     return <DashboardLayout><div className="py-12 text-center"><Loader2 className="h-5 w-5 animate-spin inline" /></div></DashboardLayout>;
   }
 
+  const statusBadge = (s: string) => {
+    const map: Record<string, string> = {
+      pending: "secondary", building: "secondary", ready: "default", failed: "destructive",
+    };
+    return <Badge variant={(map[s] as any) || "secondary"}>{s}</Badge>;
+  };
+
   return (
     <DashboardLayout>
       <AdminTabs />
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Magic Templates</h1>
-          <p className="text-sm text-muted-foreground">Drop in a reference ad. AI builds a template that matches LUMI's render contract.</p>
+          <p className="text-sm text-muted-foreground">Drop in a reference ad. The worker builds it in the background and admins approve.</p>
         </div>
 
         <Card>
-          <CardHeader><CardTitle className="text-lg">New template from reference</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-lg">Queue a new template request</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
@@ -269,68 +199,71 @@ export default function AdminMagicTemplates() {
               </div>
             </div>
             <div className="flex gap-2 items-center">
-              <Button onClick={handleGenerate} disabled={busy || !file}>
+              <Button onClick={handleEnqueue} disabled={busy || !file}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wand2 className="h-4 w-4 mr-2" />}
-                Generate template
+                Queue build
               </Button>
-              {busy && <span className="text-xs text-muted-foreground">Building… can take up to ~60s</span>}
-              {(currentHtml || currentRefUrl) && !busy && <Button variant="outline" onClick={resetCompose}>Start over</Button>}
+              <span className="text-xs text-muted-foreground">Builds run in the background (~30–60s each).</span>
             </div>
+          </CardContent>
+        </Card>
 
-            {(currentHtml || currentRefUrl) && (
-              <div className="border-t pt-4 space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Reference</Label>
-                    {currentRefUrl && <img src={currentRefUrl} alt="reference" className="mt-1 w-full rounded-md border" />}
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">
-                      Preview {attempt !== null && <span className="ml-1">(attempt {attempt})</span>}
-                    </Label>
-                    {preview
-                      ? <img src={preview} alt="preview" className="mt-1 w-full rounded-md border" />
-                      : <div className="mt-1 aspect-square w-full rounded-md border flex items-center justify-center text-xs text-muted-foreground">{busy ? "Rendering…" : "No preview yet"}</div>}
-                  </div>
-                </div>
-
-                {validation && (
-                  validation.ok
-                    ? <div className="rounded-md border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-300">✓ Valid template{attempt !== null ? ` (attempt ${attempt})` : ""}</div>
-                    : <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300 space-y-1">
-                        <div className="font-medium">Invalid template{attempt !== null ? ` (attempt ${attempt})` : ""}</div>
-                        {validation.errors.length > 0 && <ul className="list-disc pl-5">{validation.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>}
-                        {validation.missingSlots.length > 0 && <div>Missing slots: {validation.missingSlots.join(", ")}</div>}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg">Build queue</CardTitle>
+            <Button size="sm" variant="ghost" onClick={fetchRequests}><RefreshCw className="h-3 w-3 mr-1" />Refresh</Button>
+          </CardHeader>
+          <CardContent>
+            {requests.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">No requests yet.</p>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {requests.map((r) => {
+                  const previewB64 = r.result?.previewBase64;
+                  const templateId = r.result?.template_id;
+                  const tpl = templateId ? rows.find(t => t.id === templateId) : null;
+                  const attempt = r.result?.attempt ?? r.attempts;
+                  return (
+                    <Card key={r.id} className="overflow-hidden">
+                      <div className="aspect-square bg-muted flex items-center justify-center">
+                        {previewB64
+                          ? <img src={`data:image/png;base64,${previewB64}`} alt="preview" className="w-full h-full object-cover" />
+                          : <img src={r.reference_url} alt="ref" className="w-full h-full object-cover opacity-60" />}
                       </div>
-                )}
-
-                <div className="grid gap-2">
-                  <Label>Name</Label>
-                  <Input value={currentName} onChange={(e) => setCurrentName(e.target.value)} onBlur={async () => {
-                    if (currentId) await supabase.from("templates").update({ name: currentName }).eq("id", currentId);
-                  }} />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label>HTML (edit and re-validate)</Label>
-                  <Textarea value={currentHtml} onChange={(e) => setCurrentHtml(e.target.value)} rows={10} className="font-mono text-xs" />
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button onClick={handleRevalidate} variant="outline" disabled={busy || !currentHtml}>
-                    {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                    Re-validate
-                  </Button>
-                  <Button onClick={handleRegenerate} variant="outline" disabled={busy || !currentRefUrl}>
-                    {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wand2 className="h-4 w-4 mr-2" />}
-                    Regenerate
-                  </Button>
-                  {validation?.ok && currentId && (
-                    <Button onClick={() => handleApprove(currentId)} className="bg-green-600 hover:bg-green-700">
-                      <Check className="h-4 w-4 mr-2" />Approve
-                    </Button>
-                  )}
-                </div>
+                      <CardContent className="p-3 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{r.result?.name || "Pending build"}</div>
+                            <div className="text-xs text-muted-foreground">
+                              attempt {attempt} · {new Date(r.created_at).toLocaleString()}
+                            </div>
+                          </div>
+                          {statusBadge(r.status)}
+                        </div>
+                        {r.notes && <p className="text-xs text-muted-foreground line-clamp-2">{r.notes}</p>}
+                        {r.error && <p className="text-xs text-destructive line-clamp-3">{r.error}</p>}
+                        <div className="flex gap-1 flex-wrap">
+                          {r.status === "ready" && tpl && tpl.status !== "approved" && (
+                            <Button size="sm" onClick={() => handleApprove(tpl.id, r.id)} className="bg-green-600 hover:bg-green-700">
+                              <Check className="h-3 w-3 mr-1" />Approve
+                            </Button>
+                          )}
+                          {r.status === "ready" && tpl?.status === "approved" && (
+                            <Badge variant="default">Approved</Badge>
+                          )}
+                          {r.status === "failed" && (
+                            <Button size="sm" variant="outline" onClick={() => handleRetryRequest(r.id)}>
+                              <RefreshCw className="h-3 w-3 mr-1" />Retry
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" onClick={() => handleDeleteRequest(r.id)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </CardContent>
