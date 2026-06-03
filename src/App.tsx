@@ -100,6 +100,7 @@ import OfficeHours from "./pages/OfficeHours";
 import PartnerPortal from "./pages/PartnerPortal";
 import AdGenerator from "./pages/AdGenerator";
 import BrandSetup from "./pages/BrandSetup";
+import Photos from "./pages/Photos";
 
 function CreativeRedirect() {
   const location = useLocation();
@@ -165,6 +166,7 @@ const App = () => {
                   <Route path="/campaigns" element={<Campaigns />} />
                   <Route path="/ad-generator" element={<AdGenerator />} />
                   <Route path="/brand-setup" element={<BrandSetup />} />
+                  <Route path="/photos" element={<Photos />} />
                   <Route path="/workspace/:workspaceId" element={<WorkspaceRedirect />} />
                   <Route path="/campaigns/build" element={<CampaignBuilder />} />
                   <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
