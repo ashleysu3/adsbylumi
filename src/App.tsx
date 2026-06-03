@@ -35,6 +35,7 @@ import MetaOAuthCallback from "./pages/MetaOAuthCallback";
 import AdminKnowledge from "./pages/admin/Knowledge";
 import AdminAnalytics from "./pages/admin/Analytics";
 import AdminTemplates from "./pages/admin/Templates";
+import AdminMagicTemplates from "./pages/admin/MagicTemplates";
 import AdminCreativeToolkit from "./pages/admin/CreativeToolkit";
 import AdminSubscriptions from "./pages/admin/Subscriptions";
 import AdminBugReports from "./pages/admin/BugReports";
@@ -208,6 +209,7 @@ const App = () => {
                   <Route path="/admin/partner-applications" element={<AdminPartnerApplications />} />
                   <Route path="/admin/analytics" element={<AdminAnalytics />} />
                   <Route path="/admin/templates" element={<AdminTemplates />} />
+                  <Route path="/admin/magic-templates" element={<AdminMagicTemplates />} />
                   <Route path="/admin/strategies" element={<AdminStrategies />} />
                   <Route path="/admin/creative-toolkit" element={<AdminCreativeToolkit />} />
                   <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
