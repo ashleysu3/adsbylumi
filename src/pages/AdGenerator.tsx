@@ -73,10 +73,11 @@ export default function AdGenerator() {
       try {
         const { data, error } = await supabase
           .from("brand_kits")
-          .select("colors, fonts")
+          .select("colors, fonts, voice")
           .maybeSingle();
         if (error) throw error;
         if (!cancelled) {
+          setBrandVoice((data as any)?.voice ?? null);
           if (data?.colors) {
             const c = data.colors as Record<string, string>;
             setColors({
