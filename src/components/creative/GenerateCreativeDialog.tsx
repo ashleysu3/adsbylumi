@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,6 +24,18 @@ type Slide = Record<string, string>;
 type CarouselOption = { slides: Slide[] };
 type Photo = { id: string; path: string; url: string };
 type RenderImage = { placement: string; width: number; height: number; base64: string; label?: string };
+type CustomTemplate = {
+  id: string;
+  name: string;
+  type: "single" | "carousel";
+  html: string;
+  copy_slots: any;
+  slide_slots: any;
+  needs_photo: boolean;
+  placements: string[];
+};
+
+const BUILT_IN_TEMPLATES = ["cutout", "spotlight", "framed", "split", "carousel"] as const;
 
 // Friendly labels for known slot keys (anything unknown falls back to the key)
 const SLOT_LABELS: Record<string, string> = {
@@ -81,7 +94,16 @@ export function GenerateCreativeDialog() {
   const [progress, setProgress] = useState<string>("");
   const [images, setImages] = useState<RenderImage[]>([]);
 
-  const isCarousel = template === "carousel" || brief?.format === "carousel";
+  const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>([]);
+  const [customTemplateId, setCustomTemplateId] = useState<string>("");
+  const activeCustom = useMemo(
+    () => customTemplates.find((t) => t.id === customTemplateId) || null,
+    [customTemplates, customTemplateId],
+  );
+
+  const isCarousel = activeCustom
+    ? activeCustom.type === "carousel"
+    : template === "carousel" || brief?.format === "carousel";
   const briefRef = useRef<CreativeBrief | null>(null);
   briefRef.current = brief;
 
@@ -170,6 +192,31 @@ export function GenerateCreativeDialog() {
         toast.error(err?.message || "Could not load photos");
       } finally {
         if (!cancelled) setPhotosLoading(false);
+      }
+    })();
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("templates")
+          .select("id, name, type, html, copy_slots, slide_slots, needs_photo, placements")
+          .eq("status", "approved")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        if (cancelled) return;
+        setCustomTemplates(
+          (data || []).map((r: any) => ({
+            id: r.id,
+            name: r.name || "Untitled",
+            type: r.type === "carousel" ? "carousel" : "single",
+            html: r.html || "",
+            copy_slots: r.copy_slots || [],
+            slide_slots: r.slide_slots || [],
+            needs_photo: r.needs_photo ?? true,
+            placements: Array.isArray(r.placements) ? r.placements : ["feed", "story"],
+          })),
+        );
+      } catch {
+        /* templates table may not be available; ignore */
       }
     })();
     return () => { cancelled = true; };
@@ -263,15 +310,27 @@ export function GenerateCreativeDialog() {
       const brandKit = { colors, fonts: { displayItalicUrl: fontUrl || undefined } };
       const photo = { url: selectedPhoto.url, removeBackground };
 
+      const templateField = activeCustom
+        ? {
+            customTemplate: {
+              html: activeCustom.html,
+              type: activeCustom.type,
+              copySlots: activeCustom.copy_slots,
+              placements: activeCustom.placements,
+              needsPhoto: activeCustom.needs_photo,
+            },
+          }
+        : { template };
+
       if (isCarousel) {
         setProgress("Rendering carousel slides…");
         const slides = editedSlides;
         const imgs = await callRender({
-          template,
+          ...templateField,
           brandKit,
           copy: { slides },
           photo,
-          placements: ["feed"],
+          placements: activeCustom?.placements ?? ["feed"],
         });
         const labelled = imgs.map((im, i) => ({ ...im, label: `Slide ${i + 1}` }));
         setImages(labelled);
@@ -280,11 +339,11 @@ export function GenerateCreativeDialog() {
       } else {
         setProgress("Rendering feed + story…");
         const imgs = await callRender({
-          template,
+          ...templateField,
           brandKit,
           copy: editedSingle,
           photo,
-          placements: ["feed", "story"],
+          placements: activeCustom?.placements ?? ["feed", "story"],
         });
         setImages(imgs);
         setProgress("");
@@ -325,7 +384,9 @@ export function GenerateCreativeDialog() {
                 <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant="outline" className="text-[10px] uppercase">{brief.format}</Badge>
-                    <Badge variant="secondary" className="text-[10px] uppercase">{template}</Badge>
+                    <Badge variant="secondary" className="text-[10px] uppercase">
+                      {activeCustom ? activeCustom.name : template}
+                    </Badge>
                     {brief.styleHint && <Badge variant="outline" className="text-[10px]">{brief.styleHint}</Badge>}
                     {brief.angle && <Badge variant="outline" className="text-[10px]">{brief.angle}</Badge>}
                   </div>
@@ -333,6 +394,35 @@ export function GenerateCreativeDialog() {
                   {brief.offer && <p className="text-xs text-muted-foreground"><b>Offer:</b> {brief.offer}</p>}
                 </div>
               )}
+
+              <div className="space-y-1">
+                <Label className="text-xs uppercase text-muted-foreground">Template style</Label>
+                <Select
+                  value={activeCustom ? `custom:${activeCustom.id}` : `built:${template}`}
+                  onValueChange={(v) => {
+                    if (v.startsWith("custom:")) {
+                      setCustomTemplateId(v.slice(7));
+                    } else {
+                      setCustomTemplateId("");
+                      setTemplate(v.slice(6));
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {BUILT_IN_TEMPLATES.map((t) => (
+                      <SelectItem key={t} value={`built:${t}`}>{t} (built-in)</SelectItem>
+                    ))}
+                    {customTemplates.length > 0 && (
+                      <div className="px-2 py-1 text-[10px] uppercase text-muted-foreground">Custom</div>
+                    )}
+                    {customTemplates.map((ct) => (
+                      <SelectItem key={ct.id} value={`custom:${ct.id}`}>{ct.name} · {ct.type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
 
               {composing ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
