@@ -384,7 +384,9 @@ export function GenerateCreativeDialog() {
                 <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant="outline" className="text-[10px] uppercase">{brief.format}</Badge>
-                    <Badge variant="secondary" className="text-[10px] uppercase">{template}</Badge>
+                    <Badge variant="secondary" className="text-[10px] uppercase">
+                      {activeCustom ? activeCustom.name : template}
+                    </Badge>
                     {brief.styleHint && <Badge variant="outline" className="text-[10px]">{brief.styleHint}</Badge>}
                     {brief.angle && <Badge variant="outline" className="text-[10px]">{brief.angle}</Badge>}
                   </div>
@@ -392,6 +394,35 @@ export function GenerateCreativeDialog() {
                   {brief.offer && <p className="text-xs text-muted-foreground"><b>Offer:</b> {brief.offer}</p>}
                 </div>
               )}
+
+              <div className="space-y-1">
+                <Label className="text-xs uppercase text-muted-foreground">Template style</Label>
+                <Select
+                  value={activeCustom ? `custom:${activeCustom.id}` : `built:${template}`}
+                  onValueChange={(v) => {
+                    if (v.startsWith("custom:")) {
+                      setCustomTemplateId(v.slice(7));
+                    } else {
+                      setCustomTemplateId("");
+                      setTemplate(v.slice(6));
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {BUILT_IN_TEMPLATES.map((t) => (
+                      <SelectItem key={t} value={`built:${t}`}>{t} (built-in)</SelectItem>
+                    ))}
+                    {customTemplates.length > 0 && (
+                      <div className="px-2 py-1 text-[10px] uppercase text-muted-foreground">Custom</div>
+                    )}
+                    {customTemplates.map((ct) => (
+                      <SelectItem key={ct.id} value={`custom:${ct.id}`}>{ct.name} · {ct.type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
 
               {composing ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
