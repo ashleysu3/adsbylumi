@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import {
   BookOpen, LayoutTemplate, BarChart3, CreditCard, Bug, Users, Settings,
   Shield, Gift, DollarSign, Mail, XCircle, FileWarning, Star, Monitor, Wrench,
-  ChevronDown, Palette, Tag, Inbox, Sparkles,
+  ChevronDown, Palette, Tag, Inbox, Sparkles, Image as ImageIcon, CheckSquare,
 } from "lucide-react";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
