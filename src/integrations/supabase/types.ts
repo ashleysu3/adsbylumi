@@ -391,6 +391,45 @@ export type Database = {
           },
         ]
       }
+      brand_kits: {
+        Row: {
+          colors: Json | null
+          created_at: string
+          fonts: Json | null
+          id: string
+          offer: Json | null
+          source_url: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          voice: Json | null
+        }
+        Insert: {
+          colors?: Json | null
+          created_at?: string
+          fonts?: Json | null
+          id?: string
+          offer?: Json | null
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          voice?: Json | null
+        }
+        Update: {
+          colors?: Json | null
+          created_at?: string
+          fonts?: Json | null
+          id?: string
+          offer?: Json | null
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          voice?: Json | null
+        }
+        Relationships: []
+      }
       brand_learnings: {
         Row: {
           brand_id: string
@@ -2966,6 +3005,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_assets: {
+        Row: {
+          created_at: string
+          cutout_url: string | null
+          id: string
+          kind: string | null
+          original_url: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          cutout_url?: string | null
+          id?: string
+          kind?: string | null
+          original_url?: string | null
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          cutout_url?: string | null
+          id?: string
+          kind?: string | null
+          original_url?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       user_reviews: {
         Row: {
