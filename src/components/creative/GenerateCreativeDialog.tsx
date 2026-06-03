@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,6 +24,18 @@ type Slide = Record<string, string>;
 type CarouselOption = { slides: Slide[] };
 type Photo = { id: string; path: string; url: string };
 type RenderImage = { placement: string; width: number; height: number; base64: string; label?: string };
+type CustomTemplate = {
+  id: string;
+  name: string;
+  type: "single" | "carousel";
+  html: string;
+  copy_slots: any;
+  slide_slots: any;
+  needs_photo: boolean;
+  placements: string[];
+};
+
+const BUILT_IN_TEMPLATES = ["cutout", "spotlight", "framed", "split", "carousel"] as const;
 
 // Friendly labels for known slot keys (anything unknown falls back to the key)
 const SLOT_LABELS: Record<string, string> = {
@@ -81,7 +94,16 @@ export function GenerateCreativeDialog() {
   const [progress, setProgress] = useState<string>("");
   const [images, setImages] = useState<RenderImage[]>([]);
 
-  const isCarousel = template === "carousel" || brief?.format === "carousel";
+  const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>([]);
+  const [customTemplateId, setCustomTemplateId] = useState<string>("");
+  const activeCustom = useMemo(
+    () => customTemplates.find((t) => t.id === customTemplateId) || null,
+    [customTemplates, customTemplateId],
+  );
+
+  const isCarousel = activeCustom
+    ? activeCustom.type === "carousel"
+    : template === "carousel" || brief?.format === "carousel";
   const briefRef = useRef<CreativeBrief | null>(null);
   briefRef.current = brief;
 
