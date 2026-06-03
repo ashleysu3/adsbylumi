@@ -26,6 +26,9 @@ function assertAllowedPhotoUrl(url: string) {
 
 function makeProxyUrl(req: Request, imageUrl: string) {
   const proxyUrl = new URL(req.url);
+  const imagePath = new URL(imageUrl).pathname;
+  const filename = imagePath.split("/").pop() || "photo.png";
+  proxyUrl.pathname = `${proxyUrl.pathname.replace(/\/$/, "")}/${filename}`;
   proxyUrl.search = "";
   proxyUrl.searchParams.set("proxy_image", imageUrl);
   return proxyUrl.toString();
