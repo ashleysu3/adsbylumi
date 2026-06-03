@@ -153,6 +153,8 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = true
   [functions.upload-creative-to-meta]
     verify_jwt = true
+  [functions.validate-template]
+    verify_jwt = true
   [functions.verify-landing-page-pixel]
     verify_jwt = true
   [functions.verify-meta-tokens]
