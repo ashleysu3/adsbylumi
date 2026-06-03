@@ -48,6 +48,8 @@ import AdminUpdatesResults from "./pages/admin/UpdatesResults";
 import AdminFeatures from "./pages/admin/Features";
 import AdminInspiration from "./pages/admin/Inspiration";
 import Inspiration from "./pages/Inspiration";
+import Boards from "./pages/Boards";
+import BoardDetail from "./pages/BoardDetail";
 import AdminApprovals from "./pages/admin/Approvals";
 import { useReferralCapture } from "./hooks/useReferralCapture";
 
@@ -197,6 +199,8 @@ const App = () => {
                   <Route path="/admin/knowledge" element={<AdminKnowledge />} />
                   <Route path="/admin/inspiration" element={<AdminInspiration />} />
                   <Route path="/inspiration" element={<Inspiration />} />
+                  <Route path="/boards" element={<Boards />} />
+                  <Route path="/boards/:boardId" element={<BoardDetail />} />
                   <Route path="/admin/approvals" element={<AdminApprovals />} />
                   <Route path="/admin/affiliates" element={<AdminAffiliates />} />
                   <Route path="/admin/payouts" element={<AdminPayouts />} />
