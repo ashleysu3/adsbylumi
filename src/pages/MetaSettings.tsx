@@ -598,7 +598,7 @@ export default function MetaSettings() {
               document.getElementById('meta-connect-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }}
             onPixelSetupRequested={() => {
-              pixelSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              navigate('/tracking-setup');
             }}
           />
         )}
