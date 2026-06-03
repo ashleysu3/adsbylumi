@@ -55,6 +55,13 @@ export default function AdGenerator() {
   const [images, setImages] = useState<RenderImage[]>([]);
   const [kitLoading, setKitLoading] = useState(true);
   const [hasKit, setHasKit] = useState(false);
+  const [creativeDirection, setCreativeDirection] = useState("");
+  const [composing, setComposing] = useState(false);
+  type ComposedOption = {
+    eyebrow: string; headlinePre: string; headlineHL: string; headlinePost: string;
+    accent: string; sub: string; cta: string; badgeTop: string; badgeBottom: string;
+  };
+  const [composedOptions, setComposedOptions] = useState<ComposedOption[]>([]);
 
   const selectedPhoto = photos.find((p) => p.id === selectedPhotoId);
 
