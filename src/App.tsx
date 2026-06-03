@@ -47,6 +47,7 @@ import AdminUpdates from "./pages/admin/Updates";
 import AdminUpdatesResults from "./pages/admin/UpdatesResults";
 import AdminFeatures from "./pages/admin/Features";
 import AdminInspiration from "./pages/admin/Inspiration";
+import Inspiration from "./pages/Inspiration";
 import AdminApprovals from "./pages/admin/Approvals";
 import { useReferralCapture } from "./hooks/useReferralCapture";
 
@@ -195,6 +196,7 @@ const App = () => {
                   <Route path="/partner-dashboard" element={<PartnerDashboard />} />
                   <Route path="/admin/knowledge" element={<AdminKnowledge />} />
                   <Route path="/admin/inspiration" element={<AdminInspiration />} />
+                  <Route path="/inspiration" element={<Inspiration />} />
                   <Route path="/admin/approvals" element={<AdminApprovals />} />
                   <Route path="/admin/affiliates" element={<AdminAffiliates />} />
                   <Route path="/admin/payouts" element={<AdminPayouts />} />
