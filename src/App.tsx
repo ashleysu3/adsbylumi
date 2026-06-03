@@ -48,6 +48,8 @@ import AdminUpdatesResults from "./pages/admin/UpdatesResults";
 import AdminFeatures from "./pages/admin/Features";
 import AdminInspiration from "./pages/admin/Inspiration";
 import Inspiration from "./pages/Inspiration";
+import Boards from "./pages/Boards";
+import BoardDetail from "./pages/BoardDetail";
 import AdminApprovals from "./pages/admin/Approvals";
 import { useReferralCapture } from "./hooks/useReferralCapture";
 
