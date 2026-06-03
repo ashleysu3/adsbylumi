@@ -151,7 +151,7 @@ export default function AdminMagicTemplates() {
   const runValidate = async (html: string, type: string, copySlots: any, needsPhoto: boolean) => {
     setValidation(null); setPreview(null);
     const { data, error } = await supabase.functions.invoke("validate-template", {
-      body: { html, type, copySlots, needsPhoto },
+      body: { html, type, copySlots, needsPhoto, samplePhotoUrl: "https://sqwjbndgighjtifijgws.supabase.co/storage/v1/object/public/email-assets/sample-headshot.png" },
     });
     if (error) { toast.error("Validation call failed"); return; }
     const ok = !!data?.ok;
