@@ -3,6 +3,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 const ENGINE_URL = Deno.env.get("ENGINE_URL")!;
 const ENGINE_KEY = Deno.env.get("LUMI_ENGINE_KEY") ?? "";
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 
 const headers = {
   ...corsHeaders,
@@ -13,7 +14,25 @@ const headers = {
 const json = (payload: unknown) =>
   new Response(JSON.stringify(payload), { status: 200, headers });
 
-async function imageUrlToDataUrl(url: string) {
+function assertAllowedPhotoUrl(url: string) {
+  const parsed = new URL(url);
+  const storageHost = SUPABASE_URL ? new URL(SUPABASE_URL).hostname : parsed.hostname;
+  const allowedPath = parsed.pathname.startsWith("/storage/v1/object/sign/ad-photos/ad-generator/");
+
+  if (parsed.protocol !== "https:" || parsed.hostname !== storageHost || !allowedPath) {
+    throw new Error("Uploaded image URL is not from the ad photo library.");
+  }
+}
+
+function makeProxyUrl(req: Request, imageUrl: string) {
+  const proxyUrl = new URL(req.url);
+  proxyUrl.search = "";
+  proxyUrl.searchParams.set("proxy_image", imageUrl);
+  return proxyUrl.toString();
+}
+
+async function fetchImage(url: string) {
+  assertAllowedPhotoUrl(url);
   const imageResponse = await fetch(url, {
     headers: { accept: "image/*,*/*;q=0.8" },
     redirect: "follow",
@@ -38,28 +57,36 @@ async function imageUrlToDataUrl(url: string) {
     throw new Error("Uploaded image is too large. Please use an image under 8MB.");
   }
 
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-
-  return `data:${contentType};base64,${btoa(binary)}`;
+  return { bytes, contentType };
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers });
   try {
+    const requestUrl = new URL(req.url);
+    const proxyImageUrl = requestUrl.searchParams.get("proxy_image");
+
+    if (req.method === "GET" && proxyImageUrl) {
+      const { bytes, contentType } = await fetchImage(proxyImageUrl);
+      return new Response(bytes, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "content-type": contentType,
+          "cache-control": "no-store",
+        },
+      });
+    }
+
     const body = await req.json();
     const photoUrl = body?.photo?.url;
     const shouldRemoveBackground = body?.photo?.removeBackground === true;
 
     if (shouldRemoveBackground && typeof photoUrl === "string" && photoUrl.startsWith("http")) {
-      const dataUrl = await imageUrlToDataUrl(photoUrl);
+      await fetchImage(photoUrl);
       body.photo = {
         ...body.photo,
-        url: dataUrl,
-        dataUrl,
+        url: makeProxyUrl(req, photoUrl),
       };
     }
 
