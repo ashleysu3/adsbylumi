@@ -18,7 +18,7 @@ import { useLumiAssistant } from '@/components/LumiAssistant';
 export default function TrackingSetup() {
   const navigate = useNavigate();
   const { activeBrand, loading: brandLoading } = useBrand();
-  const { open: openLumi } = useLumi() as any;
+  const { openChat } = useLumiAssistant();
   const [brand, setBrand] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
