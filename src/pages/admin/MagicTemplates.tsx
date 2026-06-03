@@ -46,6 +46,9 @@ export default function AdminMagicTemplates() {
   const [currentCopySlots, setCurrentCopySlots] = useState<any>([]);
   const [preview, setPreview] = useState<string | null>(null);
   const [validation, setValidation] = useState<{ ok: boolean; errors: string[]; missingSlots: string[] } | null>(null);
+  const [attempt, setAttempt] = useState<number | null>(null);
+
+  const SAMPLE_PHOTO_URL = "https://sqwjbndgighjtifijgws.supabase.co/storage/v1/object/public/email-assets/sample-headshot.png";
 
   useEffect(() => {
     (async () => {
