@@ -511,7 +511,27 @@ export function GenerateCreativeDialog() {
 
               <div className="space-y-2">
                 <Label className="text-xs">Photo</Label>
-                {photosLoading ? (
+                {isGeneratedConcept ? (
+                  generatingConcept ? (
+                    <div className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
+                      <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                      Generating image…
+                    </div>
+                  ) : generatedPhoto ? (
+                    <div className="space-y-2">
+                      <div className="relative aspect-square rounded border-2 border-primary overflow-hidden max-w-[240px]">
+                        <img src={generatedPhoto.url} alt="" className="w-full h-full object-cover" />
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={generateConceptImage} disabled={generatingConcept}>
+                        <RefreshCw className="h-3 w-3 mr-1" /> Regenerate image
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={generateConceptImage}>
+                      <Sparkles className="h-3 w-3 mr-1" /> Generate image
+                    </Button>
+                  )
+                ) : photosLoading ? (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Loader2 className="h-3 w-3 animate-spin" /> Loading your photos…
                   </div>
@@ -536,14 +556,16 @@ export function GenerateCreativeDialog() {
                     ))}
                   </div>
                 )}
-                <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={removeBackground}
-                    onChange={(e) => setRemoveBackground(e.target.checked)}
-                  />
-                  Remove background
-                </label>
+                {!isGeneratedConcept && (
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={removeBackground}
+                      onChange={(e) => setRemoveBackground(e.target.checked)}
+                    />
+                    Remove background
+                  </label>
+                )}
               </div>
 
               <Button
