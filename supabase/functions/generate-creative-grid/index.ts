@@ -519,6 +519,23 @@ ADDITIONAL FIELDS FOR talking_head FORMAT ONLY:
 - text_overlays: Array of objects with "text", "timing", and "type" (hook/transition/insight/cta) properties
 - caption_reminder: boolean (always true for talking_head)
 
+ADDITIONAL FIELDS FOR graphic AND carousel FORMATS (REQUIRED — this is the structured handoff to the render engine):
+- brief: an object with EXACTLY these fields:
+  - format: "single_graphic" (when cell format = "graphic") or "carousel" (when cell format = "carousel")
+  - placements: array, e.g. ["feed"] or ["feed","story"]
+  - angle: one of "mistake" | "curiosity" | "outcome" | "contrarian" | "question" | "story" (map from the angle theme)
+  - concept: ONE sentence describing the specific idea for this ad
+  - keyMessage: the single core thing the viewer must take away
+  - offer: what they're being driven to (e.g. "free live class", "lead magnet PDF", "discovery call")
+  - cta: the action (e.g. "Save your seat", "Watch free training", "Book a call")
+  - audience: who this is for, in a phrase
+  - proofPoint: optional result/testimonial/stat string, or null
+  - styleHint: one of "photo-forward" | "type-led" | "highlighter" | "testimonial" | "card" | "framed"
+  - photoTreatment: one of "cutout" | "with-background" | "none"
+  - slideCount: 1 for single_graphic; 3 to 6 for carousel
+  - slidePlan: for carousel ONLY, an array of slideCount objects each with a "role" — choose from "hook" | "problem" | "framework" | "proof" | "cta" — in narrative order. Omit for single_graphic.
+
+
 == AD COPY FORMATTING CONVENTIONS (STRICT) ===
 - ALWAYS use digits for numbers: "7 days" not "seven days", "$997" not "$nine hundred ninety-seven", "3 clients" not "three clients"
 - Keep sentences punchy and scannable — no filler words
