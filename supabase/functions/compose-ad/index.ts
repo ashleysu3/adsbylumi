@@ -17,11 +17,12 @@ const SLOTS: Record<string,string> = {
   spotlight: `eyebrow (<=6 words, a details line e.g. "Free training · Jun 8 @ 1pm ET"), headline (<=8 words), sub (one sentence <=18 words), cta (<=4 words)`,
   framed: `headlinePre (1-4 words, lowercase lead-in), headlineHL (2-5 words, the bold phrase shown in CAPS), headlinePost (2-6 words, lowercase tail), cta (<=5 words, e.g. "Watch the free training"), sig (the brand or person's name)`,
   split: `eyebrow (<=3 words, e.g. "Free download"), headline (<=9 words, shown in CAPS), cta (<=3 words, e.g. "Free download")`,
+  highlighter: `headlinePre (1-3 words), headlineAccent (1-3 words, shown in accent color), headlineHL (1-3 words, the highlighted phrase), sub (one sentence <=14 words), badgeTop (<=2 words e.g. FREE), badgeBottom (<=2 words e.g. Download)`,
 };
 
 function mapStyle(styleHint?: string, format?: string): string {
   if (format === "carousel") return "carousel";
-  const m: Record<string,string> = { "photo-forward":"cutout","card":"spotlight","framed":"framed","type-led":"split","testimonial":"spotlight","highlighter":"cutout" };
+  const m: Record<string,string> = { "photo-forward":"cutout","card":"spotlight","framed":"framed","type-led":"split","testimonial":"spotlight","highlighter":"highlighter" };
   return (styleHint && m[styleHint]) || "cutout";
 }
 
