@@ -114,11 +114,16 @@ export default function AdminMagicTemplates() {
     });
     if (genErr) throw genErr;
     const tpl = genData || {};
+    if (tpl.error) throw new Error(`generate-template: ${tpl.error}`);
     const name = tpl.name || "Untitled template";
     const type = (tpl.type === "carousel" ? "carousel" : "single") as "single" | "carousel";
     const needsPhoto = tpl.needsPhoto ?? true;
     const copySlots = tpl.copySlots || [];
-    const html = tpl.html || "";
+    const html = typeof tpl.html === "string" ? tpl.html : "";
+    if (!html) {
+      console.error("generate-template returned no html:", tpl);
+      throw new Error("Model did not return html. Try again or simplify the reference image.");
+    }
 
     // Insert draft
     const { data: ins, error: insErr } = await supabase.from("templates").insert({
