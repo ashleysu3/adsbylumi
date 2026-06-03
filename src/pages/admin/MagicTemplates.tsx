@@ -248,15 +248,16 @@ export default function AdminMagicTemplates() {
                 <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. cutout style, bold headline, bottom CTA" rows={3} />
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <Button onClick={handleGenerate} disabled={busy || !file}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wand2 className="h-4 w-4 mr-2" />}
                 Generate template
               </Button>
-              {currentId && <Button variant="outline" onClick={resetCompose}>Start over</Button>}
+              {busy && <span className="text-xs text-muted-foreground">Building… can take up to ~60s</span>}
+              {(currentHtml || currentRefUrl) && !busy && <Button variant="outline" onClick={resetCompose}>Start over</Button>}
             </div>
 
-            {currentId && (
+            {(currentHtml || currentRefUrl) && (
               <div className="border-t pt-4 space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
@@ -264,7 +265,9 @@ export default function AdminMagicTemplates() {
                     {currentRefUrl && <img src={currentRefUrl} alt="reference" className="mt-1 w-full rounded-md border" />}
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">Preview</Label>
+                    <Label className="text-xs text-muted-foreground">
+                      Preview {attempt !== null && <span className="ml-1">(attempt {attempt})</span>}
+                    </Label>
                     {preview
                       ? <img src={preview} alt="preview" className="mt-1 w-full rounded-md border" />
                       : <div className="mt-1 aspect-square w-full rounded-md border flex items-center justify-center text-xs text-muted-foreground">{busy ? "Rendering…" : "No preview yet"}</div>}
@@ -273,9 +276,9 @@ export default function AdminMagicTemplates() {
 
                 {validation && (
                   validation.ok
-                    ? <div className="rounded-md border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-300">✓ Valid template</div>
+                    ? <div className="rounded-md border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-300">✓ Valid template{attempt !== null ? ` (attempt ${attempt})` : ""}</div>
                     : <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300 space-y-1">
-                        <div className="font-medium">Invalid template</div>
+                        <div className="font-medium">Invalid template{attempt !== null ? ` (attempt ${attempt})` : ""}</div>
                         {validation.errors.length > 0 && <ul className="list-disc pl-5">{validation.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>}
                         {validation.missingSlots.length > 0 && <div>Missing slots: {validation.missingSlots.join(", ")}</div>}
                       </div>
@@ -294,14 +297,15 @@ export default function AdminMagicTemplates() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={handleRevalidate} variant="outline" disabled={busy}>
+                  <Button onClick={handleRevalidate} variant="outline" disabled={busy || !currentHtml}>
                     {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
                     Re-validate
                   </Button>
-                  <Button onClick={handleRegenerate} variant="outline" disabled={busy}>
-                    <Wand2 className="h-4 w-4 mr-2" />Regenerate
+                  <Button onClick={handleRegenerate} variant="outline" disabled={busy || !currentRefUrl}>
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wand2 className="h-4 w-4 mr-2" />}
+                    Regenerate
                   </Button>
-                  {validation?.ok && (
+                  {validation?.ok && currentId && (
                     <Button onClick={() => handleApprove(currentId)} className="bg-green-600 hover:bg-green-700">
                       <Check className="h-4 w-4 mr-2" />Approve
                     </Button>
