@@ -297,6 +297,20 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {/* Tracking & Pixel — nested under Meta Connection */}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Set up your Meta Pixel & event tracking">
+                  <NavLink
+                    to="/tracking-setup"
+                    end
+                    className="transition-all duration-200 pl-8"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  >
+                    <Activity className="h-4 w-4" />
+                    {!collapsed && <span>Tracking & Pixel</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
