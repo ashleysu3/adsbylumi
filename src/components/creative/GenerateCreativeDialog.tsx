@@ -163,6 +163,13 @@ export function GenerateCreativeDialog() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, brief]);
 
+  // Tie background removal to chosen template (except for generated-concept images, which stay full-bleed)
+  useEffect(() => {
+    if (brief?.imageSource === "generated") return;
+    const t = PHOTO_TREATMENT[template];
+    if (t) setRemoveBackground(t === "cutout");
+  }, [template, brief?.imageSource]);
+
   // Load brand kit + photos on first open
   useEffect(() => {
     if (!open) return;
