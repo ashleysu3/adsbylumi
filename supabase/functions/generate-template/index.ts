@@ -21,7 +21,7 @@ serve(async (req) => {
     const { imageUrl, notes = "" } = await req.json();
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST", headers: { authorization: `Bearer ${KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({ model: "google/gemini-2.5-pro", response_format: { type: "json_object" },
+      body: JSON.stringify({ model: "google/gemini-2.5-flash", response_format: { type: "json_object" },
         messages: [ { role: "system", content: CONTRACT },
           { role: "user", content: [ { type: "text", text: "Build a template matching this reference. Notes: " + notes }, { type: "image_url", image_url: { url: imageUrl } } ] } ] }),
     });
