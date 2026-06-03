@@ -28,10 +28,22 @@ function makeProxyUrl(req: Request, imageUrl: string) {
   const proxyUrl = new URL(req.url);
   const imagePath = new URL(imageUrl).pathname;
   const filename = imagePath.split("/").pop() || "photo.png";
-  proxyUrl.pathname = `${proxyUrl.pathname.replace(/\/$/, "")}/${filename}`;
+  const encodedImageUrl = btoa(imageUrl).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  proxyUrl.pathname = `${proxyUrl.pathname.replace(/\/$/, "")}/proxy/${encodedImageUrl}/${filename}`;
   proxyUrl.search = "";
-  proxyUrl.searchParams.set("proxy_image", imageUrl);
   return proxyUrl.toString();
+}
+
+function decodeProxyImageUrl(req: Request) {
+  const requestUrl = new URL(req.url);
+  const proxyMatch = requestUrl.pathname.match(/\/proxy\/([^/]+)\//);
+  const queryImageUrl = requestUrl.searchParams.get("proxy_image");
+
+  if (!proxyMatch?.[1]) return queryImageUrl;
+
+  const base64 = proxyMatch[1].replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+  return atob(padded);
 }
 
 async function fetchImage(url: string) {
@@ -66,8 +78,7 @@ async function fetchImage(url: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers });
   try {
-    const requestUrl = new URL(req.url);
-    const proxyImageUrl = requestUrl.searchParams.get("proxy_image");
+    const proxyImageUrl = decodeProxyImageUrl(req);
 
     if ((req.method === "GET" || req.method === "HEAD") && proxyImageUrl) {
       const { bytes, contentType } = await fetchImage(proxyImageUrl);
