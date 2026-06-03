@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import {
   BookOpen, LayoutTemplate, BarChart3, CreditCard, Bug, Users, Settings,
   Shield, Gift, DollarSign, Mail, XCircle, FileWarning, Star, Monitor, Wrench,
-  ChevronDown, Palette, Tag, Inbox, Sparkles,
+  ChevronDown, Palette, Tag, Inbox, Sparkles, Image as ImageIcon, CheckSquare,
 } from "lucide-react";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
@@ -46,6 +46,8 @@ const adminGroups: AdminGroup[] = [
     icon: BookOpen,
     tabs: [
       { path: "/admin/knowledge", label: "Knowledge", icon: BookOpen },
+      { path: "/admin/inspiration", label: "Inspiration Library", icon: ImageIcon },
+      { path: "/admin/approvals", label: "Approvals", icon: CheckSquare },
       { path: "/admin/templates", label: "Templates", icon: LayoutTemplate },
       { path: "/admin/strategies", label: "Strategies", icon: LayoutTemplate },
       { path: "/admin/creative-toolkit", label: "Creative Toolkit", icon: Wrench },
