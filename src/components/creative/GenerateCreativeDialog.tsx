@@ -18,18 +18,37 @@ const DEFAULT_COLORS: Colors = {
   pop: "#22c55e", highlight: "#f59e0b", cream: "#f5f5f5",
 };
 
-type SingleCopy = {
-  eyebrow: string; headlinePre: string; headlineHL: string; headlinePost: string;
-  accent: string; sub: string; cta: string; badgeTop: string; badgeBottom: string;
-};
-type SlideCopy = { eyebrow: string; headline: string; sub: string };
+type SingleOption = Record<string, string>;
+type Slide = Record<string, string>;
+type CarouselOption = { slides: Slide[] };
 type Photo = { id: string; path: string; url: string };
 type RenderImage = { placement: string; width: number; height: number; base64: string; label?: string };
 
-const EMPTY_SINGLE: SingleCopy = {
-  eyebrow: "", headlinePre: "", headlineHL: "", headlinePost: "",
-  accent: "", sub: "", cta: "", badgeTop: "", badgeBottom: "",
+// Friendly labels for known slot keys (anything unknown falls back to the key)
+const SLOT_LABELS: Record<string, string> = {
+  eyebrow: "Eyebrow",
+  headline: "Headline",
+  headlinePre: "Headline start",
+  headlineHL: "Highlight",
+  headlinePost: "Headline end",
+  accent: "Accent",
+  sub: "Sub",
+  cta: "CTA",
+  sig: "Signature",
+  badgeTop: "Badge top",
+  badgeBottom: "Badge bottom",
 };
+const MULTILINE_KEYS = new Set(["sub", "accent"]);
+
+// Local fallback: mirror the compose-ad mapping so the UI can guess a template
+function mapStyleToTemplate(styleHint?: string, format?: string): string {
+  if (format === "carousel") return "carousel";
+  const m: Record<string, string> = {
+    "photo-forward": "cutout", card: "spotlight", framed: "framed",
+    "type-led": "split", testimonial: "spotlight", highlighter: "cutout",
+  };
+  return (styleHint && m[styleHint]) || "cutout";
+}
 
 export function GenerateCreativeDialog() {
   const [open, setOpen] = useState(false);
@@ -46,19 +65,23 @@ export function GenerateCreativeDialog() {
   const [removeBackground, setRemoveBackground] = useState(true);
 
   const [composing, setComposing] = useState(false);
-  const [singleOptions, setSingleOptions] = useState<SingleCopy[]>([]);
-  const [selectedOptionIdx, setSelectedOptionIdx] = useState(0);
-  const [editingCopy, setEditingCopy] = useState(false);
-  const [editedSingle, setEditedSingle] = useState<SingleCopy>(EMPTY_SINGLE);
+  const [template, setTemplate] = useState<string>("cutout");
 
-  const [slides, setSlides] = useState<SlideCopy[]>([]);
-  const [editedSlides, setEditedSlides] = useState<SlideCopy[]>([]);
+  // single-template state
+  const [singleOptions, setSingleOptions] = useState<SingleOption[]>([]);
+  const [selectedOptionIdx, setSelectedOptionIdx] = useState(0);
+  const [editedSingle, setEditedSingle] = useState<SingleOption>({});
+  const [editingCopy, setEditingCopy] = useState(false);
+
+  // carousel state
+  const [carouselOptions, setCarouselOptions] = useState<CarouselOption[]>([]);
+  const [editedSlides, setEditedSlides] = useState<Slide[]>([]);
 
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState<string>("");
   const [images, setImages] = useState<RenderImage[]>([]);
 
-  const isCarousel = brief?.format === "carousel";
+  const isCarousel = template === "carousel" || brief?.format === "carousel";
   const briefRef = useRef<CreativeBrief | null>(null);
   briefRef.current = brief;
 
@@ -68,10 +91,12 @@ export function GenerateCreativeDialog() {
       const detail = (e as CustomEvent).detail as { brief?: CreativeBrief };
       if (!detail?.brief) return;
       setBrief(detail.brief);
+      setTemplate(mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
       setOpen(true);
-      // reset state
       setSingleOptions([]);
-      setSlides([]);
+      setCarouselOptions([]);
+      setEditedSlides([]);
+      setEditedSingle({});
       setEditingCopy(false);
       setImages([]);
       setProgress("");
@@ -150,7 +175,6 @@ export function GenerateCreativeDialog() {
     return () => { cancelled = true; };
   }, [open]);
 
-  // Auto-compose once kit + brief ready
   const compose = useCallback(async () => {
     const b = briefRef.current;
     if (!b) return;
@@ -163,31 +187,31 @@ export function GenerateCreativeDialog() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      const options = data?.options || [];
-      if (b.format === "carousel") {
-        const first = options[0];
-        const s: SlideCopy[] = (first?.slides || []).map((sl: any) => ({
-          eyebrow: sl?.eyebrow || "",
-          headline: sl?.headline || "",
-          sub: sl?.sub || "",
+      const returnedTemplate: string =
+        data?.template || mapStyleToTemplate(b.styleHint, b.format);
+      setTemplate(returnedTemplate);
+      const options: any[] = data?.options || [];
+      if (returnedTemplate === "carousel" || b.format === "carousel") {
+        const carOpts: CarouselOption[] = options.map((o) => ({
+          slides: (o?.slides || []).map((sl: any) => ({ ...sl })),
         }));
-        setSlides(s);
-        setEditedSlides(s);
+        setCarouselOptions(carOpts);
+        setSelectedOptionIdx(0);
+        setEditedSlides(carOpts[0]?.slides || []);
+        setSingleOptions([]);
       } else {
-        const opts: SingleCopy[] = options.map((o: any) => ({
-          eyebrow: o?.eyebrow || "",
-          headlinePre: o?.headlinePre || "",
-          headlineHL: o?.headlineHL || "",
-          headlinePost: o?.headlinePost || "",
-          accent: o?.accent || "",
-          sub: o?.sub || "",
-          cta: o?.cta || b.cta || "",
-          badgeTop: o?.badgeTop || "",
-          badgeBottom: o?.badgeBottom || "",
-        }));
+        // Pass through option fields as-is; the option's keys ARE the slots.
+        const opts: SingleOption[] = options.map((o) => {
+          const clean: SingleOption = {};
+          for (const [k, v] of Object.entries(o || {})) {
+            if (typeof v === "string") clean[k] = v;
+          }
+          return clean;
+        });
         setSingleOptions(opts);
         setSelectedOptionIdx(0);
-        setEditedSingle(opts[0] || EMPTY_SINGLE);
+        setEditedSingle(opts[0] || {});
+        setCarouselOptions([]);
       }
     } catch (err: any) {
       toast.error(err?.message || "Failed to write copy");
@@ -196,44 +220,35 @@ export function GenerateCreativeDialog() {
     }
   }, [brandVoice]);
 
-  // Trigger compose after the kit loaded & dialog open
   useEffect(() => {
-    if (open && brief && !kitLoading && singleOptions.length === 0 && slides.length === 0 && !composing) {
+    if (
+      open && brief && !kitLoading &&
+      singleOptions.length === 0 && carouselOptions.length === 0 && !composing
+    ) {
       compose();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, brief, kitLoading]);
 
-  // When user selects another option
+  // Sync editor to currently selected option
   useEffect(() => {
-    if (!isCarousel && singleOptions[selectedOptionIdx]) {
+    if (isCarousel) {
+      setEditedSlides(carouselOptions[selectedOptionIdx]?.slides || []);
+    } else if (singleOptions[selectedOptionIdx]) {
       setEditedSingle(singleOptions[selectedOptionIdx]);
     }
-  }, [selectedOptionIdx, singleOptions, isCarousel]);
+  }, [selectedOptionIdx, singleOptions, carouselOptions, isCarousel]);
 
   const selectedPhoto = useMemo(
     () => photos.find((p) => p.id === selectedPhotoId),
     [photos, selectedPhotoId],
   );
 
-  const renderSingle = async (copy: SingleCopy, placements: string[], labelPrefix?: string) => {
-    if (!selectedPhoto) throw new Error("Pick a photo first");
-    const { data, error } = await supabase.functions.invoke("generate-ad", {
-      body: {
-        template: "cutout",
-        brandKit: { colors, fonts: { displayItalicUrl: fontUrl || undefined } },
-        copy,
-        photo: { url: selectedPhoto.url, removeBackground },
-        placements,
-      },
-    });
+  const callRender = async (body: Record<string, any>) => {
+    const { data, error } = await supabase.functions.invoke("generate-ad", { body });
     if (error) throw error;
     if (data?.error) throw new Error(data.error);
-    const imgs: RenderImage[] = (data?.images || []).map((im: RenderImage) => ({
-      ...im,
-      label: labelPrefix,
-    }));
-    return imgs;
+    return (data?.images || []) as RenderImage[];
   };
 
   const generate = async () => {
@@ -245,32 +260,32 @@ export function GenerateCreativeDialog() {
     setImages([]);
     setProgress("");
     try {
+      const brandKit = { colors, fonts: { displayItalicUrl: fontUrl || undefined } };
+      const photo = { url: selectedPhoto.url, removeBackground };
+
       if (isCarousel) {
-        const all: RenderImage[] = [];
-        const list = editedSlides.length ? editedSlides : slides;
-        for (let i = 0; i < list.length; i++) {
-          const s = list[i];
-          setProgress(`Rendering slide ${i + 1} of ${list.length}…`);
-          const copy: SingleCopy = {
-            eyebrow: s.eyebrow,
-            headlinePre: "",
-            headlineHL: s.headline,
-            headlinePost: "",
-            accent: "",
-            sub: s.sub,
-            cta: i === list.length - 1 ? (brief?.cta || "Learn more") : "",
-            badgeTop: "",
-            badgeBottom: "",
-          };
-          const imgs = await renderSingle(copy, ["feed"], `Slide ${i + 1}`);
-          all.push(...imgs);
-          setImages([...all]);
-        }
+        setProgress("Rendering carousel slides…");
+        const slides = editedSlides;
+        const imgs = await callRender({
+          template,
+          brandKit,
+          copy: { slides },
+          photo,
+          placements: ["feed"],
+        });
+        const labelled = imgs.map((im, i) => ({ ...im, label: `Slide ${i + 1}` }));
+        setImages(labelled);
         setProgress("");
         toast.success("Carousel rendered");
       } else {
         setProgress("Rendering feed + story…");
-        const imgs = await renderSingle(editedSingle, ["feed", "story"]);
+        const imgs = await callRender({
+          template,
+          brandKit,
+          copy: editedSingle,
+          photo,
+          placements: ["feed", "story"],
+        });
         setImages(imgs);
         setProgress("");
         toast.success("Ad rendered");
@@ -305,13 +320,13 @@ export function GenerateCreativeDialog() {
 
         <ScrollArea className="flex-1 -mx-6 px-6">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr,1.1fr] gap-6 py-2">
-            {/* LEFT — copy + controls */}
             <div className="space-y-4">
               {brief && (
                 <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant="outline" className="text-[10px] uppercase">{brief.format}</Badge>
-                    {brief.styleHint && <Badge variant="secondary" className="text-[10px]">{brief.styleHint}</Badge>}
+                    <Badge variant="secondary" className="text-[10px] uppercase">{template}</Badge>
+                    {brief.styleHint && <Badge variant="outline" className="text-[10px]">{brief.styleHint}</Badge>}
                     {brief.angle && <Badge variant="outline" className="text-[10px]">{brief.angle}</Badge>}
                   </div>
                   <p className="text-xs text-muted-foreground"><b>Key message:</b> {brief.keyMessage}</p>
@@ -325,6 +340,9 @@ export function GenerateCreativeDialog() {
                 </div>
               ) : isCarousel ? (
                 <CarouselEditor
+                  options={carouselOptions}
+                  selectedIdx={selectedOptionIdx}
+                  setSelectedIdx={setSelectedOptionIdx}
                   slides={editedSlides}
                   setSlides={setEditedSlides}
                   editing={editingCopy}
@@ -344,7 +362,6 @@ export function GenerateCreativeDialog() {
                 />
               )}
 
-              {/* Photo picker */}
               <div className="space-y-2">
                 <Label className="text-xs">Photo</Label>
                 {photosLoading ? (
@@ -388,18 +405,19 @@ export function GenerateCreativeDialog() {
                 onClick={generate}
                 disabled={
                   generating || composing || !selectedPhoto ||
-                  (isCarousel ? editedSlides.length === 0 : singleOptions.length === 0)
+                  (isCarousel ? editedSlides.length === 0 : Object.keys(editedSingle).length === 0)
                 }
               >
                 {generating ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {progress || "Generating…"}</>
                 ) : (
-                  <><Sparkles className="h-4 w-4 mr-2" /> {isCarousel ? `Render ${editedSlides.length || "carousel"} slides` : "Render feed + story"}</>
+                  <><Sparkles className="h-4 w-4 mr-2" />
+                    {isCarousel ? `Render ${editedSlides.length || "carousel"} slides` : "Use this · render feed + story"}
+                  </>
                 )}
               </Button>
             </div>
 
-            {/* RIGHT — results */}
             <div className="space-y-3">
               <Label className="text-xs uppercase text-muted-foreground">Results</Label>
               {generating && images.length === 0 && (
@@ -436,14 +454,18 @@ export function GenerateCreativeDialog() {
   );
 }
 
+function labelFor(k: string) {
+  return SLOT_LABELS[k] || k.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
+}
+
 function SingleEditor({
   options, selectedIdx, setSelectedIdx, edited, setEdited, editing, setEditing, onRegenerate,
 }: {
-  options: SingleCopy[];
+  options: SingleOption[];
   selectedIdx: number;
   setSelectedIdx: (i: number) => void;
-  edited: SingleCopy;
-  setEdited: (c: SingleCopy) => void;
+  edited: SingleOption;
+  setEdited: (c: SingleOption) => void;
   editing: boolean;
   setEditing: (b: boolean) => void;
   onRegenerate: () => void;
@@ -473,27 +495,28 @@ function SingleEditor({
         </TabsList>
         {options.map((opt, i) => (
           <TabsContent key={i} value={String(i)} className="space-y-2 mt-2">
-            {editing ? (
+            {editing && i === selectedIdx ? (
               <div className="space-y-2">
-                <Field label="Eyebrow" v={edited.eyebrow} onChange={(v) => setEdited({ ...edited, eyebrow: v })} />
-                <div className="grid grid-cols-3 gap-2">
-                  <Field label="Headline start" v={edited.headlinePre} onChange={(v) => setEdited({ ...edited, headlinePre: v })} />
-                  <Field label="Highlight" v={edited.headlineHL} onChange={(v) => setEdited({ ...edited, headlineHL: v })} />
-                  <Field label="Rest" v={edited.headlinePost} onChange={(v) => setEdited({ ...edited, headlinePost: v })} />
-                </div>
-                <Field label="Accent" v={edited.accent} onChange={(v) => setEdited({ ...edited, accent: v })} />
-                <Field label="Sub" v={edited.sub} onChange={(v) => setEdited({ ...edited, sub: v })} multiline />
-                <Field label="CTA" v={edited.cta} onChange={(v) => setEdited({ ...edited, cta: v })} />
+                {Object.keys(opt).map((k) => (
+                  <Field
+                    key={k}
+                    label={labelFor(k)}
+                    v={edited[k] ?? ""}
+                    onChange={(v) => setEdited({ ...edited, [k]: v })}
+                    multiline={MULTILINE_KEYS.has(k)}
+                  />
+                ))}
               </div>
             ) : (
               <div className="rounded border p-3 space-y-1">
-                {opt.eyebrow && <p className="text-[11px] uppercase text-muted-foreground">{opt.eyebrow}</p>}
-                <p className="font-bold leading-snug">
-                  {[opt.headlinePre, opt.headlineHL, opt.headlinePost].filter(Boolean).join(" ")}
-                </p>
-                {opt.accent && <p className="text-xs italic text-muted-foreground">{opt.accent}</p>}
-                {opt.sub && <p className="text-sm text-muted-foreground">{opt.sub}</p>}
-                {opt.cta && <p className="text-xs mt-1"><b>CTA:</b> {opt.cta}</p>}
+                {Object.entries(opt).map(([k, v]) =>
+                  v ? (
+                    <p key={k} className="text-sm">
+                      <span className="text-[10px] uppercase text-muted-foreground mr-2">{labelFor(k)}</span>
+                      {v}
+                    </p>
+                  ) : null,
+                )}
               </div>
             )}
           </TabsContent>
@@ -504,10 +527,13 @@ function SingleEditor({
 }
 
 function CarouselEditor({
-  slides, setSlides, editing, setEditing, onRegenerate,
+  options, selectedIdx, setSelectedIdx, slides, setSlides, editing, setEditing, onRegenerate,
 }: {
-  slides: SlideCopy[];
-  setSlides: (s: SlideCopy[]) => void;
+  options: CarouselOption[];
+  selectedIdx: number;
+  setSelectedIdx: (i: number) => void;
+  slides: Slide[];
+  setSlides: (s: Slide[]) => void;
   editing: boolean;
   setEditing: (b: boolean) => void;
   onRegenerate: () => void;
@@ -528,33 +554,54 @@ function CarouselEditor({
           </Button>
         </div>
       </div>
+
+      {options.length > 1 && (
+        <Tabs value={String(selectedIdx)} onValueChange={(v) => setSelectedIdx(Number(v))}>
+          <TabsList className="w-full">
+            {options.map((_, i) => (
+              <TabsTrigger key={i} value={String(i)} className="flex-1">Option {i + 1}</TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
+
       <div className="space-y-2">
-        {slides.map((s, i) => (
-          <div key={i} className="rounded border p-3 space-y-1">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-[10px]">Slide {i + 1}</Badge>
-              {s.eyebrow && !editing && <span className="text-[11px] uppercase text-muted-foreground">{s.eyebrow}</span>}
-            </div>
-            {editing ? (
-              <div className="space-y-2 pt-1">
-                <Field label="Eyebrow" v={s.eyebrow} onChange={(v) => {
-                  const next = [...slides]; next[i] = { ...s, eyebrow: v }; setSlides(next);
-                }} />
-                <Field label="Headline" v={s.headline} onChange={(v) => {
-                  const next = [...slides]; next[i] = { ...s, headline: v }; setSlides(next);
-                }} />
-                <Field label="Sub" v={s.sub} onChange={(v) => {
-                  const next = [...slides]; next[i] = { ...s, sub: v }; setSlides(next);
-                }} multiline />
+        {slides.map((s, i) => {
+          const keys = Object.keys(s);
+          return (
+            <div key={i} className="rounded border p-3 space-y-1">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-[10px]">Slide {i + 1}</Badge>
+                {!editing && s.eyebrow && (
+                  <span className="text-[11px] uppercase text-muted-foreground">{s.eyebrow}</span>
+                )}
               </div>
-            ) : (
-              <>
-                <p className="font-semibold">{s.headline}</p>
-                {s.sub && <p className="text-xs text-muted-foreground">{s.sub}</p>}
-              </>
-            )}
-          </div>
-        ))}
+              {editing ? (
+                <div className="space-y-2 pt-1">
+                  {keys.map((k) => (
+                    <Field
+                      key={k}
+                      label={labelFor(k)}
+                      v={s[k] ?? ""}
+                      onChange={(v) => {
+                        const next = [...slides];
+                        next[i] = { ...s, [k]: v };
+                        setSlides(next);
+                      }}
+                      multiline={MULTILINE_KEYS.has(k)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  {s.headline && <p className="font-semibold">{s.headline}</p>}
+                  {s.sub && <p className="text-xs text-muted-foreground">{s.sub}</p>}
+                  {s.cta && <p className="text-xs mt-1"><b>CTA:</b> {s.cta}</p>}
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
