@@ -46,6 +46,9 @@ export default function AdminMagicTemplates() {
   const [currentCopySlots, setCurrentCopySlots] = useState<any>([]);
   const [preview, setPreview] = useState<string | null>(null);
   const [validation, setValidation] = useState<{ ok: boolean; errors: string[]; missingSlots: string[] } | null>(null);
+  const [attempt, setAttempt] = useState<number | null>(null);
+
+  const SAMPLE_PHOTO_URL = "https://sqwjbndgighjtifijgws.supabase.co/storage/v1/object/public/email-assets/sample-headshot.png";
 
   useEffect(() => {
     (async () => {
@@ -85,7 +88,7 @@ export default function AdminMagicTemplates() {
     setFile(null); setNotes(""); setCurrentId(null); setCurrentRefUrl(null);
     setCurrentHtml(""); setCurrentName(""); setCurrentType("single");
     setCurrentNeedsPhoto(true); setCurrentCopySlots([]);
-    setPreview(null); setValidation(null);
+    setPreview(null); setValidation(null); setAttempt(null);
   };
 
   const handleGenerate = async () => {
@@ -100,7 +103,7 @@ export default function AdminMagicTemplates() {
       const signedUrl = await signUrl(path);
       setCurrentRefUrl(signedUrl);
 
-      await runGenerate(signedUrl, path, notes);
+      await runBuild(signedUrl, path, notes);
     } catch (e: any) {
       toast.error(e.message || "Generation failed");
     } finally {
@@ -108,50 +111,58 @@ export default function AdminMagicTemplates() {
     }
   };
 
-  const runGenerate = async (imageUrl: string, sourcePath: string, notesText: string) => {
-    const { data: genData, error: genErr } = await supabase.functions.invoke("generate-template", {
-      body: { imageUrl, notes: notesText },
+  const runBuild = async (imageUrl: string, sourcePath: string, notesText: string) => {
+    setValidation(null); setPreview(null); setAttempt(null);
+    const { data, error } = await supabase.functions.invoke("build-template", {
+      body: { imageUrl, notes: notesText, samplePhotoUrl: SAMPLE_PHOTO_URL, tries: 3 },
     });
-    if (genErr) throw genErr;
-    const tpl = genData || {};
-    if (tpl.error) throw new Error(`generate-template: ${tpl.error}`);
-    const name = tpl.name || "Untitled template";
-    const type = (tpl.type === "carousel" ? "carousel" : "single") as "single" | "carousel";
-    const needsPhoto = tpl.needsPhoto ?? true;
-    const copySlots = tpl.copySlots || [];
-    const html = typeof tpl.html === "string" ? tpl.html : "";
-    if (!html) {
-      console.error("generate-template returned no html:", tpl);
-      throw new Error("Model did not return html. Try again or simplify the reference image.");
+    if (error) throw error;
+    if (data?.error) throw new Error(`build-template: ${data.error}`);
+
+    const ok = !!data?.ok;
+    const name = data?.name || "Untitled template";
+    const type = (data?.type === "carousel" ? "carousel" : "single") as "single" | "carousel";
+    const needsPhoto = data?.needsPhoto ?? true;
+    const copySlots = data?.copySlots || [];
+    const html = typeof data?.html === "string" ? data.html : "";
+    const previewBase64 = data?.previewBase64 || null;
+    const errors = data?.errors || [];
+    const att = typeof data?.attempt === "number" ? data.attempt : null;
+
+    if (!html) throw new Error("Engine returned no html.");
+
+    // Insert draft only if ok
+    let insertedId: string | null = null;
+    if (ok) {
+      const { data: ins, error: insErr } = await supabase.from("templates").insert({
+        name, type, html,
+        copy_slots: copySlots,
+        slide_slots: data?.slideSlots || [],
+        needs_photo: needsPhoto,
+        style_hint: data?.styleHint || null,
+        source_image_url: sourcePath,
+        status: "draft",
+      }).select("*").single();
+      if (insErr) throw insErr;
+      insertedId = ins.id;
     }
 
-    // Insert draft
-    const { data: ins, error: insErr } = await supabase.from("templates").insert({
-      name, type, html,
-      copy_slots: copySlots,
-      slide_slots: tpl.slideSlots || [],
-      needs_photo: needsPhoto,
-      style_hint: tpl.styleHint || null,
-      source_image_url: sourcePath,
-      status: "draft",
-    }).select("*").single();
-    if (insErr) throw insErr;
-
-    setCurrentId(ins.id);
+    setCurrentId(insertedId);
     setCurrentName(name);
     setCurrentType(type);
     setCurrentNeedsPhoto(needsPhoto);
     setCurrentCopySlots(copySlots);
     setCurrentHtml(html);
+    setAttempt(att);
+    setValidation({ ok, errors, missingSlots: data?.missingSlots || [] });
+    if (previewBase64) setPreview(`data:image/png;base64,${previewBase64}`);
     await fetchList();
-
-    await runValidate(html, type, copySlots, needsPhoto);
   };
 
   const runValidate = async (html: string, type: string, copySlots: any, needsPhoto: boolean) => {
     setValidation(null); setPreview(null);
     const { data, error } = await supabase.functions.invoke("validate-template", {
-      body: { html, type, copySlots, needsPhoto, samplePhotoUrl: "https://sqwjbndgighjtifijgws.supabase.co/storage/v1/object/public/email-assets/sample-headshot.png" },
+      body: { html, type, copySlots, needsPhoto, samplePhotoUrl: SAMPLE_PHOTO_URL },
     });
     if (error) { toast.error("Validation call failed"); return; }
     const ok = !!data?.ok;
@@ -166,22 +177,42 @@ export default function AdminMagicTemplates() {
     if (!currentRefUrl) return;
     setBusy(true);
     try {
-      // Re-resolve source path from currentId
       const row = rows.find(r => r.id === currentId);
       const path = row?.source_image_url || "";
-      await runGenerate(currentRefUrl, path, notes);
+      await runBuild(currentRefUrl, path, notes);
     } catch (e: any) { toast.error(e.message); }
     finally { setBusy(false); }
   };
 
+
   const handleRevalidate = async () => {
     setBusy(true);
     try {
-      // Save html edits first
       if (currentId) {
         await supabase.from("templates").update({ html: currentHtml }).eq("id", currentId);
       }
       await runValidate(currentHtml, currentType, currentCopySlots, currentNeedsPhoto);
+      // If validation now ok and no row yet, save a draft
+      // (read latest validation via state setter callback workaround)
+      setValidation(v => {
+        if (v?.ok && !currentId) {
+          (async () => {
+            const row = rows.find(r => r.id === currentId);
+            const { data: ins } = await supabase.from("templates").insert({
+              name: currentName || "Untitled template",
+              type: currentType,
+              html: currentHtml,
+              copy_slots: currentCopySlots,
+              needs_photo: currentNeedsPhoto,
+              source_image_url: row?.source_image_url || null,
+              status: "draft",
+            }).select("*").single();
+            if (ins) setCurrentId(ins.id);
+            await fetchList();
+          })();
+        }
+        return v;
+      });
       await fetchList();
     } catch (e: any) { toast.error(e.message); }
     finally { setBusy(false); }
@@ -237,15 +268,16 @@ export default function AdminMagicTemplates() {
                 <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. cutout style, bold headline, bottom CTA" rows={3} />
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <Button onClick={handleGenerate} disabled={busy || !file}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wand2 className="h-4 w-4 mr-2" />}
                 Generate template
               </Button>
-              {currentId && <Button variant="outline" onClick={resetCompose}>Start over</Button>}
+              {busy && <span className="text-xs text-muted-foreground">Building… can take up to ~60s</span>}
+              {(currentHtml || currentRefUrl) && !busy && <Button variant="outline" onClick={resetCompose}>Start over</Button>}
             </div>
 
-            {currentId && (
+            {(currentHtml || currentRefUrl) && (
               <div className="border-t pt-4 space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
@@ -253,7 +285,9 @@ export default function AdminMagicTemplates() {
                     {currentRefUrl && <img src={currentRefUrl} alt="reference" className="mt-1 w-full rounded-md border" />}
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">Preview</Label>
+                    <Label className="text-xs text-muted-foreground">
+                      Preview {attempt !== null && <span className="ml-1">(attempt {attempt})</span>}
+                    </Label>
                     {preview
                       ? <img src={preview} alt="preview" className="mt-1 w-full rounded-md border" />
                       : <div className="mt-1 aspect-square w-full rounded-md border flex items-center justify-center text-xs text-muted-foreground">{busy ? "Rendering…" : "No preview yet"}</div>}
@@ -262,9 +296,9 @@ export default function AdminMagicTemplates() {
 
                 {validation && (
                   validation.ok
-                    ? <div className="rounded-md border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-300">✓ Valid template</div>
+                    ? <div className="rounded-md border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-300">✓ Valid template{attempt !== null ? ` (attempt ${attempt})` : ""}</div>
                     : <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300 space-y-1">
-                        <div className="font-medium">Invalid template</div>
+                        <div className="font-medium">Invalid template{attempt !== null ? ` (attempt ${attempt})` : ""}</div>
                         {validation.errors.length > 0 && <ul className="list-disc pl-5">{validation.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>}
                         {validation.missingSlots.length > 0 && <div>Missing slots: {validation.missingSlots.join(", ")}</div>}
                       </div>
@@ -283,14 +317,15 @@ export default function AdminMagicTemplates() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={handleRevalidate} variant="outline" disabled={busy}>
+                  <Button onClick={handleRevalidate} variant="outline" disabled={busy || !currentHtml}>
                     {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
                     Re-validate
                   </Button>
-                  <Button onClick={handleRegenerate} variant="outline" disabled={busy}>
-                    <Wand2 className="h-4 w-4 mr-2" />Regenerate
+                  <Button onClick={handleRegenerate} variant="outline" disabled={busy || !currentRefUrl}>
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wand2 className="h-4 w-4 mr-2" />}
+                    Regenerate
                   </Button>
-                  {validation?.ok && (
+                  {validation?.ok && currentId && (
                     <Button onClick={() => handleApprove(currentId)} className="bg-green-600 hover:bg-green-700">
                       <Check className="h-4 w-4 mr-2" />Approve
                     </Button>
