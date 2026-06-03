@@ -47,6 +47,7 @@ import AdminUpdates from "./pages/admin/Updates";
 import AdminUpdatesResults from "./pages/admin/UpdatesResults";
 import AdminFeatures from "./pages/admin/Features";
 import AdminInspiration from "./pages/admin/Inspiration";
+import Inspiration from "./pages/Inspiration";
 import AdminApprovals from "./pages/admin/Approvals";
 import { useReferralCapture } from "./hooks/useReferralCapture";
 
