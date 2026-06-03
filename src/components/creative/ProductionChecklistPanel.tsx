@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Video, Film, Image, Trash2, CheckCircle2, ArrowRight, Sparkles, Library, Crown, Info, ChevronDown, ChevronUp, Copy, Mic, Type, Eye, Volume2, Brain, Download, Printer } from "lucide-react";
+import { Video, Film, Image, Layers, Trash2, CheckCircle2, ArrowRight, Sparkles, Library, Crown, Info, ChevronDown, ChevronUp, Copy, Mic, Type, Eye, Volume2, Brain, Download, Printer, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,9 +41,29 @@ export interface TextOverlay {
   scale?: number;
 }
 
+/**
+ * Structured creative brief that a graphic/carousel recommendation hands off to
+ * the copy compiler (compose-ad) and render engine. This is the contract.
+ */
+export interface CreativeBrief {
+  format: "single_graphic" | "carousel";
+  placements: ("feed" | "story")[];
+  angle: "mistake" | "curiosity" | "outcome" | "contrarian" | "question" | "story";
+  concept: string;
+  keyMessage: string;
+  offer: string;
+  cta: string;
+  audience: string;
+  proofPoint?: string | null;
+  styleHint: "photo-forward" | "type-led" | "highlighter" | "testimonial" | "card" | "framed";
+  photoTreatment: "cutout" | "with-background" | "none";
+  slideCount: number;
+  slidePlan?: { role: "hook" | "problem" | "framework" | "proof" | "cta" | string }[];
+}
+
 export interface ProductionItem {
   id: string;
-  format: "talking_head" | "broll" | "graphic";
+  format: "talking_head" | "broll" | "graphic" | "carousel";
   hook: string;
   guidance: string;
   angleName: string;
@@ -63,6 +83,8 @@ export interface ProductionItem {
   // Psychology fields
   psychology_trigger?: string;
   why_this_works?: string;
+  // Structured handoff for graphic + carousel recommendations
+  brief?: CreativeBrief;
 }
 
 export interface RankedItem extends ProductionItem {
