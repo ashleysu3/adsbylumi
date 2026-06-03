@@ -62,6 +62,7 @@ export default function AdGenerator() {
     accent: string; sub: string; cta: string; badgeTop: string; badgeBottom: string;
   };
   const [composedOptions, setComposedOptions] = useState<ComposedOption[]>([]);
+  const [brandVoice, setBrandVoice] = useState<any>(null);
 
   const selectedPhoto = photos.find((p) => p.id === selectedPhotoId);
 
