@@ -310,15 +310,27 @@ export function GenerateCreativeDialog() {
       const brandKit = { colors, fonts: { displayItalicUrl: fontUrl || undefined } };
       const photo = { url: selectedPhoto.url, removeBackground };
 
+      const templateField = activeCustom
+        ? {
+            customTemplate: {
+              html: activeCustom.html,
+              type: activeCustom.type,
+              copySlots: activeCustom.copy_slots,
+              placements: activeCustom.placements,
+              needsPhoto: activeCustom.needs_photo,
+            },
+          }
+        : { template };
+
       if (isCarousel) {
         setProgress("Rendering carousel slides…");
         const slides = editedSlides;
         const imgs = await callRender({
-          template,
+          ...templateField,
           brandKit,
           copy: { slides },
           photo,
-          placements: ["feed"],
+          placements: activeCustom?.placements ?? ["feed"],
         });
         const labelled = imgs.map((im, i) => ({ ...im, label: `Slide ${i + 1}` }));
         setImages(labelled);
@@ -327,11 +339,11 @@ export function GenerateCreativeDialog() {
       } else {
         setProgress("Rendering feed + story…");
         const imgs = await callRender({
-          template,
+          ...templateField,
           brandKit,
           copy: editedSingle,
           photo,
-          placements: ["feed", "story"],
+          placements: activeCustom?.placements ?? ["feed", "story"],
         });
         setImages(imgs);
         setProgress("");
