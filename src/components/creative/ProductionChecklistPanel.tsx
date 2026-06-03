@@ -105,12 +105,14 @@ const formatIcons = {
   talking_head: Video,
   broll: Film,
   graphic: Image,
+  carousel: Layers,
 };
 
 const formatLabels = {
   talking_head: "Record Video",
   broll: "Record / Upload B-Roll",
   graphic: "Design Graphic",
+  carousel: "Build Carousel",
 };
 
 const rankingCopy = [
