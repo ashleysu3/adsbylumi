@@ -15,6 +15,8 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = false
   [functions.auth-email-hook]
     verify_jwt = false
+  [functions.build-template]
+    verify_jwt = true
   [functions.build-meta-campaign]
     verify_jwt = true
   [functions.campaign-builder-chat]
