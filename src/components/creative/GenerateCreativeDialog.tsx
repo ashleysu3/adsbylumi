@@ -36,6 +36,11 @@ type CustomTemplate = {
 
 const BUILT_IN_TEMPLATES = ["cutout", "spotlight", "framed", "split", "highlighter", "overlay", "carousel"] as const;
 
+const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
+  cutout: "cutout", highlighter: "cutout",
+  spotlight: "with-background", framed: "with-background", split: "with-background", overlay: "with-background",
+};
+
 // Friendly labels for known slot keys (anything unknown falls back to the key)
 const SLOT_LABELS: Record<string, string> = {
   eyebrow: "Eyebrow",
