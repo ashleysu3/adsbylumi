@@ -29,6 +29,8 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = true
   [functions.check-subscription]
     verify_jwt = false
+  [functions.compose-ad]
+    verify_jwt = false
   [functions.create-affiliate]
     verify_jwt = false
   [functions.create-checkout]
