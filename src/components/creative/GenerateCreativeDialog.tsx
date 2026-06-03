@@ -402,7 +402,7 @@ export function GenerateCreativeDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6">
+        <div className="flex-1 overflow-y-auto -mx-6 px-6">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr,1.1fr] gap-6 py-2">
             <div className="space-y-4">
               {brief && (
