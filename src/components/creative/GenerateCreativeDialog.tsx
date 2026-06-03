@@ -34,7 +34,7 @@ type CustomTemplate = {
   placements: string[];
 };
 
-const BUILT_IN_TEMPLATES = ["overlay", "cutout", "spotlight", "framed", "split", "carousel"] as const;
+const BUILT_IN_TEMPLATES = ["cutout", "spotlight", "framed", "split", "highlighter", "overlay", "carousel"] as const;
 
 // Friendly labels for known slot keys (anything unknown falls back to the key)
 const SLOT_LABELS: Record<string, string> = {
