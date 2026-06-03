@@ -19,7 +19,7 @@ import {
   ArrowLeft, Zap, Key, RefreshCw, Sparkles
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
-import { PixelVerificationCard } from '@/components/PixelVerificationCard';
+
 import { MetaReadinessChecklist } from '@/components/MetaReadinessChecklist';
 import { MetaSetupDiagnostic, type DiagnosticResult } from '@/components/MetaSetupDiagnostic';
 import { MetaConnectionCheckLog } from '@/components/MetaConnectionCheckLog';
