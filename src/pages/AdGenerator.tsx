@@ -50,17 +50,14 @@ export default function AdGenerator() {
     if (!file) return;
     setUploading(true);
     try {
-      const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_")}`;
-      const { error } = await supabase.storage.from("ad-photos").upload(path, file, {
+      const path = `ad-generator/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_")}`;
+      const { error } = await supabase.storage.from("broll-library").upload(path, file, {
         cacheControl: "3600",
         upsert: false,
       });
       if (error) throw error;
-      const { data, error: signErr } = await supabase.storage
-        .from("ad-photos")
-        .createSignedUrl(path, 60 * 60); // 1 hour
-      if (signErr) throw signErr;
-      setPhotoUrl(data.signedUrl);
+      const { data } = supabase.storage.from("broll-library").getPublicUrl(path);
+      setPhotoUrl(data.publicUrl);
       toast.success("Photo uploaded");
     } catch (err: any) {
       toast.error(err.message || "Upload failed");
