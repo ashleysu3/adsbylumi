@@ -170,6 +170,7 @@ const App = () => {
                   <Route path="/settings" element={<Settings />} />
    <Route path="/meta-settings" element={<MetaSettings />} />
    <Route path="/settings/meta" element={<Navigate to="/meta-settings" replace />} />
+                  <Route path="/tracking-setup" element={<TrackingSetup />} />
                   <Route path="/settings/digest-preview" element={<WeeklyDigestPreview />} />
                   <Route path="/content-library" element={<ContentLibrary />} />
                   <Route path="/offers" element={<Offers />} />
