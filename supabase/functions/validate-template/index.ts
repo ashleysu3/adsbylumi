@@ -16,6 +16,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers });
   try {
     const body = await req.json();
+    const SAMPLE_HEADSHOT_URL = "https://sqwjbndgighjtifijgws.supabase.co/storage/v1/object/public/email-assets/sample-headshot.png";
+    if (!body.samplePhotoUrl) body.samplePhotoUrl = SAMPLE_HEADSHOT_URL;
     const r = await fetch(`${ENGINE_URL}/validate-template`, {
       method: "POST",
       headers: {
