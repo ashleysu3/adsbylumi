@@ -350,6 +350,78 @@ export type Database = {
         }
         Relationships: []
       }
+      board_items: {
+        Row: {
+          board_id: string
+          created_at: string
+          id: string
+          inspiration_item_id: string | null
+          note: string | null
+          status: string
+          tags: Json | null
+          uploaded_image_url: string | null
+          user_id: string
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          id?: string
+          inspiration_item_id?: string | null
+          note?: string | null
+          status?: string
+          tags?: Json | null
+          uploaded_image_url?: string | null
+          user_id?: string
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          id?: string
+          inspiration_item_id?: string | null
+          note?: string | null
+          status?: string
+          tags?: Json | null
+          uploaded_image_url?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_items_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_items_inspiration_item_id_fkey"
+            columns: ["inspiration_item_id"]
+            isOneToOne: false
+            referencedRelation: "inspiration_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      boards: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       brand_content_assets: {
         Row: {
           asset_type: string
@@ -1760,6 +1832,33 @@ export type Database = {
           id?: string
           token?: string
           used_at?: string | null
+        }
+        Relationships: []
+      }
+      inspiration_items: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          source: string | null
+          tags: Json | null
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          source?: string | null
+          tags?: Json | null
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          source?: string | null
+          tags?: Json | null
+          title?: string | null
         }
         Relationships: []
       }
