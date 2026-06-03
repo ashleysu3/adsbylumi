@@ -45,8 +45,19 @@ serve(async (req) => {
         messages: [ { role: "system", content: VOICE_RULES }, { role: "user", content: user } ] }),
     });
     const d = await r.json();
-    return new Response(d?.choices?.[0]?.message?.content || '{"options":[]}', { status: 200, headers: { ...cors, "content-type": "application/json" } });
+    if (!r.ok) {
+      const msg = d?.error?.message || `OpenAI HTTP ${r.status}`;
+      console.error("compose-ad openai error:", msg, JSON.stringify(d).slice(0, 500));
+      return new Response(JSON.stringify({ error: msg, options: [] }), { status: 200, headers: { ...cors, "content-type": "application/json" } });
+    }
+    const content = d?.choices?.[0]?.message?.content;
+    if (!content) {
+      console.error("compose-ad empty content:", JSON.stringify(d).slice(0, 500));
+      return new Response(JSON.stringify({ error: "AI returned no content", options: [] }), { status: 200, headers: { ...cors, "content-type": "application/json" } });
+    }
+    return new Response(content, { status: 200, headers: { ...cors, "content-type": "application/json" } });
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e), options: [] }), { status: 500, headers: { ...cors, "content-type": "application/json" } });
+    console.error("compose-ad exception:", e);
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e), options: [] }), { status: 200, headers: { ...cors, "content-type": "application/json" } });
   }
 });
