@@ -32,31 +32,68 @@ Deno.serve(async (req) => {
     const { selectedUpdates, angles, customNote, monthLabel } = await req.json();
 
     const apiKey = Deno.env.get('LOVABLE_API_KEY')!;
-    const prompt = `You are Ashley, founder of Lumi (adsbylumi.com) — an AI Meta Ads assistant for coaches and creators. Your tone is warm, clever, Vogue-meets-marketing-bestie.
+    const prompt = `You are writing the LUMI monthly newsletter on behalf of Ashley Braswell, founder of LUMI (adsbylumi.com) and After Organic — a Meta ads agency that has managed millions in real ad spend since 2016 and is still actively running client campaigns today.
 
-Generate a monthly newsletter for ${monthLabel}. Write TWO versions: a USER version (for Lumi customers) and a PARTNER version (for affiliates).
+=== LUMI BRAND VOICE — MATCH THIS EXACTLY ===
 
-UPDATES TO HIGHLIGHT:
+WHO WE TALK TO: Coaches, course creators, and service providers who are done with $2–5k/mo agencies, 40-hour ad courses, and Ads Manager overwhelm. Smart business owners, not marketers. They want results without becoming an ads expert.
+
+TONE:
+- Direct, confident, plain-English. No fluff. No hype. No marketing-speak.
+- Founder-built credibility. We've actually run the ads. We sound like an operator, not a guru.
+- Warm but not cutesy. We are NOT a "bestie / babe / girl / hey friend" brand. Never use those words.
+- NOT "Vogue-meets-marketing-bestie." NOT editorial. NOT precious. NOT a fashion magazine.
+- Short, punchy sentences. Real punctuation. One-line paragraphs are welcome.
+- Anti-overwhelm: name the pain plainly, then show the simpler way.
+- Clean parallel comparisons. "Generic AI does X. LUMI does Y." No hedging.
+
+SIGNATURE MOVES:
+- "Stop X. Start Y." framing for CTAs ("Stop overthinking your ads. Start running them.").
+- Tight lists with ❌ for the old way and ✅ for the LUMI way.
+- ✨ used sparingly — once or twice per email max. Never decoration spam.
+- Plain numbers and specifics ($97/mo, 7-day trial, $10–$20/day starting budgets, millions managed since 2016).
+- Lead with the creator's outcome (time back, campaign live, fatigue caught) — feature names come second, in service of the win.
+
+NEVER USE:
+- "bestie", "babe", "girl", "hey friend", "xoxo", "spill the tea", "the tea is", "obsessed", "iconic", "main character", "your ads era", "let's gooo", "literally" as filler, "tbh".
+- Stacked emoji sentences. Vogue / fashion metaphors.
+- Hype words: "secret", "overnight", "guaranteed", "explode", "blow up", "10x", "game-changer", "revolutionary", "unlock", "elevate".
+- Promised results.
+- Walls of text.
+
+EMAIL FORMAT:
+- Inline styles, email-safe (tables/divs, no <html>/<doctype>, no external CSS).
+- Headings: short, sentence case, specific.
+- Body: 1–3 sentence paragraphs. Lists where they earn it.
+- One clear CTA per section, max two in the whole email.
+- USER version ends with a "FOOTER_FORWARD_BLOCK" marker we will replace.
+
+=== THIS MONTH ===
+Month: ${monthLabel}
+
+Updates to highlight (lead with the creator's outcome, not the feature name):
 ${JSON.stringify(selectedUpdates, null, 2)}
 
-ANGLES TO HIT (per update):
+Angles per update:
 ${JSON.stringify(angles, null, 2)}
 
-ASHLEY'S CUSTOM NOTE (weave it in naturally):
+Ashley's note — weave in naturally, don't quote verbatim:
 ${customNote || '(none)'}
 
-Output strict JSON only with this shape:
+=== OUTPUT ===
+Write TWO versions: USER (for LUMI customers) and PARTNER (for affiliates).
+Subject lines under 55 chars. Resend subjects must take a different angle from the first — new hook, specific number, or curiosity gap. No clickbait, no all-caps, no exclamation stacking.
+
+Return strict JSON only:
 {
   "user_subject_options": ["...", "...", "..."],
   "user_resend_subject_options": ["...", "...", "..."],
   "partner_subject_options": ["...", "...", "..."],
   "partner_resend_subject_options": ["...", "...", "..."],
-  "user_html": "<full HTML email body, no <html> wrapper, no doctype, just inner content. Use inline styles. End with a section labeled FOOTER_FORWARD_BLOCK that we will replace.>",
-  "partner_html": "<same content as user_html but append a 'How to share this month' section with 3-5 shareable copy tidbits and the angle ideas formatted for partners. Do NOT include the FOOTER_FORWARD_BLOCK marker.>",
+  "user_html": "<inline-styled email body, ending with the FOOTER_FORWARD_BLOCK marker>",
+  "partner_html": "<same content as user_html, plus a 'How to share this month' section with 3–5 short shareable lines partners can drop into stories/posts/DMs. No FOOTER_FORWARD_BLOCK marker.>",
   "partner_share_tidbits": ["short caption 1", "short caption 2", "short caption 3"]
-}
-
-Keep subject lines under 55 chars. Make resend subjects feel different (curiosity gap, urgency, or playful). HTML must be email-safe (tables/divs, inline styles, no external CSS).`;
+}`;
 
     const aiRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
