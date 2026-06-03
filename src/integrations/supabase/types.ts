@@ -2977,6 +2977,54 @@ export type Database = {
         }
         Relationships: []
       }
+      templates: {
+        Row: {
+          copy_slots: Json
+          created_at: string
+          html: string | null
+          id: string
+          name: string | null
+          needs_photo: boolean
+          placements: Json
+          preview_url: string | null
+          slide_slots: Json
+          source_image_url: string | null
+          status: string
+          style_hint: string | null
+          type: string
+        }
+        Insert: {
+          copy_slots?: Json
+          created_at?: string
+          html?: string | null
+          id?: string
+          name?: string | null
+          needs_photo?: boolean
+          placements?: Json
+          preview_url?: string | null
+          slide_slots?: Json
+          source_image_url?: string | null
+          status?: string
+          style_hint?: string | null
+          type?: string
+        }
+        Update: {
+          copy_slots?: Json
+          created_at?: string
+          html?: string | null
+          id?: string
+          name?: string | null
+          needs_photo?: boolean
+          placements?: Json
+          preview_url?: string | null
+          slide_slots?: Json
+          source_image_url?: string | null
+          status?: string
+          style_hint?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
       text_overlay_templates: {
         Row: {
           bg_color: string
