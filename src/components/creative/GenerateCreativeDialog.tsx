@@ -565,7 +565,7 @@ export function GenerateCreativeDialog() {
               </div>
             </div>
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
