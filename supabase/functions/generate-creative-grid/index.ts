@@ -534,6 +534,9 @@ ADDITIONAL FIELDS FOR graphic AND carousel FORMATS (REQUIRED — this is the str
   - photoTreatment: one of "cutout" | "with-background" | "none"
   - slideCount: 1 for single_graphic; 3 to 6 for carousel
   - slidePlan: for carousel ONLY, an array of slideCount objects each with a "role" — choose from "hook" | "problem" | "framework" | "proof" | "cta" — in narrative order. Omit for single_graphic.
+  - imageSource: one of "user-photo" | "generated" | "none". Choose "user-photo" when a real photo of the creator fits the concept; "generated" when the concept needs an illustrative/conceptual image the user won't have a photo of (a glitchy dashboard, an abstract metaphor, a screen/product mockup, a chaotic desk, etc.); "none" for a pure typographic graphic.
+  - imagePrompt: when imageSource is "generated", a vivid image-generation prompt — subject, style, mood, composition (e.g. "a distorted, glitchy screenshot of a Meta Ads Manager dashboard, chaotic hand-drawn red arrows and question marks scrawled over it, high-contrast, unsettling"). The image must contain NO text/words and keep the lower third darker/less busy for text overlay. Otherwise null.
+  - When imageSource is "generated", set styleHint to "type-led" and photoTreatment to "with-background" (the bold text sits over the full-bleed image).
 
 
 == AD COPY FORMATTING CONVENTIONS (STRICT) ===
