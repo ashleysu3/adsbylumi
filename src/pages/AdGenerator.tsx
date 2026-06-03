@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,26 +9,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
 
-const DEFAULTS = {
-  colors: {
-    bg: "#f8f4f1",
-    ink: "#222121",
-    accent: "#fb9375",
-    pop: "#2f935f",
-    highlight: "#cfe12b",
-    cream: "#f8f4f1",
-  },
-  copy: {
-    eyebrow: "Free Live Class",
-    headlinePre: "The",
-    headlineHL: "#1 mistake",
-    headlinePost: "new wedding planners make",
-    accent: "— and what to do instead.",
-    sub: "Start your business and book your first 5 clients in 60 days.",
-    cta: "Save your seat →",
-    badgeTop: "Free",
-    badgeBottom: "Live Class",
-  },
+const EMPTY_COLORS = {
+  bg: "#ffffff",
+  ink: "#111111",
+  accent: "#3b82f6",
+  pop: "#22c55e",
+  highlight: "#f59e0b",
+  cream: "#f5f5f5",
+};
+
+const DEFAULT_COPY = {
+  eyebrow: "Free Live Class",
+  headlinePre: "The",
+  headlineHL: "#1 mistake",
+  headlinePost: "new wedding planners make",
+  accent: "— and what to do instead.",
+  sub: "Start your business and book your first 5 clients in 60 days.",
+  cta: "Save your seat →",
+  badgeTop: "Free",
+  badgeBottom: "Live Class",
 };
 
 const PLACEMENT_LABELS: Record<string, string> = {
