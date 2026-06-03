@@ -75,6 +75,8 @@ export function GenerateCreativeDialog() {
   const [photosLoading, setPhotosLoading] = useState(false);
   const [selectedPhotoId, setSelectedPhotoId] = useState<string>("");
   const [removeBackground, setRemoveBackground] = useState(true);
+  const [generatedPhoto, setGeneratedPhoto] = useState<Photo | null>(null);
+  const [generatingConcept, setGeneratingConcept] = useState(false);
 
   const [composing, setComposing] = useState(false);
   const [template, setTemplate] = useState<string>("cutout");
