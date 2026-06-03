@@ -8,7 +8,7 @@ const corsHeaders = {
 
 interface ProductionItem {
   id: string;
-  format: "talking_head" | "broll" | "graphic";
+  format: "talking_head" | "broll" | "graphic" | "carousel";
   hook: string;
   guidance: string;
   angleName: string;

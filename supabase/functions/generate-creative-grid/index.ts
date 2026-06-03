@@ -220,7 +220,9 @@ ROWS (Audience Moment):
 COLUMNS (Format Diversity):
 - Column 1: "talking_head" - Person speaking to camera (vulnerable, real, unpolished)
 - Column 2: "broll" - B-roll with text overlay (lofi, everyday, phone-filmed — the copy does the selling, not the footage)
-- Column 3: "graphic" - Static image or graphic (bold, unexpected, thumb-stopping)
+- Column 3: graphic OR carousel — choose whichever fits the concept better.
+  - Use format "graphic" for a single thumb-stopping image/static ad (bold, unexpected).
+  - Use format "carousel" when the idea is naturally multi-beat (problem → framework → proof → CTA, swipeable lists, before/after sequences, mini-frameworks). Aim for at least ONE carousel per angle across the 3 angles.
 
 === TALKING HEAD FORMAT - DESIGNED FOR NON-ACTORS ===
 Your users are coaches, course creators, and service providers - NOT actors or professional content creators.
@@ -494,7 +496,7 @@ Each cell MUST include:
 - id: unique string (e.g., "angle_attention_talking_head")
 - angleId: the angle's id this belongs to
 - row: "attention" | "trust" | "action"
-- format: "talking_head" | "broll" | "graphic"
+- format: "talking_head" | "broll" | "graphic" | "carousel"
 - hook: One compelling, SPECIFIC sentence that names a micro-moment or specific scenario
 - guidance: Detailed production notes (camera angles, text overlays, timing, mood)
 - psychology_trigger: Which psychological lever this pulls (curiosity, fear, desire, social proof, etc.)
@@ -516,6 +518,23 @@ ADDITIONAL FIELDS FOR talking_head FORMAT ONLY:
 - script_lines: Array of 4-8 short script lines (one sentence/phrase each, 3-5 seconds to speak)
 - text_overlays: Array of objects with "text", "timing", and "type" (hook/transition/insight/cta) properties
 - caption_reminder: boolean (always true for talking_head)
+
+ADDITIONAL FIELDS FOR graphic AND carousel FORMATS (REQUIRED — this is the structured handoff to the render engine):
+- brief: an object with EXACTLY these fields:
+  - format: "single_graphic" (when cell format = "graphic") or "carousel" (when cell format = "carousel")
+  - placements: array, e.g. ["feed"] or ["feed","story"]
+  - angle: one of "mistake" | "curiosity" | "outcome" | "contrarian" | "question" | "story" (map from the angle theme)
+  - concept: ONE sentence describing the specific idea for this ad
+  - keyMessage: the single core thing the viewer must take away
+  - offer: what they're being driven to (e.g. "free live class", "lead magnet PDF", "discovery call")
+  - cta: the action (e.g. "Save your seat", "Watch free training", "Book a call")
+  - audience: who this is for, in a phrase
+  - proofPoint: optional result/testimonial/stat string, or null
+  - styleHint: one of "photo-forward" | "type-led" | "highlighter" | "testimonial" | "card" | "framed"
+  - photoTreatment: one of "cutout" | "with-background" | "none"
+  - slideCount: 1 for single_graphic; 3 to 6 for carousel
+  - slidePlan: for carousel ONLY, an array of slideCount objects each with a "role" — choose from "hook" | "problem" | "framework" | "proof" | "cta" — in narrative order. Omit for single_graphic.
+
 
 == AD COPY FORMATTING CONVENTIONS (STRICT) ===
 - ALWAYS use digits for numbers: "7 days" not "seven days", "$997" not "$nine hundred ninety-seven", "3 clients" not "three clients"

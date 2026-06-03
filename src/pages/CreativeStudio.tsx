@@ -140,8 +140,8 @@ const creativeGenerationCopy = [
   "Making this easy to execute.",
 ];
 
-const formatIcons = { talking_head: Video, broll: Film, graphic: Image };
-const formatLabels = { talking_head: "Talking Head", broll: "B-Roll", graphic: "Graphic" };
+const formatIcons = { talking_head: Video, broll: Film, graphic: Image, carousel: Image };
+const formatLabels = { talking_head: "Talking Head", broll: "B-Roll", graphic: "Graphic", carousel: "Carousel" };
 
 // Brand "Style" fields that are stripped from generation payloads when an offer
 // has `use_brand_style_defaults = false`. Keeps copy/voice/audience psychology

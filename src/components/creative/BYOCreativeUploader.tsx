@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface UploadedFile {
   id: string;
   file: File;
-  format: "talking_head" | "broll" | "graphic";
+  format: "talking_head" | "broll" | "graphic" | "carousel";
   preview?: string;
   storagePath?: string;
   storageUrl?: string;
@@ -219,7 +219,7 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
     setFiles(prev => [...prev, ...newFiles]);
   };
 
-  const updateFormat = (id: string, format: "talking_head" | "broll" | "graphic") => {
+  const updateFormat = (id: string, format: "talking_head" | "broll" | "graphic" | "carousel") => {
     setFiles(prev => prev.map(f => f.id === id ? { ...f, format } : f));
   };
 

@@ -13,7 +13,7 @@ export interface TextOverlay {
 
 export interface CreativeCellData {
   id: string;
-  format: "talking_head" | "broll" | "graphic";
+  format: "talking_head" | "broll" | "graphic" | "carousel";
   hook: string;
   guidance: string;
   row: "attention" | "trust" | "action";
@@ -31,6 +31,8 @@ export interface CreativeCellData {
   script_lines?: string[];
   text_overlays?: TextOverlay[];
   caption_reminder?: boolean;
+  // Structured handoff brief for graphic + carousel cells
+  brief?: import("./ProductionChecklistPanel").CreativeBrief;
 }
 
 interface CreativeCellProps {
@@ -47,12 +49,14 @@ const formatIcons = {
   talking_head: Video,
   broll: Film,
   graphic: Image,
+  carousel: Image,
 };
 
 const formatLabels = {
   talking_head: "Talking Head",
   broll: "B-Roll",
   graphic: "Graphic",
+  carousel: "Carousel",
 };
 
 export function CreativeCell({ 

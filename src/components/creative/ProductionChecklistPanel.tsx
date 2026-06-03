@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Video, Film, Image, Trash2, CheckCircle2, ArrowRight, Sparkles, Library, Crown, Info, ChevronDown, ChevronUp, Copy, Mic, Type, Eye, Volume2, Brain, Download, Printer } from "lucide-react";
+import { Video, Film, Image, Layers, Trash2, CheckCircle2, ArrowRight, Sparkles, Library, Crown, Info, ChevronDown, ChevronUp, Copy, Mic, Type, Eye, Volume2, Brain, Download, Printer, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,9 +41,29 @@ export interface TextOverlay {
   scale?: number;
 }
 
+/**
+ * Structured creative brief that a graphic/carousel recommendation hands off to
+ * the copy compiler (compose-ad) and render engine. This is the contract.
+ */
+export interface CreativeBrief {
+  format: "single_graphic" | "carousel";
+  placements: ("feed" | "story")[];
+  angle: "mistake" | "curiosity" | "outcome" | "contrarian" | "question" | "story";
+  concept: string;
+  keyMessage: string;
+  offer: string;
+  cta: string;
+  audience: string;
+  proofPoint?: string | null;
+  styleHint: "photo-forward" | "type-led" | "highlighter" | "testimonial" | "card" | "framed";
+  photoTreatment: "cutout" | "with-background" | "none";
+  slideCount: number;
+  slidePlan?: { role: "hook" | "problem" | "framework" | "proof" | "cta" | string }[];
+}
+
 export interface ProductionItem {
   id: string;
-  format: "talking_head" | "broll" | "graphic";
+  format: "talking_head" | "broll" | "graphic" | "carousel";
   hook: string;
   guidance: string;
   angleName: string;
@@ -63,6 +83,8 @@ export interface ProductionItem {
   // Psychology fields
   psychology_trigger?: string;
   why_this_works?: string;
+  // Structured handoff for graphic + carousel recommendations
+  brief?: CreativeBrief;
 }
 
 export interface RankedItem extends ProductionItem {
@@ -83,12 +105,14 @@ const formatIcons = {
   talking_head: Video,
   broll: Film,
   graphic: Image,
+  carousel: Layers,
 };
 
 const formatLabels = {
   talking_head: "Record Video",
   broll: "Record / Upload B-Roll",
   graphic: "Design Graphic",
+  carousel: "Build Carousel",
 };
 
 const rankingCopy = [
@@ -439,6 +463,81 @@ export function ProductionChecklistPanel({
                               </div>
                             </div>
 
+                            {/* Structured creative brief for graphic / carousel cells */}
+                            {(item.format === "graphic" || item.format === "carousel") && item.brief && (
+                              <div className="mt-4 pt-4 border-t border-border space-y-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <Sparkles className="h-4 w-4 text-primary" />
+                                    <span className="text-sm font-semibold">Creative Brief</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Badge variant="outline" className="text-[10px] uppercase">
+                                      {item.brief.format === "carousel"
+                                        ? `Carousel · ${item.brief.slideCount} slides`
+                                        : "Single graphic"}
+                                    </Badge>
+                                    {item.brief.styleHint && (
+                                      <Badge variant="secondary" className="text-[10px]">
+                                        {item.brief.styleHint}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                  <BriefRow label="Concept" value={item.brief.concept} />
+                                  <BriefRow label="Key message" value={item.brief.keyMessage} />
+                                  <BriefRow label="Offer" value={item.brief.offer} />
+                                  <BriefRow label="CTA" value={item.brief.cta} />
+                                  <BriefRow label="Audience" value={item.brief.audience} />
+                                  <BriefRow label="Angle" value={item.brief.angle} />
+                                  {item.brief.proofPoint && (
+                                    <BriefRow label="Proof" value={item.brief.proofPoint} />
+                                  )}
+                                  <BriefRow
+                                    label="Placements"
+                                    value={(item.brief.placements || []).join(", ") || "feed"}
+                                  />
+                                  {item.brief.photoTreatment && (
+                                    <BriefRow label="Photo" value={item.brief.photoTreatment} />
+                                  )}
+                                </div>
+
+                                {item.brief.format === "carousel" && item.brief.slidePlan?.length ? (
+                                  <div className="space-y-1.5">
+                                    <p className="text-[11px] font-semibold uppercase text-muted-foreground">
+                                      Slide plan
+                                    </p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {item.brief.slidePlan.map((s, i) => (
+                                        <Badge key={i} variant="outline" className="text-[10px]">
+                                          {i + 1}. {s.role}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : null}
+
+                                <Button
+                                  size="sm"
+                                  className="w-full gap-2"
+                                  onClick={() => {
+                                    window.dispatchEvent(
+                                      new CustomEvent("creative-brief:generate", {
+                                        detail: { itemId: item.id, brief: item.brief },
+                                      })
+                                    );
+                                    toast.success("Brief queued for the generator");
+                                  }}
+                                >
+                                  <Wand2 className="h-3.5 w-3.5" />
+                                  Generate this creative
+                                </Button>
+                              </div>
+                            )}
+
+
                             {/* Expanded Talking Head Details */}
                             {isTalkingHead && isExpanded && (
                               <div className="mt-4 pt-4 border-t border-border space-y-4">
@@ -664,5 +763,14 @@ export function ProductionChecklistPanel({
         <LumiThinking isOpen={isRanking} customCopy={rankingCopy} />
       </Card>
     </TooltipProvider>
+  );
+}
+
+function BriefRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="space-y-0.5">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">{label}</p>
+      <p className="text-xs leading-snug">{value}</p>
+    </div>
   );
 }
