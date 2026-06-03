@@ -26,6 +26,15 @@ serve(async (req) => {
           { role: "user", content: [ { type: "text", text: "Build a template matching this reference. Notes: " + notes }, { type: "image_url", image_url: { url: imageUrl } } ] } ] }),
     });
     const d = await r.json();
-    return new Response(d?.choices?.[0]?.message?.content || "{}", { status: 200, headers: { ...cors, "content-type": "application/json" } });
-  } catch (e) { return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...cors, "content-type": "application/json" } }); }
+    if (!r.ok || d?.error) {
+      console.error("openai error", d);
+      return new Response(JSON.stringify({ error: d?.error?.message || `OpenAI ${r.status}` }), { status: 200, headers: { ...cors, "content-type": "application/json" } });
+    }
+    const content = d?.choices?.[0]?.message?.content;
+    if (!content) {
+      console.error("no content from openai", d);
+      return new Response(JSON.stringify({ error: "Empty response from model" }), { status: 200, headers: { ...cors, "content-type": "application/json" } });
+    }
+    return new Response(content, { status: 200, headers: { ...cors, "content-type": "application/json" } });
+  } catch (e) { return new Response(JSON.stringify({ error: String(e) }), { status: 200, headers: { ...cors, "content-type": "application/json" } }); }
 });
