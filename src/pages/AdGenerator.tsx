@@ -35,15 +35,58 @@ const PLACEMENT_LABELS: Record<string, string> = {
   story: "Story 1080×1920",
 };
 
+type BrandKitColors = { bg: string; ink: string; accent: string; pop: string; highlight: string; cream: string };
+type BrandKitFonts = { displayItalicUrl?: string };
 type RenderImage = { placement: string; width: number; height: number; base64: string };
 
 export default function AdGenerator() {
-  const [colors, setColors] = useState(DEFAULTS.colors);
-  const [copy, setCopy] = useState(DEFAULTS.copy);
+  const navigate = useNavigate();
+  const [colors, setColors] = useState<BrandKitColors>(EMPTY_COLORS);
+  const [fontUrl, setFontUrl] = useState<string>("");
+  const [copy, setCopy] = useState(DEFAULT_COPY);
   const [photoUrl, setPhotoUrl] = useState<string>("");
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState<RenderImage[]>([]);
+  const [kitLoading, setKitLoading] = useState(true);
+  const [hasKit, setHasKit] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setKitLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("brand_kits")
+          .select("colors, fonts")
+          .maybeSingle();
+        if (error) throw error;
+        if (!cancelled) {
+          if (data?.colors) {
+            const c = data.colors as Record<string, string>;
+            setColors({
+              bg: c.bg || EMPTY_COLORS.bg,
+              ink: c.ink || EMPTY_COLORS.ink,
+              accent: c.accent || EMPTY_COLORS.accent,
+              pop: c.pop || EMPTY_COLORS.pop,
+              highlight: c.highlight || EMPTY_COLORS.highlight,
+              cream: c.cream || EMPTY_COLORS.cream,
+            });
+          }
+          if (data?.fonts) {
+            const f = data.fonts as BrandKitFonts;
+            setFontUrl(f.displayItalicUrl || "");
+          }
+          setHasKit(!!data);
+        }
+      } catch (e: any) {
+        toast.error(e?.message || "Failed to load brand kit");
+      } finally {
+        if (!cancelled) setKitLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const onPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -79,8 +122,7 @@ export default function AdGenerator() {
           brandKit: {
             colors,
             fonts: {
-              displayItalicUrl:
-                "https://static.showit.co/file/diFGFeqythlvJpZWj84bAg/shared/editorsnotedisplay-mediumitalic_1.woff",
+              displayItalicUrl: fontUrl || undefined,
             },
           },
           copy,
@@ -105,7 +147,7 @@ export default function AdGenerator() {
     a.click();
   };
 
-  const ColorPicker = ({ label, k }: { label: string; k: keyof typeof colors }) => (
+  const ColorPicker = ({ label, k }: { label: string; k: keyof BrandKitColors }) => (
     <div className="space-y-1">
       <Label className="text-xs">{label}</Label>
       <div className="flex items-center gap-2">
@@ -138,6 +180,31 @@ export default function AdGenerator() {
       )}
     </div>
   );
+
+  if (kitLoading) {
+    return (
+      <div className="min-h-screen bg-background p-6 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <p className="text-sm">Loading your brand kit…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasKit) {
+    return (
+      <div className="min-h-screen bg-background p-6 flex items-center justify-center">
+        <Card className="max-w-sm w-full text-center p-8">
+          <h2 className="text-xl font-semibold mb-2">Set up your brand first</h2>
+          <p className="text-sm text-muted-foreground mb-6">
+            Pull your colors and fonts from your website before generating ads.
+          </p>
+          <Button onClick={() => navigate("/brand-setup")}>Set up your brand</Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-6">
