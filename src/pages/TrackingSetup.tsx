@@ -249,7 +249,7 @@ export default function TrackingSetup() {
               <Button
                 variant="default"
                 className="justify-start"
-                onClick={() => openLumi?.({ topic: 'pixel_help' })}
+                onClick={() => openChat()}
               >
                 <MessageCircle className="h-4 w-4 mr-2" />
                 Ask Lumi about my pixel
