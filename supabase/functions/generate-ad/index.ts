@@ -19,7 +19,7 @@ const json = (payload: unknown) =>
 function assertAllowedPhotoUrl(url: string) {
   const parsed = new URL(url);
   const storageHost = SUPABASE_URL ? new URL(SUPABASE_URL).hostname : parsed.hostname;
-  const allowedPath = parsed.pathname.startsWith("/storage/v1/object/sign/ad-photos/ad-generator/");
+  const allowedPath = parsed.pathname.startsWith("/storage/v1/object/sign/ad-photos/");
 
   if (parsed.protocol !== "https:" || parsed.hostname !== storageHost || !allowedPath) {
     throw new Error("Uploaded image URL is not from the ad photo library.");
