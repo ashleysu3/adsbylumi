@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 const KEY = Deno.env.get("OPENAI_API_KEY")!;
-const cors = { "Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, content-type, apikey","Access-Control-Allow-Methods":"POST, OPTIONS" };
+const cors = { "Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, content-type, apikey, x-client-info","Access-Control-Allow-Methods":"POST, OPTIONS" };
 
 const CONTRACT = `You generate ONE self-contained HTML ad template for a render engine. Reproduce the LAYOUT/STYLE of the reference image (composition, type hierarchy, shapes, photo placement) — do NOT copy its exact text or photo. Output must follow this contract EXACTLY:
 
