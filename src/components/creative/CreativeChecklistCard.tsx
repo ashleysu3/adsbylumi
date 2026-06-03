@@ -1217,8 +1217,54 @@ export function CreativeChecklistCard({
                   )}
                 </div>
               )}
-              
+
+              {/* Generate this creative — works for ALL graphic/carousel items.
+                  If the item lacks a structured brief (older recommendations),
+                  synthesize one from the hook + creative direction so the
+                  generator gets enough to work with. */}
+              {(item.format === "graphic" || item.format === "carousel") && (
+                <Button
+                  size="sm"
+                  className="w-full gap-2"
+                  onClick={() => {
+                    const isCar = item.format === "carousel";
+                    const synth = item.brief || {
+                      format: isCar ? "carousel" : "single_graphic",
+                      placements: ["feed", "story"],
+                      angle: "outcome",
+                      concept: item.guidance || item.hook,
+                      keyMessage: item.hook,
+                      offer: "",
+                      cta: "Learn more",
+                      audience: item.angleName || "",
+                      proofPoint: item.why_this_works || null,
+                      styleHint: "type-led",
+                      photoTreatment: "with-background",
+                      slideCount: isCar ? 5 : 1,
+                      slidePlan: isCar
+                        ? [
+                            { role: "hook" },
+                            { role: "problem" },
+                            { role: "framework" },
+                            { role: "proof" },
+                            { role: "cta" },
+                          ]
+                        : undefined,
+                    };
+                    window.dispatchEvent(
+                      new CustomEvent("creative-brief:generate", {
+                        detail: { itemId: item.id, brief: synth },
+                      }),
+                    );
+                  }}
+                >
+                  <Wand2 className="h-3.5 w-3.5" />
+                  Generate this creative
+                </Button>
+              )}
+
               {/* Ad Copy is shown/edited in the Ad Preview, not on the production checklist */}
+
 
               {/* Upload Section */}
               <div>
