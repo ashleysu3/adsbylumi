@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 const KEY = Deno.env.get("OPENAI_API_KEY")!;
-const cors = { "Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, content-type, apikey","Access-Control-Allow-Methods":"POST, OPTIONS" };
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info, x-supabase-api-version",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
 const VOICE_RULES = `You are a senior direct-response copywriter writing Meta ad creative for coaches, course creators, and service providers. You write like a sharp, warm, real human IN THIS BRAND'S VOICE — never like a marketer. Study the brand voice samples and mirror their tone, rhythm, word choice, and punctuation.
 VOICE RULES (non-negotiable):
