@@ -114,7 +114,10 @@ export function GenerateCreativeDialog() {
       const detail = (e as CustomEvent).detail as { brief?: CreativeBrief };
       if (!detail?.brief) return;
       setBrief(detail.brief);
-      setTemplate(mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
+      const isGen = detail.brief.imageSource === "generated";
+      setTemplate(isGen ? "overlay" : mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
+      if (isGen) setRemoveBackground(false);
+      setGeneratedPhoto(null);
       setOpen(true);
       setSingleOptions([]);
       setCarouselOptions([]);
@@ -128,6 +131,32 @@ export function GenerateCreativeDialog() {
     window.addEventListener("creative-brief:generate", handler as EventListener);
     return () => window.removeEventListener("creative-brief:generate", handler as EventListener);
   }, []);
+
+  const generateConceptImage = useCallback(async () => {
+    const b = briefRef.current;
+    if (!b || b.imageSource !== "generated" || !b.imagePrompt) return;
+    setGeneratingConcept(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-concept-image", {
+        body: { prompt: b.imagePrompt },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (!data?.url) throw new Error("No image returned");
+      setGeneratedPhoto({ id: "generated", path: "generated", url: data.url });
+    } catch (err: any) {
+      toast.error(err?.message || "Could not generate concept image");
+    } finally {
+      setGeneratingConcept(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open && brief?.imageSource === "generated" && !generatedPhoto && !generatingConcept) {
+      generateConceptImage();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, brief]);
 
   // Load brand kit + photos on first open
   useEffect(() => {
