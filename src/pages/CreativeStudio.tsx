@@ -1912,6 +1912,7 @@ export default function CreativeStudio() {
             } size="sm" />
           </div>
         )}
+        <GenerateCreativeDialog />
       </motion.div>
     </DashboardLayout>
   );
