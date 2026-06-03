@@ -56,8 +56,11 @@ export default function AdGenerator() {
         upsert: false,
       });
       if (error) throw error;
-      const { data } = supabase.storage.from("ad-photos").getPublicUrl(path);
-      setPhotoUrl(data.publicUrl);
+      const { data, error: signErr } = await supabase.storage
+        .from("ad-photos")
+        .createSignedUrl(path, 60 * 60); // 1 hour
+      if (signErr) throw signErr;
+      setPhotoUrl(data.signedUrl);
       toast.success("Photo uploaded");
     } catch (err: any) {
       toast.error(err.message || "Upload failed");
