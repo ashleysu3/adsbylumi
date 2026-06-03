@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Download, Images } from "lucide-react";
+import { Loader2, Download, Images, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 const EMPTY_COLORS = {
