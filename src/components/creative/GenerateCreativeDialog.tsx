@@ -497,10 +497,6 @@ export function GenerateCreativeDialog() {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
                   <Loader2 className="h-4 w-4 animate-spin" /> Writing copy in your brand voice…
                 </div>
-              {composing ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Writing copy in your brand voice…
-                </div>
               ) : !activeCustom && !isCarousel && singleOptions.length === 0 ? (
                 <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
                   <p>We couldn't write copy for this concept. Want to try again?</p>
