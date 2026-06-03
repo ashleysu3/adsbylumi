@@ -141,6 +141,42 @@ export default function AdGenerator() {
     return () => { cancelled = true; };
   }, []);
 
+  const compose = async () => {
+    if (!creativeDirection.trim()) {
+      toast.error("Describe your ad first");
+      return;
+    }
+    setComposing(true);
+    setComposedOptions([]);
+    try {
+      const { data, error } = await supabase.functions.invoke("compose-ad", {
+        body: { creativeDirection, offer: "", brandVoice: {}, count: 3 },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setComposedOptions(data?.options || []);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to write options");
+    } finally {
+      setComposing(false);
+    }
+  };
+
+  const useOption = (opt: ComposedOption) => {
+    setCopy({
+      eyebrow: opt.eyebrow || "",
+      headlinePre: opt.headlinePre || "",
+      headlineHL: opt.headlineHL || "",
+      headlinePost: opt.headlinePost || "",
+      accent: opt.accent || "",
+      sub: opt.sub || "",
+      cta: opt.cta || "",
+      badgeTop: opt.badgeTop || "",
+      badgeBottom: opt.badgeBottom || "",
+    });
+    toast.success("Copy filled in — edit anything, then Generate ads");
+  };
+
   const generate = async () => {
     if (!selectedPhoto) {
       toast.error("Pick a photo first");
