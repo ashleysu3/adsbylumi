@@ -194,6 +194,31 @@ export function GenerateCreativeDialog() {
         if (!cancelled) setPhotosLoading(false);
       }
     })();
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("templates")
+          .select("id, name, type, html, copy_slots, slide_slots, needs_photo, placements")
+          .eq("status", "approved")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        if (cancelled) return;
+        setCustomTemplates(
+          (data || []).map((r: any) => ({
+            id: r.id,
+            name: r.name || "Untitled",
+            type: r.type === "carousel" ? "carousel" : "single",
+            html: r.html || "",
+            copy_slots: r.copy_slots || [],
+            slide_slots: r.slide_slots || [],
+            needs_photo: r.needs_photo ?? true,
+            placements: Array.isArray(r.placements) ? r.placements : ["feed", "story"],
+          })),
+        );
+      } catch {
+        /* templates table may not be available; ignore */
+      }
+    })();
     return () => { cancelled = true; };
   }, [open]);
 
