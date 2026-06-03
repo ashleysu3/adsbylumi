@@ -46,6 +46,8 @@ import AdminCoupons from "./pages/admin/Coupons";
 import AdminUpdates from "./pages/admin/Updates";
 import AdminUpdatesResults from "./pages/admin/UpdatesResults";
 import AdminFeatures from "./pages/admin/Features";
+import AdminInspiration from "./pages/admin/Inspiration";
+import AdminApprovals from "./pages/admin/Approvals";
 import { useReferralCapture } from "./hooks/useReferralCapture";
 
 function ReferralCaptureMount() {
