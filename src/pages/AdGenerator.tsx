@@ -151,8 +151,18 @@ export default function AdGenerator() {
     setComposing(true);
     setComposedOptions([]);
     try {
+      const voicePayload = brandVoice && (Array.isArray(brandVoice.headlines) ? brandVoice.headlines.length > 0 : Object.keys(brandVoice).length > 0)
+        ? brandVoice
+        : {
+            headlines: [
+              "How to start a wedding planning business this year",
+              "...and book your first 5 clients",
+              "even if you don't have a portfolio, a certification, or a clue where to start",
+            ],
+            punctuation: "uses ... and -- ; warm, big-sister, no-bullshit tone",
+          };
       const { data, error } = await supabase.functions.invoke("compose-ad", {
-        body: { creativeDirection, offer: "", brandVoice: {}, count: 3 },
+        body: { creativeDirection, offer: "", brandVoice: voicePayload, count: 3 },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
