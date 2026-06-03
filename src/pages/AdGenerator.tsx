@@ -288,6 +288,45 @@ export default function AdGenerator() {
           <div className="space-y-4">
             <Card>
               <CardHeader>
+                <CardTitle className="text-base">Describe your ad</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Creative direction</Label>
+                  <Textarea
+                    value={creativeDirection}
+                    onChange={(e) => setCreativeDirection(e.target.value)}
+                    placeholder="e.g. Bold hook about the #1 mistake new wedding planners make, push the free class"
+                    rows={3}
+                  />
+                </div>
+                <Button onClick={compose} disabled={composing} className="w-full">
+                  {composing ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Writing options…</>
+                  ) : (
+                    <><Sparkles className="h-4 w-4 mr-2" /> Write 3 options</>
+                  )}
+                </Button>
+                {composedOptions.length > 0 && (
+                  <div className="space-y-2 pt-2">
+                    {composedOptions.map((opt, i) => (
+                      <div key={i} className="rounded border border-border p-3 space-y-2">
+                        <p className="font-bold text-sm leading-snug">
+                          {[opt.headlinePre, opt.headlineHL, opt.headlinePost].filter(Boolean).join(" ")}
+                        </p>
+                        {opt.sub && <p className="text-xs text-muted-foreground">{opt.sub}</p>}
+                        <Button size="sm" variant="outline" onClick={() => useOption(opt)}>
+                          Use this
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
                 <CardTitle className="text-base">Brand colors</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-3">
