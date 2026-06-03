@@ -519,10 +519,7 @@ export function GenerateCreativeDialog() {
                 size="lg"
                 className="w-full"
                 onClick={generate}
-                disabled={
-                  generating || composing || !selectedPhoto ||
-                  (isCarousel ? editedSlides.length === 0 : Object.keys(editedSingle).length === 0)
-                }
+                disabled={generating || composing || !selectedPhoto}
               >
                 {generating ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {progress || "Generating…"}</>
