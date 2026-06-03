@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Package, Link2, LifeBuoy, Plus, CheckCircle2, AlertTriangle, Gift, Wrench, TrendingUp, Lock, Palette, LayoutGrid, Paintbrush } from "lucide-react";
+import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Package, Link2, LifeBuoy, Plus, CheckCircle2, AlertTriangle, Gift, Wrench, TrendingUp, Lock, Palette, LayoutGrid, Paintbrush, Activity } from "lucide-react";
 import { LadybugIcon } from "@/components/LadybugIcon";
 import { useState as useReactState } from "react";
 import { BugReportModal } from "@/components/BugReportModal";
@@ -294,6 +294,20 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                         <MetaStatusIcon />
                       </span>
                     )}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              {/* Tracking & Pixel — nested under Meta Connection */}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Set up your Meta Pixel & event tracking">
+                  <NavLink
+                    to="/tracking-setup"
+                    end
+                    className="transition-all duration-200 pl-8"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  >
+                    <Activity className="h-4 w-4" />
+                    {!collapsed && <span>Tracking & Pixel</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>

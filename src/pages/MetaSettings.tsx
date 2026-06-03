@@ -19,7 +19,7 @@ import {
   ArrowLeft, Zap, Key, RefreshCw, Sparkles
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
-import { PixelVerificationCard } from '@/components/PixelVerificationCard';
+
 import { MetaReadinessChecklist } from '@/components/MetaReadinessChecklist';
 import { MetaSetupDiagnostic, type DiagnosticResult } from '@/components/MetaSetupDiagnostic';
 import { MetaConnectionCheckLog } from '@/components/MetaConnectionCheckLog';
@@ -31,7 +31,7 @@ export default function MetaSettings() {
   const { activeBrand, loading: brandContextLoading } = useBrand();
   const { getEffectiveUserId } = useImpersonation();
   const [loading, setLoading] = useState(true);
-  const pixelSectionRef = useRef<HTMLDivElement | null>(null);
+  
   const [brand, setBrand] = useState<any>(null);
   const [hasValidToken, setHasValidToken] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -598,7 +598,7 @@ export default function MetaSettings() {
               document.getElementById('meta-connect-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }}
             onPixelSetupRequested={() => {
-              pixelSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              navigate('/tracking-setup');
             }}
           />
         )}
@@ -1106,19 +1106,25 @@ export default function MetaSettings() {
           <MetaConnectionCheckLog brandId={brand.id} refreshKey={logRefreshKey} />
         )}
 
-        {/* Pixel Verification Card — only show when connected (readiness checklist covers it otherwise) */}
+        {/* Pixel & event tracking moved to dedicated page for clearer guidance */}
         {isConnected && (
-          <div ref={pixelSectionRef}>
-            <PixelVerificationCard 
-              brandId={brand?.id || ''} 
-              isMetaConnected={isConnected}
-              initialPixelData={brand?.meta_pixel_id ? {
-                id: brand.meta_pixel_id,
-                name: brand.meta_pixel_name || 'Meta Pixel',
-                events: brand.meta_pixel_events || {}
-              } : null}
-            />
-          </div>
+          <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-primary" />
+                Tracking & Pixel Setup
+              </CardTitle>
+              <CardDescription>
+                Pixel verification, event tracking, and plain-English help now live on their
+                own page so you've got room to actually understand what's happening.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => navigate('/tracking-setup')}>
+                Open Tracking & Pixel Setup
+              </Button>
+            </CardContent>
+          </Card>
         )}
       </div>
     </DashboardLayout>
