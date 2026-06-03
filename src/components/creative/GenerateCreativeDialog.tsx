@@ -229,8 +229,35 @@ export function GenerateCreativeDialog() {
     setImages([]);
     try {
       const voicePayload = brandVoice && Object.keys(brandVoice).length > 0 ? brandVoice : {};
+
+      // If a custom template is selected, prefill its slot keys so the user can edit
+      // and the render button enables even if AI copy generation isn't slot-aware.
+      if (activeCustom) {
+        if (activeCustom.type === "carousel") {
+          const slots: string[] = Array.isArray(activeCustom.slide_slots) ? activeCustom.slide_slots : [];
+          const blankSlide: Slide = {};
+          slots.forEach((k) => (blankSlide[k] = ""));
+          setCarouselOptions([{ slides: [blankSlide] }]);
+          setEditedSlides([blankSlide]);
+          setSingleOptions([]);
+          setEditedSingle({});
+        } else {
+          const slots: string[] = Array.isArray(activeCustom.copy_slots) ? activeCustom.copy_slots : [];
+          const blank: SingleOption = {};
+          slots.forEach((k) => (blank[k] = ""));
+          setSingleOptions([blank]);
+          setEditedSingle(blank);
+          setCarouselOptions([]);
+          setEditedSlides([]);
+        }
+        setSelectedOptionIdx(0);
+        setEditingCopy(true);
+        return;
+      }
+
+      const briefWithTemplate = { ...b, template };
       const { data, error } = await supabase.functions.invoke("compose-ad", {
-        body: { brief: b, brandVoice: voicePayload, count: 3 },
+        body: { brief: briefWithTemplate, brandVoice: voicePayload, count: 3 },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -265,17 +292,16 @@ export function GenerateCreativeDialog() {
     } finally {
       setComposing(false);
     }
-  }, [brandVoice]);
+  }, [brandVoice, template, activeCustom]);
 
+  // Auto-compose on open AND whenever the template selection changes
   useEffect(() => {
-    if (
-      open && brief && !kitLoading &&
-      singleOptions.length === 0 && carouselOptions.length === 0 && !composing
-    ) {
+    if (open && brief && !kitLoading && !composing) {
       compose();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, brief, kitLoading]);
+  }, [open, brief, kitLoading, template, customTemplateId]);
+
 
   // Sync editor to currently selected option
   useEffect(() => {
