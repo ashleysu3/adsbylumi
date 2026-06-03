@@ -62,6 +62,7 @@ export default function AdGenerator() {
     accent: string; sub: string; cta: string; badgeTop: string; badgeBottom: string;
   };
   const [composedOptions, setComposedOptions] = useState<ComposedOption[]>([]);
+  const [brandVoice, setBrandVoice] = useState<any>(null);
 
   const selectedPhoto = photos.find((p) => p.id === selectedPhotoId);
 
@@ -72,10 +73,11 @@ export default function AdGenerator() {
       try {
         const { data, error } = await supabase
           .from("brand_kits")
-          .select("colors, fonts")
+          .select("colors, fonts, voice")
           .maybeSingle();
         if (error) throw error;
         if (!cancelled) {
+          setBrandVoice((data as any)?.voice ?? null);
           if (data?.colors) {
             const c = data.colors as Record<string, string>;
             setColors({
@@ -149,8 +151,18 @@ export default function AdGenerator() {
     setComposing(true);
     setComposedOptions([]);
     try {
+      const voicePayload = brandVoice && (Array.isArray(brandVoice.headlines) ? brandVoice.headlines.length > 0 : Object.keys(brandVoice).length > 0)
+        ? brandVoice
+        : {
+            headlines: [
+              "How to start a wedding planning business this year",
+              "...and book your first 5 clients",
+              "even if you don't have a portfolio, a certification, or a clue where to start",
+            ],
+            punctuation: "uses ... and -- ; warm, big-sister, no-bullshit tone",
+          };
       const { data, error } = await supabase.functions.invoke("compose-ad", {
-        body: { creativeDirection, offer: "", brandVoice: {}, count: 3 },
+        body: { creativeDirection, offer: "", brandVoice: voicePayload, count: 3 },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
