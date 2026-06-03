@@ -82,12 +82,25 @@ export default function AdminApprovals() {
   const approve = async (item: PendingItem) => {
     setActingId(item.id);
     try {
-      // Promote to global library
-      const tagsObj = item.tags && typeof item.tags === "object" ? item.tags : {};
+      // Pre-tag via edge function; existing user tags take precedence
+      let aiTags: Record<string, any> = {};
+      try {
+        const { data: tagData } = await supabase.functions.invoke("tag-inspiration", {
+          body: { imageUrl: item.uploaded_image_url },
+        });
+        const parsed = typeof tagData === "string" ? JSON.parse(tagData) : tagData;
+        if (parsed && typeof parsed === "object" && !parsed.error) aiTags = parsed;
+      } catch (tagErr) {
+        console.warn("Auto-tag failed", tagErr);
+      }
+
+      const existing = item.tags && typeof item.tags === "object" ? item.tags : {};
+      const tagsObj = { ...aiTags, ...existing };
+
       const { error: insErr } = await supabase
         .from("inspiration_items")
         .insert({
-          image_url: item.uploaded_image_url, // full URL from ad-photos
+          image_url: item.uploaded_image_url,
           title: item.note || null,
           source: "community",
           tags: tagsObj,

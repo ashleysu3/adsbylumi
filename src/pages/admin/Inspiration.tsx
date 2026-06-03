@@ -108,7 +108,25 @@ export default function AdminInspiration() {
             .upload(path, file, { contentType: file.type, upsert: false });
           if (upErr) throw upErr;
 
-          const tagsObj: Record<string, string> = {};
+          // Auto-tag via edge function (signed URL so OpenAI can fetch it)
+          let aiTags: Record<string, any> = {};
+          try {
+            const { data: signed } = await supabase.storage
+              .from("inspiration")
+              .createSignedUrl(path, 60 * 10);
+            if (signed?.signedUrl) {
+              const { data: tagData } = await supabase.functions.invoke("tag-inspiration", {
+                body: { imageUrl: signed.signedUrl },
+              });
+              const parsed = typeof tagData === "string" ? JSON.parse(tagData) : tagData;
+              if (parsed && typeof parsed === "object" && !parsed.error) aiTags = parsed;
+            }
+          } catch (tagErr) {
+            console.warn("Auto-tag failed for", file.name, tagErr);
+          }
+
+          // Merge: AI tags as base, user-selected bulk tags override
+          const tagsObj: Record<string, any> = { ...aiTags };
           if (bulkTags.format) tagsObj.format = bulkTags.format;
           if (bulkTags.style) tagsObj.style = bulkTags.style;
           if (bulkTags.hook) tagsObj.hook = bulkTags.hook;
