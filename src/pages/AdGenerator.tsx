@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Download, Images } from "lucide-react";
+import { Loader2, Download, Images, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 const EMPTY_COLORS = {
@@ -55,6 +55,13 @@ export default function AdGenerator() {
   const [images, setImages] = useState<RenderImage[]>([]);
   const [kitLoading, setKitLoading] = useState(true);
   const [hasKit, setHasKit] = useState(false);
+  const [creativeDirection, setCreativeDirection] = useState("");
+  const [composing, setComposing] = useState(false);
+  type ComposedOption = {
+    eyebrow: string; headlinePre: string; headlineHL: string; headlinePost: string;
+    accent: string; sub: string; cta: string; badgeTop: string; badgeBottom: string;
+  };
+  const [composedOptions, setComposedOptions] = useState<ComposedOption[]>([]);
 
   const selectedPhoto = photos.find((p) => p.id === selectedPhotoId);
 
@@ -133,6 +140,42 @@ export default function AdGenerator() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  const compose = async () => {
+    if (!creativeDirection.trim()) {
+      toast.error("Describe your ad first");
+      return;
+    }
+    setComposing(true);
+    setComposedOptions([]);
+    try {
+      const { data, error } = await supabase.functions.invoke("compose-ad", {
+        body: { creativeDirection, offer: "", brandVoice: {}, count: 3 },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setComposedOptions(data?.options || []);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to write options");
+    } finally {
+      setComposing(false);
+    }
+  };
+
+  const useOption = (opt: ComposedOption) => {
+    setCopy({
+      eyebrow: opt.eyebrow || "",
+      headlinePre: opt.headlinePre || "",
+      headlineHL: opt.headlineHL || "",
+      headlinePost: opt.headlinePost || "",
+      accent: opt.accent || "",
+      sub: opt.sub || "",
+      cta: opt.cta || "",
+      badgeTop: opt.badgeTop || "",
+      badgeBottom: opt.badgeBottom || "",
+    });
+    toast.success("Copy filled in — edit anything, then Generate ads");
+  };
 
   const generate = async () => {
     if (!selectedPhoto) {
@@ -243,6 +286,45 @@ export default function AdGenerator() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* LEFT - Form */}
           <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Describe your ad</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Creative direction</Label>
+                  <Textarea
+                    value={creativeDirection}
+                    onChange={(e) => setCreativeDirection(e.target.value)}
+                    placeholder="e.g. Bold hook about the #1 mistake new wedding planners make, push the free class"
+                    rows={3}
+                  />
+                </div>
+                <Button onClick={compose} disabled={composing} className="w-full">
+                  {composing ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Writing options…</>
+                  ) : (
+                    <><Sparkles className="h-4 w-4 mr-2" /> Write 3 options</>
+                  )}
+                </Button>
+                {composedOptions.length > 0 && (
+                  <div className="space-y-2 pt-2">
+                    {composedOptions.map((opt, i) => (
+                      <div key={i} className="rounded border border-border p-3 space-y-2">
+                        <p className="font-bold text-sm leading-snug">
+                          {[opt.headlinePre, opt.headlineHL, opt.headlinePost].filter(Boolean).join(" ")}
+                        </p>
+                        {opt.sub && <p className="text-xs text-muted-foreground">{opt.sub}</p>}
+                        <Button size="sm" variant="outline" onClick={() => useOption(opt)}>
+                          Use this
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Brand colors</CardTitle>
