@@ -70,6 +70,8 @@ export interface RenderJob {
     overlays: RenderOverlay[];
     style: RenderStyle;
     loopVideo?: boolean;
+    trimStart?: number;
+    trimEnd?: number;
   };
   // onAttached lives here so the worker can call it on success. Held in a
   // separate ref-style field rather than inside `spec` so it doesn't
