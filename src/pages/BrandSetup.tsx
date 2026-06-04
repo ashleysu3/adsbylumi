@@ -74,12 +74,12 @@ export default function BrandSetup() {
       const payload = res as ExtractResponse;
       setData(payload);
       const s = payload?.suggested || {};
-      setBg(s.colors?.background || "");
+      setBg(s.colors?.bg || "");
       setInk(s.colors?.ink || "");
       setAccent(s.colors?.accent || "");
-      setPop(s.colors?.pops?.[0] || "");
-      setHighlight(s.colors?.pops?.[1] || "");
-      setCream(s.colors?.background || "");
+      setPop(s.colors?.pop || "");
+      setHighlight(s.colors?.highlight || "");
+      setCream(s.colors?.cream || "");
       setDisplayUrl(s.fonts?.display?.url || "");
       const detectedLogo = (logoRes?.data as { logoUrl?: string | null } | null)?.logoUrl || "";
       setLogoUrl(detectedLogo);
