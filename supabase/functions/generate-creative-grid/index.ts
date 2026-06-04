@@ -892,6 +892,11 @@ Generate exactly ${batchAngles.length * 9} creative cells (${batchAngles.length}
         cell.text_overlays = cell.text_overlays || [];
         cell.caption_reminder = true;
       }
+      if (cell.format === "broll") {
+        cell.broll_vibe = cell.broll_vibe || "";
+        cell.text_overlays = cell.text_overlays || [];
+        cell.mood = cell.mood || "Relatable";
+      }
       return cell;
     });
 
