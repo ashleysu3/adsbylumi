@@ -378,7 +378,7 @@ export function GenerateCreativeDialog() {
     setImages([]);
     setProgress("");
     try {
-      const brandKit = { colors, fonts: { displayItalicUrl: fontUrl || undefined } };
+      const brandKit = { colors, fonts: { displayItalicUrl: fontUrl || undefined }, logoUrl: logoUrl || undefined };
       const photo = { url: selectedPhoto.url, removeBackground };
 
       const templateField = activeCustom
