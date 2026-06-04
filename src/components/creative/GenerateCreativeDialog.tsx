@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,6 +71,7 @@ function mapStyleToTemplate(styleHint?: string, format?: string): string {
 }
 
 export function GenerateCreativeDialog() {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [brief, setBrief] = useState<CreativeBrief | null>(null);
   const [itemId, setItemId] = useState<string>("");
@@ -79,6 +81,8 @@ export function GenerateCreativeDialog() {
 
   const [colors, setColors] = useState<Colors>(DEFAULT_COLORS);
   const [fontUrl, setFontUrl] = useState<string>("");
+  const [displayFamily, setDisplayFamily] = useState<string>("");
+  const [bodyFamily, setBodyFamily] = useState<string>("");
   const [logoUrl, setLogoUrl] = useState<string>("");
   const [brandVoice, setBrandVoice] = useState<any>(null);
   const [kitLoading, setKitLoading] = useState(false);
@@ -217,24 +221,33 @@ export function GenerateCreativeDialog() {
       try {
         const { data } = await supabase
           .from("brand_kits")
-          .select("colors, fonts, voice, logo_url")
+          .select("colors, fonts, voice, logo_url, status")
           .maybeSingle();
         if (cancelled) return;
-        if (data?.colors) {
-          const c = data.colors as Record<string, string>;
-          setColors({
-            bg: c.bg || DEFAULT_COLORS.bg,
-            ink: c.ink || DEFAULT_COLORS.ink,
-            accent: c.accent || DEFAULT_COLORS.accent,
-            pop: c.pop || DEFAULT_COLORS.pop,
-            highlight: c.highlight || DEFAULT_COLORS.highlight,
-            cream: c.cream || DEFAULT_COLORS.cream,
-          });
+
+        const c = (data?.colors || {}) as Record<string, string>;
+        const f = (data?.fonts || {}) as { displayItalicUrl?: string; displayFamily?: string; bodyFamily?: string };
+        const hasAnyColor = !!(c.bg || c.ink || c.accent || c.pop || c.highlight || c.cream);
+        const hasAnyFont = !!(f.displayFamily || f.bodyFamily || f.displayItalicUrl);
+
+        if (!data || !hasAnyColor || !hasAnyFont) {
+          toast.error("Pick your brand colors & fonts first — these go on every ad we generate.");
+          setOpen(false);
+          navigate("/style");
+          return;
         }
-        if (data?.fonts) {
-          const f = data.fonts as { displayItalicUrl?: string };
-          setFontUrl(f.displayItalicUrl || "");
-        }
+
+        setColors({
+          bg: c.bg || DEFAULT_COLORS.bg,
+          ink: c.ink || DEFAULT_COLORS.ink,
+          accent: c.accent || DEFAULT_COLORS.accent,
+          pop: c.pop || DEFAULT_COLORS.pop,
+          highlight: c.highlight || DEFAULT_COLORS.highlight,
+          cream: c.cream || DEFAULT_COLORS.cream,
+        });
+        setFontUrl(f.displayItalicUrl || "");
+        setDisplayFamily(f.displayFamily || "");
+        setBodyFamily(f.bodyFamily || "");
         setLogoUrl((data as any)?.logo_url || "");
         setBrandVoice((data as any)?.voice ?? null);
       } catch (err: any) {
@@ -472,7 +485,11 @@ export function GenerateCreativeDialog() {
       const effectiveLogoUrl = (placeLogo && brandLogoAsset?.url) || logoUrl || undefined;
       const brandKit = {
         colors,
-        fonts: { displayItalicUrl: fontUrl || undefined },
+        fonts: {
+          displayItalicUrl: fontUrl || undefined,
+          displayFamily: displayFamily || undefined,
+          bodyFamily: bodyFamily || undefined,
+        },
         logoUrl: effectiveLogoUrl,
       };
       const logoOverlay = placeLogo && brandLogoAsset?.url
