@@ -21,7 +21,9 @@ const DEFAULT_COLORS: Colors = {
 type SingleOption = Record<string, string>;
 type Slide = Record<string, string>;
 type CarouselOption = { slides: Slide[] };
-type Photo = { id: string; path: string; url: string };
+type Photo = { id: string; path: string; url: string; source?: "upload" | "brand"; role?: string };
+type BrandAssetRow = { id: string; url: string; role: string };
+type LogoCorner = "tl" | "tr" | "bl" | "br";
 type RenderImage = { placement: string; width: number; height: number; base64: string; label?: string };
 type CustomTemplate = {
   id: string;
