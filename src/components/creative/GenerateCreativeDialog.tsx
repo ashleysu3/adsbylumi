@@ -1123,7 +1123,28 @@ export function GenerateCreativeDialog() {
                 </div>
 
                 <div className="space-y-3">
-                  <Label className="text-xs uppercase text-muted-foreground">Results</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs uppercase text-muted-foreground">Results</Label>
+                    {itemId && images.length > 0 && approvedIdxs.size < images.length && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={approvingIdx !== null}
+                        onClick={async () => {
+                          for (let i = 0; i < images.length; i++) {
+                            if (approvedIdxs.has(i)) continue;
+                            await approveRender(images[i], i);
+                          }
+                        }}
+                      >
+                        {approvingIdx !== null ? (
+                          <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Approving all…</>
+                        ) : (
+                          <>Approve all ({images.length - approvedIdxs.size})</>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                   {generating && images.length === 0 && (
                     <div className="rounded border border-dashed p-10 text-center text-sm text-muted-foreground">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
