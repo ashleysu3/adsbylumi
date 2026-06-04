@@ -62,9 +62,12 @@ function instruction(template: string, count: number): string {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
-    const { brief = {}, brandVoice = {}, count = 3 } = await req.json();
+    const { brief = {}, brandVoice = {}, count = 3, feedback = null } = await req.json();
     const template = brief.template || mapStyle(brief.styleHint, brief.format);
-    const user = `Creative brief:\n${JSON.stringify(brief)}\n\nBrand voice samples:\n${JSON.stringify(brandVoice)}\n\n${instruction(template, count)}\n\nOutput ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
+    const feedbackBlock = feedback && (feedback.quickSelections?.length || feedback.additionalNotes)
+      ? `\n\nUSER FEEDBACK ON PREVIOUS COPY — apply these changes in this rewrite:\n- Issues: ${(feedback.quickSelections || []).join(", ") || "(none)"}\n- Notes: ${feedback.additionalNotes || "(none)"}\n`
+      : "";
+    const user = `Creative brief:\n${JSON.stringify(brief)}\n\nBrand voice samples:\n${JSON.stringify(brandVoice)}${feedbackBlock}\n\n${instruction(template, count)}\n\nOutput ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST", headers: { authorization: `Bearer ${KEY}`, "content-type": "application/json" },
       body: JSON.stringify({ model: "google/gemini-2.5-flash", response_format: { type: "json_object" },
