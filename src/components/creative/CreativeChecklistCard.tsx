@@ -76,6 +76,7 @@ interface CreativeChecklistCardProps {
   onRefineScript?: (itemId: string, feedback: string) => Promise<void>;
   selected?: boolean;
   onToggleSelect?: () => void;
+  onToggleApprove?: () => void;
   angleCopy?: AngleCopyData;
   onCopyChange?: (updatedCopy: AngleCopyData) => void;
   onOverlaysChange?: (overlays: TextOverlay[]) => void;
