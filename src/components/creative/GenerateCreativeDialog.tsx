@@ -14,6 +14,21 @@ import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
 import type { CreativeBrief } from "./ProductionChecklistPanel";
 import { TemplatePreview } from "./TemplatePreview";
+import cutoutThumb from "@/assets/template-thumbs/cutout.png.asset.json";
+import spotlightThumb from "@/assets/template-thumbs/spotlight.png.asset.json";
+import framedThumb from "@/assets/template-thumbs/framed.png.asset.json";
+import splitThumb from "@/assets/template-thumbs/split.png.asset.json";
+import highlighterThumb from "@/assets/template-thumbs/highlighter.png.asset.json";
+import overlayThumb from "@/assets/template-thumbs/overlay.png.asset.json";
+
+const BUILT_IN_THUMBS: Record<string, string> = {
+  cutout: cutoutThumb.url,
+  spotlight: spotlightThumb.url,
+  framed: framedThumb.url,
+  split: splitThumb.url,
+  highlighter: highlighterThumb.url,
+  overlay: overlayThumb.url,
+};
 
 type Colors = { bg: string; ink: string; accent: string; pop: string; highlight: string; cream: string };
 const DEFAULT_COLORS: Colors = {
