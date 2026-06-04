@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
 import type { CreativeBrief } from "./ProductionChecklistPanel";
 
@@ -87,6 +88,7 @@ function mapStyleToTemplate(styleHint?: string, format?: string): string {
 
 export function GenerateCreativeDialog() {
   const navigate = useNavigate();
+  const { activeBrand, loading: brandsLoading } = useBrand();
   const [open, setOpen] = useState(false);
   const [brief, setBrief] = useState<CreativeBrief | null>(null);
   const [itemId, setItemId] = useState<string>("");
@@ -225,14 +227,27 @@ export function GenerateCreativeDialog() {
 
   // Load brand kit + photos on first open
   useEffect(() => {
-    if (!open) return;
+    if (!open || brandsLoading) return;
     let cancelled = false;
     (async () => {
       setKitLoading(true);
+      setColors(DEFAULT_COLORS);
+      setFontUrl("");
+      setDisplayFamily("");
+      setBodyFamily("");
+      setLogoUrl("");
+      setBrandVoice(null);
       try {
+        if (!activeBrand?.id) {
+          toast.error("Choose a brand before generating creative.");
+          setOpen(false);
+          navigate("/style");
+          return;
+        }
         const { data } = await supabase
           .from("brand_kits")
           .select("colors, fonts, voice, logo_url, status")
+          .eq("brand_id", activeBrand.id)
           .maybeSingle();
         if (cancelled) return;
 
@@ -364,7 +379,7 @@ export function GenerateCreativeDialog() {
       }
     })();
     return () => { cancelled = true; };
-  }, [open]);
+  }, [open, activeBrand?.id, brandsLoading, navigate]);
 
   const compose = useCallback(async () => {
     const b = briefRef.current;
