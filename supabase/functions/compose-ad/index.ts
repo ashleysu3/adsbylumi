@@ -36,11 +36,13 @@ const SLOTS: Record<string,string> = {
   overlay: `eyebrow (<=5 words), headline (<=8 words, bold), sub (one sentence <=16 words), ${CTA_RULE}`,
   devicemockup: `eyebrow (<=5 words), headline (<=8 words), sub (one sentence <=16 words), ${CTA_RULE}`,
   testimonial: `eyebrow (<=4 words, e.g. "Real result"), quote (a short testimonial in the customer's own voice, <=22 words), author (first name + last initial), role (title or business, 2-4 words)`,
+  statgrid: `eyebrow (<=5 words, e.g. "Real planner results"), headline (<=8 words — the claim the numbers prove), stat1Num (the metric itself, very short: "85%", "3X", "2 hrs", "$42K"), stat1Label (<=6 words — what that number means), stat2Num, stat2Label, stat3Num, stat3Label, stat4Num, stat4Label (use 2–4 stats total; set unused Num/Label to ""), sub (optional, one sentence <=14 words, or ""), ${CTA_RULE}`,
+  checklist: `eyebrow (<=5 words, e.g. "Inside the masterclass"), headline (<=8 words — what the list delivers), item1, item2, item3, item4, item5, item6 (each a concrete deliverable or step, <=7 words; use 3–6 items, set the rest to ""), sub (optional <=14 words or ""), ${CTA_RULE}`,
 };
 
 function mapStyle(styleHint?: string, format?: string): string {
   if (format === "carousel") return "carousel";
-  const m: Record<string,string> = { "photo-forward":"cutout","card":"spotlight","framed":"framed","type-led":"split","testimonial":"testimonial","highlighter":"highlighter" };
+  const m: Record<string,string> = { "photo-forward":"cutout","card":"spotlight","framed":"framed","type-led":"split","testimonial":"testimonial","highlighter":"highlighter","stats":"statgrid","data":"statgrid","checklist":"checklist","list":"checklist","steps":"checklist" };
   return (styleHint && m[styleHint]) || "cutout";
 }
 

@@ -529,7 +529,7 @@ ADDITIONAL FIELDS FOR graphic AND carousel FORMATS (REQUIRED — this is the str
   - cta: the action (e.g. "Save your seat", "Watch free training", "Book a call")
   - audience: who this is for, in a phrase
   - proofPoint: optional result/testimonial/stat string, or null
-  - styleHint: one of "photo-forward" | "type-led" | "highlighter" | "testimonial" | "card" | "framed"
+  - styleHint: one of "photo-forward" | "type-led" | "highlighter" | "testimonial" | "card" | "framed" | "stats" | "checklist"
   - photoTreatment: one of "cutout" | "with-background" | "none"
   - slideCount: 1 for single_graphic; 3 to 6 for carousel
   - slidePlan: for carousel ONLY, an array of slideCount objects each with a "role" — choose from "hook" | "problem" | "framework" | "proof" | "cta" — in narrative order. Omit for single_graphic.
@@ -540,6 +540,7 @@ ADDITIONAL FIELDS FOR graphic AND carousel FORMATS (REQUIRED — this is the str
     IMPORTANT: If the concept is fundamentally a text/UI artifact (a fake notification, a headline graphic, a checklist, a screenshot of a chat/DM, a social post mockup, a quote card), do NOT use "generated". Use "user-photo" (if a real photo can carry the background) or "none" (pure type/template), and let the template add the words.
   - imagePrompt: when imageSource is "generated", describe the VISUAL ONLY — a single concrete scene or subject, a clear style (photographic / cinematic / 3D render / bold illustration), lighting, mood, and palette. NEVER ask for text, words, headlines, notifications, screenshots, or UI in the image — the template adds the words separately. Translate any text/screen idea into a physical visual metaphor. Keep the lower third clean for overlay. Otherwise null.
   - When imageSource is "generated", set styleHint to "type-led" and photoTreatment to "with-background" (the bold text sits over the full-bleed image).
+  - Use styleHint "stats" for results/proof concepts built around 2–4 numeric metrics, and "checklist" for "what's included" / "how it works" concepts built around 3–6 short list items. For BOTH, set imageSource to "none" and photoTreatment to "none" — the template is pure type + data.
 
 
 == AD COPY FORMATTING CONVENTIONS (STRICT) ===

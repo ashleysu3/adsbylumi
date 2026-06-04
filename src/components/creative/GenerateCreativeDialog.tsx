@@ -65,7 +65,7 @@ type CustomTemplate = {
 };
 
 const BUILT_IN_TEMPLATES = [
-  "cutout", "spotlight", "framed", "split", "highlighter", "overlay", "imageonly", "devicemockup", "testimonial", "carousel",
+  "cutout", "spotlight", "framed", "split", "highlighter", "overlay", "imageonly", "devicemockup", "testimonial", "statgrid", "checklist", "carousel",
 ] as const;
 
 const BUILT_IN_LABELS: Record<string, string> = {
@@ -78,6 +78,8 @@ const BUILT_IN_LABELS: Record<string, string> = {
   imageonly: "Image only",
   devicemockup: "Device mockup",
   testimonial: "Testimonial card",
+  statgrid: "Stat grid",
+  checklist: "Checklist",
   carousel: "Carousel",
 };
 
@@ -101,6 +103,12 @@ const SLOT_LABELS: Record<string, string> = {
   sig: "Signature",
   badgeTop: "Badge top",
   badgeBottom: "Badge bottom",
+  stat1Num: "Stat 1 number", stat1Label: "Stat 1 label",
+  stat2Num: "Stat 2 number", stat2Label: "Stat 2 label",
+  stat3Num: "Stat 3 number", stat3Label: "Stat 3 label",
+  stat4Num: "Stat 4 number", stat4Label: "Stat 4 label",
+  item1: "Item 1", item2: "Item 2", item3: "Item 3",
+  item4: "Item 4", item5: "Item 5", item6: "Item 6",
 };
 const MULTILINE_KEYS = new Set(["sub", "accent"]);
 
@@ -110,6 +118,8 @@ function mapStyleToTemplate(styleHint?: string, format?: string): string {
   const m: Record<string, string> = {
     "photo-forward": "cutout", card: "spotlight", framed: "framed",
     "type-led": "split", testimonial: "testimonial", highlighter: "highlighter",
+    stats: "statgrid", data: "statgrid",
+    checklist: "checklist", list: "checklist", steps: "checklist",
   };
   return (styleHint && m[styleHint]) || "cutout";
 }
