@@ -5,8 +5,52 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Paintbrush } from "lucide-react";
 import { toast } from "sonner";
+
+// Curated Google Fonts the renderer can actually load.
+// Keep in sync with renderer/ALLOWED_FONTS.
+const DISPLAY_FONTS = [
+  "Playfair Display",
+  "Bebas Neue",
+  "Oswald",
+  "Montserrat",
+  "Poppins",
+  "Raleway",
+  "Lora",
+  "DM Serif Display",
+  "Cormorant Garamond",
+  "Abril Fatface",
+  "Archivo Black",
+  "Anton",
+  "Fraunces",
+  "Space Grotesk",
+] as const;
+
+const BODY_FONTS = [
+  "Inter",
+  "Montserrat",
+  "Poppins",
+  "Raleway",
+  "Lora",
+  "Work Sans",
+  "DM Sans",
+  "Nunito",
+  "Source Sans 3",
+  "Karla",
+  "Manrope",
+  "Open Sans",
+] as const;
+
+const ALL_FONTS = Array.from(new Set([...DISPLAY_FONTS, ...BODY_FONTS]));
+
+function googleFontHref(families: readonly string[]) {
+  const params = families
+    .map((f) => `family=${encodeURIComponent(f).replace(/%20/g, "+")}:wght@400;700`)
+    .join("&");
+  return `https://fonts.googleapis.com/css2?${params}&display=swap`;
+}
 
 type BrandColors = {
   bg?: string;
@@ -51,6 +95,18 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
 
   useEffect(() => {
     void load();
+  }, []);
+
+  useEffect(() => {
+    const id = "brand-google-fonts";
+    let link = document.getElementById(id) as HTMLLinkElement | null;
+    if (!link) {
+      link = document.createElement("link");
+      link.id = id;
+      link.rel = "stylesheet";
+      document.head.appendChild(link);
+    }
+    link.href = googleFontHref(ALL_FONTS);
   }, []);
 
   const load = async () => {
@@ -115,6 +171,13 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
       const { data: userRes } = await supabase.auth.getUser();
       const userId = userRes.user?.id;
       if (!userId) throw new Error("You must be signed in");
+      // Derive a real, fetchable Google Fonts CSS URL for the chosen display
+      // font so the renderer can actually load it (replaces any old typed value).
+      const families = [fonts.displayFamily, fonts.bodyFamily].filter(Boolean) as string[];
+      const fontsToSave = {
+        ...fonts,
+        displayItalicUrl: families.length ? googleFontHref(families) : fonts.displayItalicUrl || "",
+      };
       const { error } = await supabase
         .from("brand_kits")
         .upsert(
@@ -122,7 +185,7 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
             user_id: userId,
             source_url: url.trim() || sourceUrl || null,
             colors,
-            fonts,
+            fonts: fontsToSave,
             status: "confirmed",
           },
           { onConflict: "user_id" }
@@ -200,34 +263,62 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
 
             <div className="space-y-4">
               <Label className="text-base">Fonts</Label>
+              <p className="text-xs text-muted-foreground">
+                Pick from fonts the ad generator can actually render. Previews show the real typeface.
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Display font family</Label>
-                  <Input
+                  <Label className="text-xs text-muted-foreground">Display font (headlines)</Label>
+                  <Select
                     value={fonts.displayFamily || ""}
-                    onChange={(e) => setFonts((prev) => ({ ...prev, displayFamily: e.target.value }))}
-                    placeholder="e.g. Playfair Display"
-                  />
+                    onValueChange={(v) => setFonts((prev) => ({ ...prev, displayFamily: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a display font" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {DISPLAY_FONTS.map((f) => (
+                        <SelectItem key={f} value={f}>
+                          <span style={{ fontFamily: `'${f}', serif` }}>{f}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fonts.displayFamily && (
+                    <div
+                      className="rounded border border-border bg-muted/30 px-3 py-2 text-2xl leading-tight"
+                      style={{ fontFamily: `'${fonts.displayFamily}', serif` }}
+                    >
+                      The quick brown fox
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Body font family</Label>
-                  <Input
+                  <Label className="text-xs text-muted-foreground">Body font</Label>
+                  <Select
                     value={fonts.bodyFamily || ""}
-                    onChange={(e) => setFonts((prev) => ({ ...prev, bodyFamily: e.target.value }))}
-                    placeholder="e.g. Inter"
-                  />
+                    onValueChange={(v) => setFonts((prev) => ({ ...prev, bodyFamily: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a body font" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {BODY_FONTS.map((f) => (
+                        <SelectItem key={f} value={f}>
+                          <span style={{ fontFamily: `'${f}', sans-serif` }}>{f}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fonts.bodyFamily && (
+                    <div
+                      className="rounded border border-border bg-muted/30 px-3 py-2 text-sm leading-snug"
+                      style={{ fontFamily: `'${fonts.bodyFamily}', sans-serif` }}
+                    >
+                      The quick brown fox jumps over the lazy dog.
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Display font URL (optional)</Label>
-                <Input
-                  value={fonts.displayItalicUrl || ""}
-                  onChange={(e) =>
-                    setFonts((prev) => ({ ...prev, displayItalicUrl: e.target.value }))
-                  }
-                  placeholder="https://.../font.woff2"
-                  className="font-mono text-sm"
-                />
               </div>
             </div>
 
