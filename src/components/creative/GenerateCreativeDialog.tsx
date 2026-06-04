@@ -303,7 +303,7 @@ export function GenerateCreativeDialog() {
           highlight: c.highlight || DEFAULT_COLORS.highlight,
           cream: c.cream || DEFAULT_COLORS.cream,
         });
-        setFontUrl(f.displayItalicUrl || "");
+        setFontUrl(f.displayUrl || f.displayItalicUrl || "");
         setDisplayFamily(f.displayFamily || "");
         setBodyFamily(f.bodyFamily || "");
         setLogoUrl((data as any)?.logo_url || "");
