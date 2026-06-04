@@ -180,7 +180,7 @@ export function GenerateCreativeDialog() {
       try {
         const { data } = await supabase
           .from("brand_kits")
-          .select("colors, fonts, voice")
+          .select("colors, fonts, voice, logo_url")
           .maybeSingle();
         if (cancelled) return;
         if (data?.colors) {
@@ -198,6 +198,7 @@ export function GenerateCreativeDialog() {
           const f = data.fonts as { displayItalicUrl?: string };
           setFontUrl(f.displayItalicUrl || "");
         }
+        setLogoUrl((data as any)?.logo_url || "");
         setBrandVoice((data as any)?.voice ?? null);
       } catch (err: any) {
         toast.error(err?.message || "Could not load brand kit");
