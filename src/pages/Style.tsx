@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { PageShimmer } from "@/components/GradientShimmer";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { BRollLibrary } from "@/components/BRollLibrary";
+import BrandImageLibrary from "@/components/BrandImageLibrary";
 import { BRollLibrariesManager } from "@/components/BRollLibrariesManager";
 import { OverlayStylePicker } from "@/components/OverlayStylePicker";
 import type { OverlayStyle } from "@/components/VideoTextPreview";
@@ -373,6 +374,9 @@ export default function Style() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Brand Image Library */}
+          <BrandImageLibrary websiteUrl={brand?.website_url || brand?.website} />
 
           {/* B-Roll Libraries */}
           <BRollLibrariesManager
