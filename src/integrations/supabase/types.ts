@@ -3261,6 +3261,7 @@ export type Database = {
       }
       user_assets: {
         Row: {
+          brand_id: string | null
           created_at: string
           cutout_url: string | null
           id: string
@@ -3269,6 +3270,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          brand_id?: string | null
           created_at?: string
           cutout_url?: string | null
           id?: string
@@ -3277,6 +3279,7 @@ export type Database = {
           user_id?: string
         }
         Update: {
+          brand_id?: string | null
           created_at?: string
           cutout_url?: string | null
           id?: string
@@ -3284,7 +3287,15 @@ export type Database = {
           original_url?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_assets_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_reviews: {
         Row: {
