@@ -402,7 +402,7 @@ export function GenerateCreativeDialog() {
     return () => { cancelled = true; };
   }, [open, activeBrand?.id, brandsLoading, navigate]);
 
-  const compose = useCallback(async () => {
+  const compose = useCallback(async (feedback?: CopyFeedback | null) => {
     const b = briefRef.current;
     if (!b) return;
     setComposing(true);
