@@ -1054,6 +1054,16 @@ export function GenerateCreativeDialog() {
         </div>
       </DialogContent>
     </Dialog>
+    <CopyRegenerateDialog
+      open={feedbackOpen}
+      onOpenChange={setFeedbackOpen}
+      isGenerating={composing}
+      onRegenerate={(fb) => { setFeedbackOpen(false); compose(fb); }}
+      onSkip={() => { setFeedbackOpen(false); compose(); }}
+      title="Refine this copy"
+      description="Tell Lumi what to change and we'll rewrite the options."
+    />
+    </>
   );
 }
 
