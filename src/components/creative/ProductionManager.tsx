@@ -1308,6 +1308,18 @@ export function ProductionManager({
                   <Badge variant={itemsWithAssets === productionItems.length ? "default" : "secondary"}>
                     {itemsWithAssets}/{productionItems.length} uploaded
                   </Badge>
+                  {hasLiveCampaign && approvedItems.length > 0 && (
+                    <Button
+                      variant="lumi"
+                      size="sm"
+                      onClick={() => setPushConfirmOpen(true)}
+                      disabled={pushingToAd}
+                      className="gap-1.5"
+                    >
+                      {pushingToAd ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5" />}
+                      Push {approvedItems.length} approved to ad
+                    </Button>
+                  )}
                 </div>
               </div>
               {/* B-Roll Library Picker */}
