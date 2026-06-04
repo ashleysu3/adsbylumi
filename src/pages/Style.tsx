@@ -377,7 +377,7 @@ export default function Style() {
           </Card>
 
           {/* Brand Colors & Fonts */}
-          <BrandColorsAndFonts websiteUrl={brand?.website_url || brand?.website} />
+          <BrandColorsAndFonts brandId={brand.id} websiteUrl={brand?.website_url || brand?.website} />
 
           {/* Brand Image Library */}
           <BrandImageLibrary websiteUrl={brand?.website_url || brand?.website} />
