@@ -19,7 +19,11 @@ const json = (payload: unknown) =>
 function assertAllowedPhotoUrl(url: string) {
   const parsed = new URL(url);
   const storageHost = SUPABASE_URL ? new URL(SUPABASE_URL).hostname : parsed.hostname;
-  const allowedPath = parsed.pathname.startsWith("/storage/v1/object/sign/ad-photos/");
+  const ALLOWED_BUCKETS = ["ad-photos", "brand-assets"];
+  const allowedPath = ALLOWED_BUCKETS.some((bucket) =>
+    parsed.pathname.startsWith(`/storage/v1/object/sign/${bucket}/`) ||
+    parsed.pathname.startsWith(`/storage/v1/object/public/${bucket}/`)
+  );
 
   if (parsed.protocol !== "https:" || parsed.hostname !== storageHost || !allowedPath) {
     throw new Error("Uploaded image URL is not from the ad photo library.");
