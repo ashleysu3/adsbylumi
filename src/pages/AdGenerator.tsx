@@ -215,6 +215,7 @@ export default function AdGenerator() {
           brandKit: {
             colors,
             fonts: {
+              displayUrl: fontUrl || undefined,
               displayItalicUrl: fontUrl || undefined,
             },
           },
