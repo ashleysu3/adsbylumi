@@ -16,15 +16,17 @@ WHAT MAKES IT CONVERT (non-negotiable):
 
 - SPECIFIC over vague, always. Name the real pain, the real number, the real outcome ("your first 5 clients in 60 days", not "grow your business"). Concrete beats abstract every time.
 
+- USE THE CONTEXT. You will be given the offer details, the offer psychology (the exact pains, desires, hesitations, "moment they realize", before/after, what finally convinces them, why they need this) and the audience psychology. Every option MUST pull at least one SPECIFIC line, moment, pain, objection, or phrase from this context. If the context names a moment ("I rewrote my sales page for the 4th time and still got crickets"), echo that exact moment. If it names a hesitation ("I've tried courses like this before"), answer it. Do NOT write generic copy that could belong to any brand — write copy that ONLY makes sense for THIS offer to THIS audience.
+
 - SUB earns the click with ONE concrete benefit or proof. Never hedge ("maybe it's time...", "consider...", "it might be...").
 
 - CTA is specific and active: "Save my seat", "Get the free class", "Send me the guide", "Watch the training".
 
-- CTA MATCHES THE OFFER: read the brief's "offer" and "cta" fields and make the CTA the exact next action for THAT offer. A free live class -> "Save my seat" or "Join the class"; a guide/PDF/checklist -> "Get the guide" or "Send it to me"; a call -> "Book a call"; a free trial -> "Start free". If the brief already has a strong "cta", use it. Never default to vague "See how", "Watch now", or "Learn more" unless it genuinely matches the offer.
+- CTA MATCHES THE OFFER: read the brief's "offer" and "cta" fields and the offer context, and make the CTA the exact next action for THAT offer. A free live class -> "Save my seat" or "Join the class"; a guide/PDF/checklist -> "Get the guide" or "Send it to me"; a call -> "Book a call"; a free trial -> "Start free". If the brief already has a strong "cta", use it. Never default to vague "See how", "Watch now", or "Learn more" unless it genuinely matches the offer.
 
 - SUB EARNS ITS SPACE: when the option includes a "sub" field, make it the most specific, benefit-loaded line in the whole ad — a concrete outcome, number, timeframe, or proof ("books your first 5 clients in 60 days", "trusted by 2,000+ planners", "in under 10 minutes a day"). Never filler, and never just restate the headline.
 
-- Mirror the brand's voice samples. Sound like a real person talking to one person.
+- Mirror the brand's voice samples and messaging guidelines. Use the brand's signature phrases. Sound like a real person talking to one person.
 
 BANNED — using any of these (or anything like them) is an instant fail: "learn more", "find out more", "click here", "sign up", "get started", "simplify your approach", "take it to the next level", "maybe it's time", "unlock", "discover the secrets", "proven strategies", "elevate", "game-changer", "in today's world", "are you ready to", "look no further", "the ultimate", "supercharge", "dive in", "kickstart", "level up". No exclamation-mark spam — use the brand's punctuation only.
 
@@ -61,15 +63,84 @@ function instruction(template: string, count: number): string {
   return `Return ${count} DISTINCT option(s) (different angles). For template "${template}", each option is a JSON object with EXACTLY these keys: ${SLOTS[template] || SLOTS.cutout}. Use "" for any optional field you skip. Full headline reads as one natural line, <=8 words.`;
 }
 
+function truncate(v: unknown, max = 1400): string {
+  if (v == null) return "";
+  const s = typeof v === "string" ? v : JSON.stringify(v);
+  return s.length > max ? s.slice(0, max) + "…" : s;
+}
+
+function buildContextBlock(payload: any): string {
+  const { offerContext, offerPsychology, audiencePsychology, brandContext } = payload || {};
+  const parts: string[] = [];
+  if (offerContext && (offerContext.name || offerContext.description || offerContext.price || offerContext.url)) {
+    parts.push(
+      `=== OFFER ===\n` +
+      `Name: ${offerContext.name || "(unnamed)"}\n` +
+      (offerContext.type ? `Type: ${offerContext.type}\n` : "") +
+      (offerContext.price ? `Price: ${offerContext.price}\n` : "") +
+      (offerContext.url ? `URL: ${offerContext.url}\n` : "") +
+      (offerContext.description ? `Description: ${truncate(offerContext.description, 600)}\n` : "") +
+      (offerContext.messagingGuidelines ? `Messaging guidelines: ${truncate(offerContext.messagingGuidelines, 600)}\n` : "")
+    );
+  }
+  if (offerPsychology) {
+    const op: any = offerPsychology;
+    const block: string[] = [`=== OFFER PSYCHOLOGY (use specific lines from here verbatim or paraphrased) ===`];
+    if (op.moment_they_realize) block.push(`Moment they realize they need this: "${op.moment_they_realize}"`);
+    if (op.alternative_they_tried) block.push(`What they already tried (and why it failed): "${op.alternative_they_tried}"`);
+    if (op.emotional_before_after) block.push(`Before: "${op.emotional_before_after.before || ""}"\nAfter: "${op.emotional_before_after.after || ""}"`);
+    if (op.what_finally_convinces) block.push(`What finally convinces them: "${op.what_finally_convinces}"`);
+    if (op.why_they_need_this) block.push(`Why they need this: "${op.why_they_need_this}"`);
+    if (Array.isArray(op.specific_hesitations) && op.specific_hesitations.length) {
+      block.push(`Specific hesitations to overcome:\n${op.specific_hesitations.slice(0,5).map((h: string, i: number) => `${i+1}. "${h}"`).join("\n")}`);
+    }
+    // Fallback: dump remaining shape if none of the known fields matched
+    if (block.length === 1) block.push(truncate(op, 1000));
+    parts.push(block.join("\n"));
+  }
+  if (audiencePsychology) {
+    const ap: any = audiencePsychology;
+    const block: string[] = [`=== AUDIENCE PSYCHOLOGY ===`];
+    const arrLine = (label: string, arr: any) => {
+      if (Array.isArray(arr) && arr.length) block.push(`${label}: ${arr.slice(0,5).map((x: any) => `"${typeof x === "string" ? x : JSON.stringify(x)}"`).join(" | ")}`);
+    };
+    arrLine("Pain points", ap.painPoints || ap.pain_points);
+    arrLine("Desires", ap.desires);
+    arrLine("Objections", ap.objections);
+    arrLine("Motivations", ap.motivations);
+    if (ap.identity) block.push(`Identity: "${truncate(ap.identity, 300)}"`);
+    if (block.length === 1) block.push(truncate(ap, 1000));
+    parts.push(block.join("\n"));
+  }
+  if (brandContext && (brandContext.name || brandContext.idealClient || brandContext.voiceNotes)) {
+    parts.push(
+      `=== BRAND ===\n` +
+      (brandContext.name ? `Brand: ${brandContext.name}\n` : "") +
+      (brandContext.idealClient ? `Ideal client: ${truncate(brandContext.idealClient, 400)}\n` : "") +
+      (brandContext.voiceNotes ? `Voice notes: ${truncate(brandContext.voiceNotes, 400)}\n` : "")
+    );
+  }
+  return parts.join("\n\n");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
-    const { brief = {}, brandVoice = {}, count = 3, feedback = null } = await req.json();
+    const body = await req.json();
+    const { brief = {}, brandVoice = {}, count = 3, feedback = null } = body;
     const template = brief.template || mapStyle(brief.styleHint, brief.format);
     const feedbackBlock = feedback && (feedback.quickSelections?.length || feedback.additionalNotes)
       ? `\n\nUSER FEEDBACK ON PREVIOUS COPY — apply these changes in this rewrite:\n- Issues: ${(feedback.quickSelections || []).join(", ") || "(none)"}\n- Notes: ${feedback.additionalNotes || "(none)"}\n`
       : "";
-    const user = `Creative brief:\n${JSON.stringify(brief)}\n\nBrand voice samples:\n${JSON.stringify(brandVoice)}${feedbackBlock}\n\n${instruction(template, count)}\n\nOutput ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
+    const contextBlock = buildContextBlock(body);
+    const user =
+      `${contextBlock ? contextBlock + "\n\n" : ""}` +
+      `=== CREATIVE BRIEF ===\n${JSON.stringify(brief)}\n\n` +
+      `=== BRAND VOICE SAMPLES (mirror the tone, rhythm, punctuation) ===\n${JSON.stringify(brandVoice)}` +
+      `${feedbackBlock}\n\n` +
+      `${instruction(template, count)}\n\n` +
+      `Hard rule: every option must reference at least one SPECIFIC element from the OFFER PSYCHOLOGY or AUDIENCE PSYCHOLOGY above (a named moment, a real pain, a real hesitation, a concrete before/after). Generic copy that could belong to any brand is an instant fail.\n\n` +
+      `Output ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST", headers: { authorization: `Bearer ${KEY}`, "content-type": "application/json" },
       body: JSON.stringify({ model: "google/gemini-2.5-flash", response_format: { type: "json_object" },
