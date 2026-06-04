@@ -26,14 +26,15 @@ STRONG -> headline: "You don't need another app. You need clients." | sub: "The 
 SENTENCE CASE headlines (first word + proper nouns only). COMPLIANCE: never promise guaranteed income or results; imply, never guarantee.`;
 
 // exact slots per template (keys + length guidance)
+const CTA_RULE = `cta (<=4 words, MUST match the brief's offer/format — e.g. free class → "Save my seat", download → "Send me the guide", waitlist → "Join the waitlist"; NEVER "Learn more", "Sign up", "Get started")`;
 const SLOTS: Record<string,string> = {
-  cutout: `eyebrow (<=5 words), headlinePre (1-3 words), headlineHL (1-3 words, the highlighted phrase), headlinePost (2-6 words), accent (optional italic kicker <=6 words or ""), sub (one sentence <=15 words), cta (<=4 words), badgeTop (<=2 words), badgeBottom (<=3 words)`,
-  spotlight: `eyebrow (<=6 words, a details line), headline (<=8 words), sub (one sentence <=18 words), cta (<=4 words)`,
-  framed: `headlinePre (1-4 words, lowercase lead-in), headlineHL (2-5 words, bold phrase in CAPS), headlinePost (2-6 words, lowercase tail), cta (<=5 words), sig (brand or person name)`,
-  split: `eyebrow (<=3 words), headline (<=9 words, shown in CAPS), cta (<=3 words)`,
+  cutout: `eyebrow (<=5 words), headlinePre (1-3 words), headlineHL (1-3 words, the highlighted phrase), headlinePost (2-6 words), accent (optional italic kicker <=6 words or ""), sub (one sentence <=15 words), ${CTA_RULE}, badgeTop (<=2 words), badgeBottom (<=3 words)`,
+  spotlight: `eyebrow (<=6 words, a details line), headline (<=8 words), sub (one sentence <=18 words), ${CTA_RULE}`,
+  framed: `headlinePre (1-4 words, lowercase lead-in), headlineHL (2-5 words, bold phrase in CAPS), headlinePost (2-6 words, lowercase tail), ${CTA_RULE}, sig (brand or person name)`,
+  split: `eyebrow (<=3 words), headline (<=9 words, shown in CAPS), ${CTA_RULE}`,
   highlighter: `headlinePre (1-3 words), headlineAccent (1-3 words, accent color), headlineHL (1-3 words, highlighted phrase), sub (one sentence <=14 words), badgeTop (<=2 words e.g. FREE), badgeBottom (<=2 words e.g. Download)`,
-  overlay: `eyebrow (<=5 words), headline (<=8 words, bold), sub (one sentence <=16 words), cta (<=4 words)`,
-  devicemockup: `eyebrow (<=5 words), headline (<=8 words), sub (one sentence <=16 words), cta (<=4 words)`,
+  overlay: `eyebrow (<=5 words), headline (<=8 words, bold), sub (one sentence <=16 words), ${CTA_RULE}`,
+  devicemockup: `eyebrow (<=5 words), headline (<=8 words), sub (one sentence <=16 words), ${CTA_RULE}`,
   testimonial: `eyebrow (<=4 words, e.g. "Real result"), quote (a short testimonial in the customer's own voice, <=22 words), author (first name + last initial), role (title or business, 2-4 words)`,
 };
 
