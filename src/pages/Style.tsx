@@ -13,6 +13,7 @@ import { PageShimmer } from "@/components/GradientShimmer";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { BRollLibrary } from "@/components/BRollLibrary";
 import BrandImageLibrary from "@/components/BrandImageLibrary";
+import BrandColorsAndFonts from "@/components/BrandColorsAndFonts";
 import { BRollLibrariesManager } from "@/components/BRollLibrariesManager";
 import { OverlayStylePicker } from "@/components/OverlayStylePicker";
 import type { OverlayStyle } from "@/components/VideoTextPreview";
