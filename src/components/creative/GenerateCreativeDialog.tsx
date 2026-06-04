@@ -219,24 +219,31 @@ export function GenerateCreativeDialog() {
       try {
         const { data } = await supabase
           .from("brand_kits")
-          .select("colors, fonts, voice, logo_url")
+          .select("colors, fonts, voice, logo_url, status")
           .maybeSingle();
         if (cancelled) return;
-        if (data?.colors) {
-          const c = data.colors as Record<string, string>;
-          setColors({
-            bg: c.bg || DEFAULT_COLORS.bg,
-            ink: c.ink || DEFAULT_COLORS.ink,
-            accent: c.accent || DEFAULT_COLORS.accent,
-            pop: c.pop || DEFAULT_COLORS.pop,
-            highlight: c.highlight || DEFAULT_COLORS.highlight,
-            cream: c.cream || DEFAULT_COLORS.cream,
-          });
+
+        const c = (data?.colors || {}) as Record<string, string>;
+        const f = (data?.fonts || {}) as { displayItalicUrl?: string; displayFamily?: string; bodyFamily?: string };
+        const hasAnyColor = !!(c.bg || c.ink || c.accent || c.pop || c.highlight || c.cream);
+        const hasAnyFont = !!(f.displayFamily || f.bodyFamily || f.displayItalicUrl);
+
+        if (!data || !hasAnyColor || !hasAnyFont) {
+          toast.error("Pick your brand colors & fonts first — these go on every ad we generate.");
+          setOpen(false);
+          navigate("/style");
+          return;
         }
-        if (data?.fonts) {
-          const f = data.fonts as { displayItalicUrl?: string };
-          setFontUrl(f.displayItalicUrl || "");
-        }
+
+        setColors({
+          bg: c.bg || DEFAULT_COLORS.bg,
+          ink: c.ink || DEFAULT_COLORS.ink,
+          accent: c.accent || DEFAULT_COLORS.accent,
+          pop: c.pop || DEFAULT_COLORS.pop,
+          highlight: c.highlight || DEFAULT_COLORS.highlight,
+          cream: c.cream || DEFAULT_COLORS.cream,
+        });
+        setFontUrl(f.displayItalicUrl || "");
         setLogoUrl((data as any)?.logo_url || "");
         setBrandVoice((data as any)?.voice ?? null);
       } catch (err: any) {
