@@ -147,12 +147,15 @@ export function GenerateCreativeDialog() {
   }, []);
 
   const generateConceptImage = useCallback(async () => {
-    const b = briefRef.current;
-    if (!b || b.imageSource !== "generated" || !b.imagePrompt) return;
+    const prompt = (imagePrompt || "").trim();
+    if (!prompt) {
+      toast.error("Write an image prompt first");
+      return;
+    }
     setGeneratingConcept(true);
     try {
       const { data, error } = await supabase.functions.invoke("generate-concept-image", {
-        body: { prompt: b.imagePrompt },
+        body: { prompt },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -163,10 +166,10 @@ export function GenerateCreativeDialog() {
     } finally {
       setGeneratingConcept(false);
     }
-  }, []);
+  }, [imagePrompt]);
 
   useEffect(() => {
-    if (open && brief?.imageSource === "generated" && !generatedPhoto && !generatingConcept) {
+    if (open && creativeSource === "generated" && imagePrompt && !generatedPhoto && !generatingConcept) {
       generateConceptImage();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
