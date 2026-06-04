@@ -612,6 +612,7 @@ export function GenerateCreativeDialog() {
       const brandKit = {
         colors,
         fonts: {
+          displayUrl: fontUrl || undefined,
           displayItalicUrl: fontUrl || undefined,
           displayFamily: displayFamily || undefined,
           bodyFamily: bodyFamily || undefined,
