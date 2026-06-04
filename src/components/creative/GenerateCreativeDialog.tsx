@@ -65,7 +65,7 @@ type CustomTemplate = {
 };
 
 const BUILT_IN_TEMPLATES = [
-  "cutout", "spotlight", "framed", "split", "highlighter", "overlay", "imageonly", "devicemockup", "testimonial", "statgrid", "checklist", "carousel",
+  "cutout", "spotlight", "framed", "split", "highlighter", "overlay", "imageonly", "devicemockup", "testimonial", "statgrid", "checklist", "chatproof", "event", "offer", "bigtype", "collage", "carousel",
 ] as const;
 
 const BUILT_IN_LABELS: Record<string, string> = {
@@ -80,6 +80,11 @@ const BUILT_IN_LABELS: Record<string, string> = {
   testimonial: "Testimonial card",
   statgrid: "Stat grid",
   checklist: "Checklist",
+  chatproof: "Chat proof",
+  event: "Event / class",
+  offer: "Sale / offer",
+  bigtype: "Big type",
+  collage: "Photo collage",
   carousel: "Carousel",
 };
 
@@ -109,8 +114,11 @@ const SLOT_LABELS: Record<string, string> = {
   stat4Num: "Stat 4 number", stat4Label: "Stat 4 label",
   item1: "Item 1", item2: "Item 2", item3: "Item 3",
   item4: "Item 4", item5: "Item 5", item6: "Item 6",
+  msg1: "Message 1", msg2: "Message 2", msg3: "Message 3", msg4: "Message 4",
+  meta: "Date / time", host: "Host", offerBig: "Big offer", expiry: "Deadline",
+  tickerTop: "Ticker (top)", tickerBottom: "Ticker (bottom)",
 };
-const MULTILINE_KEYS = new Set(["sub", "accent"]);
+const MULTILINE_KEYS = new Set(["sub", "accent", "msg1", "msg2", "msg3", "msg4", "meta"]);
 
 // Local fallback: mirror the compose-ad mapping so the UI can guess a template
 function mapStyleToTemplate(styleHint?: string, format?: string): string {
@@ -120,6 +128,11 @@ function mapStyleToTemplate(styleHint?: string, format?: string): string {
     "type-led": "split", testimonial: "testimonial", highlighter: "highlighter",
     stats: "statgrid", data: "statgrid",
     checklist: "checklist", list: "checklist", steps: "checklist",
+    chat: "chatproof", proof: "chatproof", testimonialchat: "chatproof",
+    event: "event", webinar: "event",
+    offer: "offer", sale: "offer", discount: "offer",
+    bigtype: "bigtype", "type-hero": "bigtype",
+    collage: "collage", grid: "collage",
   };
   return (styleHint && m[styleHint]) || "cutout";
 }
@@ -633,6 +646,11 @@ export function GenerateCreativeDialog() {
         ? { url: brandLogoAsset.url, corner: logoCorner }
         : undefined;
       const photo = { url: selectedPhoto.url, removeBackground };
+      // Collage uses 2–4 photos. Take the most recently uploaded/brand photos.
+      const collagePool = [...photos, ...brandPhotoAssets].filter((p) => !!p.url);
+      const collagePhotos = template === "collage"
+        ? Array.from(new Map(collagePool.map((p) => [p.url, p.url])).values()).slice(0, 4)
+        : undefined;
 
       const templateField = activeCustom
         ? {
@@ -668,6 +686,7 @@ export function GenerateCreativeDialog() {
           brandKit,
           copy: editedSingle,
           photo,
+          ...(collagePhotos && collagePhotos.length >= 2 ? { photos: collagePhotos } : {}),
           logoOverlay,
           placements: activeCustom?.placements ?? ["feed", "story"],
         });
