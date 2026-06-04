@@ -9,7 +9,15 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 type Suggested = {
-  colors?: { background?: string; ink?: string; accent?: string; pops?: string[] };
+  colors?: {
+    bg?: string;
+    ink?: string;
+    accent?: string;
+    pop?: string;
+    highlight?: string;
+    cream?: string;
+    candidates?: string[];
+  };
   fonts?: { display?: { family?: string; url?: string; custom?: boolean }; body?: { family?: string } };
   imagery?: { ogImage?: string; photos?: string[] };
   voice?: { headlines?: string[]; description?: string };
@@ -66,12 +74,12 @@ export default function BrandSetup() {
       const payload = res as ExtractResponse;
       setData(payload);
       const s = payload?.suggested || {};
-      setBg(s.colors?.background || "");
+      setBg(s.colors?.bg || "");
       setInk(s.colors?.ink || "");
       setAccent(s.colors?.accent || "");
-      setPop(s.colors?.pops?.[0] || "");
-      setHighlight(s.colors?.pops?.[1] || "");
-      setCream(s.colors?.background || "");
+      setPop(s.colors?.pop || "");
+      setHighlight(s.colors?.highlight || "");
+      setCream(s.colors?.cream || "");
       setDisplayUrl(s.fonts?.display?.url || "");
       const detectedLogo = (logoRes?.data as { logoUrl?: string | null } | null)?.logoUrl || "";
       setLogoUrl(detectedLogo);
@@ -142,9 +150,7 @@ export default function BrandSetup() {
     }
   };
 
-  const candidates = Array.from(
-    new Set([...(data?.raw?.backgrounds || []), ...(data?.raw?.textColors || [])])
-  );
+  const candidates = data?.suggested?.colors?.candidates || [];
 
   const ColorField = ({
     label,
