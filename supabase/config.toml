@@ -101,6 +101,8 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = false
   [functions.handle-cancellation]
     verify_jwt = false
+  [functions.harvest-brand-assets]
+    verify_jwt = true
   [functions.lumi-chat]
     verify_jwt = true
   [functions.meta-oauth-callback]
