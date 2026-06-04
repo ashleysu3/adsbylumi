@@ -731,14 +731,14 @@ export function GenerateCreativeDialog() {
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Loader2 className="h-3 w-3 animate-spin" /> Loading your photos…
                   </div>
-                ) : photos.length === 0 ? (
+                ) : pickerImages.length === 0 ? (
                   <div className="text-xs text-muted-foreground rounded border p-3 flex items-center gap-2">
                     <ImageOff className="h-4 w-4" />
-                    Upload photos in My Photos first.
+                    Upload photos in My Photos, or pull images from your website in Style.
                   </div>
                 ) : (
                   <div className="grid grid-cols-5 gap-2">
-                    {photos.slice(0, 10).map((p) => (
+                    {pickerImages.slice(0, 20).map((p) => (
                       <button
                         key={p.id}
                         type="button"
@@ -746,8 +746,14 @@ export function GenerateCreativeDialog() {
                         className={`relative aspect-square rounded border-2 overflow-hidden transition ${
                           selectedPhotoId === p.id ? "border-primary" : "border-border hover:border-muted-foreground"
                         }`}
+                        title={p.source === "brand" ? `Brand · ${p.role}` : "Upload"}
                       >
                         <img src={p.url} alt="" className="w-full h-full object-cover" />
+                        {p.source === "brand" && (
+                          <span className="absolute bottom-0 left-0 right-0 text-[9px] uppercase text-white bg-black/55 py-0.5 text-center leading-none">
+                            {p.role}
+                          </span>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -761,6 +767,31 @@ export function GenerateCreativeDialog() {
                     />
                     Remove background
                   </label>
+                )}
+
+                {brandLogoAsset && (
+                  <div className="rounded border bg-muted/30 p-2 space-y-2">
+                    <label className="flex items-center gap-2 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={placeLogo}
+                        onChange={(e) => setPlaceLogo(e.target.checked)}
+                      />
+                      <img src={brandLogoAsset.url} alt="" className="h-5 w-5 object-contain rounded bg-background" />
+                      Place logo small in a corner
+                    </label>
+                    {placeLogo && (
+                      <Select value={logoCorner} onValueChange={(v) => setLogoCorner(v as LogoCorner)}>
+                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="tl">Top left</SelectItem>
+                          <SelectItem value="tr">Top right</SelectItem>
+                          <SelectItem value="bl">Bottom left</SelectItem>
+                          <SelectItem value="br">Bottom right</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
                 )}
               </div>
 
