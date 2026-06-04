@@ -178,6 +178,7 @@ export default function BrandColorsAndFonts({ brandId, websiteUrl }: Props) {
   const handleSave = async () => {
     setSaving(true);
     try {
+      if (!brandId) throw new Error("Choose a brand before saving colors and fonts");
       const { data: userRes } = await supabase.auth.getUser();
       const userId = userRes.user?.id;
       if (!userId) throw new Error("You must be signed in");
