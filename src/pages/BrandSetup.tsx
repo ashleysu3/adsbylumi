@@ -48,6 +48,8 @@ export default function BrandSetup() {
   const [highlight, setHighlight] = useState("");
   const [cream, setCream] = useState("");
   const [displayUrl, setDisplayUrl] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [logoUploading, setLogoUploading] = useState(false);
 
   const handlePull = async () => {
     if (!url.trim()) {
@@ -56,9 +58,10 @@ export default function BrandSetup() {
     }
     setLoading(true);
     try {
-      const { data: res, error } = await supabase.functions.invoke("extract-brand", {
-        body: { url: url.trim() },
-      });
+      const [{ data: res, error }, logoRes] = await Promise.all([
+        supabase.functions.invoke("extract-brand", { body: { url: url.trim() } }),
+        supabase.functions.invoke("extract-brand-logo", { body: { url: url.trim() } }),
+      ]);
       if (error) throw error;
       const payload = res as ExtractResponse;
       setData(payload);
@@ -70,10 +73,41 @@ export default function BrandSetup() {
       setHighlight(s.colors?.pops?.[1] || "");
       setCream(s.colors?.background || "");
       setDisplayUrl(s.fonts?.display?.url || "");
+      const detectedLogo = (logoRes?.data as { logoUrl?: string | null } | null)?.logoUrl || "";
+      setLogoUrl(detectedLogo);
     } catch (e: any) {
       toast.error(e?.message || "Failed to extract brand");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Logo must be under 5MB");
+      return;
+    }
+    setLogoUploading(true);
+    try {
+      const { data: userRes } = await supabase.auth.getUser();
+      const userId = userRes.user?.id;
+      if (!userId) throw new Error("You must be signed in");
+      const ext = (file.name.split(".").pop() || "png").toLowerCase();
+      const path = `brand-logos/${userId}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("broll-library")
+        .upload(path, file, { upsert: true, contentType: file.type || `image/${ext}` });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("broll-library").getPublicUrl(path);
+      setLogoUrl(pub.publicUrl);
+      toast.success("Logo uploaded");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to upload logo");
+    } finally {
+      setLogoUploading(false);
+      e.target.value = "";
     }
   };
 
