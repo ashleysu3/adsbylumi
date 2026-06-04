@@ -447,8 +447,70 @@ export function GenerateCreativeDialog() {
       }
 
       const briefWithTemplate = { ...b, template };
+
+      // Pull rich context so copy actually sounds like THIS brand for THIS offer.
+      let offerContext: any = null;
+      let offerPsychology: any = null;
+      let audiencePsychology: any = null;
+      let brandContext: any = null;
+      try {
+        if (activeBrand?.id) {
+          const [{ data: brandRow }, { data: offerRows }] = await Promise.all([
+            supabase
+              .from("brands")
+              .select("name, ideal_client_profile, audience_psychology, brand_voice_notes")
+              .eq("id", activeBrand.id)
+              .maybeSingle(),
+            supabase
+              .from("offers")
+              .select("id, name, offer_type, price, url, description, messaging_guidelines, offer_audience_psychology, product_psychology, created_at")
+              .eq("brand_id", activeBrand.id)
+              .order("created_at", { ascending: false }),
+          ]);
+          if (brandRow) {
+            brandContext = {
+              name: (brandRow as any).name,
+              idealClient: (brandRow as any).ideal_client_profile,
+              voiceNotes: (brandRow as any).brand_voice_notes,
+            };
+            audiencePsychology = (brandRow as any).audience_psychology || null;
+          }
+          const offers = (offerRows || []) as any[];
+          if (offers.length) {
+            const briefOffer = String(b.offer || "").toLowerCase().trim();
+            const match = briefOffer
+              ? offers.find((o) =>
+                  briefOffer.includes(String(o.name || "").toLowerCase()) ||
+                  String(o.name || "").toLowerCase().includes(briefOffer),
+                )
+              : null;
+            const chosen = match || offers[0];
+            offerContext = {
+              name: chosen.name,
+              type: chosen.offer_type,
+              price: chosen.price,
+              url: chosen.url,
+              description: chosen.description,
+              messagingGuidelines: chosen.messaging_guidelines,
+            };
+            offerPsychology = chosen.offer_audience_psychology || chosen.product_psychology || null;
+          }
+        }
+      } catch (ctxErr) {
+        console.warn("compose-ad context fetch failed:", ctxErr);
+      }
+
       const { data, error } = await supabase.functions.invoke("compose-ad", {
-        body: { brief: briefWithTemplate, brandVoice: voicePayload, count: 3, feedback: feedback || null },
+        body: {
+          brief: briefWithTemplate,
+          brandVoice: voicePayload,
+          count: 3,
+          feedback: feedback || null,
+          offerContext,
+          offerPsychology,
+          audiencePsychology,
+          brandContext,
+        },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
