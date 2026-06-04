@@ -171,6 +171,13 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
       const { data: userRes } = await supabase.auth.getUser();
       const userId = userRes.user?.id;
       if (!userId) throw new Error("You must be signed in");
+      // Derive a real, fetchable Google Fonts CSS URL for the chosen display
+      // font so the renderer can actually load it (replaces any old typed value).
+      const families = [fonts.displayFamily, fonts.bodyFamily].filter(Boolean) as string[];
+      const fontsToSave = {
+        ...fonts,
+        displayItalicUrl: families.length ? googleFontHref(families) : fonts.displayItalicUrl || "",
+      };
       const { error } = await supabase
         .from("brand_kits")
         .upsert(
@@ -178,7 +185,7 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
             user_id: userId,
             source_url: url.trim() || sourceUrl || null,
             colors,
-            fonts,
+            fonts: fontsToSave,
             status: "confirmed",
           },
           { onConflict: "user_id" }
