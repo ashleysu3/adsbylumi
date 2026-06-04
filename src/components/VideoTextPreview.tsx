@@ -30,7 +30,7 @@ export interface OverlayXY {
 export interface TextOverlay {
   text: string;
   timing?: string;
-  type?: "hook" | "insight" | "transition" | "cta";
+  type?: "hook" | "pain" | "insight" | "transition" | "proof" | "cta";
   /** Optional drag-positioned xy. Falls back to style.position when absent. */
   xy?: OverlayXY;
   /** Max text-box width as a fraction (0-1) of the video width. Default 0.92. */

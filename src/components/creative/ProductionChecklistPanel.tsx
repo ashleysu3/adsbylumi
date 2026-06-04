@@ -32,7 +32,7 @@ const hookTechniqueExplanations: Record<string, string> = {
 export interface TextOverlay {
   text: string;
   timing: string;
-  type?: "hook" | "transition" | "insight" | "cta";
+  type?: "hook" | "pain" | "transition" | "insight" | "proof" | "cta";
   /** Optional drag-positioned xy (0–1 normalized of video size, center of text). */
   xy?: { x: number; y: number };
   /** Max text-box width as a fraction (0-1) of the video width. */
@@ -82,6 +82,10 @@ export interface ProductionItem {
   script_lines?: string[];
   text_overlays?: TextOverlay[];
   caption_reminder?: boolean;
+  // B-roll specific
+  broll_vibe?: string;
+  broll_shots?: string[]; // legacy — older cells may still carry these
+  mood?: string;
   // Psychology fields
   psychology_trigger?: string;
   why_this_works?: string;
@@ -669,12 +673,46 @@ export function ProductionChecklistPanel({
                                   </div>
                                 )}
 
-                                {/* Text Overlays */}
+                                {/* B-Roll Vibe + Library Link (broll cells only) */}
+                                {item.format === "broll" && (item.broll_vibe || (item.broll_shots && item.broll_shots.length > 0)) && (
+                                  <div className="p-3 rounded-lg bg-muted/40 border border-border/60 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <Film className="h-4 w-4 text-muted-foreground" />
+                                      <span className="text-sm font-semibold">B-Roll Vibe</span>
+                                    </div>
+                                    {item.broll_vibe && (
+                                      <p className="text-sm">{item.broll_vibe}</p>
+                                    )}
+                                    <a
+                                      href="/creative-toolkit"
+                                      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                                    >
+                                      Grab footage from your B-Roll Library →
+                                    </a>
+                                    {item.broll_shots && item.broll_shots.length > 0 && (
+                                      <details className="text-xs text-muted-foreground">
+                                        <summary className="cursor-pointer">Older shot ideas</summary>
+                                        <ul className="list-disc pl-5 mt-1 space-y-0.5">
+                                          {item.broll_shots.map((s, i) => (<li key={i}>{s}</li>))}
+                                        </ul>
+                                      </details>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Text Overlays — the ad itself */}
                                 {item.text_overlays && item.text_overlays.length > 0 && (
                                   <div className="space-y-2">
-                                    <h4 className="text-sm font-semibold flex items-center gap-2">
-                                      📝 Text Overlays
-                                    </h4>
+                                    <div>
+                                      <h4 className="text-base font-semibold flex items-center gap-2">
+                                        📝 Text Overlays{item.format === "broll" ? " — the ad" : ""}
+                                      </h4>
+                                      {item.format === "broll" && (
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                          Powered by your brand voice — this is what sells the ad.
+                                        </p>
+                                      )}
+                                    </div>
                                     <div className="space-y-2">
                                       {item.text_overlays.map((overlay, idx) => (
                                         <div
@@ -682,9 +720,11 @@ export function ProductionChecklistPanel({
                                           className={cn(
                                             "p-2 rounded border text-sm",
                                             overlay.type === "hook" && "bg-blue-500/5 border-blue-500/20",
+                                            overlay.type === "pain" && "bg-rose-500/5 border-rose-500/20",
                                             overlay.type === "transition" && "bg-amber-500/5 border-amber-500/20",
-                                            overlay.type === "cta" && "bg-green-500/5 border-green-500/20",
                                             overlay.type === "insight" && "bg-purple-500/5 border-purple-500/20",
+                                            overlay.type === "proof" && "bg-teal-500/5 border-teal-500/20",
+                                            overlay.type === "cta" && "bg-green-500/5 border-green-500/20",
                                             !overlay.type && "bg-muted/50"
                                           )}
                                         >
