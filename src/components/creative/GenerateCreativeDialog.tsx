@@ -616,6 +616,50 @@ export function GenerateCreativeDialog() {
 
 
 
+  // Style options for Screen 1.
+  type StyleCard = {
+    key: string;          // unique selection key
+    label: string;
+    thumb?: string;
+    isCustom: boolean;
+    customId?: string;
+    builtIn?: string;
+  };
+  const styleCards: StyleCard[] = [
+    ...BUILT_IN_TEMPLATES.map((t) => ({
+      key: `built:${t}`,
+      label: BUILT_IN_LABELS[t] || t,
+      thumb: `/template-thumbnails/${t}.png`,
+      isCustom: false,
+      builtIn: t,
+    })),
+    ...customTemplates.map((ct) => ({
+      key: `custom:${ct.id}`,
+      label: ct.name,
+      thumb: ct.preview_url,
+      isCustom: true,
+      customId: ct.id,
+    })),
+  ];
+  const activeStyleKey = activeCustom ? `custom:${activeCustom.id}` : `built:${template}`;
+  const pickStyle = (card: StyleCard) => {
+    if (card.isCustom && card.customId) {
+      setCustomTemplateId(card.customId);
+    } else if (card.builtIn) {
+      setCustomTemplateId("");
+      setTemplate(card.builtIn);
+    }
+  };
+
+  const copyReady = isCarousel
+    ? editedSlides.some((s) => (s?.headline || "").trim().length > 0)
+    : !!((editedSingle.headline || "").trim() || (editedSingle.headlineHL || "").trim());
+
+  const canRender =
+    !generating && !composing &&
+    (!needsPhoto || !!selectedPhoto) &&
+    (isImageOnly || copyReady);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
@@ -629,349 +673,351 @@ export function GenerateCreativeDialog() {
           </DialogDescription>
         </DialogHeader>
 
+        {/* Step indicator */}
+        <div className="flex items-center gap-2 text-xs">
+          <button
+            type="button"
+            className={`px-2 py-1 rounded ${step === "style" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+            onClick={() => setStep("style")}
+          >
+            1. Style
+          </button>
+          <span className="text-muted-foreground">→</span>
+          <span
+            className={`px-2 py-1 rounded ${step === "image-copy" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+          >
+            2. Image &amp; copy
+          </span>
+        </div>
+
         <div className="flex-1 overflow-y-auto -mx-6 px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr,1.1fr] gap-6 py-2">
-            <div className="space-y-4">
-              {brief && (
-                <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="outline" className="text-[10px] uppercase">{brief.format}</Badge>
-                    <Badge variant="secondary" className="text-[10px] uppercase">
-                      {activeCustom ? activeCustom.name : template}
-                    </Badge>
-                    {brief.styleHint && <Badge variant="outline" className="text-[10px]">{brief.styleHint}</Badge>}
-                    {brief.angle && <Badge variant="outline" className="text-[10px]">{brief.angle}</Badge>}
-                  </div>
-                  <p className="text-xs text-muted-foreground"><b>Key message:</b> {brief.keyMessage}</p>
-                  {brief.offer && <p className="text-xs text-muted-foreground"><b>Offer:</b> {brief.offer}</p>}
-                </div>
-              )}
-
-              <div className="space-y-1">
-                <Label className="text-xs uppercase text-muted-foreground">Creative source</Label>
-                <Tabs
-                  value={creativeSource}
-                  onValueChange={(v) => setCreativeSource(v as "template" | "generated")}
-                >
-                  <TabsList className="w-full">
-                    <TabsTrigger value="template" className="flex-1">Template + photo</TabsTrigger>
-                    <TabsTrigger value="generated" className="flex-1">Generated image</TabsTrigger>
-                  </TabsList>
-                </Tabs>
+          {brief && (
+            <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 my-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="outline" className="text-[10px] uppercase">{brief.format}</Badge>
+                <Badge variant="secondary" className="text-[10px] uppercase">
+                  {activeCustom ? activeCustom.name : (BUILT_IN_LABELS[template] || template)}
+                </Badge>
+                {brief.styleHint && <Badge variant="outline" className="text-[10px]">{brief.styleHint}</Badge>}
+                {brief.angle && <Badge variant="outline" className="text-[10px]">{brief.angle}</Badge>}
               </div>
-
-              {creativeSource === "generated" ? (
-                <>
-                  <div className="space-y-1">
-                    <Label className="text-xs uppercase text-muted-foreground">Image prompt</Label>
-                    <Textarea
-                      value={imagePrompt}
-                      onChange={(e) => setImagePrompt(e.target.value)}
-                      rows={4}
-                      placeholder="Describe the image you want…"
-                    />
-                    <Button
-                      size="sm"
-                      variant={generatedPhoto ? "ghost" : "outline"}
-                      onClick={generateConceptImage}
-                      disabled={generatingConcept || !imagePrompt.trim()}
-                    >
-                      {generatingConcept ? (
-                        <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Generating image…</>
-                      ) : generatedPhoto ? (
-                        <><RefreshCw className="h-3 w-3 mr-1" /> Regenerate</>
-                      ) : (
-                        <><Sparkles className="h-3 w-3 mr-1" /> Generate image</>
-                      )}
-                    </Button>
-                  </div>
-
-                  <label className="flex items-center gap-2 text-xs">
-                    <input
-                      type="checkbox"
-                      checked={addOverlay}
-                      onChange={(e) => setAddOverlay(e.target.checked)}
-                    />
-                    Add text overlay
-                  </label>
-
-                  {addOverlay && (
-                    composing ? (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Writing copy in your brand voice…
-                      </div>
-                    ) : singleOptions.length === 0 ? (
-                      <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
-                        <p>We couldn't write copy for this concept. Want to try again?</p>
-                        <Button size="sm" variant="outline" onClick={compose}>
-                          <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
-                        </Button>
-                      </div>
-                    ) : (
-                      <SingleEditor
-                        options={singleOptions}
-                        selectedIdx={selectedOptionIdx}
-                        setSelectedIdx={setSelectedOptionIdx}
-                        edited={editedSingle}
-                        setEdited={setEditedSingle}
-                        editing={editingCopy}
-                        setEditing={setEditingCopy}
-                        onRegenerate={compose}
-                      />
-                    )
-                  )}
-                </>
-              ) : (
-                <>
-                  <div className="space-y-1">
-                    <Label className="text-xs uppercase text-muted-foreground">Template style</Label>
-                    <Select
-                      value={activeCustom ? `custom:${activeCustom.id}` : `built:${template}`}
-                      onValueChange={(v) => {
-                        if (v.startsWith("custom:")) {
-                          setCustomTemplateId(v.slice(7));
-                        } else {
-                          setCustomTemplateId("");
-                          setTemplate(v.slice(6));
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {BUILT_IN_TEMPLATES.map((t) => (
-                          <SelectItem key={t} value={`built:${t}`}>{t} (built-in)</SelectItem>
-                        ))}
-                        {customTemplates.length > 0 && (
-                          <div className="px-2 py-1 text-[10px] uppercase text-muted-foreground">Custom</div>
-                        )}
-                        {customTemplates.map((ct) => (
-                          <SelectItem key={ct.id} value={`custom:${ct.id}`}>{ct.name} · {ct.type}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {composing ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Writing copy in your brand voice…
-                    </div>
-                  ) : !activeCustom && !isCarousel && singleOptions.length === 0 ? (
-                    <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
-                      <p>We couldn't write copy for this concept. Want to try again?</p>
-                      <Button size="sm" variant="outline" onClick={compose}>
-                        <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
-                      </Button>
-                    </div>
-                  ) : !activeCustom && isCarousel && carouselOptions.length === 0 ? (
-                    <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
-                      <p>We couldn't write carousel copy for this concept. Want to try again?</p>
-                      <Button size="sm" variant="outline" onClick={compose}>
-                        <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
-                      </Button>
-                    </div>
-                  ) : isCarousel ? (
-                    <CarouselEditor
-                      options={carouselOptions}
-                      selectedIdx={selectedOptionIdx}
-                      setSelectedIdx={setSelectedOptionIdx}
-                      slides={editedSlides}
-                      setSlides={setEditedSlides}
-                      editing={editingCopy}
-                      setEditing={setEditingCopy}
-                      onRegenerate={compose}
-                    />
-                  ) : (
-                    <SingleEditor
-                      options={singleOptions}
-                      selectedIdx={selectedOptionIdx}
-                      setSelectedIdx={setSelectedOptionIdx}
-                      edited={editedSingle}
-                      setEdited={setEditedSingle}
-                      editing={editingCopy}
-                      setEditing={setEditingCopy}
-                      onRegenerate={compose}
-                    />
-                  )}
-                </>
-              )}
-
-              <div className="space-y-2">
-                <Label className="text-xs">Photo</Label>
-                {isGeneratedConcept ? (
-                  generatingConcept ? (
-                    <div className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
-                      <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
-                      Generating image…
-                    </div>
-                  ) : generatedPhoto ? (
-                    <div className="space-y-2">
-                      <div className="relative aspect-square rounded border-2 border-primary overflow-hidden max-w-[240px]">
-                        <img src={generatedPhoto.url} alt="" className="w-full h-full object-cover" />
-                      </div>
-                      {optimizedPrompt && (
-                        <p className="text-[11px] text-muted-foreground leading-snug max-w-[240px]">
-                          <span className="font-medium text-foreground">Image the AI built from:</span>{" "}
-                          {optimizedPrompt}
-                        </p>
-                      )}
-                      <Button size="sm" variant="ghost" onClick={generateConceptImage} disabled={generatingConcept}>
-                        <RefreshCw className="h-3 w-3 mr-1" /> Regenerate image
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button size="sm" variant="outline" onClick={generateConceptImage}>
-                      <Sparkles className="h-3 w-3 mr-1" /> Generate image
-                    </Button>
-                  )
-                ) : photosLoading ? (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Loading your photos…
-                  </div>
-                ) : pickerImages.length === 0 ? (
-                  <div className="text-xs text-muted-foreground rounded border p-3 flex items-center gap-2">
-                    <ImageOff className="h-4 w-4" />
-                    Upload photos in My Photos, or pull images from your website in Style.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-5 gap-2">
-                    {pickerImages.slice(0, 20).map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setSelectedPhotoId(p.id)}
-                        className={`relative aspect-square rounded border-2 overflow-hidden transition ${
-                          selectedPhotoId === p.id ? "border-primary" : "border-border hover:border-muted-foreground"
-                        }`}
-                        title={p.source === "brand" ? `Brand · ${p.role}` : "Upload"}
-                      >
-                        <img src={p.url} alt="" className="w-full h-full object-cover" />
-                        {p.source === "brand" && (
-                          <span className="absolute bottom-0 left-0 right-0 text-[9px] uppercase text-white bg-black/55 py-0.5 text-center leading-none">
-                            {p.role}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {!isGeneratedConcept && (
-                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      checked={removeBackground}
-                      onChange={(e) => setRemoveBackground(e.target.checked)}
-                    />
-                    Remove background
-                  </label>
-                )}
-
-                {brandLogoAsset && (
-                  <div className="rounded border bg-muted/30 p-2 space-y-2">
-                    <label className="flex items-center gap-2 text-xs">
-                      <input
-                        type="checkbox"
-                        checked={placeLogo}
-                        onChange={(e) => setPlaceLogo(e.target.checked)}
-                      />
-                      <img src={brandLogoAsset.url} alt="" className="h-5 w-5 object-contain rounded bg-background" />
-                      Place logo small in a corner
-                    </label>
-                    {placeLogo && (
-                      <Select value={logoCorner} onValueChange={(v) => setLogoCorner(v as LogoCorner)}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="tl">Top left</SelectItem>
-                          <SelectItem value="tr">Top right</SelectItem>
-                          <SelectItem value="bl">Bottom left</SelectItem>
-                          <SelectItem value="br">Bottom right</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <Button
-                size="lg"
-                className="w-full"
-                onClick={generate}
-                disabled={
-                  generating || composing || !selectedPhoto ||
-                  (template === "imageonly"
-                    ? false
-                    : isCarousel
-                      ? !editedSlides.some((s) => (s?.headline || "").trim().length > 0)
-                      : !((editedSingle.headline || "").trim() || (editedSingle.headlineHL || "").trim()))
-                }
-              >
-                {generating ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {progress || "Generating…"}</>
-                ) : (
-                  <><Sparkles className="h-4 w-4 mr-2" />
-                    {isCarousel ? `Render ${editedSlides.length || "carousel"} slides` : "Use this · render feed + story"}
-                  </>
-                )}
-              </Button>
+              <p className="text-xs text-muted-foreground"><b>Key message:</b> {brief.keyMessage}</p>
+              {brief.offer && <p className="text-xs text-muted-foreground"><b>Offer:</b> {brief.offer}</p>}
             </div>
+          )}
 
-            <div className="space-y-3">
-              <Label className="text-xs uppercase text-muted-foreground">Results</Label>
-              {generating && images.length === 0 && (
-                <div className="rounded border border-dashed p-10 text-center text-sm text-muted-foreground">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                  {progress || "Rendering…"}
-                </div>
-              )}
-              {!generating && images.length === 0 && (
-                <div className="rounded border border-dashed p-10 text-center text-sm text-muted-foreground">
-                  Your renders will appear here.
-                </div>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {images.map((img, i) => {
-                  const isApproved = approvedIdxs.has(i);
-                  const isApproving = approvingIdx === i;
+          {step === "style" ? (
+            /* ---------- SCREEN 1: Choose a style ---------- */
+            <div className="space-y-4 py-2">
+              <div>
+                <Label className="text-sm font-medium">Choose a style</Label>
+                <p className="text-xs text-muted-foreground">
+                  Pick the layout for this ad. You can change it later.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {styleCards.map((card) => {
+                  const active = card.key === activeStyleKey;
                   return (
-                    <div key={i} className="rounded border overflow-hidden bg-muted/20">
-                      <img src={`data:image/png;base64,${img.base64}`} alt="" className="w-full h-auto block" />
-                      <div className="flex items-center justify-between gap-2 p-2 text-xs">
-                        <span className="text-muted-foreground truncate">
-                          {img.label ? `${img.label} · ` : ""}{img.placement} {img.width}×{img.height}
-                        </span>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Button size="sm" variant="ghost" onClick={() => download(img, i)}>
-                            <Download className="h-3 w-3 mr-1" /> PNG
-                          </Button>
-                          {itemId && (
-                            <Button
-                              size="sm"
-                              variant={isApproved ? "secondary" : "default"}
-                              onClick={() => approveRender(img, i)}
-                              disabled={isApproving || isApproved}
-                            >
-                              {isApproving ? (
-                                <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Saving…</>
-                              ) : isApproved ? (
-                                "Approved ✓"
-                              ) : (
-                                "Approve & save"
-                              )}
-                            </Button>
-                          )}
-                        </div>
+                    <button
+                      key={card.key}
+                      type="button"
+                      onClick={() => pickStyle(card)}
+                      className={`group relative rounded-lg border-2 overflow-hidden text-left transition ${
+                        active ? "border-primary shadow-sm" : "border-border hover:border-muted-foreground"
+                      }`}
+                    >
+                      <div className="aspect-square bg-muted/40 flex items-center justify-center">
+                        {card.thumb ? (
+                          <img
+                            src={card.thumb}
+                            alt={card.label}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <span className="text-[10px] uppercase text-muted-foreground">No preview</span>
+                        )}
                       </div>
-                    </div>
+                      <div className="px-2 py-1.5 text-xs flex items-center justify-between gap-2">
+                        <span className="truncate">{card.label}</span>
+                        {card.isCustom && (
+                          <Badge variant="outline" className="text-[9px] uppercase shrink-0">Custom</Badge>
+                        )}
+                      </div>
+                    </button>
                   );
                 })}
+              </div>
 
+              <div className="flex items-center justify-end pt-2">
+                <Button
+                  size="lg"
+                  onClick={() => setStep("image-copy")}
+                  disabled={!activeStyleKey}
+                >
+                  Next →
+                </Button>
               </div>
             </div>
-          </div>
+          ) : (
+            /* ---------- SCREEN 2: Image & copy ---------- */
+            <div className="space-y-4 py-2">
+              <Button variant="ghost" size="sm" onClick={() => setStep("style")} className="-ml-2">
+                ← Back to styles
+              </Button>
+
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr,1.1fr] gap-6">
+                <div className="space-y-5">
+                  {/* Image source */}
+                  {needsPhoto && (
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase text-muted-foreground">Image source</Label>
+                      <Tabs
+                        value={imageSource}
+                        onValueChange={(v) => setImageSource(v as "uploads" | "brand" | "generated")}
+                      >
+                        <TabsList className="w-full">
+                          <TabsTrigger value="uploads" className="flex-1">Your uploads</TabsTrigger>
+                          <TabsTrigger value="brand" className="flex-1">Brand library</TabsTrigger>
+                          <TabsTrigger value="generated" className="flex-1">✨ Generate with AI</TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+
+                      {imageSource === "generated" ? (
+                        <div className="space-y-2 pt-1">
+                          <Textarea
+                            value={imagePrompt}
+                            onChange={(e) => setImagePrompt(e.target.value)}
+                            rows={3}
+                            placeholder="Describe the image you want…"
+                          />
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant={generatedPhoto ? "ghost" : "outline"}
+                              onClick={generateConceptImage}
+                              disabled={generatingConcept || !imagePrompt.trim()}
+                            >
+                              {generatingConcept ? (
+                                <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Generating…</>
+                              ) : generatedPhoto ? (
+                                <><RefreshCw className="h-3 w-3 mr-1" /> Regenerate</>
+                              ) : (
+                                <><Sparkles className="h-3 w-3 mr-1" /> Generate image</>
+                              )}
+                            </Button>
+                          </div>
+
+                          {generatingConcept && !generatedPhoto && (
+                            <div className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
+                              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                              Generating image…
+                            </div>
+                          )}
+
+                          {generatedPhoto && (
+                            <div className="space-y-2">
+                              <div className="relative aspect-square rounded border-2 border-primary overflow-hidden max-w-[260px]">
+                                <img src={generatedPhoto.url} alt="" className="w-full h-full object-cover" />
+                              </div>
+                              {optimizedPrompt && (
+                                <p className="text-[11px] text-muted-foreground leading-snug max-w-[260px]">
+                                  <span className="font-medium text-foreground">Image built from:</span>{" "}
+                                  {optimizedPrompt}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : photosLoading ? (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Loading…
+                        </div>
+                      ) : pickerImages.length === 0 ? (
+                        <div className="text-xs text-muted-foreground rounded border p-3 flex items-center gap-2">
+                          <ImageOff className="h-4 w-4" />
+                          {imageSource === "uploads"
+                            ? "No uploads yet — add photos in My Photos."
+                            : "No brand images yet — pull images from your website in Style."}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-5 gap-2 pt-1">
+                          {pickerImages.slice(0, 20).map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => setSelectedPhotoId(p.id)}
+                              className={`relative aspect-square rounded border-2 overflow-hidden transition ${
+                                selectedPhotoId === p.id ? "border-primary" : "border-border hover:border-muted-foreground"
+                              }`}
+                              title={p.source === "brand" ? `Brand · ${p.role}` : "Upload"}
+                            >
+                              <img src={p.url} alt="" className="w-full h-full object-cover" />
+                              {p.source === "brand" && (
+                                <span className="absolute bottom-0 left-0 right-0 text-[9px] uppercase text-white bg-black/55 py-0.5 text-center leading-none">
+                                  {p.role}
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {brandLogoAsset && (
+                        <div className="rounded border bg-muted/30 p-2 space-y-2 mt-2">
+                          <label className="flex items-center gap-2 text-xs">
+                            <input
+                              type="checkbox"
+                              checked={placeLogo}
+                              onChange={(e) => setPlaceLogo(e.target.checked)}
+                            />
+                            <img src={brandLogoAsset.url} alt="" className="h-5 w-5 object-contain rounded bg-background" />
+                            Place logo small in a corner
+                          </label>
+                          {placeLogo && (
+                            <Select value={logoCorner} onValueChange={(v) => setLogoCorner(v as LogoCorner)}>
+                              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="tl">Top left</SelectItem>
+                                <SelectItem value="tr">Top right</SelectItem>
+                                <SelectItem value="bl">Bottom left</SelectItem>
+                                <SelectItem value="br">Bottom right</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Copy */}
+                  {!isImageOnly && (
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase text-muted-foreground">Copy</Label>
+                      {composing ? (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Writing copy in your brand voice…
+                        </div>
+                      ) : !activeCustom && !isCarousel && singleOptions.length === 0 ? (
+                        <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
+                          <p>We couldn't write copy for this concept. Want to try again?</p>
+                          <Button size="sm" variant="outline" onClick={compose}>
+                            <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
+                          </Button>
+                        </div>
+                      ) : !activeCustom && isCarousel && carouselOptions.length === 0 ? (
+                        <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
+                          <p>We couldn't write carousel copy for this concept. Want to try again?</p>
+                          <Button size="sm" variant="outline" onClick={compose}>
+                            <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
+                          </Button>
+                        </div>
+                      ) : isCarousel ? (
+                        <CarouselEditor
+                          options={carouselOptions}
+                          selectedIdx={selectedOptionIdx}
+                          setSelectedIdx={setSelectedOptionIdx}
+                          slides={editedSlides}
+                          setSlides={setEditedSlides}
+                          editing={editingCopy}
+                          setEditing={setEditingCopy}
+                          onRegenerate={compose}
+                        />
+                      ) : (
+                        <SingleEditor
+                          options={singleOptions}
+                          selectedIdx={selectedOptionIdx}
+                          setSelectedIdx={setSelectedOptionIdx}
+                          edited={editedSingle}
+                          setEdited={setEditedSingle}
+                          editing={editingCopy}
+                          setEditing={setEditingCopy}
+                          onRegenerate={compose}
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  <Button
+                    size="lg"
+                    className="w-full"
+                    onClick={generate}
+                    disabled={!canRender}
+                  >
+                    {generating ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {progress || "Generating…"}</>
+                    ) : (
+                      <><Sparkles className="h-4 w-4 mr-2" />
+                        {isCarousel ? `Render ${editedSlides.length || "carousel"} slides` : "Use this · render feed + story"}
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-xs uppercase text-muted-foreground">Results</Label>
+                  {generating && images.length === 0 && (
+                    <div className="rounded border border-dashed p-10 text-center text-sm text-muted-foreground">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                      {progress || "Rendering…"}
+                    </div>
+                  )}
+                  {!generating && images.length === 0 && (
+                    <div className="rounded border border-dashed p-10 text-center text-sm text-muted-foreground">
+                      Your renders will appear here.
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {images.map((img, i) => {
+                      const isApproved = approvedIdxs.has(i);
+                      const isApproving = approvingIdx === i;
+                      return (
+                        <div key={i} className="rounded border overflow-hidden bg-muted/20">
+                          <img src={`data:image/png;base64,${img.base64}`} alt="" className="w-full h-auto block" />
+                          <div className="flex items-center justify-between gap-2 p-2 text-xs">
+                            <span className="text-muted-foreground truncate">
+                              {img.label ? `${img.label} · ` : ""}{img.placement} {img.width}×{img.height}
+                            </span>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Button size="sm" variant="ghost" onClick={() => download(img, i)}>
+                                <Download className="h-3 w-3 mr-1" /> PNG
+                              </Button>
+                              {itemId && (
+                                <Button
+                                  size="sm"
+                                  variant={isApproved ? "secondary" : "default"}
+                                  onClick={() => approveRender(img, i)}
+                                  disabled={isApproving || isApproved}
+                                >
+                                  {isApproving ? (
+                                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Saving…</>
+                                  ) : isApproved ? (
+                                    "Approved ✓"
+                                  ) : (
+                                    "Approve & save"
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
 
 function labelFor(k: string) {
   return SLOT_LABELS[k] || k.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
