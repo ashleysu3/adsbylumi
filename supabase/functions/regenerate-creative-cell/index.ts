@@ -314,7 +314,9 @@ REQUIREMENTS:
       why_this_works: parsed.why_this_works || "",
       // B-roll specific fields
       ...(isBroll && {
-        broll_shots: parsed.broll_shots || [],
+        broll_vibe: parsed.broll_vibe || "",
+        // keep broll_shots optional for backward-compat if model still emits it
+        broll_shots: parsed.broll_shots || cell.broll_shots || [],
         text_overlays: parsed.text_overlays || [],
         mood: parsed.mood || "Relatable",
       }),
