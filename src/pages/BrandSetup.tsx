@@ -140,7 +140,7 @@ export default function BrandSetup() {
           brand_id: activeBrand.id,
           source_url: url.trim(),
           colors: { bg, ink, accent, pop, highlight, cream },
-          fonts: { displayItalicUrl: displayUrl },
+          fonts: { displayUrl: displayUrl, displayItalicUrl: displayUrl },
           voice: data?.suggested?.voice || {},
           logo_url: logoUrl || null,
           status: "confirmed",
