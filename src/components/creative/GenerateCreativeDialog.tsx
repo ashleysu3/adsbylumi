@@ -488,74 +488,151 @@ export function GenerateCreativeDialog() {
               )}
 
               <div className="space-y-1">
-                <Label className="text-xs uppercase text-muted-foreground">Template style</Label>
-                <Select
-                  value={activeCustom ? `custom:${activeCustom.id}` : `built:${template}`}
-                  onValueChange={(v) => {
-                    if (v.startsWith("custom:")) {
-                      setCustomTemplateId(v.slice(7));
-                    } else {
-                      setCustomTemplateId("");
-                      setTemplate(v.slice(6));
-                    }
-                  }}
+                <Label className="text-xs uppercase text-muted-foreground">Creative source</Label>
+                <Tabs
+                  value={creativeSource}
+                  onValueChange={(v) => setCreativeSource(v as "template" | "generated")}
                 >
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {BUILT_IN_TEMPLATES.map((t) => (
-                      <SelectItem key={t} value={`built:${t}`}>{t} (built-in)</SelectItem>
-                    ))}
-                    {customTemplates.length > 0 && (
-                      <div className="px-2 py-1 text-[10px] uppercase text-muted-foreground">Custom</div>
-                    )}
-                    {customTemplates.map((ct) => (
-                      <SelectItem key={ct.id} value={`custom:${ct.id}`}>{ct.name} · {ct.type}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <TabsList className="w-full">
+                    <TabsTrigger value="template" className="flex-1">Template + photo</TabsTrigger>
+                    <TabsTrigger value="generated" className="flex-1">Generated image</TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </div>
 
+              {creativeSource === "generated" ? (
+                <>
+                  <div className="space-y-1">
+                    <Label className="text-xs uppercase text-muted-foreground">Image prompt</Label>
+                    <Textarea
+                      value={imagePrompt}
+                      onChange={(e) => setImagePrompt(e.target.value)}
+                      rows={4}
+                      placeholder="Describe the image you want…"
+                    />
+                    <Button
+                      size="sm"
+                      variant={generatedPhoto ? "ghost" : "outline"}
+                      onClick={generateConceptImage}
+                      disabled={generatingConcept || !imagePrompt.trim()}
+                    >
+                      {generatingConcept ? (
+                        <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Generating image…</>
+                      ) : generatedPhoto ? (
+                        <><RefreshCw className="h-3 w-3 mr-1" /> Regenerate</>
+                      ) : (
+                        <><Sparkles className="h-3 w-3 mr-1" /> Generate image</>
+                      )}
+                    </Button>
+                  </div>
 
-              {composing ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Writing copy in your brand voice…
-                </div>
-              ) : !activeCustom && !isCarousel && singleOptions.length === 0 ? (
-                <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
-                  <p>We couldn't write copy for this concept. Want to try again?</p>
-                  <Button size="sm" variant="outline" onClick={compose}>
-                    <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
-                  </Button>
-                </div>
-              ) : !activeCustom && isCarousel && carouselOptions.length === 0 ? (
-                <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
-                  <p>We couldn't write carousel copy for this concept. Want to try again?</p>
-                  <Button size="sm" variant="outline" onClick={compose}>
-                    <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
-                  </Button>
-                </div>
-              ) : isCarousel ? (
-                <CarouselEditor
-                  options={carouselOptions}
-                  selectedIdx={selectedOptionIdx}
-                  setSelectedIdx={setSelectedOptionIdx}
-                  slides={editedSlides}
-                  setSlides={setEditedSlides}
-                  editing={editingCopy}
-                  setEditing={setEditingCopy}
-                  onRegenerate={compose}
-                />
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={addOverlay}
+                      onChange={(e) => setAddOverlay(e.target.checked)}
+                    />
+                    Add text overlay
+                  </label>
+
+                  {addOverlay && (
+                    composing ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Writing copy in your brand voice…
+                      </div>
+                    ) : singleOptions.length === 0 ? (
+                      <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
+                        <p>We couldn't write copy for this concept. Want to try again?</p>
+                        <Button size="sm" variant="outline" onClick={compose}>
+                          <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
+                        </Button>
+                      </div>
+                    ) : (
+                      <SingleEditor
+                        options={singleOptions}
+                        selectedIdx={selectedOptionIdx}
+                        setSelectedIdx={setSelectedOptionIdx}
+                        edited={editedSingle}
+                        setEdited={setEditedSingle}
+                        editing={editingCopy}
+                        setEditing={setEditingCopy}
+                        onRegenerate={compose}
+                      />
+                    )
+                  )}
+                </>
               ) : (
-                <SingleEditor
-                  options={singleOptions}
-                  selectedIdx={selectedOptionIdx}
-                  setSelectedIdx={setSelectedOptionIdx}
-                  edited={editedSingle}
-                  setEdited={setEditedSingle}
-                  editing={editingCopy}
-                  setEditing={setEditingCopy}
-                  onRegenerate={compose}
-                />
+                <>
+                  <div className="space-y-1">
+                    <Label className="text-xs uppercase text-muted-foreground">Template style</Label>
+                    <Select
+                      value={activeCustom ? `custom:${activeCustom.id}` : `built:${template}`}
+                      onValueChange={(v) => {
+                        if (v.startsWith("custom:")) {
+                          setCustomTemplateId(v.slice(7));
+                        } else {
+                          setCustomTemplateId("");
+                          setTemplate(v.slice(6));
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {BUILT_IN_TEMPLATES.map((t) => (
+                          <SelectItem key={t} value={`built:${t}`}>{t} (built-in)</SelectItem>
+                        ))}
+                        {customTemplates.length > 0 && (
+                          <div className="px-2 py-1 text-[10px] uppercase text-muted-foreground">Custom</div>
+                        )}
+                        {customTemplates.map((ct) => (
+                          <SelectItem key={ct.id} value={`custom:${ct.id}`}>{ct.name} · {ct.type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {composing ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Writing copy in your brand voice…
+                    </div>
+                  ) : !activeCustom && !isCarousel && singleOptions.length === 0 ? (
+                    <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
+                      <p>We couldn't write copy for this concept. Want to try again?</p>
+                      <Button size="sm" variant="outline" onClick={compose}>
+                        <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
+                      </Button>
+                    </div>
+                  ) : !activeCustom && isCarousel && carouselOptions.length === 0 ? (
+                    <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
+                      <p>We couldn't write carousel copy for this concept. Want to try again?</p>
+                      <Button size="sm" variant="outline" onClick={compose}>
+                        <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
+                      </Button>
+                    </div>
+                  ) : isCarousel ? (
+                    <CarouselEditor
+                      options={carouselOptions}
+                      selectedIdx={selectedOptionIdx}
+                      setSelectedIdx={setSelectedOptionIdx}
+                      slides={editedSlides}
+                      setSlides={setEditedSlides}
+                      editing={editingCopy}
+                      setEditing={setEditingCopy}
+                      onRegenerate={compose}
+                    />
+                  ) : (
+                    <SingleEditor
+                      options={singleOptions}
+                      selectedIdx={selectedOptionIdx}
+                      setSelectedIdx={setSelectedOptionIdx}
+                      edited={editedSingle}
+                      setEdited={setEditedSingle}
+                      editing={editingCopy}
+                      setEditing={setEditingCopy}
+                      onRegenerate={compose}
+                    />
+                  )}
+                </>
               )}
 
               <div className="space-y-2">
