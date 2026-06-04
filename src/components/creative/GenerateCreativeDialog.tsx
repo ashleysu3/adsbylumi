@@ -437,7 +437,7 @@ export function GenerateCreativeDialog() {
 
       const briefWithTemplate = { ...b, template };
       const { data, error } = await supabase.functions.invoke("compose-ad", {
-        body: { brief: briefWithTemplate, brandVoice: voicePayload, count: 3 },
+        body: { brief: briefWithTemplate, brandVoice: voicePayload, count: 3, feedback: feedback || null },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
