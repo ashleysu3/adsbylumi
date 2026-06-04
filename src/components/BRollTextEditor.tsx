@@ -91,6 +91,8 @@ export function BRollTextEditor({
   }, [overlays]);
 
   const overflows = videoDuration > 0 && maxOverlayEnd > videoDuration + 0.05;
+  // Video is meaningfully longer than the overlays — offer a trim.
+  const tooLong = videoDuration > 0 && maxOverlayEnd > 0 && videoDuration > maxOverlayEnd + 1.0;
 
   // Apply the chosen fit mode to the overlays before they're rendered or
   // sent to the encoder. 'speed' rescales every timing to fit into the
