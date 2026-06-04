@@ -32,7 +32,7 @@ const hookTechniqueExplanations: Record<string, string> = {
 export interface TextOverlay {
   text: string;
   timing: string;
-  type?: "hook" | "transition" | "insight" | "cta";
+  type?: "hook" | "pain" | "transition" | "insight" | "proof" | "cta";
   /** Optional drag-positioned xy (0–1 normalized of video size, center of text). */
   xy?: { x: number; y: number };
   /** Max text-box width as a fraction (0-1) of the video width. */
