@@ -144,18 +144,21 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
       });
       if (error) throw error;
       const s = (res as any)?.suggested || {};
+      // Replace the whole palette/fonts from what the extractor returned.
+      // Do NOT fall back to previously loaded values — otherwise switching
+      // brands and re-pulling leaves stale colors from the prior site.
       setColors({
-        bg: s.colors?.background || colors.bg || "",
-        ink: s.colors?.ink || colors.ink || "",
-        accent: s.colors?.accent || colors.accent || "",
-        pop: s.colors?.pops?.[0] || colors.pop || "",
-        highlight: s.colors?.pops?.[1] || colors.highlight || "",
-        cream: s.colors?.background || colors.cream || "",
+        bg: s.colors?.bg || "",
+        ink: s.colors?.ink || "",
+        accent: s.colors?.accent || "",
+        pop: s.colors?.pop || "",
+        highlight: s.colors?.highlight || "",
+        cream: s.colors?.cream || "",
       });
       setFonts({
-        displayItalicUrl: s.fonts?.display?.url || fonts.displayItalicUrl || "",
-        displayFamily: s.fonts?.display?.family || fonts.displayFamily || "",
-        bodyFamily: s.fonts?.body?.family || fonts.bodyFamily || "",
+        displayItalicUrl: s.fonts?.display?.url || "",
+        displayFamily: s.fonts?.display?.family || "",
+        bodyFamily: s.fonts?.body?.family || "",
       });
       toast.success("Pulled colors & fonts from your site");
     } catch (e: any) {
