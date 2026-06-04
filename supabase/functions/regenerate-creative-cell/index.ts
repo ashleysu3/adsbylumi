@@ -193,11 +193,13 @@ Output ONLY valid JSON with this exact structure:
   "psychology_trigger": "The psychological lever being pulled",
   "pain_point_addressed": "Which specific pain point this targets",
   "why_this_works": "One sentence explanation for user education"${isBroll ? `,
-  "broll_shots": ["Shot 1 - simple everyday action", "Shot 2", "Shot 3"],
+  "broll_vibe": "≤ 8 words — mood / setting only (the user picks the actual clip from their B-Roll Library)",
   "text_overlays": [
-    { "text": "Hook text", "timing": "0-3s", "type": "hook" },
-    { "text": "Insight text", "timing": "8-12s", "type": "insight" },
-    { "text": "CTA text", "timing": "15-18s", "type": "cta" }
+    { "text": "Hook ≤ 27 chars", "timing": "0-3s", "type": "hook" },
+    { "text": "Specific pain", "timing": "3-7s", "type": "pain" },
+    { "text": "The reframe", "timing": "7-12s", "type": "insight" },
+    { "text": "Real number or result", "timing": "12-18s", "type": "proof" },
+    { "text": "Offer-specific CTA", "timing": "18-22s", "type": "cta" }
   ],
   "mood": "Calm | Productive | Relatable | Warm | Authentic | Energetic"` : ''}${isTalkingHead ? `,
   "verbal_hook": "Opening spoken line - pattern interrupt or confession",
