@@ -117,6 +117,9 @@ export function ProductionManager({
     videoDuration: number;
     maxOverlayEnd: number;
   } | null>(null);
+  const [pushingToAd, setPushingToAd] = useState(false);
+  const [pushConfirmOpen, setPushConfirmOpen] = useState(false);
+
 
   // Load named b-roll libraries for this brand
   useEffect(() => {
