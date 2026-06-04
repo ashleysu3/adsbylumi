@@ -14,6 +14,7 @@ import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
 import type { CreativeBrief } from "./ProductionChecklistPanel";
 import { TemplatePreview } from "./TemplatePreview";
+import { CopyRegenerateDialog, type CopyFeedback } from "./CopyRegenerateDialog";
 import cutoutThumb from "@/assets/template-thumbs/cutout.png.asset.json";
 import spotlightThumb from "@/assets/template-thumbs/spotlight.png.asset.json";
 import framedThumb from "@/assets/template-thumbs/framed.png.asset.json";
