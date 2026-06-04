@@ -157,7 +157,29 @@ serve(async (req) => {
       console.error("compose-ad empty content:", JSON.stringify(d).slice(0, 500));
       return new Response(JSON.stringify({ error: "AI returned no content", options: [] }), { status: 200, headers: { ...cors, "content-type": "application/json" } });
     }
-    return new Response(content, { status: 200, headers: { ...cors, "content-type": "application/json" } });
+    // Strip any HTML/markdown emphasis tags the model may have produced (e.g. <b>...</b>)
+    const stripTags = (s: string) => s
+      .replace(/<\/?[a-zA-Z][^>]*>/g, "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+    const sanitize = (v: any): any => {
+      if (typeof v === "string") return stripTags(v);
+      if (Array.isArray(v)) return v.map(sanitize);
+      if (v && typeof v === "object") {
+        const out: any = {};
+        for (const k of Object.keys(v)) out[k] = sanitize(v[k]);
+        return out;
+      }
+      return v;
+    };
+    let cleaned = content;
+    try {
+      const parsed = JSON.parse(content);
+      cleaned = JSON.stringify(sanitize(parsed));
+    } catch {
+      cleaned = stripTags(content);
+    }
+    return new Response(cleaned, { status: 200, headers: { ...cors, "content-type": "application/json" } });
   } catch (e) {
     console.error("compose-ad exception:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e), options: [] }), { status: 200, headers: { ...cors, "content-type": "application/json" } });
