@@ -114,8 +114,11 @@ const SLOT_LABELS: Record<string, string> = {
   stat4Num: "Stat 4 number", stat4Label: "Stat 4 label",
   item1: "Item 1", item2: "Item 2", item3: "Item 3",
   item4: "Item 4", item5: "Item 5", item6: "Item 6",
+  msg1: "Message 1", msg2: "Message 2", msg3: "Message 3", msg4: "Message 4",
+  meta: "Date / time", host: "Host", offerBig: "Big offer", expiry: "Deadline",
+  tickerTop: "Ticker (top)", tickerBottom: "Ticker (bottom)",
 };
-const MULTILINE_KEYS = new Set(["sub", "accent"]);
+const MULTILINE_KEYS = new Set(["sub", "accent", "msg1", "msg2", "msg3", "msg4", "meta"]);
 
 // Local fallback: mirror the compose-ad mapping so the UI can guess a template
 function mapStyleToTemplate(styleHint?: string, format?: string): string {
