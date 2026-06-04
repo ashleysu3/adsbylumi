@@ -87,6 +87,11 @@ export function GenerateCreativeDialog() {
   const [composing, setComposing] = useState(false);
   const [template, setTemplate] = useState<string>("cutout");
 
+  // Creative source: template+photo vs generated image
+  const [creativeSource, setCreativeSource] = useState<"template" | "generated">("template");
+  const [imagePrompt, setImagePrompt] = useState<string>("");
+  const [addOverlay, setAddOverlay] = useState<boolean>(false);
+
   // single-template state
   const [singleOptions, setSingleOptions] = useState<SingleOption[]>([]);
   const [selectedOptionIdx, setSelectedOptionIdx] = useState(0);
