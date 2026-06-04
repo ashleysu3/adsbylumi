@@ -80,6 +80,11 @@ export function GenerateCreativeDialog() {
   const [kitLoading, setKitLoading] = useState(false);
 
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [brandPhotoAssets, setBrandPhotoAssets] = useState<Photo[]>([]);
+  const [brandBackgroundAssets, setBrandBackgroundAssets] = useState<Photo[]>([]);
+  const [brandLogoAsset, setBrandLogoAsset] = useState<Photo | null>(null);
+  const [placeLogo, setPlaceLogo] = useState(false);
+  const [logoCorner, setLogoCorner] = useState<LogoCorner>("br");
   const [photosLoading, setPhotosLoading] = useState(false);
   const [selectedPhotoId, setSelectedPhotoId] = useState<string>("");
   const [removeBackground, setRemoveBackground] = useState(true);
