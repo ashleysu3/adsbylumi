@@ -76,6 +76,7 @@ interface CreativeChecklistCardProps {
   onRefineScript?: (itemId: string, feedback: string) => Promise<void>;
   selected?: boolean;
   onToggleSelect?: () => void;
+  onToggleApprove?: () => void;
   angleCopy?: AngleCopyData;
   onCopyChange?: (updatedCopy: AngleCopyData) => void;
   onOverlaysChange?: (overlays: TextOverlay[]) => void;
@@ -157,6 +158,7 @@ export function CreativeChecklistCard({
   onRefineScript,
   selected,
   onToggleSelect,
+  onToggleApprove,
   angleCopy,
   onCopyChange,
   onOverlaysChange,
@@ -275,6 +277,11 @@ export function CreativeChecklistCard({
                   {(item as any).approval_status === 'approved' && (
                     <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 text-xs">
                       Approved ✅
+                    </Badge>
+                  )}
+                  {(item as any).pushed_to_ad_at && (
+                    <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 text-xs">
+                      Live in ad 🚀
                     </Badge>
                   )}
                   {(item as any).approval_status === 'changes_requested' && (
@@ -1363,7 +1370,23 @@ export function CreativeChecklistCard({
               
               {/* Actions */}
               <div className="flex justify-between items-center gap-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {onToggleApprove && (
+                    <Button
+                      variant={(item as any).approval_status === 'approved' ? "default" : "outline"}
+                      size="sm"
+                      className={cn(
+                        "gap-2",
+                        (item as any).approval_status === 'approved' && "bg-green-600 hover:bg-green-700 text-white"
+                      )}
+                      onClick={onToggleApprove}
+                      disabled={!hasAsset}
+                      title={!hasAsset ? "Upload a creative file first" : undefined}
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      {(item as any).approval_status === 'approved' ? "Approved" : "Approve for ad"}
+                    </Button>
+                  )}
                   {onAdPreview && (
                     <Button 
                       variant="outline" 

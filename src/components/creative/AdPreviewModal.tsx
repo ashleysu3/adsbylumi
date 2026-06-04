@@ -10,7 +10,7 @@ import {
   Image, Video, Smartphone, Monitor, MoreHorizontal, 
   ThumbsUp, MessageCircle, Share2, ExternalLink, 
   Heart, Bookmark, Send, ChevronLeft, ChevronRight,
-  Link2, Pencil, Check, Globe, Info
+  Link2, Pencil, Check, Globe, Info, Rocket, CheckCircle2, Loader2
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -49,6 +49,11 @@ interface AdPreviewModalProps {
   isDmCampaign?: boolean;
   onCopyChange?: (updatedCopy: AngleCopyData) => void;
   onUrlChange?: (url: string) => void;
+  isApproved?: boolean;
+  alreadyPushed?: boolean;
+  canPush?: boolean;
+  pushing?: boolean;
+  onApproveAndAdd?: () => Promise<void> | void;
 }
 
 export function AdPreviewModal({
@@ -64,6 +69,11 @@ export function AdPreviewModal({
   isDmCampaign = false,
   onCopyChange,
   onUrlChange,
+  isApproved,
+  alreadyPushed,
+  canPush,
+  pushing,
+  onApproveAndAdd,
 }: AdPreviewModalProps) {
   const [platform, setPlatform] = useState<"feed" | "stories" | "reels" | "instagram">("feed");
   const [selectedHeadline, setSelectedHeadline] = useState(0);
@@ -369,12 +379,30 @@ export function AdPreviewModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-6 py-4 border-b shrink-0">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <div>
               <DialogTitle className="text-lg">Ad Preview</DialogTitle>
               <p className="text-sm text-muted-foreground mt-1">{item.hook}</p>
             </div>
-            <Badge variant="secondary">{item.angleName}</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">{item.angleName}</Badge>
+              {alreadyPushed ? (
+                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                  Live in ad 🚀
+                </Badge>
+              ) : onApproveAndAdd && (
+                <Button
+                  size="sm"
+                  className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                  disabled={!canPush || pushing}
+                  onClick={() => onApproveAndAdd()}
+                  title={!canPush ? "Upload a creative and launch a campaign first" : undefined}
+                >
+                  {pushing ? <Loader2 className="h-4 w-4 animate-spin" /> : isApproved ? <Rocket className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                  {isApproved ? "Add to ad" : "Approve & add to ad"}
+                </Button>
+              )}
+            </div>
           </div>
         </DialogHeader>
         
