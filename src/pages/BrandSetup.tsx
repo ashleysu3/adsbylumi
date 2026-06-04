@@ -246,6 +246,57 @@ export default function BrandSetup() {
             </div>
           </Card>
 
+          <Card className="p-6 mb-6">
+            <h3 className="text-base font-semibold mb-1">Logo</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              We pulled this from your site. If it's wrong (or missing), upload your own — it'll be used on ad templates so everything stays on brand.
+            </p>
+            <div className="flex items-center gap-4">
+              <div className="h-20 w-20 rounded-md border border-border bg-muted/40 flex items-center justify-center overflow-hidden">
+                {logoUrl ? (
+                  <img src={logoUrl} alt="Brand logo" className="h-full w-full object-contain" />
+                ) : (
+                  <span className="text-xs text-muted-foreground">No logo</span>
+                )}
+              </div>
+              <div className="flex-1 space-y-2">
+                <Input
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  placeholder="https://yourbrand.com/logo.png"
+                  className="font-mono text-sm"
+                />
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" asChild disabled={logoUploading}>
+                    <label className="cursor-pointer">
+                      {logoUploading ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                          Uploading…
+                        </>
+                      ) : (
+                        logoUrl ? "Replace logo" : "Upload logo"
+                      )}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                        className="hidden"
+                        onChange={handleLogoUpload}
+                      />
+                    </label>
+                  </Button>
+                  {logoUrl && (
+                    <Button variant="ghost" size="sm" onClick={() => setLogoUrl("")}>
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">PNG with transparent background works best. Max 5MB.</p>
+              </div>
+            </div>
+          </Card>
+
+
           {(data.suggested?.voice?.headlines?.length ?? 0) > 0 && (
             <Card className="p-6 mb-6">
               <h3 className="text-base font-semibold mb-3">Voice samples</h3>
