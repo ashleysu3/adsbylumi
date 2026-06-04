@@ -40,13 +40,33 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { url } = await req.json();
+    const { url, brandId } = await req.json();
     if (!url || typeof url !== "string") {
       return new Response(
         JSON.stringify({ error: "missing url" }),
         { status: 200, headers: { ...cors, "content-type": "application/json" } },
       );
     }
+    if (!brandId || typeof brandId !== "string") {
+      return new Response(
+        JSON.stringify({ error: "missing brandId" }),
+        { status: 200, headers: { ...cors, "content-type": "application/json" } },
+      );
+    }
+    // Verify the calling user owns this brand
+    const admin = createClient(SUPABASE_URL, SERVICE);
+    const { data: brandRow, error: brandErr } = await admin
+      .from("brands")
+      .select("id,user_id")
+      .eq("id", brandId)
+      .maybeSingle();
+    if (brandErr || !brandRow || brandRow.user_id !== user.id) {
+      return new Response(
+        JSON.stringify({ error: "brand not found or access denied" }),
+        { status: 200, headers: { ...cors, "content-type": "application/json" } },
+      );
+    }
+
 
     const er = await fetch(`${ENGINE_URL.replace(/\/$/, "")}/extract-assets`, {
       method: "POST",
