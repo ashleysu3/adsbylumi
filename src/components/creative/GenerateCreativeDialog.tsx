@@ -697,6 +697,7 @@ export function GenerateCreativeDialog() {
     (isImageOnly || copyReady);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
         <DialogHeader>
