@@ -118,10 +118,10 @@ export function GenerateCreativeDialog() {
   const [composing, setComposing] = useState(false);
   const [template, setTemplate] = useState<string>("cutout");
 
-  // Creative source: template+photo vs generated image
-  const [creativeSource, setCreativeSource] = useState<"template" | "generated">("template");
+  // Two-step UX: pick a style, then provide image + copy.
+  const [step, setStep] = useState<"style" | "image-copy">("style");
+  const [imageSource, setImageSource] = useState<"uploads" | "brand" | "generated">("uploads");
   const [imagePrompt, setImagePrompt] = useState<string>("");
-  const [addOverlay, setAddOverlay] = useState<boolean>(false);
 
   // single-template state
   const [singleOptions, setSingleOptions] = useState<SingleOption[]>([]);
@@ -147,6 +147,9 @@ export function GenerateCreativeDialog() {
   const isCarousel = activeCustom
     ? activeCustom.type === "carousel"
     : template === "carousel" || brief?.format === "carousel";
+  const isImageOnly = !activeCustom && template === "imageonly";
+  const needsPhoto = activeCustom ? activeCustom.needs_photo : true; // all built-ins need a photo
+
   const briefRef = useRef<CreativeBrief | null>(null);
   briefRef.current = brief;
 
@@ -160,11 +163,11 @@ export function GenerateCreativeDialog() {
       setBrief(detail.brief);
 
       const isGen = detail.brief.imageSource === "generated";
-      setCreativeSource(isGen ? "generated" : "template");
+      setImageSource(isGen ? "generated" : "uploads");
       setImagePrompt(detail.brief.imagePrompt || detail.brief.concept || "");
-      setAddOverlay(false);
       setTemplate(isGen ? "imageonly" : mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
-      if (isGen) setRemoveBackground(false);
+      setCustomTemplateId("");
+      setStep("style");
       setGeneratedPhoto(null);
       setOptimizedPrompt("");
       setOpen(true);
