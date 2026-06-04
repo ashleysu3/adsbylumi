@@ -87,6 +87,11 @@ export function GenerateCreativeDialog() {
   const [composing, setComposing] = useState(false);
   const [template, setTemplate] = useState<string>("cutout");
 
+  // Creative source: template+photo vs generated image
+  const [creativeSource, setCreativeSource] = useState<"template" | "generated">("template");
+  const [imagePrompt, setImagePrompt] = useState<string>("");
+  const [addOverlay, setAddOverlay] = useState<boolean>(false);
+
   // single-template state
   const [singleOptions, setSingleOptions] = useState<SingleOption[]>([]);
   const [selectedOptionIdx, setSelectedOptionIdx] = useState(0);
@@ -121,7 +126,10 @@ export function GenerateCreativeDialog() {
       if (!detail?.brief) return;
       setBrief(detail.brief);
       const isGen = detail.brief.imageSource === "generated";
-      setTemplate(isGen ? "overlay" : mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
+      setCreativeSource(isGen ? "generated" : "template");
+      setImagePrompt(detail.brief.imagePrompt || detail.brief.concept || "");
+      setAddOverlay(false);
+      setTemplate(isGen ? "imageonly" : mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
       if (isGen) setRemoveBackground(false);
       setGeneratedPhoto(null);
       setOpen(true);
@@ -139,12 +147,15 @@ export function GenerateCreativeDialog() {
   }, []);
 
   const generateConceptImage = useCallback(async () => {
-    const b = briefRef.current;
-    if (!b || b.imageSource !== "generated" || !b.imagePrompt) return;
+    const prompt = (imagePrompt || "").trim();
+    if (!prompt) {
+      toast.error("Write an image prompt first");
+      return;
+    }
     setGeneratingConcept(true);
     try {
       const { data, error } = await supabase.functions.invoke("generate-concept-image", {
-        body: { prompt: b.imagePrompt },
+        body: { prompt },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -155,21 +166,30 @@ export function GenerateCreativeDialog() {
     } finally {
       setGeneratingConcept(false);
     }
-  }, []);
+  }, [imagePrompt]);
 
   useEffect(() => {
-    if (open && brief?.imageSource === "generated" && !generatedPhoto && !generatingConcept) {
+    if (open && creativeSource === "generated" && imagePrompt && !generatedPhoto && !generatingConcept) {
       generateConceptImage();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, brief]);
 
-  // Tie background removal to chosen template (except for generated-concept images, which stay full-bleed)
+  // Tie background removal to chosen template (skip for generated concept images)
   useEffect(() => {
-    if (brief?.imageSource === "generated") return;
+    if (creativeSource === "generated") {
+      setRemoveBackground(false);
+      return;
+    }
     const t = PHOTO_TREATMENT[template];
     if (t) setRemoveBackground(t === "cutout");
-  }, [template, brief?.imageSource]);
+  }, [template, creativeSource]);
+
+  // Keep template in sync with the generated-mode overlay toggle
+  useEffect(() => {
+    if (creativeSource !== "generated") return;
+    setTemplate(addOverlay ? "overlay" : "imageonly");
+  }, [creativeSource, addOverlay]);
 
   // Load brand kit + photos on first open
   useEffect(() => {
@@ -338,13 +358,14 @@ export function GenerateCreativeDialog() {
     }
   }, [brandVoice, template, activeCustom]);
 
-  // Auto-compose on open AND whenever the template selection changes
+  // Auto-compose on open AND whenever the template selection changes.
+  // Skip when in generated-image mode without an overlay (no copy needed).
   useEffect(() => {
-    if (open && brief && !kitLoading && !composing) {
-      compose();
-    }
+    if (!open || !brief || kitLoading || composing) return;
+    if (creativeSource === "generated" && !addOverlay) return;
+    compose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, brief, kitLoading, template, customTemplateId]);
+  }, [open, brief, kitLoading, template, customTemplateId, creativeSource, addOverlay]);
 
 
   // Sync editor to currently selected option
@@ -356,7 +377,7 @@ export function GenerateCreativeDialog() {
     }
   }, [selectedOptionIdx, singleOptions, carouselOptions, isCarousel]);
 
-  const isGeneratedConcept = brief?.imageSource === "generated";
+  const isGeneratedConcept = creativeSource === "generated";
   const selectedPhoto = useMemo(
     () => (isGeneratedConcept ? generatedPhoto : photos.find((p) => p.id === selectedPhotoId)),
     [isGeneratedConcept, generatedPhoto, photos, selectedPhotoId],
@@ -467,74 +488,151 @@ export function GenerateCreativeDialog() {
               )}
 
               <div className="space-y-1">
-                <Label className="text-xs uppercase text-muted-foreground">Template style</Label>
-                <Select
-                  value={activeCustom ? `custom:${activeCustom.id}` : `built:${template}`}
-                  onValueChange={(v) => {
-                    if (v.startsWith("custom:")) {
-                      setCustomTemplateId(v.slice(7));
-                    } else {
-                      setCustomTemplateId("");
-                      setTemplate(v.slice(6));
-                    }
-                  }}
+                <Label className="text-xs uppercase text-muted-foreground">Creative source</Label>
+                <Tabs
+                  value={creativeSource}
+                  onValueChange={(v) => setCreativeSource(v as "template" | "generated")}
                 >
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {BUILT_IN_TEMPLATES.map((t) => (
-                      <SelectItem key={t} value={`built:${t}`}>{t} (built-in)</SelectItem>
-                    ))}
-                    {customTemplates.length > 0 && (
-                      <div className="px-2 py-1 text-[10px] uppercase text-muted-foreground">Custom</div>
-                    )}
-                    {customTemplates.map((ct) => (
-                      <SelectItem key={ct.id} value={`custom:${ct.id}`}>{ct.name} · {ct.type}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <TabsList className="w-full">
+                    <TabsTrigger value="template" className="flex-1">Template + photo</TabsTrigger>
+                    <TabsTrigger value="generated" className="flex-1">Generated image</TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </div>
 
+              {creativeSource === "generated" ? (
+                <>
+                  <div className="space-y-1">
+                    <Label className="text-xs uppercase text-muted-foreground">Image prompt</Label>
+                    <Textarea
+                      value={imagePrompt}
+                      onChange={(e) => setImagePrompt(e.target.value)}
+                      rows={4}
+                      placeholder="Describe the image you want…"
+                    />
+                    <Button
+                      size="sm"
+                      variant={generatedPhoto ? "ghost" : "outline"}
+                      onClick={generateConceptImage}
+                      disabled={generatingConcept || !imagePrompt.trim()}
+                    >
+                      {generatingConcept ? (
+                        <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Generating image…</>
+                      ) : generatedPhoto ? (
+                        <><RefreshCw className="h-3 w-3 mr-1" /> Regenerate</>
+                      ) : (
+                        <><Sparkles className="h-3 w-3 mr-1" /> Generate image</>
+                      )}
+                    </Button>
+                  </div>
 
-              {composing ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Writing copy in your brand voice…
-                </div>
-              ) : !activeCustom && !isCarousel && singleOptions.length === 0 ? (
-                <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
-                  <p>We couldn't write copy for this concept. Want to try again?</p>
-                  <Button size="sm" variant="outline" onClick={compose}>
-                    <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
-                  </Button>
-                </div>
-              ) : !activeCustom && isCarousel && carouselOptions.length === 0 ? (
-                <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
-                  <p>We couldn't write carousel copy for this concept. Want to try again?</p>
-                  <Button size="sm" variant="outline" onClick={compose}>
-                    <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
-                  </Button>
-                </div>
-              ) : isCarousel ? (
-                <CarouselEditor
-                  options={carouselOptions}
-                  selectedIdx={selectedOptionIdx}
-                  setSelectedIdx={setSelectedOptionIdx}
-                  slides={editedSlides}
-                  setSlides={setEditedSlides}
-                  editing={editingCopy}
-                  setEditing={setEditingCopy}
-                  onRegenerate={compose}
-                />
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={addOverlay}
+                      onChange={(e) => setAddOverlay(e.target.checked)}
+                    />
+                    Add text overlay
+                  </label>
+
+                  {addOverlay && (
+                    composing ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Writing copy in your brand voice…
+                      </div>
+                    ) : singleOptions.length === 0 ? (
+                      <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
+                        <p>We couldn't write copy for this concept. Want to try again?</p>
+                        <Button size="sm" variant="outline" onClick={compose}>
+                          <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
+                        </Button>
+                      </div>
+                    ) : (
+                      <SingleEditor
+                        options={singleOptions}
+                        selectedIdx={selectedOptionIdx}
+                        setSelectedIdx={setSelectedOptionIdx}
+                        edited={editedSingle}
+                        setEdited={setEditedSingle}
+                        editing={editingCopy}
+                        setEditing={setEditingCopy}
+                        onRegenerate={compose}
+                      />
+                    )
+                  )}
+                </>
               ) : (
-                <SingleEditor
-                  options={singleOptions}
-                  selectedIdx={selectedOptionIdx}
-                  setSelectedIdx={setSelectedOptionIdx}
-                  edited={editedSingle}
-                  setEdited={setEditedSingle}
-                  editing={editingCopy}
-                  setEditing={setEditingCopy}
-                  onRegenerate={compose}
-                />
+                <>
+                  <div className="space-y-1">
+                    <Label className="text-xs uppercase text-muted-foreground">Template style</Label>
+                    <Select
+                      value={activeCustom ? `custom:${activeCustom.id}` : `built:${template}`}
+                      onValueChange={(v) => {
+                        if (v.startsWith("custom:")) {
+                          setCustomTemplateId(v.slice(7));
+                        } else {
+                          setCustomTemplateId("");
+                          setTemplate(v.slice(6));
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {BUILT_IN_TEMPLATES.map((t) => (
+                          <SelectItem key={t} value={`built:${t}`}>{t} (built-in)</SelectItem>
+                        ))}
+                        {customTemplates.length > 0 && (
+                          <div className="px-2 py-1 text-[10px] uppercase text-muted-foreground">Custom</div>
+                        )}
+                        {customTemplates.map((ct) => (
+                          <SelectItem key={ct.id} value={`custom:${ct.id}`}>{ct.name} · {ct.type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {composing ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Writing copy in your brand voice…
+                    </div>
+                  ) : !activeCustom && !isCarousel && singleOptions.length === 0 ? (
+                    <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
+                      <p>We couldn't write copy for this concept. Want to try again?</p>
+                      <Button size="sm" variant="outline" onClick={compose}>
+                        <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
+                      </Button>
+                    </div>
+                  ) : !activeCustom && isCarousel && carouselOptions.length === 0 ? (
+                    <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
+                      <p>We couldn't write carousel copy for this concept. Want to try again?</p>
+                      <Button size="sm" variant="outline" onClick={compose}>
+                        <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
+                      </Button>
+                    </div>
+                  ) : isCarousel ? (
+                    <CarouselEditor
+                      options={carouselOptions}
+                      selectedIdx={selectedOptionIdx}
+                      setSelectedIdx={setSelectedOptionIdx}
+                      slides={editedSlides}
+                      setSlides={setEditedSlides}
+                      editing={editingCopy}
+                      setEditing={setEditingCopy}
+                      onRegenerate={compose}
+                    />
+                  ) : (
+                    <SingleEditor
+                      options={singleOptions}
+                      selectedIdx={selectedOptionIdx}
+                      setSelectedIdx={setSelectedOptionIdx}
+                      edited={editedSingle}
+                      setEdited={setEditedSingle}
+                      editing={editingCopy}
+                      setEditing={setEditingCopy}
+                      onRegenerate={compose}
+                    />
+                  )}
+                </>
               )}
 
               <div className="space-y-2">
@@ -602,9 +700,11 @@ export function GenerateCreativeDialog() {
                 onClick={generate}
                 disabled={
                   generating || composing || !selectedPhoto ||
-                  (isCarousel
-                    ? !editedSlides.some((s) => (s?.headline || "").trim().length > 0)
-                    : !((editedSingle.headline || "").trim() || (editedSingle.headlineHL || "").trim()))
+                  (template === "imageonly"
+                    ? false
+                    : isCarousel
+                      ? !editedSlides.some((s) => (s?.headline || "").trim().length > 0)
+                      : !((editedSingle.headline || "").trim() || (editedSingle.headlineHL || "").trim()))
                 }
               >
                 {generating ? (
