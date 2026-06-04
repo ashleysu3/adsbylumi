@@ -246,6 +246,8 @@ export function GenerateCreativeDialog() {
           cream: c.cream || DEFAULT_COLORS.cream,
         });
         setFontUrl(f.displayItalicUrl || "");
+        setDisplayFamily(f.displayFamily || "");
+        setBodyFamily(f.bodyFamily || "");
         setLogoUrl((data as any)?.logo_url || "");
         setBrandVoice((data as any)?.voice ?? null);
       } catch (err: any) {
