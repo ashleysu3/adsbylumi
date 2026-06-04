@@ -12,11 +12,23 @@ Deno.serve(async (req) => {
   try {
     console.log('[run-optimization-report] Request received');
     const body = await req.json();
-    const { brandId, dateRangeStart, dateRangeEnd } = body;
-    console.log('[run-optimization-report] Params:', { brandId, dateRangeStart, dateRangeEnd });
-    if (!brandId || !dateRangeStart || !dateRangeEnd) {
-      throw new Error('brandId, dateRangeStart, and dateRangeEnd are required');
+    const { brandId } = body;
+    let { dateRangeStart, dateRangeEnd } = body;
+    if (!brandId) {
+      return new Response(JSON.stringify({ error: 'brandId is required' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400,
+      });
     }
+    // Default to a trailing 7-day window when caller (e.g. auto-refresh after
+    // confirming goals) doesn't specify a range.
+    if (!dateRangeStart || !dateRangeEnd) {
+      const end = new Date();
+      const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const fmt = (d: Date) => d.toISOString().slice(0, 10);
+      dateRangeEnd = dateRangeEnd || fmt(end);
+      dateRangeStart = dateRangeStart || fmt(start);
+    }
+    console.log('[run-optimization-report] Params:', { brandId, dateRangeStart, dateRangeEnd });
 
     // Auth — support both user JWT and service-role key for cron context
     const authHeader = req.headers.get('Authorization');
