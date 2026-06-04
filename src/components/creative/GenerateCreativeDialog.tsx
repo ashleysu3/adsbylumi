@@ -93,6 +93,7 @@ export function GenerateCreativeDialog() {
   const [selectedPhotoId, setSelectedPhotoId] = useState<string>("");
   const [removeBackground, setRemoveBackground] = useState(true);
   const [generatedPhoto, setGeneratedPhoto] = useState<Photo | null>(null);
+  const [optimizedPrompt, setOptimizedPrompt] = useState<string>("");
   const [generatingConcept, setGeneratingConcept] = useState(false);
 
   const [composing, setComposing] = useState(false);
@@ -146,6 +147,7 @@ export function GenerateCreativeDialog() {
       setTemplate(isGen ? "imageonly" : mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
       if (isGen) setRemoveBackground(false);
       setGeneratedPhoto(null);
+      setOptimizedPrompt("");
       setOpen(true);
       setSingleOptions([]);
       setCarouselOptions([]);
@@ -175,6 +177,7 @@ export function GenerateCreativeDialog() {
       if (data?.error) throw new Error(data.error);
       if (!data?.url) throw new Error("No image returned");
       setGeneratedPhoto({ id: "generated", path: "generated", url: data.url });
+      setOptimizedPrompt(data.optimizedPrompt || "");
     } catch (err: any) {
       toast.error(err?.message || "Could not generate concept image");
     } finally {
@@ -771,6 +774,12 @@ export function GenerateCreativeDialog() {
                       <div className="relative aspect-square rounded border-2 border-primary overflow-hidden max-w-[240px]">
                         <img src={generatedPhoto.url} alt="" className="w-full h-full object-cover" />
                       </div>
+                      {optimizedPrompt && (
+                        <p className="text-[11px] text-muted-foreground leading-snug max-w-[240px]">
+                          <span className="font-medium text-foreground">Image the AI built from:</span>{" "}
+                          {optimizedPrompt}
+                        </p>
+                      )}
                       <Button size="sm" variant="ghost" onClick={generateConceptImage} disabled={generatingConcept}>
                         <RefreshCw className="h-3 w-3 mr-1" /> Regenerate image
                       </Button>
