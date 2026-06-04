@@ -422,6 +422,42 @@ export type Database = {
         }
         Relationships: []
       }
+      brand_assets: {
+        Row: {
+          created_at: string
+          height: number | null
+          id: string
+          kept: boolean
+          role: string
+          source_url: string | null
+          url: string
+          user_id: string
+          width: number | null
+        }
+        Insert: {
+          created_at?: string
+          height?: number | null
+          id?: string
+          kept?: boolean
+          role: string
+          source_url?: string | null
+          url: string
+          user_id?: string
+          width?: number | null
+        }
+        Update: {
+          created_at?: string
+          height?: number | null
+          id?: string
+          kept?: boolean
+          role?: string
+          source_url?: string | null
+          url?: string
+          user_id?: string
+          width?: number | null
+        }
+        Relationships: []
+      }
       brand_content_assets: {
         Row: {
           asset_type: string
