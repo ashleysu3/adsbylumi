@@ -268,6 +268,44 @@ export function GenerateCreativeDialog() {
     (async () => {
       try {
         const { data, error } = await supabase
+          .from("brand_assets" as any)
+          .select("id, url, role, kept")
+          .eq("kept", true)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        const rows = (data || []) as unknown as Array<BrandAssetRow & { kept: boolean }>;
+        const pathFromUrl = (u: string): string | null => {
+          const m = u.match(/\/storage\/v1\/object\/(?:public|sign)\/brand-assets\/([^?]+)/);
+          return m ? decodeURIComponent(m[1]) : null;
+        };
+        const paths = rows.map((r) => pathFromUrl(r.url)).filter(Boolean) as string[];
+        let signed: { signedUrl: string }[] = [];
+        if (paths.length) {
+          const { data: s } = await supabase.storage
+            .from("brand-assets")
+            .createSignedUrls(paths, 60 * 60);
+          signed = (s || []) as { signedUrl: string }[];
+        }
+        let i = 0;
+        const resolved: Photo[] = rows.map((r) => {
+          const hasPath = !!pathFromUrl(r.url);
+          const url = hasPath ? signed[i++]?.signedUrl || r.url : r.url;
+          return { id: `ba:${r.id}`, path: r.url, url, source: "brand", role: r.role };
+        });
+        if (cancelled) return;
+        setBrandPhotoAssets(resolved.filter((a) => a.role === "photo"));
+        setBrandBackgroundAssets(
+          resolved.filter((a) => a.role === "background" || a.role === "texture"),
+        );
+        const logo = resolved.find((a) => a.role === "logo") || null;
+        setBrandLogoAsset(logo);
+      } catch {
+        /* brand_assets table may not exist yet; ignore */
+      }
+    })();
+    (async () => {
+      try {
+        const { data, error } = await supabase
           .from("templates")
           .select("id, name, type, html, copy_slots, slide_slots, needs_photo, placements")
           .eq("status", "approved")
