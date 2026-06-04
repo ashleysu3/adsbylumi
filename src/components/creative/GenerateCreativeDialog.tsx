@@ -133,9 +133,12 @@ export function GenerateCreativeDialog() {
   // Listen for handoff event
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { brief?: CreativeBrief };
+      const detail = (e as CustomEvent).detail as { brief?: CreativeBrief; itemId?: string };
       if (!detail?.brief) return;
+      setItemId(detail.itemId || "");
+      setApprovedIdxs(new Set());
       setBrief(detail.brief);
+
       const isGen = detail.brief.imageSource === "generated";
       setCreativeSource(isGen ? "generated" : "template");
       setImagePrompt(detail.brief.imagePrompt || detail.brief.concept || "");
