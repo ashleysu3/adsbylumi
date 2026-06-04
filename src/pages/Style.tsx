@@ -375,6 +375,9 @@ export default function Style() {
             </CardContent>
           </Card>
 
+          {/* Brand Image Library */}
+          <BrandImageLibrary websiteUrl={brand?.website_url || brand?.website} />
+
           {/* B-Roll Libraries */}
           <BRollLibrariesManager
             brandId={brand.id}
