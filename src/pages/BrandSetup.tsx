@@ -82,7 +82,7 @@ export default function BrandSetup() {
       setPop(s.colors?.pop || "");
       setHighlight(s.colors?.highlight || "");
       setCream(s.colors?.cream || "");
-      setDisplayUrl(s.fonts?.display?.url || "");
+      setDisplayUrl((s.fonts as any)?.displayUrl || s.fonts?.display?.url || "");
       const detectedLogo = (logoRes?.data as { logoUrl?: string | null } | null)?.logoUrl || "";
       setLogoUrl(detectedLogo);
     } catch (e: any) {
