@@ -774,6 +774,12 @@ export function GenerateCreativeDialog() {
                       <div className="relative aspect-square rounded border-2 border-primary overflow-hidden max-w-[240px]">
                         <img src={generatedPhoto.url} alt="" className="w-full h-full object-cover" />
                       </div>
+                      {optimizedPrompt && (
+                        <p className="text-[11px] text-muted-foreground leading-snug max-w-[240px]">
+                          <span className="font-medium text-foreground">Image the AI built from:</span>{" "}
+                          {optimizedPrompt}
+                        </p>
+                      )}
                       <Button size="sm" variant="ghost" onClick={generateConceptImage} disabled={generatingConcept}>
                         <RefreshCw className="h-3 w-3 mr-1" /> Regenerate image
                       </Button>
