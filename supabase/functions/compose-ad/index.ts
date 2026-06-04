@@ -63,7 +63,7 @@ serve(async (req) => {
     const user = `Creative brief:\n${JSON.stringify(brief)}\n\nBrand voice samples:\n${JSON.stringify(brandVoice)}\n\n${instruction(template, count)}\n\nOutput ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
     const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST", headers: { authorization: `Bearer ${KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({ model: "gpt-4o-mini", temperature: 0.9, response_format: { type: "json_object" },
+      body: JSON.stringify({ model: "gpt-4o-mini", temperature: 0.9, response_format: { type: "json_object" }, // redeploy
         messages: [ { role: "system", content: VOICE_RULES }, { role: "user", content: user } ] }),
     });
     const d = await r.json();
