@@ -1,12 +1,56 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Paintbrush } from "lucide-react";
 import { toast } from "sonner";
+
+// Curated Google Fonts the renderer can actually load.
+// Keep in sync with renderer/ALLOWED_FONTS.
+const DISPLAY_FONTS = [
+  "Playfair Display",
+  "Bebas Neue",
+  "Oswald",
+  "Montserrat",
+  "Poppins",
+  "Raleway",
+  "Lora",
+  "DM Serif Display",
+  "Cormorant Garamond",
+  "Abril Fatface",
+  "Archivo Black",
+  "Anton",
+  "Fraunces",
+  "Space Grotesk",
+] as const;
+
+const BODY_FONTS = [
+  "Inter",
+  "Montserrat",
+  "Poppins",
+  "Raleway",
+  "Lora",
+  "Work Sans",
+  "DM Sans",
+  "Nunito",
+  "Source Sans 3",
+  "Karla",
+  "Manrope",
+  "Open Sans",
+] as const;
+
+const ALL_FONTS = Array.from(new Set([...DISPLAY_FONTS, ...BODY_FONTS]));
+
+function googleFontHref(families: readonly string[]) {
+  const params = families
+    .map((f) => `family=${encodeURIComponent(f).replace(/%20/g, "+")}:wght@400;700`)
+    .join("&");
+  return `https://fonts.googleapis.com/css2?${params}&display=swap`;
+}
 
 type BrandColors = {
   bg?: string;
