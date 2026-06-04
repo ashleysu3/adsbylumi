@@ -341,7 +341,7 @@ export function GenerateCreativeDialog() {
       try {
         const { data, error } = await supabase
           .from("templates")
-          .select("id, name, type, html, copy_slots, slide_slots, needs_photo, placements")
+          .select("id, name, type, html, copy_slots, slide_slots, needs_photo, placements, preview_url")
           .eq("status", "approved")
           .order("created_at", { ascending: false });
         if (error) throw error;
@@ -356,6 +356,7 @@ export function GenerateCreativeDialog() {
             slide_slots: r.slide_slots || [],
             needs_photo: r.needs_photo ?? true,
             placements: Array.isArray(r.placements) ? r.placements : ["feed", "story"],
+            preview_url: r.preview_url || undefined,
           })),
         );
       } catch {
