@@ -107,25 +107,35 @@ Hook: "My 3rd discovery call this week. Same objection. 'I need to think about i
 Guidance: "POV shot of you hanging up phone, slump in chair. B-roll of empty calendar. Text overlay: 'Sound familiar?' at 2 seconds."
 
 ${isBroll ? `
-=== B-ROLL FORMAT — LOFI EVERYDAY FOOTAGE ===
-B-roll is NOT cinematic or produced. It is dead-simple background footage filmed on a phone in under 30 seconds. The TEXT OVERLAYS do the selling — the footage is just warmth and movement behind the words.
+=== B-ROLL FORMAT — TEXT-OVERLAY AD (FOOTAGE COMES FROM THE TOOLKIT) ===
+The user picks the actual clip from their B-Roll Library in the Creative Toolkit. You are NOT directing the shoot or writing a shot list.
 
-WHAT TO SUGGEST (generic everyday actions ONLY):
-- Typing on a laptop, walking somewhere, pouring coffee, fixing hair in a mirror
-- Scrolling on phone, sitting at a desk, walking a dog, driving (phone mounted)
-- Writing in a notebook, picking up bag/keys, cooking, watering plants
-- Standing at a window, putting on shoes, getting ready, making coffee
+Your deliverable for broll is exactly two things:
+1. **broll_vibe**: ONE short string (≤ 8 words) — mood / setting only, so they know which clip to grab (e.g. "warm desk, hands + notebook").
+2. **text_overlays**: A killer 4–6 overlay sequence — THIS is what sells the ad.
 
-WHAT NOT TO SUGGEST:
-- NO industry-specific or product-specific scenes
-- NO cinematic or stylized shots, NO props they'd need to buy
-- NO specific facial expressions or acting, NO elaborate staging
-- The footage should work for ANY ad copy layered on top
+Do NOT output broll_shots. Do NOT describe what to film.
 
-For broll format, you MUST create:
-1. **broll_shots**: Array of 3-5 one-sentence everyday shot ideas
-2. **text_overlays**: Array of timed text overlay objects with "text", "timing", "type" (hook/insight/transition/cta) — THIS is what sells
-3. **mood**: One of "Calm", "Productive", "Relatable", "Warm", "Authentic", "Energetic"
+=== TEXT OVERLAY EXCELLENCE ===
+VOICE: Mirror the brand voice. Sharp, human, one friend texting another — never marketer-speak. Use brand signature phrases when they appear in context.
+
+LENGTH: Hook overlay ≤ 27 chars (hard cap). Other overlays ≤ 14 words.
+
+SEQUENCE (4–6 overlays, in this order, with timing):
+1. **hook** (0–3s) — pattern-interrupt or a specific micro-moment.
+2. **pain** (3–7s) — one concrete pain from audience psychology.
+3. **insight** (7–12s) — the reframe. "It's not X. It's Y."
+4. **proof** (12–18s) — a number, name, or real result tied to the offer.
+5. **cta** (last 3s) — matches the actual offer ("Save my seat", "Get the guide", "Book a call"). Never "Learn more" / "Click here".
+
+BANNED PHRASES (instant fail): "learn more", "click here", "unlock", "transform", "next level", "secret", "game-changer", "ready to", "are you tired of", "supercharge", "level up", "overnight", "10x", "era".
+
+SPECIFICITY: Every overlay names a real number, name, moment, feeling, or object. No generic claims.
+
+For broll format, you MUST output:
+1. **broll_vibe** (string, ≤ 8 words)
+2. **text_overlays** (4–6 objects with "text", "timing", "type" ∈ hook | pain | insight | proof | cta)
+3. **mood** — one of "Calm", "Productive", "Relatable", "Warm", "Authentic", "Energetic"
 ` : ''}
 ${isTalkingHead ? `
 === TALKING HEAD - DESIGNED FOR NON-ACTORS ===
