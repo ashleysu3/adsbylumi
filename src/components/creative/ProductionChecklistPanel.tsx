@@ -706,7 +706,13 @@ export function ProductionChecklistPanel({
                                     <div>
                                       <h4 className="text-base font-semibold flex items-center gap-2">
                                         📝 Text Overlays{item.format === "broll" ? " — the ad" : ""}
-                                    </h4>
+                                      </h4>
+                                      {item.format === "broll" && (
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                          Powered by your brand voice — this is what sells the ad.
+                                        </p>
+                                      )}
+                                    </div>
                                     <div className="space-y-2">
                                       {item.text_overlays.map((overlay, idx) => (
                                         <div
@@ -714,9 +720,11 @@ export function ProductionChecklistPanel({
                                           className={cn(
                                             "p-2 rounded border text-sm",
                                             overlay.type === "hook" && "bg-blue-500/5 border-blue-500/20",
+                                            overlay.type === "pain" && "bg-rose-500/5 border-rose-500/20",
                                             overlay.type === "transition" && "bg-amber-500/5 border-amber-500/20",
-                                            overlay.type === "cta" && "bg-green-500/5 border-green-500/20",
                                             overlay.type === "insight" && "bg-purple-500/5 border-purple-500/20",
+                                            overlay.type === "proof" && "bg-teal-500/5 border-teal-500/20",
+                                            overlay.type === "cta" && "bg-green-500/5 border-green-500/20",
                                             !overlay.type && "bg-muted/50"
                                           )}
                                         >
