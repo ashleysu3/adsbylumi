@@ -51,6 +51,8 @@ export default function Style() {
   }, [contextBrand?.id]);
 
   const fetchBrand = async () => {
+    setLoading(true);
+    setBrand(null);
     try {
       const effectiveUserId = await getEffectiveUserId();
       if (!effectiveUserId) return;
@@ -377,7 +379,7 @@ export default function Style() {
           </Card>
 
           {/* Brand Colors & Fonts */}
-          <BrandColorsAndFonts websiteUrl={brand?.website_url || brand?.website} />
+          <BrandColorsAndFonts brandId={brand.id} websiteUrl={brand?.website_url || brand?.website} />
 
           {/* Brand Image Library */}
           <BrandImageLibrary websiteUrl={brand?.website_url || brand?.website} />

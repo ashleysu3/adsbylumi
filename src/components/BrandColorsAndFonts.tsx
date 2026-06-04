@@ -77,10 +77,11 @@ const COLOR_FIELDS: { key: keyof BrandColors; label: string }[] = [
 ];
 
 interface Props {
+  brandId?: string | null;
   websiteUrl?: string | null;
 }
 
-export default function BrandColorsAndFonts({ websiteUrl }: Props) {
+export default function BrandColorsAndFonts({ brandId, websiteUrl }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pulling, setPulling] = useState(false);
@@ -90,12 +91,8 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
   const [sourceUrl, setSourceUrl] = useState<string>("");
 
   useEffect(() => {
-    if (websiteUrl) setUrl(websiteUrl);
-  }, [websiteUrl]);
-
-  useEffect(() => {
     void load();
-  }, []);
+  }, [brandId, websiteUrl]);
 
   useEffect(() => {
     const id = "brand-google-fonts";
@@ -110,6 +107,15 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
   }, []);
 
   const load = async () => {
+    setLoading(true);
+    setColors({});
+    setFonts({});
+    setSourceUrl("");
+    setUrl(websiteUrl || "");
+    if (!brandId) {
+      setLoading(false);
+      return;
+    }
     try {
       const { data: userRes } = await supabase.auth.getUser();
       const userId = userRes.user?.id;
@@ -118,6 +124,7 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
         .from("brand_kits")
         .select("*")
         .eq("user_id", userId)
+        .eq("brand_id", brandId)
         .maybeSingle();
       if (data) {
         setColors((data.colors as BrandColors) || {});
@@ -171,6 +178,7 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
   const handleSave = async () => {
     setSaving(true);
     try {
+      if (!brandId) throw new Error("Choose a brand before saving colors and fonts");
       const { data: userRes } = await supabase.auth.getUser();
       const userId = userRes.user?.id;
       if (!userId) throw new Error("You must be signed in");
@@ -186,12 +194,13 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
         .upsert(
           {
             user_id: userId,
+            brand_id: brandId,
             source_url: url.trim() || sourceUrl || null,
             colors,
             fonts: fontsToSave,
             status: "confirmed",
           },
-          { onConflict: "user_id" }
+          { onConflict: "user_id,brand_id" }
         );
       if (error) throw error;
       toast.success("Brand colors & fonts saved");
@@ -240,25 +249,31 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
             <div>
               <Label className="text-base">Colors</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
-                {COLOR_FIELDS.map(({ key, label }) => (
-                  <div key={key} className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">{label}</Label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={colors[key] || "#000000"}
-                        onChange={(e) => setColors((prev) => ({ ...prev, [key]: e.target.value }))}
-                        className="h-10 w-12 cursor-pointer rounded border border-border bg-transparent"
-                      />
-                      <Input
-                        value={colors[key] || ""}
-                        onChange={(e) => setColors((prev) => ({ ...prev, [key]: e.target.value }))}
-                        placeholder="#000000"
-                        className="font-mono"
-                      />
+                {COLOR_FIELDS.map(({ key, label }) => {
+                  const value = colors[key] || "";
+                  return (
+                    <div key={key} className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">{label}</Label>
+                      <div className="flex items-center gap-2">
+                        <label className="relative h-10 w-12 cursor-pointer overflow-hidden rounded border border-border bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                          {value ? <span className="absolute inset-0" style={{ backgroundColor: value }} /> : "—"}
+                          <input
+                            type="color"
+                            value={value || "#ffffff"}
+                            onChange={(e) => setColors((prev) => ({ ...prev, [key]: e.target.value }))}
+                            className="absolute inset-0 cursor-pointer opacity-0"
+                          />
+                        </label>
+                        <Input
+                          value={value}
+                          onChange={(e) => setColors((prev) => ({ ...prev, [key]: e.target.value }))}
+                          placeholder="No color set"
+                          className="font-mono"
+                        />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

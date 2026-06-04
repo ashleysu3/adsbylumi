@@ -501,6 +501,7 @@ export type Database = {
       }
       brand_kits: {
         Row: {
+          brand_id: string | null
           colors: Json | null
           created_at: string
           fonts: Json | null
@@ -514,6 +515,7 @@ export type Database = {
           voice: Json | null
         }
         Insert: {
+          brand_id?: string | null
           colors?: Json | null
           created_at?: string
           fonts?: Json | null
@@ -527,6 +529,7 @@ export type Database = {
           voice?: Json | null
         }
         Update: {
+          brand_id?: string | null
           colors?: Json | null
           created_at?: string
           fonts?: Json | null
@@ -539,7 +542,15 @@ export type Database = {
           user_id?: string
           voice?: Json | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "brand_kits_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       brand_learnings: {
         Row: {

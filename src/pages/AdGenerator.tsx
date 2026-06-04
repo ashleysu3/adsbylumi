@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useBrand } from "@/contexts/BrandContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +45,7 @@ type GalleryPhoto = { id: string; path: string; url: string };
 
 export default function AdGenerator() {
   const navigate = useNavigate();
+  const { activeBrand, loading: brandsLoading } = useBrand();
   const [colors, setColors] = useState<BrandKitColors>(EMPTY_COLORS);
   const [fontUrl, setFontUrl] = useState<string>("");
   const [copy, setCopy] = useState(DEFAULT_COPY);
@@ -69,11 +71,21 @@ export default function AdGenerator() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      if (brandsLoading) return;
       setKitLoading(true);
+      setHasKit(false);
+      setColors(EMPTY_COLORS);
+      setFontUrl("");
+      setBrandVoice(null);
+      if (!activeBrand?.id) {
+        setKitLoading(false);
+        return;
+      }
       try {
         const { data, error } = await supabase
           .from("brand_kits")
           .select("colors, fonts, voice")
+          .eq("brand_id", activeBrand.id)
           .maybeSingle();
         if (error) throw error;
         if (!cancelled) {
@@ -102,7 +114,7 @@ export default function AdGenerator() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [activeBrand?.id, brandsLoading]);
 
   useEffect(() => {
     let cancelled = false;
