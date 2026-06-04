@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, X, Type, Film, AlertTriangle, Repeat, FastForward, Upload } from 'lucide-react';
+import { Plus, X, Type, Film, AlertTriangle, Repeat, FastForward, Upload, Scissors } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   VideoTextPreview,
