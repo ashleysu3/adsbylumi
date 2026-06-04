@@ -1769,8 +1769,44 @@ export function ProductionManager({
             }
           }}
           onUrlChange={onUrlChange}
+          isApproved={(adPreviewItem as any).approval_status === 'approved'}
+          alreadyPushed={!!(adPreviewItem as any).pushed_to_ad_at}
+          canPush={hasLiveCampaign && !!getAssetForItem(adPreviewItem)}
+          pushing={pushingToAd}
+          onApproveAndAdd={async () => {
+            const itemAny = adPreviewItem as any;
+            if (itemAny.approval_status !== 'approved') {
+              await handleToggleApprove(adPreviewItem);
+            }
+            await pushApprovedToAd([adPreviewItem]);
+          }}
         />
       )}
+
+      {/* Push approved-to-ad confirm dialog */}
+      <Dialog open={pushConfirmOpen} onOpenChange={(open) => !pushingToAd && setPushConfirmOpen(open)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Rocket className="h-5 w-5 text-primary" />
+              Push approved creatives to your ad?
+            </DialogTitle>
+            <DialogDescription>
+              {approvedItems.length} approved creative{approvedItems.length === 1 ? '' : 's'} will be added to your live campaign as separate ads, sharing the same copy pool. This is a real Meta change.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setPushConfirmOpen(false)} disabled={pushingToAd}>
+              Cancel
+            </Button>
+            <Button onClick={() => pushApprovedToAd()} disabled={pushingToAd} className="gap-2">
+              {pushingToAd ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+              Push to ad
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
 
       <Dialog open={!!pendingShortVideoRender} onOpenChange={(open) => !open && setPendingShortVideoRender(null)}>
         <DialogContent className="sm:max-w-md">
