@@ -49,6 +49,11 @@ interface AdPreviewModalProps {
   isDmCampaign?: boolean;
   onCopyChange?: (updatedCopy: AngleCopyData) => void;
   onUrlChange?: (url: string) => void;
+  isApproved?: boolean;
+  alreadyPushed?: boolean;
+  canPush?: boolean;
+  pushing?: boolean;
+  onApproveAndAdd?: () => Promise<void> | void;
 }
 
 export function AdPreviewModal({
