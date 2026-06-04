@@ -11,7 +11,7 @@ serve(async (req) => {
     const full = `${prompt}\n\nHARD RULES: no text, words, letters, or logos anywhere in the image. Keep the lower third darker and less busy so text can be overlaid. Square composition, ad-ready.`;
     const r = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST", headers: { authorization: `Bearer ${OPENAI}`, "content-type": "application/json" },
-      body: JSON.stringify({ model: "gpt-image-1", prompt: full, size: "1024x1024", n: 1 }),
+      body: JSON.stringify({ model: "dall-e-3", prompt: full, size: "1024x1024", n: 1, response_format: "b64_json", quality: "hd" }),
     });
     const d = await r.json();
     const b64 = d?.data?.[0]?.b64_json;
