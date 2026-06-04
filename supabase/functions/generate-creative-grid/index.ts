@@ -503,8 +503,8 @@ Each cell MUST include:
 - why_this_works: One sentence explaining the psychology (for the user's education)
 
 ADDITIONAL FIELDS FOR broll FORMAT ONLY:
-- broll_shots: Array of 3-5 one-sentence everyday shot ideas (generic, lofi, phone-filmed)
-- text_overlays: Array of objects with "text", "timing", and "type" (hook/insight/transition/cta) — this is what sells
+- broll_vibe: ONE short string (≤ 8 words) — mood / setting only. The user picks the actual clip from their B-Roll Library. Do NOT output broll_shots.
+- text_overlays: 4–6 overlays following the TEXT OVERLAY EXCELLENCE sequence + rules above. Types: "hook" | "pain" | "insight" | "proof" | "cta". THIS is what sells.
 - mood: One of "Calm", "Productive", "Relatable", "Warm", "Authentic", "Energetic"
 
 ADDITIONAL FIELDS FOR talking_head FORMAT ONLY:
