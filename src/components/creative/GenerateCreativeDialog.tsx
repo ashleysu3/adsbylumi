@@ -72,6 +72,10 @@ function mapStyleToTemplate(styleHint?: string, format?: string): string {
 export function GenerateCreativeDialog() {
   const [open, setOpen] = useState(false);
   const [brief, setBrief] = useState<CreativeBrief | null>(null);
+  const [itemId, setItemId] = useState<string>("");
+  const [approvingIdx, setApprovingIdx] = useState<number | null>(null);
+  const [approvedIdxs, setApprovedIdxs] = useState<Set<number>>(new Set());
+
 
   const [colors, setColors] = useState<Colors>(DEFAULT_COLORS);
   const [fontUrl, setFontUrl] = useState<string>("");
