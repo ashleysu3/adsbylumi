@@ -73,6 +73,7 @@ export function GenerateCreativeDialog() {
 
   const [colors, setColors] = useState<Colors>(DEFAULT_COLORS);
   const [fontUrl, setFontUrl] = useState<string>("");
+  const [logoUrl, setLogoUrl] = useState<string>("");
   const [brandVoice, setBrandVoice] = useState<any>(null);
   const [kitLoading, setKitLoading] = useState(false);
 
@@ -179,7 +180,7 @@ export function GenerateCreativeDialog() {
       try {
         const { data } = await supabase
           .from("brand_kits")
-          .select("colors, fonts, voice")
+          .select("colors, fonts, voice, logo_url")
           .maybeSingle();
         if (cancelled) return;
         if (data?.colors) {
@@ -197,6 +198,7 @@ export function GenerateCreativeDialog() {
           const f = data.fonts as { displayItalicUrl?: string };
           setFontUrl(f.displayItalicUrl || "");
         }
+        setLogoUrl((data as any)?.logo_url || "");
         setBrandVoice((data as any)?.voice ?? null);
       } catch (err: any) {
         toast.error(err?.message || "Could not load brand kit");
@@ -376,7 +378,7 @@ export function GenerateCreativeDialog() {
     setImages([]);
     setProgress("");
     try {
-      const brandKit = { colors, fonts: { displayItalicUrl: fontUrl || undefined } };
+      const brandKit = { colors, fonts: { displayItalicUrl: fontUrl || undefined }, logoUrl: logoUrl || undefined };
       const photo = { url: selectedPhoto.url, removeBackground };
 
       const templateField = activeCustom
