@@ -158,6 +158,7 @@ export function CreativeChecklistCard({
   onRefineScript,
   selected,
   onToggleSelect,
+  onToggleApprove,
   angleCopy,
   onCopyChange,
   onOverlaysChange,
