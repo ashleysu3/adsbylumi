@@ -698,7 +698,7 @@ export function GenerateCreativeDialog() {
       if (card.builtIn === "carousel") {
         setBrief((b) => (b ? { ...b, format: "carousel" } : b));
       } else if (brief?.format === "carousel") {
-        setBrief((b) => (b ? { ...b, format: "single" } : b));
+        setBrief((b) => (b ? { ...b, format: "single_graphic" } : b));
       }
     }
   };
