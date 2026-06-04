@@ -61,9 +61,9 @@ serve(async (req) => {
     const { brief = {}, brandVoice = {}, count = 3 } = await req.json();
     const template = brief.template || mapStyle(brief.styleHint, brief.format);
     const user = `Creative brief:\n${JSON.stringify(brief)}\n\nBrand voice samples:\n${JSON.stringify(brandVoice)}\n\n${instruction(template, count)}\n\nOutput ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST", headers: { authorization: `Bearer ${KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({ model: "gpt-4.1", temperature: 0.9, response_format: { type: "json_object" },
+      body: JSON.stringify({ model: "google/gemini-2.5-flash", response_format: { type: "json_object" },
         messages: [ { role: "system", content: VOICE_RULES }, { role: "user", content: user } ] }),
     });
     const d = await r.json();
