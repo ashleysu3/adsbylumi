@@ -117,6 +117,8 @@ export function RenderQueueProvider({ children }: { children: ReactNode }) {
         overlays: next.spec.overlays,
         style: next.spec.style,
         loopVideo: next.spec.loopVideo,
+        trimStart: next.spec.trimStart,
+        trimEnd: next.spec.trimEnd,
         onProgress: info => {
           updateJob(next.id, { progress: info.pct, message: info.message });
         },
