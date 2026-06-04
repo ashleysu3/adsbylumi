@@ -14,6 +14,7 @@ import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
 import type { CreativeBrief } from "./ProductionChecklistPanel";
 import { TemplatePreview } from "./TemplatePreview";
+import { CopyRegenerateDialog, type CopyFeedback } from "./CopyRegenerateDialog";
 import cutoutThumb from "@/assets/template-thumbs/cutout.png.asset.json";
 import spotlightThumb from "@/assets/template-thumbs/spotlight.png.asset.json";
 import framedThumb from "@/assets/template-thumbs/framed.png.asset.json";
@@ -154,6 +155,10 @@ export function GenerateCreativeDialog() {
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState<string>("");
   const [images, setImages] = useState<RenderImage[]>([]);
+
+  // Copy feedback dialog
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+
 
   const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>([]);
   const [customTemplateId, setCustomTemplateId] = useState<string>("");
@@ -397,7 +402,7 @@ export function GenerateCreativeDialog() {
     return () => { cancelled = true; };
   }, [open, activeBrand?.id, brandsLoading, navigate]);
 
-  const compose = useCallback(async () => {
+  const compose = useCallback(async (feedback?: CopyFeedback | null) => {
     const b = briefRef.current;
     if (!b) return;
     setComposing(true);
@@ -432,7 +437,7 @@ export function GenerateCreativeDialog() {
 
       const briefWithTemplate = { ...b, template };
       const { data, error } = await supabase.functions.invoke("compose-ad", {
-        body: { brief: briefWithTemplate, brandVoice: voicePayload, count: 3 },
+        body: { brief: briefWithTemplate, brandVoice: voicePayload, count: 3, feedback: feedback || null },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -692,6 +697,7 @@ export function GenerateCreativeDialog() {
     (isImageOnly || copyReady);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
         <DialogHeader>
@@ -938,17 +944,18 @@ export function GenerateCreativeDialog() {
                       ) : !activeCustom && !isCarousel && singleOptions.length === 0 ? (
                         <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
                           <p>We couldn't write copy for this concept. Want to try again?</p>
-                          <Button size="sm" variant="outline" onClick={compose}>
+                          <Button size="sm" variant="outline" onClick={() => compose()}>
                             <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
                           </Button>
                         </div>
                       ) : !activeCustom && isCarousel && carouselOptions.length === 0 ? (
                         <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
                           <p>We couldn't write carousel copy for this concept. Want to try again?</p>
-                          <Button size="sm" variant="outline" onClick={compose}>
+                          <Button size="sm" variant="outline" onClick={() => compose()}>
                             <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
                           </Button>
                         </div>
+
                       ) : isCarousel ? (
                         <CarouselEditor
                           options={carouselOptions}
@@ -958,7 +965,7 @@ export function GenerateCreativeDialog() {
                           setSlides={setEditedSlides}
                           editing={editingCopy}
                           setEditing={setEditingCopy}
-                          onRegenerate={compose}
+                          onRegenerate={() => setFeedbackOpen(true)}
                         />
                       ) : (
                         <SingleEditor
@@ -969,7 +976,7 @@ export function GenerateCreativeDialog() {
                           setEdited={setEditedSingle}
                           editing={editingCopy}
                           setEditing={setEditingCopy}
-                          onRegenerate={compose}
+                          onRegenerate={() => setFeedbackOpen(true)}
                         />
                       )}
                     </div>
@@ -1048,6 +1055,16 @@ export function GenerateCreativeDialog() {
         </div>
       </DialogContent>
     </Dialog>
+    <CopyRegenerateDialog
+      open={feedbackOpen}
+      onOpenChange={setFeedbackOpen}
+      isGenerating={composing}
+      onRegenerate={(fb) => { setFeedbackOpen(false); compose(fb); }}
+      onSkip={() => { setFeedbackOpen(false); compose(); }}
+      title="Refine this copy"
+      description="Tell Lumi what to change and we'll rewrite the options."
+    />
+    </>
   );
 }
 
