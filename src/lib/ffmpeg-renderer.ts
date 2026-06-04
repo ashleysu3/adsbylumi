@@ -60,6 +60,11 @@ export interface RenderOptions {
   overlays: RenderOverlay[];
   style: RenderStyle;
   loopVideo?: boolean;
+  /** Optional trim window applied to the source clip before overlays are
+   *  composited. Overlay timings are interpreted relative to the trimmed
+   *  output (i.e. 0s = trimStart in the source). */
+  trimStart?: number;
+  trimEnd?: number;
   onProgress?: (info: { pct: number; message: string }) => void;
 }
 
