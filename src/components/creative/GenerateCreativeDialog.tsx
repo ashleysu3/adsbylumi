@@ -376,7 +376,7 @@ export function GenerateCreativeDialog() {
     }
   }, [selectedOptionIdx, singleOptions, carouselOptions, isCarousel]);
 
-  const isGeneratedConcept = brief?.imageSource === "generated";
+  const isGeneratedConcept = creativeSource === "generated";
   const selectedPhoto = useMemo(
     () => (isGeneratedConcept ? generatedPhoto : photos.find((p) => p.id === selectedPhotoId)),
     [isGeneratedConcept, generatedPhoto, photos, selectedPhotoId],
