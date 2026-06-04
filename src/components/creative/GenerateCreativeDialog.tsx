@@ -35,13 +35,28 @@ type CustomTemplate = {
   slide_slots: any;
   needs_photo: boolean;
   placements: string[];
+  preview_url?: string;
 };
 
-const BUILT_IN_TEMPLATES = ["cutout", "spotlight", "framed", "split", "highlighter", "overlay", "carousel"] as const;
+const BUILT_IN_TEMPLATES = [
+  "cutout", "spotlight", "framed", "split", "highlighter", "overlay", "imageonly", "carousel",
+] as const;
+
+const BUILT_IN_LABELS: Record<string, string> = {
+  cutout: "Photo cut-out",
+  spotlight: "Spotlight card",
+  framed: "Framed editorial",
+  split: "Photo + headline",
+  highlighter: "Bold highlighter",
+  overlay: "Image + text",
+  imageonly: "Image only",
+  carousel: "Carousel",
+};
 
 const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
   cutout: "cutout", highlighter: "cutout",
-  spotlight: "with-background", framed: "with-background", split: "with-background", overlay: "with-background",
+  spotlight: "with-background", framed: "with-background", split: "with-background",
+  overlay: "with-background", imageonly: "with-background",
 };
 
 // Friendly labels for known slot keys (anything unknown falls back to the key)
