@@ -962,7 +962,16 @@ export function GenerateCreativeDialog() {
                           selectedIdx={selectedOptionIdx}
                           setSelectedIdx={setSelectedOptionIdx}
                           slides={editedSlides}
-                          setSlides={setEditedSlides}
+                          setSlides={(s) => {
+                            setEditedSlides(s);
+                            setCarouselOptions((prev) => {
+                              const next = [...prev];
+                              if (next[selectedOptionIdx]) {
+                                next[selectedOptionIdx] = { ...next[selectedOptionIdx], slides: s };
+                              }
+                              return next;
+                            });
+                          }}
                           editing={editingCopy}
                           setEditing={setEditingCopy}
                           onRegenerate={() => setFeedbackOpen(true)}
@@ -973,7 +982,14 @@ export function GenerateCreativeDialog() {
                           selectedIdx={selectedOptionIdx}
                           setSelectedIdx={setSelectedOptionIdx}
                           edited={editedSingle}
-                          setEdited={setEditedSingle}
+                          setEdited={(c) => {
+                            setEditedSingle(c);
+                            setSingleOptions((prev) => {
+                              const next = [...prev];
+                              next[selectedOptionIdx] = c;
+                              return next;
+                            });
+                          }}
                           editing={editingCopy}
                           setEditing={setEditingCopy}
                           onRegenerate={() => setFeedbackOpen(true)}
@@ -1124,7 +1140,7 @@ function SingleEditor({
               </div>
             ) : (
               <div className="rounded border p-3 space-y-1">
-                {Object.entries(opt).map(([k, v]) =>
+                {Object.entries(i === selectedIdx ? { ...opt, ...edited } : opt).map(([k, v]) =>
                   v ? (
                     <p key={k} className="text-sm">
                       <span className="text-[10px] uppercase text-muted-foreground mr-2">{labelFor(k)}</span>
