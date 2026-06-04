@@ -284,9 +284,9 @@ export function GenerateCreativeDialog() {
         if (cancelled) return;
 
         const c = (data?.colors || {}) as Record<string, string>;
-        const f = (data?.fonts || {}) as { displayItalicUrl?: string; displayFamily?: string; bodyFamily?: string };
+        const f = (data?.fonts || {}) as { displayUrl?: string; displayItalicUrl?: string; displayFamily?: string; bodyFamily?: string };
         const hasAnyColor = !!(c.bg || c.ink || c.accent || c.pop || c.highlight || c.cream);
-        const hasAnyFont = !!(f.displayFamily || f.bodyFamily || f.displayItalicUrl);
+        const hasAnyFont = !!(f.displayFamily || f.bodyFamily || f.displayUrl || f.displayItalicUrl);
 
         if (!data || !hasAnyColor || !hasAnyFont) {
           toast.error("Pick your brand colors & fonts first — these go on every ad we generate.");
@@ -303,7 +303,7 @@ export function GenerateCreativeDialog() {
           highlight: c.highlight || DEFAULT_COLORS.highlight,
           cream: c.cream || DEFAULT_COLORS.cream,
         });
-        setFontUrl(f.displayItalicUrl || "");
+        setFontUrl(f.displayUrl || f.displayItalicUrl || "");
         setDisplayFamily(f.displayFamily || "");
         setBodyFamily(f.bodyFamily || "");
         setLogoUrl((data as any)?.logo_url || "");
@@ -612,6 +612,7 @@ export function GenerateCreativeDialog() {
       const brandKit = {
         colors,
         fonts: {
+          displayUrl: fontUrl || undefined,
           displayItalicUrl: fontUrl || undefined,
           displayFamily: displayFamily || undefined,
           bodyFamily: bodyFamily || undefined,

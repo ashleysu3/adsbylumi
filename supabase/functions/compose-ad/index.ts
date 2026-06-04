@@ -1,54 +1,40 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-const KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info, x-supabase-api-version",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const VOICE_RULES = `You are a world-class direct-response copywriter who writes Meta (Facebook/Instagram) ad copy for coaches, course creators, and service providers. Your copy stops the scroll and converts. You write in the brand's REAL voice — like a sharp human, never like a marketer. Study the brand voice samples and mirror their tone, rhythm, word choice, and punctuation.
+const VOICE_RULES = `You are a world-class direct-response copywriter writing Meta ad copy for coaches, course creators, and service providers. Your copy stops the scroll and converts. Write in the brand's REAL voice — like a sharp human, never like a marketer. Study the brand voice samples and mirror tone, rhythm, word choice, and punctuation.
 
-Produce DISTINCT options — each a genuinely different proven angle: a direct callout, a contrarian take, a curiosity gap, problem then agitate, a specific result, or a pointed question that names a real pain.
+Produce DISTINCT options — each a genuinely different proven angle: a direct callout, a contrarian take, a curiosity gap, problem-then-agitate, a specific result, or a pointed question naming a real pain.
 
 WHAT MAKES IT CONVERT (non-negotiable):
+- HOOK: the first 3 words must stop the scroll. No throat-clearing.
+- SPECIFIC over vague, always ("your first 5 clients in 60 days", not "grow your business").
+- SUB earns the click with ONE concrete benefit or proof. Never hedge ("maybe it's time", "consider").
+- CTA is specific, active, and MATCHES THE OFFER: free class → "Save my seat"; download → "Send me the guide"; training → "Watch the training"; waitlist → "Join the waitlist". The CTA must reflect what actually happens on click.
+- Mirror the brand's voice samples. Sound like a real person talking to one person.
 
-- HOOK: the first 3 words must stop the scroll — call the reader out, name a specific pain, or break a pattern. No throat-clearing.
+BANNED — using any of these is an instant fail: "learn more", "find out more", "click here", "sign up", "get started", "simplify your approach", "take it to the next level", "maybe it's time", "unlock", "discover the secrets", "proven strategies", "elevate", "game-changer", "in today's world", "are you ready to", "look no further", "the ultimate", "supercharge", "dive in", "kickstart", "level up". No exclamation-mark spam — use the brand's punctuation only.
 
-- SPECIFIC over vague, always. Name the real pain, the real number, the real outcome ("your first 5 clients in 60 days", not "grow your business"). Concrete beats abstract every time.
+CALIBRATION — match STRONG, never WEAK:
+WEAK   -> headline: "Your last shiny object subscription?" | sub: "Maybe it's time to simplify your approach." | cta: "Learn more"
+STRONG -> headline: "You don't need another app. You need clients." | sub: "The free class that books 5 clients in 60 days — and replaces your whole tool stack." | cta: "Save my seat"
 
-- USE THE CONTEXT. You will be given the offer details, the offer psychology (the exact pains, desires, hesitations, "moment they realize", before/after, what finally convinces them, why they need this) and the audience psychology. Every option MUST pull at least one SPECIFIC line, moment, pain, objection, or phrase from this context. If the context names a moment ("I rewrote my sales page for the 4th time and still got crickets"), echo that exact moment. If it names a hesitation ("I've tried courses like this before"), answer it. Do NOT write generic copy that could belong to any brand — write copy that ONLY makes sense for THIS offer to THIS audience.
-
-- SUB earns the click with ONE concrete benefit or proof. Never hedge ("maybe it's time...", "consider...", "it might be...").
-
-- CTA is specific and active: "Save my seat", "Get the free class", "Send me the guide", "Watch the training".
-
-- CTA MATCHES THE OFFER: read the brief's "offer" and "cta" fields and the offer context, and make the CTA the exact next action for THAT offer. A free live class -> "Save my seat" or "Join the class"; a guide/PDF/checklist -> "Get the guide" or "Send it to me"; a call -> "Book a call"; a free trial -> "Start free". If the brief already has a strong "cta", use it. Never default to vague "See how", "Watch now", or "Learn more" unless it genuinely matches the offer.
-
-- SUB EARNS ITS SPACE: when the option includes a "sub" field, make it the most specific, benefit-loaded line in the whole ad — a concrete outcome, number, timeframe, or proof ("books your first 5 clients in 60 days", "trusted by 2,000+ planners", "in under 10 minutes a day"). Never filler, and never just restate the headline.
-
-- Mirror the brand's voice samples and messaging guidelines. Use the brand's signature phrases. Sound like a real person talking to one person.
-
-BANNED — using any of these (or anything like them) is an instant fail: "learn more", "find out more", "click here", "sign up", "get started", "simplify your approach", "take it to the next level", "maybe it's time", "unlock", "discover the secrets", "proven strategies", "elevate", "game-changer", "in today's world", "are you ready to", "look no further", "the ultimate", "supercharge", "dive in", "kickstart", "level up". No exclamation-mark spam — use the brand's punctuation only.
-
-CALIBRATION — match the STRONG column, never the WEAK one:
-
-WEAK   -> eyebrow: "Stop chasing after trends" | headline: "Your last shiny object subscription?" | sub: "Maybe it's time to simplify your approach." | cta: "Learn more"
-
-STRONG -> eyebrow: "For coaches drowning in tools" | headline: "You don't need another app. You need clients." | sub: "The free class that replaces your whole shiny-object stack — and books 5 clients in 60 days." | cta: "Save my seat"
-
-SENTENCE CASE headlines (capitalize the first word and proper nouns only). COMPLIANCE: never promise guaranteed income or results; imply outcomes, never guarantee them.
-
-PLAIN TEXT ONLY: never wrap copy in HTML, markdown, or formatting tags (no <b>, </b>, <i>, **bold**, _italic_, backticks). Output raw text only — the app handles all styling.`;
+SENTENCE CASE headlines (first word + proper nouns only). COMPLIANCE: never promise guaranteed income or results; imply, never guarantee.`;
 
 // exact slots per template (keys + length guidance)
+const CTA_RULE = `cta (<=4 words, MUST match the brief's offer/format — e.g. free class → "Save my seat", download → "Send me the guide", waitlist → "Join the waitlist"; NEVER "Learn more", "Sign up", "Get started")`;
 const SLOTS: Record<string,string> = {
-  cutout: `eyebrow (<=5 words), headlinePre (1-3 words), headlineHL (1-3 words, the highlighted phrase), headlinePost (2-6 words), accent (optional italic kicker <=6 words or ""), sub (one sentence <=15 words), cta (<=4 words), badgeTop (<=2 words), badgeBottom (<=3 words)`,
-  spotlight: `eyebrow (<=6 words, a details line), headline (<=8 words), sub (one sentence <=18 words), cta (<=4 words)`,
-  framed: `headlinePre (1-4 words, lowercase lead-in), headlineHL (2-5 words, bold phrase in CAPS), headlinePost (2-6 words, lowercase tail), cta (<=5 words), sig (brand or person name)`,
-  split: `eyebrow (<=3 words), headline (<=9 words, shown in CAPS), cta (<=3 words)`,
+  cutout: `eyebrow (<=5 words), headlinePre (1-3 words), headlineHL (1-3 words, the highlighted phrase), headlinePost (2-6 words), accent (optional italic kicker <=6 words or ""), sub (one sentence <=15 words), ${CTA_RULE}, badgeTop (<=2 words), badgeBottom (<=3 words)`,
+  spotlight: `eyebrow (<=6 words, a details line), headline (<=8 words), sub (one sentence <=18 words), ${CTA_RULE}`,
+  framed: `headlinePre (1-4 words, lowercase lead-in), headlineHL (2-5 words, bold phrase in CAPS), headlinePost (2-6 words, lowercase tail), ${CTA_RULE}, sig (brand or person name)`,
+  split: `eyebrow (<=3 words), headline (<=9 words, shown in CAPS), ${CTA_RULE}`,
   highlighter: `headlinePre (1-3 words), headlineAccent (1-3 words, accent color), headlineHL (1-3 words, highlighted phrase), sub (one sentence <=14 words), badgeTop (<=2 words e.g. FREE), badgeBottom (<=2 words e.g. Download)`,
-  overlay: `eyebrow (<=5 words), headline (<=8 words, bold), sub (one sentence <=16 words), cta (<=4 words)`,
-  devicemockup: `eyebrow (<=5 words), headline (<=8 words), sub (one sentence <=16 words), cta (<=4 words)`,
+  overlay: `eyebrow (<=5 words), headline (<=8 words, bold), sub (one sentence <=16 words), ${CTA_RULE}`,
+  devicemockup: `eyebrow (<=5 words), headline (<=8 words), sub (one sentence <=16 words), ${CTA_RULE}`,
   testimonial: `eyebrow (<=4 words, e.g. "Real result"), quote (a short testimonial in the customer's own voice, <=22 words), author (first name + last initial), role (title or business, 2-4 words)`,
 };
 
@@ -60,7 +46,7 @@ function mapStyle(styleHint?: string, format?: string): string {
 
 function instruction(template: string, count: number): string {
   if (template === "carousel") {
-    return `Return ${count} option(s). Each option is {"slides":[...]} with one slide per slidePlan role (3-6 slides). Each slide = {"eyebrow":"<=4 words","headline":"<=8 words","sub":"one sentence <=15 words","cta":"ONLY on the last slide, <=4 words; omit otherwise"}. Slide 1 = the hook; last slide = the CTA.`;
+    return `Return ${count} option(s). Each option is {"slides":[...]} with one slide per slidePlan role (3-6 slides). Each slide = {"eyebrow":"<=4 words","headline":"<=8 words","sub":"one sentence <=15 words","cta":"ONLY on the last slide, <=4 words, MUST match the brief's offer/format — e.g. free class → \\"Save my seat\\", download → \\"Send me the guide\\", waitlist → \\"Join the waitlist\\"; NEVER \\"Learn more\\", \\"Sign up\\", \\"Get started\\"; omit on other slides"}. Slide 1 = the hook; last slide = the CTA.`;
   }
   return `Return ${count} DISTINCT option(s) (different angles). For template "${template}", each option is a JSON object with EXACTLY these keys: ${SLOTS[template] || SLOTS.cutout}. Use "" for any optional field you skip. Full headline reads as one natural line, <=8 words.`;
 }
@@ -144,8 +130,8 @@ serve(async (req) => {
       `Hard rule: every option must reference at least one SPECIFIC element from the OFFER PSYCHOLOGY or AUDIENCE PSYCHOLOGY above (a named moment, a real pain, a real hesitation, a concrete before/after). Generic copy that could belong to any brand is an instant fail.\n\n` +
       `Output ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST", headers: { authorization: `Bearer ${KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({ model: "google/gemini-2.5-flash", response_format: { type: "json_object" },
+      method: "POST", headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "content-type": "application/json" },
+      body: JSON.stringify({ model: "google/gemini-2.5-flash", temperature: 0.9, response_format: { type: "json_object" },
         messages: [ { role: "system", content: VOICE_RULES }, { role: "user", content: user } ] }),
     });
     const d = await r.json();

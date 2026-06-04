@@ -82,7 +82,7 @@ export default function BrandSetup() {
       setPop(s.colors?.pop || "");
       setHighlight(s.colors?.highlight || "");
       setCream(s.colors?.cream || "");
-      setDisplayUrl(s.fonts?.display?.url || "");
+      setDisplayUrl((s.fonts as any)?.displayUrl || s.fonts?.display?.url || "");
       const detectedLogo = (logoRes?.data as { logoUrl?: string | null } | null)?.logoUrl || "";
       setLogoUrl(detectedLogo);
     } catch (e: any) {
@@ -140,7 +140,7 @@ export default function BrandSetup() {
           brand_id: activeBrand.id,
           source_url: url.trim(),
           colors: { bg, ink, accent, pop, highlight, cream },
-          fonts: { displayItalicUrl: displayUrl },
+          fonts: { displayUrl: displayUrl, displayItalicUrl: displayUrl },
           voice: data?.suggested?.voice || {},
           logo_url: logoUrl || null,
           status: "confirmed",
