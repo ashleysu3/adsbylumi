@@ -82,6 +82,10 @@ export interface ProductionItem {
   script_lines?: string[];
   text_overlays?: TextOverlay[];
   caption_reminder?: boolean;
+  // B-roll specific
+  broll_vibe?: string;
+  broll_shots?: string[]; // legacy — older cells may still carry these
+  mood?: string;
   // Psychology fields
   psychology_trigger?: string;
   why_this_works?: string;
