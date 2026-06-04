@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const OPENAI = Deno.env.get("OPENAI_API_KEY")!;
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const cors = { "Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS" };
@@ -9,9 +9,9 @@ serve(async (req) => {
   try {
     const { prompt } = await req.json();
     const full = `${prompt}\n\nHARD RULES: no text, words, letters, or logos anywhere in the image. Keep the lower third darker and less busy so text can be overlaid. Square composition, ad-ready.`;
-    const r = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST", headers: { authorization: `Bearer ${OPENAI}`, "content-type": "application/json" },
-      body: JSON.stringify({ model: "gpt-image-1", prompt: full, size: "1024x1024", n: 1, quality: "high" }),
+    const r = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
+      method: "POST", headers: { "Lovable-API-Key": LOVABLE_API_KEY, "X-Lovable-AIG-SDK": "vercel-ai-sdk", "content-type": "application/json" },
+      body: JSON.stringify({ model: "google/gemini-2.5-flash-image", prompt: full, size: "1024x1024", n: 1, response_format: "b64_json" }),
     });
     const d = await r.json();
     const item = d?.data?.[0];
