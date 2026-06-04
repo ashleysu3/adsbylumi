@@ -46,7 +46,7 @@ function pathFromUrl(url: string): string | null {
   return m ? decodeURIComponent(m[1]) : null;
 }
 
-export default function BrandImageLibrary({ websiteUrl }: { websiteUrl?: string | null }) {
+export default function BrandImageLibrary({ brandId, websiteUrl }: { brandId: string; websiteUrl?: string | null }) {
   const [assets, setAssets] = useState<BrandAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [harvesting, setHarvesting] = useState(false);
@@ -59,11 +59,13 @@ export default function BrandImageLibrary({ websiteUrl }: { websiteUrl?: string 
   }, [websiteUrl]);
 
   const load = async () => {
+    if (!brandId) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from("brand_assets" as any)
         .select("*")
+        .eq("brand_id", brandId)
         .order("created_at", { ascending: false });
       if (error) throw error;
       const rows = (data || []) as unknown as BrandAsset[];
@@ -92,7 +94,9 @@ export default function BrandImageLibrary({ websiteUrl }: { websiteUrl?: string 
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandId]);
+
 
   const harvest = async () => {
     if (!url.trim()) {
