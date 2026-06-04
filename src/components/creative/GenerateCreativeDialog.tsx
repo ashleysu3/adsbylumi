@@ -686,6 +686,7 @@ export function GenerateCreativeDialog() {
           brandKit,
           copy: editedSingle,
           photo,
+          ...(collagePhotos && collagePhotos.length >= 2 ? { photos: collagePhotos } : {}),
           logoOverlay,
           placements: activeCustom?.placements ?? ["feed", "story"],
         });
