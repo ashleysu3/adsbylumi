@@ -466,13 +466,17 @@ export function GenerateCreativeDialog() {
   const pickerImages = useMemo<Photo[]>(() => {
     if (isGeneratedConcept) return [];
     const allowsBackgrounds = template === "overlay" || template === "imageonly";
-    const uploads = photos.map((p) => ({ ...p, source: "upload" as const }));
-    const brand = [
-      ...brandPhotoAssets,
-      ...(allowsBackgrounds ? brandBackgroundAssets : []),
-    ];
-    return [...uploads, ...brand];
-  }, [isGeneratedConcept, template, photos, brandPhotoAssets, brandBackgroundAssets]);
+    if (imageSource === "uploads") {
+      return photos.map((p) => ({ ...p, source: "upload" as const }));
+    }
+    if (imageSource === "brand") {
+      return [
+        ...brandPhotoAssets,
+        ...(allowsBackgrounds ? brandBackgroundAssets : []),
+      ];
+    }
+    return [];
+  }, [isGeneratedConcept, imageSource, template, photos, brandPhotoAssets, brandBackgroundAssets]);
 
   const selectedPhoto = useMemo(
     () => (isGeneratedConcept ? generatedPhoto : pickerImages.find((p) => p.id === selectedPhotoId)),
