@@ -109,7 +109,7 @@ function mapStyleToTemplate(styleHint?: string, format?: string): string {
   if (format === "carousel") return "carousel";
   const m: Record<string, string> = {
     "photo-forward": "cutout", card: "spotlight", framed: "framed",
-    "type-led": "split", testimonial: "spotlight", highlighter: "highlighter",
+    "type-led": "split", testimonial: "testimonial", highlighter: "highlighter",
   };
   return (styleHint && m[styleHint]) || "cutout";
 }
