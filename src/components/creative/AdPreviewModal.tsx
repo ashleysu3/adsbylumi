@@ -379,12 +379,30 @@ export function AdPreviewModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-6 py-4 border-b shrink-0">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <div>
               <DialogTitle className="text-lg">Ad Preview</DialogTitle>
               <p className="text-sm text-muted-foreground mt-1">{item.hook}</p>
             </div>
-            <Badge variant="secondary">{item.angleName}</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">{item.angleName}</Badge>
+              {alreadyPushed ? (
+                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                  Live in ad 🚀
+                </Badge>
+              ) : onApproveAndAdd && (
+                <Button
+                  size="sm"
+                  className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                  disabled={!canPush || pushing}
+                  onClick={() => onApproveAndAdd()}
+                  title={!canPush ? "Upload a creative and launch a campaign first" : undefined}
+                >
+                  {pushing ? <Loader2 className="h-4 w-4 animate-spin" /> : isApproved ? <Rocket className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                  {isApproved ? "Add to ad" : "Approve & add to ad"}
+                </Button>
+              )}
+            </div>
           </div>
         </DialogHeader>
         
