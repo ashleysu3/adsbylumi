@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
 import type { CreativeBrief } from "./ProductionChecklistPanel";
+import { TemplatePreview } from "./TemplatePreview";
 
 type Colors = { bg: string; ink: string; accent: string; pop: string; highlight: string; cream: string };
 const DEFAULT_COLORS: Colors = {
