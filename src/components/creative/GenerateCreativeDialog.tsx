@@ -81,6 +81,8 @@ export function GenerateCreativeDialog() {
 
   const [colors, setColors] = useState<Colors>(DEFAULT_COLORS);
   const [fontUrl, setFontUrl] = useState<string>("");
+  const [displayFamily, setDisplayFamily] = useState<string>("");
+  const [bodyFamily, setBodyFamily] = useState<string>("");
   const [logoUrl, setLogoUrl] = useState<string>("");
   const [brandVoice, setBrandVoice] = useState<any>(null);
   const [kitLoading, setKitLoading] = useState(false);
