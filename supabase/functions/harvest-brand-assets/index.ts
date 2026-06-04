@@ -40,13 +40,33 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { url } = await req.json();
+    const { url, brandId } = await req.json();
     if (!url || typeof url !== "string") {
       return new Response(
         JSON.stringify({ error: "missing url" }),
         { status: 200, headers: { ...cors, "content-type": "application/json" } },
       );
     }
+    if (!brandId || typeof brandId !== "string") {
+      return new Response(
+        JSON.stringify({ error: "missing brandId" }),
+        { status: 200, headers: { ...cors, "content-type": "application/json" } },
+      );
+    }
+    // Verify the calling user owns this brand
+    const admin = createClient(SUPABASE_URL, SERVICE);
+    const { data: brandRow, error: brandErr } = await admin
+      .from("brands")
+      .select("id,user_id")
+      .eq("id", brandId)
+      .maybeSingle();
+    if (brandErr || !brandRow || brandRow.user_id !== user.id) {
+      return new Response(
+        JSON.stringify({ error: "brand not found or access denied" }),
+        { status: 200, headers: { ...cors, "content-type": "application/json" } },
+      );
+    }
+
 
     const er = await fetch(`${ENGINE_URL.replace(/\/$/, "")}/extract-assets`, {
       method: "POST",
@@ -62,7 +82,6 @@ Deno.serve(async (req) => {
     }
     const data = await er.json();
     const assets = (data?.assets || []).slice(0, 40);
-    const admin = createClient(SUPABASE_URL, SERVICE);
     let saved = 0;
     for (const a of assets) {
       try {
@@ -73,12 +92,13 @@ Deno.serve(async (req) => {
         const buf = new Uint8Array(await resp.arrayBuffer());
         if (buf.length > 8_000_000 || buf.length < 1000) continue;
         const ext = ct.includes("png") ? "png" : ct.includes("svg") ? "svg" : ct.includes("webp") ? "webp" : "jpg";
-        const filename = `${user.id}/${crypto.randomUUID()}.${ext}`;
+        const filename = `${user.id}/${brandId}/${crypto.randomUUID()}.${ext}`;
         const up = await admin.storage.from("brand-assets").upload(filename, buf, { contentType: ct, upsert: false });
         if (up.error) continue;
         const { data: pub } = admin.storage.from("brand-assets").getPublicUrl(filename);
         await admin.from("brand_assets").insert({
           user_id: user.id,
+          brand_id: brandId,
           url: pub.publicUrl,
           source_url: a.url,
           role: a.roleGuess,

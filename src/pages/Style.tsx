@@ -382,7 +382,7 @@ export default function Style() {
           <BrandColorsAndFonts brandId={brand.id} websiteUrl={brand?.website_url || brand?.website} />
 
           {/* Brand Image Library */}
-          <BrandImageLibrary websiteUrl={brand?.website_url || brand?.website} />
+          <BrandImageLibrary brandId={brand.id} websiteUrl={brand?.website_url || brand?.website} />
 
           {/* B-Roll Libraries */}
           <BRollLibrariesManager

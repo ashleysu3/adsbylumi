@@ -46,7 +46,7 @@ function pathFromUrl(url: string): string | null {
   return m ? decodeURIComponent(m[1]) : null;
 }
 
-export default function BrandImageLibrary({ websiteUrl }: { websiteUrl?: string | null }) {
+export default function BrandImageLibrary({ brandId, websiteUrl }: { brandId: string; websiteUrl?: string | null }) {
   const [assets, setAssets] = useState<BrandAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [harvesting, setHarvesting] = useState(false);
@@ -59,11 +59,13 @@ export default function BrandImageLibrary({ websiteUrl }: { websiteUrl?: string 
   }, [websiteUrl]);
 
   const load = async () => {
+    if (!brandId) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from("brand_assets" as any)
         .select("*")
+        .eq("brand_id", brandId)
         .order("created_at", { ascending: false });
       if (error) throw error;
       const rows = (data || []) as unknown as BrandAsset[];
@@ -92,17 +94,23 @@ export default function BrandImageLibrary({ websiteUrl }: { websiteUrl?: string 
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandId]);
+
 
   const harvest = async () => {
     if (!url.trim()) {
       toast.error("Add your website URL first");
       return;
     }
+    if (!brandId) {
+      toast.error("Pick a brand first");
+      return;
+    }
     setHarvesting(true);
     try {
       const { data, error } = await supabase.functions.invoke("harvest-brand-assets", {
-        body: { url: url.trim() },
+        body: { url: url.trim(), brandId },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
@@ -115,8 +123,13 @@ export default function BrandImageLibrary({ websiteUrl }: { websiteUrl?: string 
     }
   };
 
+
   const onUpload = async (files: FileList | null) => {
     if (!files || !files.length) return;
+    if (!brandId) {
+      toast.error("Pick a brand first");
+      return;
+    }
     setUploading(true);
     try {
       const { data: u } = await supabase.auth.getUser();
@@ -125,7 +138,7 @@ export default function BrandImageLibrary({ websiteUrl }: { websiteUrl?: string 
       for (const file of Array.from(files)) {
         if (!file.type.startsWith("image/")) continue;
         const ext = file.name.split(".").pop() || "jpg";
-        const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+        const path = `${userId}/${brandId}/${crypto.randomUUID()}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from("brand-assets")
           .upload(path, file, { contentType: file.type, upsert: false });
@@ -135,6 +148,7 @@ export default function BrandImageLibrary({ websiteUrl }: { websiteUrl?: string 
           .from("brand_assets" as any)
           .insert({
             user_id: userId,
+            brand_id: brandId,
             url: pub.publicUrl,
             source_url: null,
             role: "photo" as Role,
