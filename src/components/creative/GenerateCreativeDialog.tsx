@@ -664,9 +664,6 @@ export function GenerateCreativeDialog() {
       isCustom: false,
       builtIn: t,
     })),
-      isCustom: false,
-      builtIn: t,
-    })),
     ...customTemplates.map((ct) => ({
       key: `custom:${ct.id}`,
       label: ct.name,
