@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, X, Type, Film, AlertTriangle, Repeat, FastForward, Upload } from 'lucide-react';
+import { Plus, X, Type, Film, AlertTriangle, Repeat, FastForward, Upload, Scissors } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   VideoTextPreview,
@@ -78,6 +78,8 @@ export function BRollTextEditor({
   // the preview video so all overlays play through. 'speed' = compress overlay
   // timings to fit within the video's duration.
   const [fitMode, setFitMode] = useState<'loop' | 'speed' | null>(null);
+  // Trim window applied to the source clip on render. null = no trim.
+  const [trim, setTrim] = useState<{ start: number; end: number } | null>(null);
 
   // Compute the latest end time across all overlays. Used to detect when
   // text would run past the end of the video.
@@ -89,6 +91,8 @@ export function BRollTextEditor({
   }, [overlays]);
 
   const overflows = videoDuration > 0 && maxOverlayEnd > videoDuration + 0.05;
+  // Video is meaningfully longer than the overlays — offer a trim.
+  const tooLong = videoDuration > 0 && maxOverlayEnd > 0 && videoDuration > maxOverlayEnd + 1.0;
 
   // Apply the chosen fit mode to the overlays before they're rendered or
   // sent to the encoder. 'speed' rescales every timing to fit into the
@@ -210,6 +214,8 @@ export function BRollTextEditor({
       overlays: specs,
       style: renderStyle,
       loopVideo: overflows && fitMode === 'loop',
+      trimStart: trim?.start,
+      trimEnd: trim?.end,
       context: brandId ? { brandId } : undefined,
     });
 
@@ -406,6 +412,99 @@ export function BRollTextEditor({
                 </div>
               </div>
             )}
+
+            {tooLong && !overflows && (
+              <div className="mb-3 rounded-xl border border-sky-500/40 bg-sky-500/10 p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <Scissors className="h-4 w-4 text-sky-600 mt-0.5 shrink-0" />
+                  <div className="text-xs flex-1">
+                    <p className="font-semibold text-sky-700">
+                      Your video is longer than your text
+                    </p>
+                    <p className="text-muted-foreground mt-0.5">
+                      Video is {videoDuration.toFixed(1)}s but your last text ends at {maxOverlayEnd.toFixed(1)}s.
+                      Trim it so the ad doesn't trail off with no overlay.
+                    </p>
+                  </div>
+                </div>
+                {trim ? (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-[11px] text-muted-foreground">Start (s)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={Math.max(0, trim.end - 0.1)}
+                          step={0.1}
+                          value={trim.start}
+                          onChange={e => {
+                            const v = Math.max(0, Math.min(trim.end - 0.1, parseFloat(e.target.value) || 0));
+                            setTrim({ start: v, end: trim.end });
+                          }}
+                          className="h-8"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[11px] text-muted-foreground">End (s)</Label>
+                        <Input
+                          type="number"
+                          min={trim.start + 0.1}
+                          max={videoDuration}
+                          step={0.1}
+                          value={trim.end}
+                          onChange={e => {
+                            const v = Math.max(trim.start + 0.1, Math.min(videoDuration, parseFloat(e.target.value) || videoDuration));
+                            setTrim({ start: trim.start, end: v });
+                          }}
+                          className="h-8"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] text-sky-700 font-medium">
+                        Final video: {(trim.end - trim.start).toFixed(1)}s
+                      </p>
+                      <button
+                        type="button"
+                        className="text-[11px] text-muted-foreground underline"
+                        onClick={() => setTrim(null)}
+                      >
+                        Don't trim
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => setTrim({ start: 0, end: Math.min(videoDuration, maxOverlayEnd) })}
+                      className="gap-1 h-auto py-2 flex-col"
+                    >
+                      <Scissors className="h-3.5 w-3.5" />
+                      <span className="text-[11px]">Trim to text length ({maxOverlayEnd.toFixed(1)}s)</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setTrim({ start: 0, end: videoDuration })}
+                      className="gap-1 h-auto py-2 flex-col"
+                    >
+                      <Scissors className="h-3.5 w-3.5" />
+                      <span className="text-[11px]">Custom trim…</span>
+                    </Button>
+                  </div>
+                )}
+                {trim && (trim.start > 0.05 || trim.end < videoDuration - 0.05) && (
+                  <p className="text-[11px] text-muted-foreground italic">
+                    Preview shows the full clip — your final MP4 will be trimmed to {trim.start.toFixed(1)}–{trim.end.toFixed(1)}s.
+                  </p>
+                )}
+              </div>
+            )}
+
+
 
             <VideoTextPreview
               videoUrl={videoUrl}

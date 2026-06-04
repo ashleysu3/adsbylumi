@@ -39,6 +39,8 @@ export interface EnqueueSpec {
   overlays: RenderOverlay[];
   style: RenderStyle;
   loopVideo?: boolean;
+  trimStart?: number;
+  trimEnd?: number;
   context?: RenderContextMeta;
   /** Fired after the storage upload completes (before the toast / email).
    *  Use this to attach the rendered MP4 to wherever it needs to go in the
@@ -68,6 +70,8 @@ export interface RenderJob {
     overlays: RenderOverlay[];
     style: RenderStyle;
     loopVideo?: boolean;
+    trimStart?: number;
+    trimEnd?: number;
   };
   // onAttached lives here so the worker can call it on success. Held in a
   // separate ref-style field rather than inside `spec` so it doesn't
@@ -113,6 +117,8 @@ export function RenderQueueProvider({ children }: { children: ReactNode }) {
         overlays: next.spec.overlays,
         style: next.spec.style,
         loopVideo: next.spec.loopVideo,
+        trimStart: next.spec.trimStart,
+        trimEnd: next.spec.trimEnd,
         onProgress: info => {
           updateJob(next.id, { progress: info.pct, message: info.message });
         },
@@ -252,6 +258,8 @@ export function RenderQueueProvider({ children }: { children: ReactNode }) {
           overlays: spec.overlays,
           style: spec.style,
           loopVideo: spec.loopVideo,
+          trimStart: spec.trimStart,
+          trimEnd: spec.trimEnd,
         },
         onAttached: spec.onAttached,
       };
