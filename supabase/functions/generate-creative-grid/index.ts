@@ -534,8 +534,12 @@ ADDITIONAL FIELDS FOR graphic AND carousel FORMATS (REQUIRED — this is the str
   - photoTreatment: one of "cutout" | "with-background" | "none"
   - slideCount: 1 for single_graphic; 3 to 6 for carousel
   - slidePlan: for carousel ONLY, an array of slideCount objects each with a "role" — choose from "hook" | "problem" | "framework" | "proof" | "cta" — in narrative order. Omit for single_graphic.
-  - imageSource: one of "user-photo" | "generated" | "none". Choose "user-photo" when a real photo of the creator fits the concept; "generated" when the concept needs an illustrative/conceptual image the user won't have a photo of (a glitchy dashboard, an abstract metaphor, a screen/product mockup, a chaotic desk, etc.); "none" for a pure typographic graphic.
-  - imagePrompt: when imageSource is "generated", a vivid image-generation prompt — subject, style, mood, composition (e.g. "a distorted, glitchy screenshot of a Meta Ads Manager dashboard, chaotic hand-drawn red arrows and question marks scrawled over it, high-contrast, unsettling"). The image must contain NO text/words and keep the lower third darker/less busy for text overlay. Otherwise null.
+  - imageSource: one of "user-photo" | "generated" | "none".
+    • Choose "user-photo" when a real photo of the creator fits the concept.
+    • Choose "generated" ONLY when the concept is a genuine visual scene (a person, an object, a place, an abstract metaphor rendered as a physical image, a product mockup as a tangible prop, etc.). The concept must be something you could photograph or illustrate — not text on a screen.
+    • Choose "none" for a pure typographic graphic where words are the design.
+    IMPORTANT: If the concept is fundamentally a text/UI artifact (a fake notification, a headline graphic, a checklist, a screenshot of a chat/DM, a social post mockup, a quote card), do NOT use "generated". Use "user-photo" (if a real photo can carry the background) or "none" (pure type/template), and let the template add the words.
+  - imagePrompt: when imageSource is "generated", describe the VISUAL ONLY — a single concrete scene or subject, a clear style (photographic / cinematic / 3D render / bold illustration), lighting, mood, and palette. NEVER ask for text, words, headlines, notifications, screenshots, or UI in the image — the template adds the words separately. Translate any text/screen idea into a physical visual metaphor. Keep the lower third clean for overlay. Otherwise null.
   - When imageSource is "generated", set styleHint to "type-led" and photoTreatment to "with-background" (the bold text sits over the full-bleed image).
 
 
