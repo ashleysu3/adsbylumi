@@ -885,19 +885,42 @@ export function GenerateCreativeDialog() {
                 </div>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {images.map((img, i) => (
-                  <div key={i} className="rounded border overflow-hidden bg-muted/20">
-                    <img src={`data:image/png;base64,${img.base64}`} alt="" className="w-full h-auto block" />
-                    <div className="flex items-center justify-between p-2 text-xs">
-                      <span className="text-muted-foreground">
-                        {img.label ? `${img.label} · ` : ""}{img.placement} {img.width}×{img.height}
-                      </span>
-                      <Button size="sm" variant="ghost" onClick={() => download(img, i)}>
-                        <Download className="h-3 w-3 mr-1" /> PNG
-                      </Button>
+                {images.map((img, i) => {
+                  const isApproved = approvedIdxs.has(i);
+                  const isApproving = approvingIdx === i;
+                  return (
+                    <div key={i} className="rounded border overflow-hidden bg-muted/20">
+                      <img src={`data:image/png;base64,${img.base64}`} alt="" className="w-full h-auto block" />
+                      <div className="flex items-center justify-between gap-2 p-2 text-xs">
+                        <span className="text-muted-foreground truncate">
+                          {img.label ? `${img.label} · ` : ""}{img.placement} {img.width}×{img.height}
+                        </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button size="sm" variant="ghost" onClick={() => download(img, i)}>
+                            <Download className="h-3 w-3 mr-1" /> PNG
+                          </Button>
+                          {itemId && (
+                            <Button
+                              size="sm"
+                              variant={isApproved ? "secondary" : "default"}
+                              onClick={() => approveRender(img, i)}
+                              disabled={isApproving || isApproved}
+                            >
+                              {isApproving ? (
+                                <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Saving…</>
+                              ) : isApproved ? (
+                                "Approved ✓"
+                              ) : (
+                                "Approve & save"
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
+
               </div>
             </div>
           </div>
