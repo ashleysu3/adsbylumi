@@ -219,7 +219,7 @@ ROWS (Audience Moment):
 
 COLUMNS (Format Diversity):
 - Column 1: "talking_head" - Person speaking to camera (vulnerable, real, unpolished)
-- Column 2: "broll" - B-roll with text overlay (lofi, everyday, phone-filmed — the copy does the selling, not the footage)
+- Column 2: "broll" - Text-overlay ad on top of B-roll footage. The footage comes from the user's B-Roll Library in the Creative Toolkit — DO NOT write a shot list. Your only deliverable here is (a) one tiny vibe pointer so they know which clip to grab and (b) a killer sequence of text overlays. The overlays ARE the ad.
 - Column 3: graphic OR carousel — choose whichever fits the concept better.
   - Use format "graphic" for a single thumb-stopping image/static ad (bold, unexpected).
   - Use format "carousel" when the idea is naturally multi-beat (problem → framework → proof → CTA, swipeable lists, before/after sequences, mini-frameworks). Aim for at least ONE carousel per angle across the 3 angles.
