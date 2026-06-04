@@ -36,7 +36,9 @@ WEAK   -> eyebrow: "Stop chasing after trends" | headline: "Your last shiny obje
 
 STRONG -> eyebrow: "For coaches drowning in tools" | headline: "You don't need another app. You need clients." | sub: "The free class that replaces your whole shiny-object stack — and books 5 clients in 60 days." | cta: "Save my seat"
 
-SENTENCE CASE headlines (capitalize the first word and proper nouns only). COMPLIANCE: never promise guaranteed income or results; imply outcomes, never guarantee them.`;
+SENTENCE CASE headlines (capitalize the first word and proper nouns only). COMPLIANCE: never promise guaranteed income or results; imply outcomes, never guarantee them.
+
+PLAIN TEXT ONLY: never wrap copy in HTML, markdown, or formatting tags (no <b>, </b>, <i>, **bold**, _italic_, backticks). Output raw text only — the app handles all styling.`;
 
 // exact slots per template (keys + length guidance)
 const SLOTS: Record<string,string> = {
@@ -157,7 +159,29 @@ serve(async (req) => {
       console.error("compose-ad empty content:", JSON.stringify(d).slice(0, 500));
       return new Response(JSON.stringify({ error: "AI returned no content", options: [] }), { status: 200, headers: { ...cors, "content-type": "application/json" } });
     }
-    return new Response(content, { status: 200, headers: { ...cors, "content-type": "application/json" } });
+    // Strip any HTML/markdown emphasis tags the model may have produced (e.g. <b>...</b>)
+    const stripTags = (s: string) => s
+      .replace(/<\/?[a-zA-Z][^>]*>/g, "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+    const sanitize = (v: any): any => {
+      if (typeof v === "string") return stripTags(v);
+      if (Array.isArray(v)) return v.map(sanitize);
+      if (v && typeof v === "object") {
+        const out: any = {};
+        for (const k of Object.keys(v)) out[k] = sanitize(v[k]);
+        return out;
+      }
+      return v;
+    };
+    let cleaned = content;
+    try {
+      const parsed = JSON.parse(content);
+      cleaned = JSON.stringify(sanitize(parsed));
+    } catch {
+      cleaned = stripTags(content);
+    }
+    return new Response(cleaned, { status: 200, headers: { ...cors, "content-type": "application/json" } });
   } catch (e) {
     console.error("compose-ad exception:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e), options: [] }), { status: 200, headers: { ...cors, "content-type": "application/json" } });
