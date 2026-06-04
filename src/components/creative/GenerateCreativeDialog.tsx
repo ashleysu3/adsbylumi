@@ -175,12 +175,21 @@ export function GenerateCreativeDialog() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, brief]);
 
-  // Tie background removal to chosen template (except for generated-concept images, which stay full-bleed)
+  // Tie background removal to chosen template (skip for generated concept images)
   useEffect(() => {
-    if (brief?.imageSource === "generated") return;
+    if (creativeSource === "generated") {
+      setRemoveBackground(false);
+      return;
+    }
     const t = PHOTO_TREATMENT[template];
     if (t) setRemoveBackground(t === "cutout");
-  }, [template, brief?.imageSource]);
+  }, [template, creativeSource]);
+
+  // Keep template in sync with the generated-mode overlay toggle
+  useEffect(() => {
+    if (creativeSource !== "generated") return;
+    setTemplate(addOverlay ? "overlay" : "imageonly");
+  }, [creativeSource, addOverlay]);
 
   // Load brand kit + photos on first open
   useEffect(() => {
