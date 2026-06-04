@@ -21,6 +21,10 @@ import framedThumb from "@/assets/template-thumbs/framed.png.asset.json";
 import splitThumb from "@/assets/template-thumbs/split.png.asset.json";
 import highlighterThumb from "@/assets/template-thumbs/highlighter.png.asset.json";
 import overlayThumb from "@/assets/template-thumbs/overlay.png.asset.json";
+import imageonlyThumb from "@/assets/template-thumbs/imageonly.png.asset.json";
+import devicemockupThumb from "@/assets/template-thumbs/devicemockup.png.asset.json";
+import testimonialThumb from "@/assets/template-thumbs/testimonial.png.asset.json";
+import carouselThumb from "@/assets/template-thumbs/carousel.png.asset.json";
 
 const BUILT_IN_THUMBS: Record<string, string> = {
   cutout: cutoutThumb.url,
@@ -29,6 +33,10 @@ const BUILT_IN_THUMBS: Record<string, string> = {
   split: splitThumb.url,
   highlighter: highlighterThumb.url,
   overlay: overlayThumb.url,
+  imageonly: imageonlyThumb.url,
+  devicemockup: devicemockupThumb.url,
+  testimonial: testimonialThumb.url,
+  carousel: carouselThumb.url,
 };
 
 type Colors = { bg: string; ink: string; accent: string; pop: string; highlight: string; cream: string };
@@ -57,7 +65,7 @@ type CustomTemplate = {
 };
 
 const BUILT_IN_TEMPLATES = [
-  "cutout", "spotlight", "framed", "split", "highlighter", "overlay", "imageonly", "carousel",
+  "cutout", "spotlight", "framed", "split", "highlighter", "overlay", "imageonly", "devicemockup", "testimonial", "carousel",
 ] as const;
 
 const BUILT_IN_LABELS: Record<string, string> = {
@@ -68,6 +76,8 @@ const BUILT_IN_LABELS: Record<string, string> = {
   highlighter: "Bold highlighter",
   overlay: "Image + text",
   imageonly: "Image only",
+  devicemockup: "Device mockup",
+  testimonial: "Testimonial card",
   carousel: "Carousel",
 };
 
@@ -75,6 +85,7 @@ const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
   cutout: "cutout", highlighter: "cutout",
   spotlight: "with-background", framed: "with-background", split: "with-background",
   overlay: "with-background", imageonly: "with-background",
+  devicemockup: "with-background", testimonial: "with-background",
 };
 
 // Friendly labels for known slot keys (anything unknown falls back to the key)
