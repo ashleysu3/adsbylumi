@@ -147,6 +147,7 @@ export function GenerateCreativeDialog() {
       setTemplate(isGen ? "imageonly" : mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
       if (isGen) setRemoveBackground(false);
       setGeneratedPhoto(null);
+      setOptimizedPrompt("");
       setOpen(true);
       setSingleOptions([]);
       setCarouselOptions([]);
