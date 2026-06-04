@@ -438,14 +438,15 @@ export function GenerateCreativeDialog() {
     }
   }, [brandVoice, template, activeCustom]);
 
-  // Auto-compose on open AND whenever the template selection changes.
-  // Skip when in generated-image mode without an overlay (no copy needed).
+  // Auto-compose when we hit Screen 2, AND whenever the template selection changes.
+  // Skip for imageonly (no copy needed) and while still on the style picker.
   useEffect(() => {
     if (!open || !brief || kitLoading || composing) return;
-    if (creativeSource === "generated" && !addOverlay) return;
+    if (step !== "image-copy") return;
+    if (isImageOnly) return;
     compose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, brief, kitLoading, template, customTemplateId, creativeSource, addOverlay]);
+  }, [open, brief, kitLoading, step, template, customTemplateId]);
 
 
   // Sync editor to currently selected option
@@ -457,11 +458,11 @@ export function GenerateCreativeDialog() {
     }
   }, [selectedOptionIdx, singleOptions, carouselOptions, isCarousel]);
 
-  const isGeneratedConcept = creativeSource === "generated";
+  const isGeneratedConcept = imageSource === "generated";
 
-  // Build the photo picker list based on the active template.
-  // - photo-based templates: uploads + brand 'photo' assets
-  // - overlay/imageonly: also include brand 'background' and 'texture'
+  // Build the photo picker list based on the active source + template.
+  // - "uploads": user uploads only
+  // - "brand": brand_assets (photos always; backgrounds/textures for overlay/imageonly)
   const pickerImages = useMemo<Photo[]>(() => {
     if (isGeneratedConcept) return [];
     const allowsBackgrounds = template === "overlay" || template === "imageonly";
