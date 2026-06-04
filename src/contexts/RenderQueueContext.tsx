@@ -39,6 +39,8 @@ export interface EnqueueSpec {
   overlays: RenderOverlay[];
   style: RenderStyle;
   loopVideo?: boolean;
+  trimStart?: number;
+  trimEnd?: number;
   context?: RenderContextMeta;
   /** Fired after the storage upload completes (before the toast / email).
    *  Use this to attach the rendered MP4 to wherever it needs to go in the
