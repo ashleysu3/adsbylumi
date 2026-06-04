@@ -208,27 +208,20 @@ export function GenerateCreativeDialog() {
   }, [imagePrompt]);
 
   useEffect(() => {
-    if (open && creativeSource === "generated" && imagePrompt && !generatedPhoto && !generatingConcept) {
+    if (
+      open && step === "image-copy" && imageSource === "generated" &&
+      imagePrompt && !generatedPhoto && !generatingConcept
+    ) {
       generateConceptImage();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, brief]);
+  }, [open, step, imageSource, brief]);
 
-  // Tie background removal to chosen template (skip for generated concept images)
+  // Tie background removal to chosen template (cutout/highlighter only).
   useEffect(() => {
-    if (creativeSource === "generated") {
-      setRemoveBackground(false);
-      return;
-    }
     const t = PHOTO_TREATMENT[template];
-    if (t) setRemoveBackground(t === "cutout");
-  }, [template, creativeSource]);
-
-  // Keep template in sync with the generated-mode overlay toggle
-  useEffect(() => {
-    if (creativeSource !== "generated") return;
-    setTemplate(addOverlay ? "overlay" : "imageonly");
-  }, [creativeSource, addOverlay]);
+    setRemoveBackground(t === "cutout");
+  }, [template]);
 
   // Load brand kit + photos on first open
   useEffect(() => {
