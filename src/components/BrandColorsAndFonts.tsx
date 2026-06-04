@@ -77,10 +77,11 @@ const COLOR_FIELDS: { key: keyof BrandColors; label: string }[] = [
 ];
 
 interface Props {
+  brandId?: string | null;
   websiteUrl?: string | null;
 }
 
-export default function BrandColorsAndFonts({ websiteUrl }: Props) {
+export default function BrandColorsAndFonts({ brandId, websiteUrl }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pulling, setPulling] = useState(false);
@@ -90,12 +91,8 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
   const [sourceUrl, setSourceUrl] = useState<string>("");
 
   useEffect(() => {
-    if (websiteUrl) setUrl(websiteUrl);
-  }, [websiteUrl]);
-
-  useEffect(() => {
     void load();
-  }, []);
+  }, [brandId, websiteUrl]);
 
   useEffect(() => {
     const id = "brand-google-fonts";
@@ -110,6 +107,15 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
   }, []);
 
   const load = async () => {
+    setLoading(true);
+    setColors({});
+    setFonts({});
+    setSourceUrl("");
+    setUrl(websiteUrl || "");
+    if (!brandId) {
+      setLoading(false);
+      return;
+    }
     try {
       const { data: userRes } = await supabase.auth.getUser();
       const userId = userRes.user?.id;
@@ -118,6 +124,7 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
         .from("brand_kits")
         .select("*")
         .eq("user_id", userId)
+        .eq("brand_id", brandId)
         .maybeSingle();
       if (data) {
         setColors((data.colors as BrandColors) || {});
@@ -186,12 +193,13 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
         .upsert(
           {
             user_id: userId,
+            brand_id: brandId,
             source_url: url.trim() || sourceUrl || null,
             colors,
             fonts: fontsToSave,
             status: "confirmed",
           },
-          { onConflict: "user_id" }
+          { onConflict: "user_id,brand_id" }
         );
       if (error) throw error;
       toast.success("Brand colors & fonts saved");
