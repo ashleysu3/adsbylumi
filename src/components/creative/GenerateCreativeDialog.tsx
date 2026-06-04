@@ -975,7 +975,7 @@ export function GenerateCreativeDialog() {
                           setEdited={setEditedSingle}
                           editing={editingCopy}
                           setEditing={setEditingCopy}
-                          onRegenerate={compose}
+                          onRegenerate={() => setFeedbackOpen(true)}
                         />
                       )}
                     </div>
