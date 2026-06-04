@@ -36,7 +36,9 @@ WEAK   -> eyebrow: "Stop chasing after trends" | headline: "Your last shiny obje
 
 STRONG -> eyebrow: "For coaches drowning in tools" | headline: "You don't need another app. You need clients." | sub: "The free class that replaces your whole shiny-object stack — and books 5 clients in 60 days." | cta: "Save my seat"
 
-SENTENCE CASE headlines (capitalize the first word and proper nouns only). COMPLIANCE: never promise guaranteed income or results; imply outcomes, never guarantee them.`;
+SENTENCE CASE headlines (capitalize the first word and proper nouns only). COMPLIANCE: never promise guaranteed income or results; imply outcomes, never guarantee them.
+
+PLAIN TEXT ONLY: never wrap copy in HTML, markdown, or formatting tags (no <b>, </b>, <i>, **bold**, _italic_, backticks). Output raw text only — the app handles all styling.`;
 
 // exact slots per template (keys + length guidance)
 const SLOTS: Record<string,string> = {
