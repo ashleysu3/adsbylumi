@@ -130,8 +130,8 @@ serve(async (req) => {
       `Hard rule: every option must reference at least one SPECIFIC element from the OFFER PSYCHOLOGY or AUDIENCE PSYCHOLOGY above (a named moment, a real pain, a real hesitation, a concrete before/after). Generic copy that could belong to any brand is an instant fail.\n\n` +
       `Output ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST", headers: { authorization: `Bearer ${KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({ model: "google/gemini-2.5-flash", response_format: { type: "json_object" },
+      method: "POST", headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "content-type": "application/json" },
+      body: JSON.stringify({ model: "google/gemini-2.5-flash", temperature: 0.9, response_format: { type: "json_object" },
         messages: [ { role: "system", content: VOICE_RULES }, { role: "user", content: user } ] }),
     });
     const d = await r.json();
