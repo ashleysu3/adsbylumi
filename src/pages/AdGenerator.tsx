@@ -38,7 +38,7 @@ const PLACEMENT_LABELS: Record<string, string> = {
 };
 
 type BrandKitColors = { bg: string; ink: string; accent: string; pop: string; highlight: string; cream: string };
-type BrandKitFonts = { displayItalicUrl?: string };
+type BrandKitFonts = { displayUrl?: string; displayItalicUrl?: string };
 type RenderImage = { placement: string; width: number; height: number; base64: string };
 
 type GalleryPhoto = { id: string; path: string; url: string };
