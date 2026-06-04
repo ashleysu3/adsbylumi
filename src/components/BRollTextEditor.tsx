@@ -214,6 +214,8 @@ export function BRollTextEditor({
       overlays: specs,
       style: renderStyle,
       loopVideo: overflows && fitMode === 'loop',
+      trimStart: trim?.start,
+      trimEnd: trim?.end,
       context: brandId ? { brandId } : undefined,
     });
 
