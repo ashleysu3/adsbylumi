@@ -469,6 +469,7 @@ export type Database = {
           created_at: string
           fonts: Json | null
           id: string
+          logo_url: string | null
           offer: Json | null
           source_url: string | null
           status: string
@@ -481,6 +482,7 @@ export type Database = {
           created_at?: string
           fonts?: Json | null
           id?: string
+          logo_url?: string | null
           offer?: Json | null
           source_url?: string | null
           status?: string
@@ -493,6 +495,7 @@ export type Database = {
           created_at?: string
           fonts?: Json | null
           id?: string
+          logo_url?: string | null
           offer?: Json | null
           source_url?: string | null
           status?: string
