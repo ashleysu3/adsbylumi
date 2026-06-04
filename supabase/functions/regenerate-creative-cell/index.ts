@@ -63,7 +63,7 @@ serve(async (req) => {
 
     const formatLabels: Record<string, string> = {
       talking_head: "Talking Head Video (vulnerable, real, unpolished)",
-      broll: "B-Roll with text overlay (lofi, everyday, phone-filmed — the copy does the selling)",
+      broll: "Text-overlay ad on B-roll footage (user picks the clip from their B-Roll Library — your deliverable is a vibe pointer + a killer overlay sequence)",
       graphic: "Static Graphic / Image (bold, unexpected, thumb-stopping)"
     };
 
