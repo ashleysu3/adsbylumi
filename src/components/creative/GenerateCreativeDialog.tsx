@@ -72,6 +72,10 @@ function mapStyleToTemplate(styleHint?: string, format?: string): string {
 export function GenerateCreativeDialog() {
   const [open, setOpen] = useState(false);
   const [brief, setBrief] = useState<CreativeBrief | null>(null);
+  const [itemId, setItemId] = useState<string>("");
+  const [approvingIdx, setApprovingIdx] = useState<number | null>(null);
+  const [approvedIdxs, setApprovedIdxs] = useState<Set<number>>(new Set());
+
 
   const [colors, setColors] = useState<Colors>(DEFAULT_COLORS);
   const [fontUrl, setFontUrl] = useState<string>("");
@@ -129,9 +133,12 @@ export function GenerateCreativeDialog() {
   // Listen for handoff event
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { brief?: CreativeBrief };
+      const detail = (e as CustomEvent).detail as { brief?: CreativeBrief; itemId?: string };
       if (!detail?.brief) return;
+      setItemId(detail.itemId || "");
+      setApprovedIdxs(new Set());
       setBrief(detail.brief);
+
       const isGen = detail.brief.imageSource === "generated";
       setCreativeSource(isGen ? "generated" : "template");
       setImagePrompt(detail.brief.imagePrompt || detail.brief.concept || "");
@@ -526,6 +533,52 @@ export function GenerateCreativeDialog() {
     a.click();
   };
 
+  const approveRender = async (img: RenderImage, idx: number) => {
+    if (!itemId) {
+      toast.error("Open this from a creative card to approve it.");
+      return;
+    }
+    setApprovingIdx(idx);
+    try {
+      const isVertical = (img.placement || "").toLowerCase().includes("story") || (img.height > img.width);
+      await new Promise<void>((resolve, reject) => {
+        const reqId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const onDone = (e: Event) => {
+          const d = (e as CustomEvent).detail as { reqId: string; ok: boolean; error?: string };
+          if (d?.reqId !== reqId) return;
+          window.removeEventListener("creative-render:approved", onDone as EventListener);
+          if (d.ok) resolve();
+          else reject(new Error(d.error || "Could not save"));
+        };
+        window.addEventListener("creative-render:approved", onDone as EventListener);
+        window.dispatchEvent(
+          new CustomEvent("creative-render:approve", {
+            detail: {
+              reqId,
+              itemId,
+              base64: img.base64,
+              mime: "image/png",
+              fileName: `ad-${img.label?.replace(/\s+/g, "-").toLowerCase() || img.placement}-${idx + 1}.png`,
+              isVertical,
+            },
+          }),
+        );
+        setTimeout(() => {
+          window.removeEventListener("creative-render:approved", onDone as EventListener);
+          reject(new Error("Timed out saving the render"));
+        }, 30000);
+      });
+      setApprovedIdxs((prev) => new Set(prev).add(idx));
+      toast.success("Approved and saved to your creative ✅");
+    } catch (err: any) {
+      toast.error(err?.message || "Could not approve");
+    } finally {
+      setApprovingIdx(null);
+    }
+  };
+
+
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
@@ -832,19 +885,42 @@ export function GenerateCreativeDialog() {
                 </div>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {images.map((img, i) => (
-                  <div key={i} className="rounded border overflow-hidden bg-muted/20">
-                    <img src={`data:image/png;base64,${img.base64}`} alt="" className="w-full h-auto block" />
-                    <div className="flex items-center justify-between p-2 text-xs">
-                      <span className="text-muted-foreground">
-                        {img.label ? `${img.label} · ` : ""}{img.placement} {img.width}×{img.height}
-                      </span>
-                      <Button size="sm" variant="ghost" onClick={() => download(img, i)}>
-                        <Download className="h-3 w-3 mr-1" /> PNG
-                      </Button>
+                {images.map((img, i) => {
+                  const isApproved = approvedIdxs.has(i);
+                  const isApproving = approvingIdx === i;
+                  return (
+                    <div key={i} className="rounded border overflow-hidden bg-muted/20">
+                      <img src={`data:image/png;base64,${img.base64}`} alt="" className="w-full h-auto block" />
+                      <div className="flex items-center justify-between gap-2 p-2 text-xs">
+                        <span className="text-muted-foreground truncate">
+                          {img.label ? `${img.label} · ` : ""}{img.placement} {img.width}×{img.height}
+                        </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button size="sm" variant="ghost" onClick={() => download(img, i)}>
+                            <Download className="h-3 w-3 mr-1" /> PNG
+                          </Button>
+                          {itemId && (
+                            <Button
+                              size="sm"
+                              variant={isApproved ? "secondary" : "default"}
+                              onClick={() => approveRender(img, i)}
+                              disabled={isApproving || isApproved}
+                            >
+                              {isApproving ? (
+                                <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Saving…</>
+                              ) : isApproved ? (
+                                "Approved ✓"
+                              ) : (
+                                "Approve & save"
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
+
               </div>
             </div>
           </div>

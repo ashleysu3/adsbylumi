@@ -838,6 +838,107 @@ export function ProductionManager({
     }
   };
 
+  // Listen for "Approve & save" from the Generate Creative dialog: upload the
+  // base64 render to storage, link it to the production item, and mark approved.
+  const productionItemsRef = useRef(productionItems);
+  productionItemsRef.current = productionItems;
+  const uploadedAssetsRef = useRef(uploadedAssets);
+  uploadedAssetsRef.current = uploadedAssets;
+  const workspaceRef = useRef(workspace);
+  workspaceRef.current = workspace;
+
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        reqId: string;
+        itemId: string;
+        base64: string;
+        mime: string;
+        fileName: string;
+        isVertical?: boolean;
+      };
+      const reply = (ok: boolean, error?: string) => {
+        window.dispatchEvent(
+          new CustomEvent("creative-render:approved", { detail: { reqId: detail.reqId, ok, error } }),
+        );
+      };
+      try {
+        const ws = workspaceRef.current;
+        if (!ws?.id || !ws?.brand_id) throw new Error("No workspace");
+        const items = productionItemsRef.current;
+        const item = items.find((i) => i.id === detail.itemId);
+        if (!item) throw new Error("Production item not found");
+
+        // base64 → Blob
+        const bin = atob(detail.base64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const blob = new Blob([bytes], { type: detail.mime || "image/png" });
+
+        const ext = (detail.fileName.split(".").pop() || "png").toLowerCase();
+        const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const filePath = `${ws.brand_id}/${ws.id}/${stamp}${detail.isVertical ? "_vertical" : ""}.${ext}`;
+
+        const { error: upErr } = await supabase.storage
+          .from("creative-assets")
+          .upload(filePath, blob, { cacheControl: "3600", upsert: false, contentType: blob.type });
+        if (upErr) throw upErr;
+        const { data: urlData } = supabase.storage.from("creative-assets").getPublicUrl(filePath);
+
+        const conceptId = detail.isVertical ? `${item.id}_vertical` : item.id;
+        const newAsset: any = {
+          id: `asset_${stamp}${detail.isVertical ? "_v" : ""}`,
+          file_name: detail.fileName,
+          file_type: blob.type,
+          file_size: blob.size,
+          file_url: urlData.publicUrl,
+          storage_path: filePath,
+          uploaded_at: new Date().toISOString(),
+          linked_concept_id: conceptId,
+          linked_concept_title: detail.isVertical && item.hook ? `${item.hook} (9:16)` : item.hook || null,
+          ...(detail.isVertical ? { is_vertical_version: true } : {}),
+          source: "generated",
+        };
+
+        const currentAssets = uploadedAssetsRef.current as any[];
+        const filteredAssets = currentAssets.filter((a) => a.linked_concept_id !== conceptId);
+        const updatedAssets = [...filteredAssets, newAsset];
+
+        const updatedItems = items.map((pi) =>
+          pi.id === item.id
+            ? ({
+                ...pi,
+                approval_status: "approved",
+                approved_at: new Date().toISOString(),
+              } as any)
+            : pi,
+        );
+
+        const { error: dbErr } = await supabase
+          .from("campaign_workspaces")
+          .update({
+            user_uploaded_assets: updatedAssets,
+            production_items: updatedItems as any,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", ws.id);
+        if (dbErr) throw dbErr;
+
+        onUpdateWorkspace({
+          user_uploaded_assets: updatedAssets,
+          production_items: updatedItems,
+        });
+        reply(true);
+      } catch (err: any) {
+        console.error("approve render failed", err);
+        reply(false, err?.message || "Could not save render");
+      }
+    };
+    window.addEventListener("creative-render:approve", handler as EventListener);
+    return () => window.removeEventListener("creative-render:approve", handler as EventListener);
+  }, [onUpdateWorkspace]);
+
+
   // Convert this item's angle copy into the {primary_text, headline, description}
   // shape that add-creative-to-campaign expects, by zipping the per-field arrays.
   const itemToCopyVariations = (item: ProductionItem) => {
