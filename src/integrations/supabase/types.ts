@@ -424,6 +424,7 @@ export type Database = {
       }
       brand_assets: {
         Row: {
+          brand_id: string | null
           created_at: string
           height: number | null
           id: string
@@ -435,6 +436,7 @@ export type Database = {
           width: number | null
         }
         Insert: {
+          brand_id?: string | null
           created_at?: string
           height?: number | null
           id?: string
@@ -446,6 +448,7 @@ export type Database = {
           width?: number | null
         }
         Update: {
+          brand_id?: string | null
           created_at?: string
           height?: number | null
           id?: string
@@ -456,7 +459,15 @@ export type Database = {
           user_id?: string
           width?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "brand_assets_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       brand_content_assets: {
         Row: {
