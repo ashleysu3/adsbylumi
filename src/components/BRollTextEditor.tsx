@@ -78,6 +78,8 @@ export function BRollTextEditor({
   // the preview video so all overlays play through. 'speed' = compress overlay
   // timings to fit within the video's duration.
   const [fitMode, setFitMode] = useState<'loop' | 'speed' | null>(null);
+  // Trim window applied to the source clip on render. null = no trim.
+  const [trim, setTrim] = useState<{ start: number; end: number } | null>(null);
 
   // Compute the latest end time across all overlays. Used to detect when
   // text would run past the end of the video.
