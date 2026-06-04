@@ -9,7 +9,15 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 type Suggested = {
-  colors?: { background?: string; ink?: string; accent?: string; pops?: string[] };
+  colors?: {
+    bg?: string;
+    ink?: string;
+    accent?: string;
+    pop?: string;
+    highlight?: string;
+    cream?: string;
+    candidates?: string[];
+  };
   fonts?: { display?: { family?: string; url?: string; custom?: boolean }; body?: { family?: string } };
   imagery?: { ogImage?: string; photos?: string[] };
   voice?: { headlines?: string[]; description?: string };
