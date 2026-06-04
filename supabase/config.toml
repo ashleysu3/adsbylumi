@@ -35,6 +35,10 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = false
   [functions.compose-ad]
     verify_jwt = false
+  [functions.generate-concept-image]
+    verify_jwt = false
+  [functions.extract-brand-logo]
+    verify_jwt = false
   [functions.create-affiliate]
     verify_jwt = false
   [functions.create-checkout]
