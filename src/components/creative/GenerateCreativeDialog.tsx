@@ -1140,7 +1140,7 @@ function SingleEditor({
               </div>
             ) : (
               <div className="rounded border p-3 space-y-1">
-                {Object.entries(opt).map(([k, v]) =>
+                {Object.entries(i === selectedIdx ? { ...opt, ...edited } : opt).map(([k, v]) =>
                   v ? (
                     <p key={k} className="text-sm">
                       <span className="text-[10px] uppercase text-muted-foreground mr-2">{labelFor(k)}</span>
