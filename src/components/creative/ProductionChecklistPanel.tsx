@@ -673,11 +673,39 @@ export function ProductionChecklistPanel({
                                   </div>
                                 )}
 
-                                {/* Text Overlays */}
+                                {/* B-Roll Vibe + Library Link (broll cells only) */}
+                                {item.format === "broll" && (item.broll_vibe || (item.broll_shots && item.broll_shots.length > 0)) && (
+                                  <div className="p-3 rounded-lg bg-muted/40 border border-border/60 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <Film className="h-4 w-4 text-muted-foreground" />
+                                      <span className="text-sm font-semibold">B-Roll Vibe</span>
+                                    </div>
+                                    {item.broll_vibe && (
+                                      <p className="text-sm">{item.broll_vibe}</p>
+                                    )}
+                                    <a
+                                      href="/creative-toolkit"
+                                      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                                    >
+                                      Grab footage from your B-Roll Library →
+                                    </a>
+                                    {item.broll_shots && item.broll_shots.length > 0 && (
+                                      <details className="text-xs text-muted-foreground">
+                                        <summary className="cursor-pointer">Older shot ideas</summary>
+                                        <ul className="list-disc pl-5 mt-1 space-y-0.5">
+                                          {item.broll_shots.map((s, i) => (<li key={i}>{s}</li>))}
+                                        </ul>
+                                      </details>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Text Overlays — the ad itself */}
                                 {item.text_overlays && item.text_overlays.length > 0 && (
                                   <div className="space-y-2">
-                                    <h4 className="text-sm font-semibold flex items-center gap-2">
-                                      📝 Text Overlays
+                                    <div>
+                                      <h4 className="text-base font-semibold flex items-center gap-2">
+                                        📝 Text Overlays{item.format === "broll" ? " — the ad" : ""}
                                     </h4>
                                     <div className="space-y-2">
                                       {item.text_overlays.map((overlay, idx) => (
