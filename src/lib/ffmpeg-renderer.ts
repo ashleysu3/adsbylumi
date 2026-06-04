@@ -13,7 +13,7 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
-export type OverlayType = 'hook' | 'insight' | 'transition' | 'cta';
+export type OverlayType = 'hook' | 'pain' | 'insight' | 'transition' | 'proof' | 'cta';
 export type EmphasisStyle = 'bold' | 'upper' | 'bold-upper';
 
 export interface OverlayXY {
