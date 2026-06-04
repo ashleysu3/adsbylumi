@@ -42,7 +42,7 @@ const SLOTS: Record<string,string> = {
 
 function mapStyle(styleHint?: string, format?: string): string {
   if (format === "carousel") return "carousel";
-  const m: Record<string,string> = { "photo-forward":"cutout","card":"spotlight","framed":"framed","type-led":"split","testimonial":"testimonial","highlighter":"highlighter" };
+  const m: Record<string,string> = { "photo-forward":"cutout","card":"spotlight","framed":"framed","type-led":"split","testimonial":"testimonial","highlighter":"highlighter","stats":"statgrid","data":"statgrid","checklist":"checklist","list":"checklist","steps":"checklist" };
   return (styleHint && m[styleHint]) || "cutout";
 }
 
