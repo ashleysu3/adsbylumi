@@ -256,34 +256,62 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
 
             <div className="space-y-4">
               <Label className="text-base">Fonts</Label>
+              <p className="text-xs text-muted-foreground">
+                Pick from fonts the ad generator can actually render. Previews show the real typeface.
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Display font family</Label>
-                  <Input
+                  <Label className="text-xs text-muted-foreground">Display font (headlines)</Label>
+                  <Select
                     value={fonts.displayFamily || ""}
-                    onChange={(e) => setFonts((prev) => ({ ...prev, displayFamily: e.target.value }))}
-                    placeholder="e.g. Playfair Display"
-                  />
+                    onValueChange={(v) => setFonts((prev) => ({ ...prev, displayFamily: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a display font" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {DISPLAY_FONTS.map((f) => (
+                        <SelectItem key={f} value={f}>
+                          <span style={{ fontFamily: `'${f}', serif` }}>{f}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fonts.displayFamily && (
+                    <div
+                      className="rounded border border-border bg-muted/30 px-3 py-2 text-2xl leading-tight"
+                      style={{ fontFamily: `'${fonts.displayFamily}', serif` }}
+                    >
+                      The quick brown fox
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Body font family</Label>
-                  <Input
+                  <Label className="text-xs text-muted-foreground">Body font</Label>
+                  <Select
                     value={fonts.bodyFamily || ""}
-                    onChange={(e) => setFonts((prev) => ({ ...prev, bodyFamily: e.target.value }))}
-                    placeholder="e.g. Inter"
-                  />
+                    onValueChange={(v) => setFonts((prev) => ({ ...prev, bodyFamily: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a body font" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {BODY_FONTS.map((f) => (
+                        <SelectItem key={f} value={f}>
+                          <span style={{ fontFamily: `'${f}', sans-serif` }}>{f}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fonts.bodyFamily && (
+                    <div
+                      className="rounded border border-border bg-muted/30 px-3 py-2 text-sm leading-snug"
+                      style={{ fontFamily: `'${fonts.bodyFamily}', sans-serif` }}
+                    >
+                      The quick brown fox jumps over the lazy dog.
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Display font URL (optional)</Label>
-                <Input
-                  value={fonts.displayItalicUrl || ""}
-                  onChange={(e) =>
-                    setFonts((prev) => ({ ...prev, displayItalicUrl: e.target.value }))
-                  }
-                  placeholder="https://.../font.woff2"
-                  className="font-mono text-sm"
-                />
               </div>
             </div>
 
