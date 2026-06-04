@@ -458,20 +458,20 @@ export function GenerateCreativeDialog() {
           const [{ data: brandRow }, { data: offerRows }] = await Promise.all([
             supabase
               .from("brands")
-              .select("name, ideal_client_profile, audience_psychology, brand_voice_notes")
+              .select("name, target_audience, value_proposition, audience_psychology, brand_voice, voice_profile")
               .eq("id", activeBrand.id)
               .maybeSingle(),
             supabase
               .from("offers")
-              .select("id, name, offer_type, price, url, description, messaging_guidelines, offer_audience_psychology, product_psychology, created_at")
+              .select("id, name, page_goal, target_outcome, price_point, url, description, messaging_guidelines, offer_audience_psychology, product_psychology, created_at")
               .eq("brand_id", activeBrand.id)
               .order("created_at", { ascending: false }),
           ]);
           if (brandRow) {
             brandContext = {
               name: (brandRow as any).name,
-              idealClient: (brandRow as any).ideal_client_profile,
-              voiceNotes: (brandRow as any).brand_voice_notes,
+              idealClient: (brandRow as any).target_audience || (brandRow as any).value_proposition,
+              voiceNotes: (brandRow as any).voice_profile || (brandRow as any).brand_voice,
             };
             audiencePsychology = (brandRow as any).audience_psychology || null;
           }
@@ -487,8 +487,8 @@ export function GenerateCreativeDialog() {
             const chosen = match || offers[0];
             offerContext = {
               name: chosen.name,
-              type: chosen.offer_type,
-              price: chosen.price,
+              type: chosen.page_goal || chosen.target_outcome,
+              price: chosen.price_point,
               url: chosen.url,
               description: chosen.description,
               messagingGuidelines: chosen.messaging_guidelines,
