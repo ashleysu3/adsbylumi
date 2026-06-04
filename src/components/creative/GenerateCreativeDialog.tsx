@@ -533,6 +533,52 @@ export function GenerateCreativeDialog() {
     a.click();
   };
 
+  const approveRender = async (img: RenderImage, idx: number) => {
+    if (!itemId) {
+      toast.error("Open this from a creative card to approve it.");
+      return;
+    }
+    setApprovingIdx(idx);
+    try {
+      const isVertical = (img.placement || "").toLowerCase().includes("story") || (img.height > img.width);
+      await new Promise<void>((resolve, reject) => {
+        const reqId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const onDone = (e: Event) => {
+          const d = (e as CustomEvent).detail as { reqId: string; ok: boolean; error?: string };
+          if (d?.reqId !== reqId) return;
+          window.removeEventListener("creative-render:approved", onDone as EventListener);
+          if (d.ok) resolve();
+          else reject(new Error(d.error || "Could not save"));
+        };
+        window.addEventListener("creative-render:approved", onDone as EventListener);
+        window.dispatchEvent(
+          new CustomEvent("creative-render:approve", {
+            detail: {
+              reqId,
+              itemId,
+              base64: img.base64,
+              mime: "image/png",
+              fileName: `ad-${img.label?.replace(/\s+/g, "-").toLowerCase() || img.placement}-${idx + 1}.png`,
+              isVertical,
+            },
+          }),
+        );
+        setTimeout(() => {
+          window.removeEventListener("creative-render:approved", onDone as EventListener);
+          reject(new Error("Timed out saving the render"));
+        }, 30000);
+      });
+      setApprovedIdxs((prev) => new Set(prev).add(idx));
+      toast.success("Approved and saved to your creative ✅");
+    } catch (err: any) {
+      toast.error(err?.message || "Could not approve");
+    } finally {
+      setApprovingIdx(null);
+    }
+  };
+
+
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
