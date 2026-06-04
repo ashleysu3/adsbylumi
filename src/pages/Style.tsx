@@ -51,6 +51,8 @@ export default function Style() {
   }, [contextBrand?.id]);
 
   const fetchBrand = async () => {
+    setLoading(true);
+    setBrand(null);
     try {
       const effectiveUserId = await getEffectiveUserId();
       if (!effectiveUserId) return;
