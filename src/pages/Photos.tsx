@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useBrand } from "@/contexts/BrandContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { toast } from "sonner";
 type AssetRow = {
   id: string;
   original_url: string;
+  brand_id: string;
   kind: string | null;
   created_at: string;
 };
@@ -16,21 +18,29 @@ type AssetRow = {
 type GalleryItem = AssetRow & { displayUrl: string };
 
 export default function Photos() {
+  const { activeBrand, loading: brandsLoading } = useBrand();
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
 
   const load = async () => {
+    if (brandsLoading) return;
+    if (!activeBrand?.id) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from("user_assets")
-        .select("id, original_url, kind, created_at")
+        .from("user_assets" as any)
+        .select("id, original_url, brand_id, kind, created_at")
         .eq("kind", "photo")
+        .eq("brand_id", activeBrand.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      const rows = (data || []) as AssetRow[];
-      const paths = rows.map((r) => r.original_url);
+      const rows = (data || []) as unknown as AssetRow[];
+      const paths = rows.map((r) => r.original_url).filter(Boolean);
       let signed: { path?: string | null; signedUrl: string }[] = [];
       if (paths.length) {
         const { data: s, error: se } = await supabase.storage
@@ -51,11 +61,16 @@ export default function Photos() {
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBrand?.id, brandsLoading]);
 
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
+    if (!activeBrand?.id) {
+      toast.error("Choose a brand before uploading photos");
+      return;
+    }
     setUploading(true);
     try {
       const { data: auth } = await supabase.auth.getUser();
@@ -63,14 +78,14 @@ export default function Photos() {
       if (!userId) throw new Error("You must be signed in.");
       for (const file of files) {
         const safe = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
-        const path = `${userId}/${Date.now()}-${safe}`;
+        const path = `${userId}/${activeBrand.id}/${Date.now()}-${safe}`;
         const { error: upErr } = await supabase.storage
           .from("ad-photos")
           .upload(path, file, { cacheControl: "3600", upsert: false });
         if (upErr) throw upErr;
         const { error: insErr } = await supabase
-          .from("user_assets")
-          .insert({ original_url: path, kind: "photo" });
+          .from("user_assets" as any)
+          .insert({ original_url: path, kind: "photo", brand_id: activeBrand.id });
         if (insErr) throw insErr;
       }
       toast.success(`Uploaded ${files.length} photo${files.length > 1 ? "s" : ""}`);
@@ -86,7 +101,11 @@ export default function Photos() {
   const remove = async (item: GalleryItem) => {
     try {
       await supabase.storage.from("ad-photos").remove([item.original_url]);
-      const { error } = await supabase.from("user_assets").delete().eq("id", item.id);
+      const { error } = await supabase
+        .from("user_assets" as any)
+        .delete()
+        .eq("id", item.id)
+        .eq("brand_id", activeBrand?.id || "");
       if (error) throw error;
       setItems((prev) => prev.filter((p) => p.id !== item.id));
     } catch (e: any) {

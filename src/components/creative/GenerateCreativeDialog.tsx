@@ -292,6 +292,11 @@ export function GenerateCreativeDialog() {
       setBodyFamily("");
       setLogoUrl("");
       setBrandVoice(null);
+      setPhotos([]);
+      setBrandPhotoAssets([]);
+      setBrandBackgroundAssets([]);
+      setBrandLogoAsset(null);
+      setSelectedPhotoId("");
       try {
         if (!activeBrand?.id) {
           toast.error("Choose a brand before generating creative.");
@@ -341,12 +346,13 @@ export function GenerateCreativeDialog() {
       setPhotosLoading(true);
       try {
         const { data, error } = await supabase
-          .from("user_assets")
+          .from("user_assets" as any)
           .select("id, original_url")
           .eq("kind", "photo")
+          .eq("brand_id", activeBrand.id)
           .order("created_at", { ascending: false });
         if (error) throw error;
-        const rows = data || [];
+        const rows = (data || []) as unknown as Array<{ id: string; original_url: string }>;
         const paths = rows.map((r) => r.original_url as string);
         let signed: { signedUrl: string }[] = [];
         if (paths.length) {
@@ -374,6 +380,7 @@ export function GenerateCreativeDialog() {
         const { data, error } = await supabase
           .from("brand_assets" as any)
           .select("id, url, role, kept")
+          .eq("brand_id", activeBrand.id)
           .eq("kept", true)
           .order("created_at", { ascending: false });
         if (error) throw error;
