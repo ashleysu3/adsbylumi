@@ -21,7 +21,9 @@ const DEFAULT_COLORS: Colors = {
 type SingleOption = Record<string, string>;
 type Slide = Record<string, string>;
 type CarouselOption = { slides: Slide[] };
-type Photo = { id: string; path: string; url: string };
+type Photo = { id: string; path: string; url: string; source?: "upload" | "brand"; role?: string };
+type BrandAssetRow = { id: string; url: string; role: string };
+type LogoCorner = "tl" | "tr" | "bl" | "br";
 type RenderImage = { placement: string; width: number; height: number; base64: string; label?: string };
 type CustomTemplate = {
   id: string;
@@ -78,6 +80,11 @@ export function GenerateCreativeDialog() {
   const [kitLoading, setKitLoading] = useState(false);
 
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [brandPhotoAssets, setBrandPhotoAssets] = useState<Photo[]>([]);
+  const [brandBackgroundAssets, setBrandBackgroundAssets] = useState<Photo[]>([]);
+  const [brandLogoAsset, setBrandLogoAsset] = useState<Photo | null>(null);
+  const [placeLogo, setPlaceLogo] = useState(false);
+  const [logoCorner, setLogoCorner] = useState<LogoCorner>("br");
   const [photosLoading, setPhotosLoading] = useState(false);
   const [selectedPhotoId, setSelectedPhotoId] = useState<string>("");
   const [removeBackground, setRemoveBackground] = useState(true);
@@ -261,6 +268,44 @@ export function GenerateCreativeDialog() {
     (async () => {
       try {
         const { data, error } = await supabase
+          .from("brand_assets" as any)
+          .select("id, url, role, kept")
+          .eq("kept", true)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        const rows = (data || []) as unknown as Array<BrandAssetRow & { kept: boolean }>;
+        const pathFromUrl = (u: string): string | null => {
+          const m = u.match(/\/storage\/v1\/object\/(?:public|sign)\/brand-assets\/([^?]+)/);
+          return m ? decodeURIComponent(m[1]) : null;
+        };
+        const paths = rows.map((r) => pathFromUrl(r.url)).filter(Boolean) as string[];
+        let signed: { signedUrl: string }[] = [];
+        if (paths.length) {
+          const { data: s } = await supabase.storage
+            .from("brand-assets")
+            .createSignedUrls(paths, 60 * 60);
+          signed = (s || []) as { signedUrl: string }[];
+        }
+        let i = 0;
+        const resolved: Photo[] = rows.map((r) => {
+          const hasPath = !!pathFromUrl(r.url);
+          const url = hasPath ? signed[i++]?.signedUrl || r.url : r.url;
+          return { id: `ba:${r.id}`, path: r.url, url, source: "brand", role: r.role };
+        });
+        if (cancelled) return;
+        setBrandPhotoAssets(resolved.filter((a) => a.role === "photo"));
+        setBrandBackgroundAssets(
+          resolved.filter((a) => a.role === "background" || a.role === "texture"),
+        );
+        const logo = resolved.find((a) => a.role === "logo") || null;
+        setBrandLogoAsset(logo);
+      } catch {
+        /* brand_assets table may not exist yet; ignore */
+      }
+    })();
+    (async () => {
+      try {
+        const { data, error } = await supabase
           .from("templates")
           .select("id, name, type, html, copy_slots, slide_slots, needs_photo, placements")
           .eq("status", "approved")
@@ -378,9 +423,24 @@ export function GenerateCreativeDialog() {
   }, [selectedOptionIdx, singleOptions, carouselOptions, isCarousel]);
 
   const isGeneratedConcept = creativeSource === "generated";
+
+  // Build the photo picker list based on the active template.
+  // - photo-based templates: uploads + brand 'photo' assets
+  // - overlay/imageonly: also include brand 'background' and 'texture'
+  const pickerImages = useMemo<Photo[]>(() => {
+    if (isGeneratedConcept) return [];
+    const allowsBackgrounds = template === "overlay" || template === "imageonly";
+    const uploads = photos.map((p) => ({ ...p, source: "upload" as const }));
+    const brand = [
+      ...brandPhotoAssets,
+      ...(allowsBackgrounds ? brandBackgroundAssets : []),
+    ];
+    return [...uploads, ...brand];
+  }, [isGeneratedConcept, template, photos, brandPhotoAssets, brandBackgroundAssets]);
+
   const selectedPhoto = useMemo(
-    () => (isGeneratedConcept ? generatedPhoto : photos.find((p) => p.id === selectedPhotoId)),
-    [isGeneratedConcept, generatedPhoto, photos, selectedPhotoId],
+    () => (isGeneratedConcept ? generatedPhoto : pickerImages.find((p) => p.id === selectedPhotoId)),
+    [isGeneratedConcept, generatedPhoto, pickerImages, selectedPhotoId],
   );
 
   const callRender = async (body: Record<string, any>) => {
@@ -399,7 +459,15 @@ export function GenerateCreativeDialog() {
     setImages([]);
     setProgress("");
     try {
-      const brandKit = { colors, fonts: { displayItalicUrl: fontUrl || undefined }, logoUrl: logoUrl || undefined };
+      const effectiveLogoUrl = (placeLogo && brandLogoAsset?.url) || logoUrl || undefined;
+      const brandKit = {
+        colors,
+        fonts: { displayItalicUrl: fontUrl || undefined },
+        logoUrl: effectiveLogoUrl,
+      };
+      const logoOverlay = placeLogo && brandLogoAsset?.url
+        ? { url: brandLogoAsset.url, corner: logoCorner }
+        : undefined;
       const photo = { url: selectedPhoto.url, removeBackground };
 
       const templateField = activeCustom
@@ -422,6 +490,7 @@ export function GenerateCreativeDialog() {
           brandKit,
           copy: { slides },
           photo,
+          logoOverlay,
           placements: activeCustom?.placements ?? ["feed"],
         });
         const labelled = imgs.map((im, i) => ({ ...im, label: `Slide ${i + 1}` }));
@@ -435,6 +504,7 @@ export function GenerateCreativeDialog() {
           brandKit,
           copy: editedSingle,
           photo,
+          logoOverlay,
           placements: activeCustom?.placements ?? ["feed", "story"],
         });
         setImages(imgs);
@@ -661,14 +731,14 @@ export function GenerateCreativeDialog() {
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Loader2 className="h-3 w-3 animate-spin" /> Loading your photos…
                   </div>
-                ) : photos.length === 0 ? (
+                ) : pickerImages.length === 0 ? (
                   <div className="text-xs text-muted-foreground rounded border p-3 flex items-center gap-2">
                     <ImageOff className="h-4 w-4" />
-                    Upload photos in My Photos first.
+                    Upload photos in My Photos, or pull images from your website in Style.
                   </div>
                 ) : (
                   <div className="grid grid-cols-5 gap-2">
-                    {photos.slice(0, 10).map((p) => (
+                    {pickerImages.slice(0, 20).map((p) => (
                       <button
                         key={p.id}
                         type="button"
@@ -676,8 +746,14 @@ export function GenerateCreativeDialog() {
                         className={`relative aspect-square rounded border-2 overflow-hidden transition ${
                           selectedPhotoId === p.id ? "border-primary" : "border-border hover:border-muted-foreground"
                         }`}
+                        title={p.source === "brand" ? `Brand · ${p.role}` : "Upload"}
                       >
                         <img src={p.url} alt="" className="w-full h-full object-cover" />
+                        {p.source === "brand" && (
+                          <span className="absolute bottom-0 left-0 right-0 text-[9px] uppercase text-white bg-black/55 py-0.5 text-center leading-none">
+                            {p.role}
+                          </span>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -691,6 +767,31 @@ export function GenerateCreativeDialog() {
                     />
                     Remove background
                   </label>
+                )}
+
+                {brandLogoAsset && (
+                  <div className="rounded border bg-muted/30 p-2 space-y-2">
+                    <label className="flex items-center gap-2 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={placeLogo}
+                        onChange={(e) => setPlaceLogo(e.target.checked)}
+                      />
+                      <img src={brandLogoAsset.url} alt="" className="h-5 w-5 object-contain rounded bg-background" />
+                      Place logo small in a corner
+                    </label>
+                    {placeLogo && (
+                      <Select value={logoCorner} onValueChange={(v) => setLogoCorner(v as LogoCorner)}>
+                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="tl">Top left</SelectItem>
+                          <SelectItem value="tr">Top right</SelectItem>
+                          <SelectItem value="bl">Bottom left</SelectItem>
+                          <SelectItem value="br">Bottom right</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
                 )}
               </div>
 
