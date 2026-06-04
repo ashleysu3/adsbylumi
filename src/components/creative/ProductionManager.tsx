@@ -1480,6 +1480,7 @@ export function ProductionManager({
                           onRefineScript={onRefineScript}
                           selected={bulkSelectMode ? selectedIds.has(item.id) : undefined}
                           onToggleSelect={bulkSelectMode ? () => toggleSelectItem(item.id) : undefined}
+                          onToggleApprove={() => handleToggleApprove(item)}
                           angleCopy={getCopyForItem(item)}
                           onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                           onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
