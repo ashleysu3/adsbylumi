@@ -358,13 +358,14 @@ export function GenerateCreativeDialog() {
     }
   }, [brandVoice, template, activeCustom]);
 
-  // Auto-compose on open AND whenever the template selection changes
+  // Auto-compose on open AND whenever the template selection changes.
+  // Skip when in generated-image mode without an overlay (no copy needed).
   useEffect(() => {
-    if (open && brief && !kitLoading && !composing) {
-      compose();
-    }
+    if (!open || !brief || kitLoading || composing) return;
+    if (creativeSource === "generated" && !addOverlay) return;
+    compose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, brief, kitLoading, template, customTemplateId]);
+  }, [open, brief, kitLoading, template, customTemplateId, creativeSource, addOverlay]);
 
 
   // Sync editor to currently selected option
