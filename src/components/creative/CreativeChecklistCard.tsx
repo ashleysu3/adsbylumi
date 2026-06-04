@@ -1365,7 +1365,23 @@ export function CreativeChecklistCard({
               
               {/* Actions */}
               <div className="flex justify-between items-center gap-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {onToggleApprove && (
+                    <Button
+                      variant={(item as any).approval_status === 'approved' ? "default" : "outline"}
+                      size="sm"
+                      className={cn(
+                        "gap-2",
+                        (item as any).approval_status === 'approved' && "bg-green-600 hover:bg-green-700 text-white"
+                      )}
+                      onClick={onToggleApprove}
+                      disabled={!hasAsset}
+                      title={!hasAsset ? "Upload a creative file first" : undefined}
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      {(item as any).approval_status === 'approved' ? "Approved" : "Approve for ad"}
+                    </Button>
+                  )}
                   {onAdPreview && (
                     <Button 
                       variant="outline" 
