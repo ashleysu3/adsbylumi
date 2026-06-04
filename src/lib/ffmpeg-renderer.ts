@@ -361,7 +361,7 @@ async function ensureFontLoaded(family: string, weightCss: string): Promise<void
 }
 
 export async function renderVideoWithText(opts: RenderOptions): Promise<Blob> {
-  const { videoUrl, overlays, style, loopVideo = false, onProgress } = opts;
+  const { videoUrl, overlays, style, loopVideo = false, trimStart, trimEnd, onProgress } = opts;
 
   if (overlays.length === 0) {
     throw new Error('No overlays to render');
@@ -409,14 +409,35 @@ export async function renderVideoWithText(opts: RenderOptions): Promise<Blob> {
     });
     const filterComplex = filterParts.join(';');
 
-    const maxOverlayEnd = overlays.reduce((max, o) => Math.max(max, o.endSeconds), 0);
-    const outputDuration = loopVideo && maxOverlayEnd > duration
-      ? Math.max(maxOverlayEnd, duration)
-      : 0;
+    // Resolve trim window
+    const hasTrim =
+      (typeof trimStart === 'number' && trimStart > 0.01) ||
+      (typeof trimEnd === 'number' && trimEnd > 0 && trimEnd < duration - 0.01);
+    const tStart = hasTrim ? Math.max(0, trimStart ?? 0) : 0;
+    const tEnd = hasTrim
+      ? Math.min(duration, trimEnd ?? duration)
+      : duration;
+    const trimmedDuration = Math.max(0, tEnd - tStart);
 
-    const args: string[] = loopVideo && outputDuration > 0
-      ? ['-stream_loop', '-1', '-i', 'input.mp4']
-      : ['-i', 'input.mp4'];
+    const maxOverlayEnd = overlays.reduce((max, o) => Math.max(max, o.endSeconds), 0);
+    const effectiveSourceDuration = hasTrim ? trimmedDuration : duration;
+    const outputDuration = loopVideo && maxOverlayEnd > effectiveSourceDuration
+      ? Math.max(maxOverlayEnd, effectiveSourceDuration)
+      : hasTrim
+        ? trimmedDuration
+        : 0;
+
+    const inputArgs: string[] = [];
+    if (loopVideo && outputDuration > 0 && !hasTrim) {
+      inputArgs.push('-stream_loop', '-1');
+    }
+    if (hasTrim) {
+      inputArgs.push('-ss', tStart.toFixed(3));
+      if (trimmedDuration > 0) inputArgs.push('-t', trimmedDuration.toFixed(3));
+    }
+    inputArgs.push('-i', 'input.mp4');
+
+    const args: string[] = [...inputArgs];
     for (let i = 0; i < overlays.length; i++) {
       args.push('-i', `overlay_${i}.png`);
     }
