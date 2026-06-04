@@ -126,6 +126,10 @@ export default function BrandImageLibrary({ brandId, websiteUrl }: { brandId: st
 
   const onUpload = async (files: FileList | null) => {
     if (!files || !files.length) return;
+    if (!brandId) {
+      toast.error("Pick a brand first");
+      return;
+    }
     setUploading(true);
     try {
       const { data: u } = await supabase.auth.getUser();
@@ -134,7 +138,7 @@ export default function BrandImageLibrary({ brandId, websiteUrl }: { brandId: st
       for (const file of Array.from(files)) {
         if (!file.type.startsWith("image/")) continue;
         const ext = file.name.split(".").pop() || "jpg";
-        const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+        const path = `${userId}/${brandId}/${crypto.randomUUID()}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from("brand-assets")
           .upload(path, file, { contentType: file.type, upsert: false });
@@ -144,6 +148,7 @@ export default function BrandImageLibrary({ brandId, websiteUrl }: { brandId: st
           .from("brand_assets" as any)
           .insert({
             user_id: userId,
+            brand_id: brandId,
             url: pub.publicUrl,
             source_url: null,
             role: "photo" as Role,
