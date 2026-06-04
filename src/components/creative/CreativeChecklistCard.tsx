@@ -279,6 +279,11 @@ export function CreativeChecklistCard({
                       Approved ✅
                     </Badge>
                   )}
+                  {(item as any).pushed_to_ad_at && (
+                    <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 text-xs">
+                      Live in ad 🚀
+                    </Badge>
+                  )}
                   {(item as any).approval_status === 'changes_requested' && (
                     <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs">
                       Changes Requested 🔄
