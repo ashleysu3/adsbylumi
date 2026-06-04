@@ -69,6 +69,11 @@ export function AdPreviewModal({
   isDmCampaign = false,
   onCopyChange,
   onUrlChange,
+  isApproved,
+  alreadyPushed,
+  canPush,
+  pushing,
+  onApproveAndAdd,
 }: AdPreviewModalProps) {
   const [platform, setPlatform] = useState<"feed" | "stories" | "reels" | "instagram">("feed");
   const [selectedHeadline, setSelectedHeadline] = useState(0);
