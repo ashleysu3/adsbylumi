@@ -700,9 +700,11 @@ export function GenerateCreativeDialog() {
                 onClick={generate}
                 disabled={
                   generating || composing || !selectedPhoto ||
-                  (isCarousel
-                    ? !editedSlides.some((s) => (s?.headline || "").trim().length > 0)
-                    : !((editedSingle.headline || "").trim() || (editedSingle.headlineHL || "").trim()))
+                  (template === "imageonly"
+                    ? false
+                    : isCarousel
+                      ? !editedSlides.some((s) => (s?.headline || "").trim().length > 0)
+                      : !((editedSingle.headline || "").trim() || (editedSingle.headlineHL || "").trim()))
                 }
               >
                 {generating ? (
