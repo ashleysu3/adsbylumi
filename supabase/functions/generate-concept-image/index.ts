@@ -11,12 +11,19 @@ serve(async (req) => {
     const full = `${prompt}\n\nHARD RULES: no text, words, letters, or logos anywhere in the image. Keep the lower third darker and less busy so text can be overlaid. Square composition, ad-ready.`;
     const r = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST", headers: { authorization: `Bearer ${OPENAI}`, "content-type": "application/json" },
-      body: JSON.stringify({ model: "dall-e-3", prompt: full, size: "1024x1024", n: 1, response_format: "b64_json", quality: "hd" }),
+      body: JSON.stringify({ model: "dall-e-3", prompt: full, size: "1024x1024", n: 1, quality: "hd" }),
     });
     const d = await r.json();
-    const b64 = d?.data?.[0]?.b64_json;
-    if (!b64) return new Response(JSON.stringify({ error: d?.error?.message || "no image" }), { status: 500, headers: { ...cors, "content-type": "application/json" } });
-    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const item = d?.data?.[0];
+    let bytes: Uint8Array | null = null;
+    if (item?.b64_json) {
+      bytes = Uint8Array.from(atob(item.b64_json), (c) => c.charCodeAt(0));
+    } else if (item?.url) {
+      const imgRes = await fetch(item.url);
+      if (!imgRes.ok) return new Response(JSON.stringify({ error: `image fetch failed ${imgRes.status}` }), { status: 500, headers: { ...cors, "content-type": "application/json" } });
+      bytes = new Uint8Array(await imgRes.arrayBuffer());
+    }
+    if (!bytes) return new Response(JSON.stringify({ error: d?.error?.message || "no image" }), { status: 500, headers: { ...cors, "content-type": "application/json" } });
     const supa = createClient(SUPABASE_URL, SERVICE);
     const filename = `concept-${crypto.randomUUID()}.png`;
     await supa.storage.from("ad-photos").upload(filename, bytes, { contentType: "image/png", upsert: false });
