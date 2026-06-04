@@ -127,6 +127,7 @@ export default function BrandSetup() {
           colors: { bg, ink, accent, pop, highlight, cream },
           fonts: { displayItalicUrl: displayUrl },
           voice: data?.suggested?.voice || {},
+          logo_url: logoUrl || null,
           status: "confirmed",
         },
         { onConflict: "user_id" }
