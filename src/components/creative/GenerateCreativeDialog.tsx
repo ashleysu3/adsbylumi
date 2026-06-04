@@ -65,7 +65,7 @@ type CustomTemplate = {
 };
 
 const BUILT_IN_TEMPLATES = [
-  "cutout", "spotlight", "framed", "split", "highlighter", "overlay", "imageonly", "devicemockup", "testimonial", "statgrid", "checklist", "carousel",
+  "cutout", "spotlight", "framed", "split", "highlighter", "overlay", "imageonly", "devicemockup", "testimonial", "statgrid", "checklist", "chatproof", "event", "offer", "bigtype", "collage", "carousel",
 ] as const;
 
 const BUILT_IN_LABELS: Record<string, string> = {
@@ -80,6 +80,11 @@ const BUILT_IN_LABELS: Record<string, string> = {
   testimonial: "Testimonial card",
   statgrid: "Stat grid",
   checklist: "Checklist",
+  chatproof: "Chat proof",
+  event: "Event / class",
+  offer: "Sale / offer",
+  bigtype: "Big type",
+  collage: "Photo collage",
   carousel: "Carousel",
 };
 
