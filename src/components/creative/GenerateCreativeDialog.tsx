@@ -156,6 +156,10 @@ export function GenerateCreativeDialog() {
   const [progress, setProgress] = useState<string>("");
   const [images, setImages] = useState<RenderImage[]>([]);
 
+  // Copy feedback dialog
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+
+
   const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>([]);
   const [customTemplateId, setCustomTemplateId] = useState<string>("");
   const activeCustom = useMemo(
