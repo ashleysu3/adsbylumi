@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useBrand } from "@/contexts/BrandContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +45,7 @@ const Swatch = ({ color, active, onClick }: { color: string; active?: boolean; o
 
 export default function BrandSetup() {
   const navigate = useNavigate();
+  const { activeBrand } = useBrand();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -128,9 +130,14 @@ export default function BrandSetup() {
         toast.error("You must be signed in");
         return;
       }
+      if (!activeBrand?.id) {
+        toast.error("Choose a brand before saving colors and fonts");
+        return;
+      }
       const { error } = await supabase.from("brand_kits").upsert(
         {
           user_id: userId,
+          brand_id: activeBrand.id,
           source_url: url.trim(),
           colors: { bg, ink, accent, pop, highlight, cream },
           fonts: { displayItalicUrl: displayUrl },
@@ -138,7 +145,7 @@ export default function BrandSetup() {
           logo_url: logoUrl || null,
           status: "confirmed",
         },
-        { onConflict: "user_id" }
+        { onConflict: "user_id,brand_id" }
       );
       if (error) throw error;
       toast.success("Brand saved");
