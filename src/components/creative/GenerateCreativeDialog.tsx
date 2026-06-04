@@ -93,6 +93,7 @@ export function GenerateCreativeDialog() {
   const [selectedPhotoId, setSelectedPhotoId] = useState<string>("");
   const [removeBackground, setRemoveBackground] = useState(true);
   const [generatedPhoto, setGeneratedPhoto] = useState<Photo | null>(null);
+  const [optimizedPrompt, setOptimizedPrompt] = useState<string>("");
   const [generatingConcept, setGeneratingConcept] = useState(false);
 
   const [composing, setComposing] = useState(false);
