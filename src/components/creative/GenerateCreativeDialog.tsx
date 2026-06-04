@@ -964,7 +964,7 @@ export function GenerateCreativeDialog() {
                           setSlides={setEditedSlides}
                           editing={editingCopy}
                           setEditing={setEditingCopy}
-                          onRegenerate={compose}
+                          onRegenerate={() => setFeedbackOpen(true)}
                         />
                       ) : (
                         <SingleEditor
