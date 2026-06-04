@@ -644,7 +644,7 @@ export function GenerateCreativeDialog() {
     ...BUILT_IN_TEMPLATES.map((t) => ({
       key: `built:${t}`,
       label: BUILT_IN_LABELS[t] || t,
-      thumb: `/template-thumbnails/${t}.png`,
+      thumb: undefined,
       isCustom: false,
       builtIn: t,
     })),
