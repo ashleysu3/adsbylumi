@@ -38,17 +38,19 @@ SENTENCE CASE headlines (capitalize the first word and proper nouns only). COMPL
 
 // exact slots per template (keys + length guidance)
 const SLOTS: Record<string,string> = {
-  cutout: `eyebrow (<=5 words), headlinePre (1-3 words), headlineHL (1-3 words, the punchy highlighted phrase), headlinePost (2-6 words), accent (optional italic kicker <=6 words or ""), sub (one sentence <=15 words), cta (<=4 words), badgeTop (<=2 words), badgeBottom (<=3 words)`,
-  spotlight: `eyebrow (<=6 words, a details line e.g. "Free training · Jun 8 @ 1pm ET"), headline (<=8 words), sub (one sentence <=18 words), cta (<=4 words)`,
-  framed: `headlinePre (1-4 words, lowercase lead-in), headlineHL (2-5 words, the bold phrase shown in CAPS), headlinePost (2-6 words, lowercase tail), cta (<=5 words, e.g. "Watch the free training"), sig (the brand or person's name)`,
-  split: `eyebrow (<=3 words, e.g. "Free download"), headline (<=9 words, shown in CAPS), cta (<=3 words, e.g. "Free download")`,
+  cutout: `eyebrow (<=5 words), headlinePre (1-3 words), headlineHL (1-3 words, the highlighted phrase), headlinePost (2-6 words), accent (optional italic kicker <=6 words or ""), sub (one sentence <=15 words), cta (<=4 words), badgeTop (<=2 words), badgeBottom (<=3 words)`,
+  spotlight: `eyebrow (<=6 words, a details line), headline (<=8 words), sub (one sentence <=18 words), cta (<=4 words)`,
+  framed: `headlinePre (1-4 words, lowercase lead-in), headlineHL (2-5 words, bold phrase in CAPS), headlinePost (2-6 words, lowercase tail), cta (<=5 words), sig (brand or person name)`,
+  split: `eyebrow (<=3 words), headline (<=9 words, shown in CAPS), cta (<=3 words)`,
   highlighter: `headlinePre (1-3 words), headlineAccent (1-3 words, accent color), headlineHL (1-3 words, highlighted phrase), sub (one sentence <=14 words), badgeTop (<=2 words e.g. FREE), badgeBottom (<=2 words e.g. Download)`,
   overlay: `eyebrow (<=5 words), headline (<=8 words, bold), sub (one sentence <=16 words), cta (<=4 words)`,
+  devicemockup: `eyebrow (<=5 words), headline (<=8 words), sub (one sentence <=16 words), cta (<=4 words)`,
+  testimonial: `eyebrow (<=4 words, e.g. "Real result"), quote (a short testimonial in the customer's own voice, <=22 words), author (first name + last initial), role (title or business, 2-4 words)`,
 };
 
 function mapStyle(styleHint?: string, format?: string): string {
   if (format === "carousel") return "carousel";
-  const m: Record<string,string> = { "photo-forward":"cutout","card":"spotlight","framed":"framed","type-led":"split","testimonial":"spotlight","highlighter":"highlighter" };
+  const m: Record<string,string> = { "photo-forward":"cutout","card":"spotlight","framed":"framed","type-led":"split","testimonial":"testimonial","highlighter":"highlighter" };
   return (styleHint && m[styleHint]) || "cutout";
 }
 
