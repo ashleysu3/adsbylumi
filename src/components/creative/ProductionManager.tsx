@@ -809,6 +809,164 @@ export function ProductionManager({
     onUpdateWorkspace({ production_items: updatedItems });
   };
 
+  // Toggle approval status on a production item. Persists to workspace.
+  const handleToggleApprove = async (item: ProductionItem) => {
+    const itemAny = item as any;
+    const isApproved = itemAny.approval_status === 'approved';
+    const updatedItems = productionItems.map((pi) =>
+      pi.id === item.id
+        ? {
+            ...pi,
+            approval_status: isApproved ? undefined : 'approved',
+            approved_at: isApproved ? undefined : new Date().toISOString(),
+          }
+        : pi
+    );
+    try {
+      await supabase
+        .from('campaign_workspaces')
+        .update({
+          production_items: updatedItems as any,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', workspace.id);
+      onUpdateWorkspace({ production_items: updatedItems });
+      toast.success(isApproved ? "Approval removed" : "Creative approved for ad ✅");
+    } catch (e: any) {
+      console.error('Approval toggle failed:', e);
+      toast.error("Couldn't save approval — try again");
+    }
+  };
+
+  // Convert this item's angle copy into the {primary_text, headline, description}
+  // shape that add-creative-to-campaign expects, by zipping the per-field arrays.
+  const itemToCopyVariations = (item: ProductionItem) => {
+    const copy = getCopyForItem(item);
+    if (!copy) return [];
+    const headlines = copy.headlines || [];
+    const descriptions = copy.descriptions || [];
+    const primary = copy.primary_copy || [];
+    const max = Math.max(headlines.length, descriptions.length, primary.length);
+    const out: Array<{ primary_text?: string; headline?: string; description?: string }> = [];
+    for (let i = 0; i < max; i++) {
+      const variation = {
+        primary_text: primary[i]?.text,
+        headline: headlines[i]?.text,
+        description: descriptions[i]?.text,
+      };
+      if (variation.primary_text || variation.headline || variation.description) {
+        out.push(variation);
+      }
+    }
+    return out;
+  };
+
+  // Items eligible for push: approved, have an asset, not already live.
+  const approvedItems = productionItems.filter((pi) => {
+    const piAny = pi as any;
+    return piAny.approval_status === 'approved' && !!getAssetForItem(pi) && !piAny.pushed_to_ad_at;
+  });
+
+  const hasLiveCampaign = !!(workspace?.meta_campaign_ids && (
+    Array.isArray(workspace.meta_campaign_ids)
+      ? workspace.meta_campaign_ids.length > 0
+      : Object.keys(workspace.meta_campaign_ids).length > 0
+  ));
+
+  // Push all eligible approved creatives into the existing live campaign as
+  // separate ads sharing the union of their copy variations. Each approved
+  // item becomes its own ad in the connected ad set.
+  const pushApprovedToAd = async (itemsToPush?: ProductionItem[]) => {
+    const targets = itemsToPush || approvedItems;
+    if (targets.length === 0) {
+      toast.error("No approved creatives with uploads to push");
+      return;
+    }
+    if (!hasLiveCampaign) {
+      toast.error("No live campaign found for this workspace yet — launch one first.");
+      return;
+    }
+
+    setPushingToAd(true);
+    try {
+      // Build asset list (shape expected by add-creative-to-campaign).
+      const assets = targets
+        .map((item) => {
+          const a = getAssetForItem(item);
+          if (!a) return null;
+          return {
+            id: a.id,
+            name: a.file_name,
+            file_url: a.file_url,
+            file_type: a.file_type,
+            storage_path: a.storage_path,
+          };
+        })
+        .filter((a): a is NonNullable<typeof a> => !!a);
+
+      // Union and dedupe copy variations across all approved items.
+      const seen = new Set<string>();
+      const copyVariations: Array<{ primary_text?: string; headline?: string; description?: string }> = [];
+      for (const item of targets) {
+        for (const v of itemToCopyVariations(item)) {
+          const key = `${v.primary_text || ''}|${v.headline || ''}|${v.description || ''}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          copyVariations.push(v);
+        }
+      }
+
+      if (copyVariations.length === 0) {
+        toast.error("No copy variations found for these creatives — generate copy first.");
+        setPushingToAd(false);
+        return;
+      }
+
+      toast.info(`Pushing ${targets.length} creative${targets.length === 1 ? '' : 's'} to your campaign…`);
+
+      const { data: result, error } = await supabase.functions.invoke('add-creative-to-campaign', {
+        body: {
+          workspaceId: workspace.id,
+          assets,
+          copyVariations,
+        },
+      });
+
+      if (error) throw error;
+      if (!result?.success) {
+        throw new Error(result?.error || 'Failed to push creatives');
+      }
+
+      // Mark pushed items.
+      const pushedAt = new Date().toISOString();
+      const targetIds = new Set(targets.map((t) => t.id));
+      const updatedItems = productionItems.map((pi) =>
+        targetIds.has(pi.id) ? { ...pi, pushed_to_ad_at: pushedAt } : pi
+      );
+      await supabase
+        .from('campaign_workspaces')
+        .update({ production_items: updatedItems as any, updated_at: pushedAt })
+        .eq('id', workspace.id);
+      onUpdateWorkspace({ production_items: updatedItems });
+
+      toast.success(
+        `✨ ${result.totalCreated} ad${result.totalCreated > 1 ? 's' : ''} added to your campaign!`,
+        {
+          description: result.failedAds?.length
+            ? `${result.totalFailed} failed — check Ads Manager.`
+            : 'Your creatives are live.',
+        }
+      );
+      setPushConfirmOpen(false);
+    } catch (e: any) {
+      console.error('Push to ad failed:', e);
+      toast.error(e?.message || "Couldn't push creatives — try again");
+    } finally {
+      setPushingToAd(false);
+    }
+  };
+
+
   const { enqueue } = useRenderQueue();
 
   // Patch #17: queue a "Make my video" render from a creative card. Checks for
