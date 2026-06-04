@@ -646,6 +646,11 @@ export function GenerateCreativeDialog() {
         ? { url: brandLogoAsset.url, corner: logoCorner }
         : undefined;
       const photo = { url: selectedPhoto.url, removeBackground };
+      // Collage uses 2–4 photos. Take the most recently uploaded/brand photos.
+      const collagePool = [...photos, ...brandPhotoAssets].filter((p) => !!p.url);
+      const collagePhotos = template === "collage"
+        ? Array.from(new Map(collagePool.map((p) => [p.url, p.url])).values()).slice(0, 4)
+        : undefined;
 
       const templateField = activeCustom
         ? {
