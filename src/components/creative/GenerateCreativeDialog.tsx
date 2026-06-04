@@ -485,7 +485,11 @@ export function GenerateCreativeDialog() {
       const effectiveLogoUrl = (placeLogo && brandLogoAsset?.url) || logoUrl || undefined;
       const brandKit = {
         colors,
-        fonts: { displayItalicUrl: fontUrl || undefined },
+        fonts: {
+          displayItalicUrl: fontUrl || undefined,
+          displayFamily: displayFamily || undefined,
+          bodyFamily: bodyFamily || undefined,
+        },
         logoUrl: effectiveLogoUrl,
       };
       const logoOverlay = placeLogo && brandLogoAsset?.url
