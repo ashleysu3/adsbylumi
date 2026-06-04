@@ -660,7 +660,10 @@ export function GenerateCreativeDialog() {
     ...BUILT_IN_TEMPLATES.map((t) => ({
       key: `built:${t}`,
       label: BUILT_IN_LABELS[t] || t,
-      thumb: undefined,
+      thumb: BUILT_IN_THUMBS[t],
+      isCustom: false,
+      builtIn: t,
+    })),
       isCustom: false,
       builtIn: t,
     })),
