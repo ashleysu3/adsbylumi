@@ -258,6 +258,8 @@ export function RenderQueueProvider({ children }: { children: ReactNode }) {
           overlays: spec.overlays,
           style: spec.style,
           loopVideo: spec.loopVideo,
+          trimStart: spec.trimStart,
+          trimEnd: spec.trimEnd,
         },
         onAttached: spec.onAttached,
       };
