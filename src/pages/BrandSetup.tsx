@@ -150,9 +150,7 @@ export default function BrandSetup() {
     }
   };
 
-  const candidates = Array.from(
-    new Set([...(data?.raw?.backgrounds || []), ...(data?.raw?.textColors || [])])
-  );
+  const candidates = data?.suggested?.colors?.candidates || [];
 
   const ColorField = ({
     label,
