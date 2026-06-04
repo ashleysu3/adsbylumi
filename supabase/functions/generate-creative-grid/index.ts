@@ -323,69 +323,68 @@ Example talking_head output:
   "guidance": "Record in your car or at your desk. Natural lighting. You're just telling a friend about a realization you had. No performance needed."
 }
 
-=== B-ROLL FORMAT — LOFI EVERYDAY FOOTAGE ===
-B-roll in this system is NOT cinematic or produced. It is dead-simple background footage filmed on a phone in under 30 seconds. The TEXT OVERLAYS do the selling — the footage is just warmth and movement behind the words.
+=== B-ROLL FORMAT — TEXT-OVERLAY ADS (FOOTAGE COMES FROM THE TOOLKIT) ===
+The user already has a B-Roll Library in the Creative Toolkit full of lofi, action-based clips tailored to their brand. They will pick the actual clip there. You are NOT directing the shoot, writing a shot list, or describing scenes in detail.
 
-PHILOSOPHY:
-- B-roll plays BEHIND text overlays. The viewer reads the copy, not watches the footage.
-- It should feel like a friend filmed it on their phone — lofi, casual, unstaged.
-- It exists to create visual movement and warmth while the ad copy does the selling.
+Your job for broll cells is exactly two things:
+1. A one-line **broll_vibe** (≤ 8 words) — the mood / setting only, so they know which clip to grab. Examples: "warm morning desk, natural light" · "walking outside, golden hour" · "kitchen, hands only, cozy".
+2. A killer **text_overlays** sequence — this is THE deliverable. The overlays sell the ad. The footage is just warmth behind them.
 
-WHAT TO SUGGEST (generic everyday actions ONLY):
-- Typing on a laptop
-- Walking somewhere (sidewalk, hallway, park)
-- Pouring or stirring coffee/tea
-- Fixing hair in a mirror
-- Scrolling on phone
-- Sitting at a desk working
-- Walking a dog
-- Driving (phone mounted, not handheld)
-- Writing in a notebook/journal
-- Picking up bag or keys and heading out
-- Cooking or prepping food
-- Watering plants
-- Standing at a window looking out
-- Putting on shoes or a jacket
-- Getting ready in the morning
-- Making the bed
-- On a run or stretching
+Do NOT output broll_shots. Do NOT write production / camera direction. Do NOT describe what the creator should film.
 
-WHAT NOT TO SUGGEST:
-- NO industry-specific or product-specific scenes
-- NO cinematic, stylized, or "produced" shots
-- NO props they'd need to buy or set up
-- NO specific facial expressions or acting
-- NO brand-specific or offer-specific visuals
-- NO elaborate staging or locations
-- The footage should work for ANY ad copy layered on top
+=== TEXT OVERLAY EXCELLENCE (applies to broll AND talking_head) ===
+Text overlays are the highest-leverage copy in the whole ad. Treat them like billboards: one breath, one idea, brand voice intact.
+
+VOICE
+- Mirror the brand voice samples and tone in the brand context. Sharp, human, like one friend texting another — never marketer-speak.
+- Use the brand's signature phrases, recurring metaphors, or signature CTA when they appear in context.
+
+LENGTH
+- Hook overlay: ≤ 27 characters (hard cap — it doubles as a headline).
+- Other overlays: ≤ 14 words each. Punchy, one breath.
+
+SEQUENCE (4–6 overlays, in this order, with timing)
+1. **hook** (0–3s) — pattern-interrupt or a specific micro-moment. Names a real scenario.
+2. **pain** (3–7s) — one concrete pain pulled straight from audience psychology.
+3. **insight** (7–12s) — the reframe / pivot. "It's not X. It's Y."
+4. **proof** (12–18s) — a number, a name, a real result tied to the offer.
+5. **cta** (last 3s) — matches the actual offer ("Save my seat", "Get the guide", "Book a call"). When natural, pair with the brand name or signature line.
+
+A 4-overlay sequence (hook → insight → proof → cta) is acceptable when pain is already implied. Never fewer than 4. Never more than 6.
+
+BANNED PHRASES (instant fail — rewrite)
+"learn more", "click here", "unlock", "transform", "next level", "secret", "game-changer", "ready to", "are you tired of", "supercharge", "level up", "overnight", "10x", "era".
+
+SPECIFICITY RULE
+Every overlay names a real number, name, moment, feeling, or object. No generic claims. No "imagine if…", "what if…".
+
+OVERLAY OBJECT SHAPE
+{ "text": string, "timing": "0-3s", "type": "hook" | "pain" | "insight" | "proof" | "cta" }
 
 REQUIRED OUTPUT FIELDS FOR broll FORMAT CELLS:
-- broll_shots: Array of 3-5 one-sentence everyday shot ideas (e.g., "Film yourself pouring coffee into a mug, phone propped on counter")
-- text_overlays: Array of timed text overlay objects — THIS is what sells. Each has "text", "timing", "type" (hook/insight/transition/cta)
+- broll_vibe: ONE short string (≤ 8 words) — the mood / setting only.
+- text_overlays: 4–6 overlays following the sequence + rules above. THIS is what sells.
 - mood: One of "Calm", "Productive", "Relatable", "Warm", "Authentic", "Energetic"
 
 EXAMPLE broll OUTPUT:
 {
   "format": "broll",
   "hook": "I used to rehearse my pitch 47 times before a webinar... then bomb anyway.",
-  "guidance": "Film 3-4 simple clips on your phone: pouring coffee, typing on laptop, walking down a hallway. Layer the ad copy as text overlays on top. The footage is just warmth — the words do the selling.",
-  "broll_shots": [
-    "Film yourself pouring coffee into a mug, phone propped on counter",
-    "Type on your laptop with natural light from a window",
-    "Walk down a sidewalk at a natural pace, phone at chest height",
-    "Sit at your desk and flip through a notebook"
-  ],
+  "guidance": "Pull a calm desk clip from your B-Roll Library and layer these overlays on top. The words do the selling.",
+  "broll_vibe": "warm desk, hands + notebook, soft light",
   "text_overlays": [
-    { "text": "I used to rehearse 47 times...", "timing": "0-3s", "type": "hook" },
-    { "text": "Then bomb anyway.", "timing": "3-5s", "type": "hook" },
-    { "text": "Until I found a simpler way →", "timing": "8-12s", "type": "transition" },
-    { "text": "Link in bio", "timing": "15-18s", "type": "cta" }
+    { "text": "Rehearsed 47 times.", "timing": "0-3s", "type": "hook" },
+    { "text": "Still bombed the webinar. Again.", "timing": "3-7s", "type": "pain" },
+    { "text": "It wasn't the offer. It was the script.", "timing": "7-12s", "type": "insight" },
+    { "text": "Swapped 3 lines → 11 sales next launch.", "timing": "12-18s", "type": "proof" },
+    { "text": "Grab the script →", "timing": "18-22s", "type": "cta" }
   ],
   "mood": "Relatable",
   "psychology_trigger": "identification",
-  "pain_point_addressed": "performance anxiety",
-  "why_this_works": "The everyday footage feels approachable while the text overlay creates an emotional connection through shared experience."
+  "pain_point_addressed": "performance anxiety on launch",
+  "why_this_works": "Pairs a specific shameful moment with a concrete reframe and a tiny, believable result — feels personal, not pitched."
 }
+
 
 === PSYCHOLOGY INTEGRATION REQUIREMENTS — THIS IS THE MOST IMPORTANT SECTION ===
 
