@@ -97,6 +97,18 @@ export default function BrandColorsAndFonts({ websiteUrl }: Props) {
     void load();
   }, []);
 
+  useEffect(() => {
+    const id = "brand-google-fonts";
+    let link = document.getElementById(id) as HTMLLinkElement | null;
+    if (!link) {
+      link = document.createElement("link");
+      link.id = id;
+      link.rel = "stylesheet";
+      document.head.appendChild(link);
+    }
+    link.href = googleFontHref(ALL_FONTS);
+  }, []);
+
   const load = async () => {
     try {
       const { data: userRes } = await supabase.auth.getUser();
