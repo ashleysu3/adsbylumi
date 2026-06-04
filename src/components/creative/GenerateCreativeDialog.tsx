@@ -71,6 +71,7 @@ function mapStyleToTemplate(styleHint?: string, format?: string): string {
 }
 
 export function GenerateCreativeDialog() {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [brief, setBrief] = useState<CreativeBrief | null>(null);
   const [itemId, setItemId] = useState<string>("");
