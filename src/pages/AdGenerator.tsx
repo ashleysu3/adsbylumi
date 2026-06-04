@@ -103,7 +103,7 @@ export default function AdGenerator() {
           }
           if (data?.fonts) {
             const f = data.fonts as BrandKitFonts;
-            setFontUrl(f.displayItalicUrl || "");
+            setFontUrl(f.displayUrl || f.displayItalicUrl || "");
           }
           setHasKit(!!data);
         }
