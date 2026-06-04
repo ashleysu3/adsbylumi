@@ -423,9 +423,24 @@ export function GenerateCreativeDialog() {
   }, [selectedOptionIdx, singleOptions, carouselOptions, isCarousel]);
 
   const isGeneratedConcept = creativeSource === "generated";
+
+  // Build the photo picker list based on the active template.
+  // - photo-based templates: uploads + brand 'photo' assets
+  // - overlay/imageonly: also include brand 'background' and 'texture'
+  const pickerImages = useMemo<Photo[]>(() => {
+    if (isGeneratedConcept) return [];
+    const allowsBackgrounds = template === "overlay" || template === "imageonly";
+    const uploads = photos.map((p) => ({ ...p, source: "upload" as const }));
+    const brand = [
+      ...brandPhotoAssets,
+      ...(allowsBackgrounds ? brandBackgroundAssets : []),
+    ];
+    return [...uploads, ...brand];
+  }, [isGeneratedConcept, template, photos, brandPhotoAssets, brandBackgroundAssets]);
+
   const selectedPhoto = useMemo(
-    () => (isGeneratedConcept ? generatedPhoto : photos.find((p) => p.id === selectedPhotoId)),
-    [isGeneratedConcept, generatedPhoto, photos, selectedPhotoId],
+    () => (isGeneratedConcept ? generatedPhoto : pickerImages.find((p) => p.id === selectedPhotoId)),
+    [isGeneratedConcept, generatedPhoto, pickerImages, selectedPhotoId],
   );
 
   const callRender = async (body: Record<string, any>) => {
@@ -444,7 +459,15 @@ export function GenerateCreativeDialog() {
     setImages([]);
     setProgress("");
     try {
-      const brandKit = { colors, fonts: { displayItalicUrl: fontUrl || undefined }, logoUrl: logoUrl || undefined };
+      const effectiveLogoUrl = (placeLogo && brandLogoAsset?.url) || logoUrl || undefined;
+      const brandKit = {
+        colors,
+        fonts: { displayItalicUrl: fontUrl || undefined },
+        logoUrl: effectiveLogoUrl,
+      };
+      const logoOverlay = placeLogo && brandLogoAsset?.url
+        ? { url: brandLogoAsset.url, corner: logoCorner }
+        : undefined;
       const photo = { url: selectedPhoto.url, removeBackground };
 
       const templateField = activeCustom
