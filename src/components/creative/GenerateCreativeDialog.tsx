@@ -490,6 +490,7 @@ export function GenerateCreativeDialog() {
           brandKit,
           copy: { slides },
           photo,
+          logoOverlay,
           placements: activeCustom?.placements ?? ["feed"],
         });
         const labelled = imgs.map((im, i) => ({ ...im, label: `Slide ${i + 1}` }));
@@ -503,6 +504,7 @@ export function GenerateCreativeDialog() {
           brandKit,
           copy: editedSingle,
           photo,
+          logoOverlay,
           placements: activeCustom?.placements ?? ["feed", "story"],
         });
         setImages(imgs);
