@@ -20,6 +20,10 @@ WHAT MAKES IT CONVERT (non-negotiable):
 
 - CTA is specific and active: "Save my seat", "Get the free class", "Send me the guide", "Watch the training".
 
+- CTA MATCHES THE OFFER: read the brief's "offer" and "cta" fields and make the CTA the exact next action for THAT offer. A free live class -> "Save my seat" or "Join the class"; a guide/PDF/checklist -> "Get the guide" or "Send it to me"; a call -> "Book a call"; a free trial -> "Start free". If the brief already has a strong "cta", use it. Never default to vague "See how", "Watch now", or "Learn more" unless it genuinely matches the offer.
+
+- SUB EARNS ITS SPACE: when the option includes a "sub" field, make it the most specific, benefit-loaded line in the whole ad — a concrete outcome, number, timeframe, or proof ("books your first 5 clients in 60 days", "trusted by 2,000+ planners", "in under 10 minutes a day"). Never filler, and never just restate the headline.
+
 - Mirror the brand's voice samples. Sound like a real person talking to one person.
 
 BANNED — using any of these (or anything like them) is an instant fail: "learn more", "find out more", "click here", "sign up", "get started", "simplify your approach", "take it to the next level", "maybe it's time", "unlock", "discover the secrets", "proven strategies", "elevate", "game-changer", "in today's world", "are you ready to", "look no further", "the ultimate", "supercharge", "dive in", "kickstart", "level up". No exclamation-mark spam — use the brand's punctuation only.
