@@ -171,7 +171,7 @@ export default function CreativeStudio() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { showExplainer, closeExplainer } = useCreativeStudioExplainer();
-  const { activeBrand, loading: brandLoading } = useBrand();
+  const { activeBrand, brands, setActiveBrand, loading: brandLoading } = useBrand();
   
   const [loading, setLoading] = useState(true);
   const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([]);
@@ -242,12 +242,10 @@ export default function CreativeStudio() {
       setAngleCopy({});
       setActiveAngleId("");
       setActiveTab("angles");
-      // Clear workspace URL param on brand switch to prevent cross-brand loading
-      setSearchParams(p => { p.delete("workspace"); return p; }, { replace: true });
       setLoading(true);
       fetchInitialData(); 
     }
-  }, [brandLoading, activeBrand?.id]);
+  }, [brandLoading, activeBrand?.id, urlWorkspaceId]);
 
   // Show refresh dialog when navigating from recommendations
   useEffect(() => {
@@ -261,18 +259,36 @@ export default function CreativeStudio() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { navigate("/auth"); return; }
 
+      let targetBrand = activeBrand;
+      if (urlWorkspaceId) {
+        const { data: workspaceBrand } = await supabase
+          .from("campaign_workspaces")
+          .select("brand_id")
+          .eq("id", urlWorkspaceId)
+          .maybeSingle();
+
+        if (workspaceBrand?.brand_id && workspaceBrand.brand_id !== activeBrand?.id) {
+          const matchingBrand = brands.find((b) => b.id === workspaceBrand.brand_id);
+          if (matchingBrand) {
+            setActiveBrand(matchingBrand);
+            setLoading(true);
+            return;
+          }
+        }
+      }
+
       // Use active brand from context instead of querying directly
-      if (!activeBrand) { 
+      if (!targetBrand) { 
         navigate("/dashboard"); 
         return; 
       }
       
-      setBrandId(activeBrand.id);
+      setBrandId(targetBrand.id);
 
       const { data: workspacesData } = await supabase
         .from("campaign_workspaces")
         .select("id, name, offer_name, creative_json, production_items, strategy_json, archived, retrospective_json, retrospective_generated_at")
-        .eq("brand_id", activeBrand.id)
+        .eq("brand_id", targetBrand.id)
         .not("strategy_json", "is", null)
         // Load archived workspaces too — they need to be selectable to view their retrospective.
         .order("updated_at", { ascending: false });
@@ -289,24 +305,24 @@ export default function CreativeStudio() {
       const targetId = (urlWorkspaceId && validWorkspaceIds.has(urlWorkspaceId)) 
         ? urlWorkspaceId 
         : options[0]?.id;
-      if (targetId) await loadWorkspace(targetId);
+      if (targetId) await loadWorkspace(targetId, targetBrand.id);
 
       const { data: ideasData } = await supabase
-        .from("content_ideas").select("*").eq("brand_id", activeBrand.id).order("created_at", { ascending: false }).limit(50);
+        .from("content_ideas").select("*").eq("brand_id", targetBrand.id).order("created_at", { ascending: false }).limit(50);
       setContentIdeas(ideasData || []);
     } catch (e) { console.error(e); toast.error("Failed to load"); }
     finally { setLoading(false); }
   };
 
-  const loadWorkspace = async (id: string) => {
+  const loadWorkspace = async (id: string, expectedBrandId = activeBrand?.id) => {
     setSelectedWorkspaceId(id);
     setSearchParams(p => { p.set("workspace", id); return p; }, { replace: true });
     try {
       const { data } = await supabase.from("campaign_workspaces").select("*, brands(*)").eq("id", id).single();
       
       // Guard: ensure workspace belongs to the active brand
-      if (data && activeBrand && data.brand_id !== activeBrand.id) {
-        console.warn(`Workspace ${id} belongs to brand ${data.brand_id}, not active brand ${activeBrand.id}. Skipping.`);
+      if (data && expectedBrandId && data.brand_id !== expectedBrandId) {
+        console.warn(`Workspace ${id} belongs to brand ${data.brand_id}, not active brand ${expectedBrandId}. Skipping.`);
         setSearchParams(p => { p.delete("workspace"); return p; }, { replace: true });
         return;
       }

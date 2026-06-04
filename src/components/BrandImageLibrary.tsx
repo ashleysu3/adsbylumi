@@ -170,7 +170,8 @@ export default function BrandImageLibrary({ brandId, websiteUrl }: { brandId: st
     const { error } = await supabase
       .from("brand_assets" as any)
       .update({ kept })
-      .eq("id", a.id);
+      .eq("id", a.id)
+      .eq("brand_id", brandId);
     if (error) {
       toast.error("Couldn't update");
       setAssets((prev) => prev.map((x) => (x.id === a.id ? { ...x, kept: !kept } : x)));
@@ -182,7 +183,8 @@ export default function BrandImageLibrary({ brandId, websiteUrl }: { brandId: st
     const { error } = await supabase
       .from("brand_assets" as any)
       .update({ role })
-      .eq("id", a.id);
+      .eq("id", a.id)
+      .eq("brand_id", brandId);
     if (error) toast.error("Couldn't re-tag");
   };
 
