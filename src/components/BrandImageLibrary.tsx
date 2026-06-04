@@ -103,10 +103,14 @@ export default function BrandImageLibrary({ brandId, websiteUrl }: { brandId: st
       toast.error("Add your website URL first");
       return;
     }
+    if (!brandId) {
+      toast.error("Pick a brand first");
+      return;
+    }
     setHarvesting(true);
     try {
       const { data, error } = await supabase.functions.invoke("harvest-brand-assets", {
-        body: { url: url.trim() },
+        body: { url: url.trim(), brandId },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
@@ -118,6 +122,7 @@ export default function BrandImageLibrary({ brandId, websiteUrl }: { brandId: st
       setHarvesting(false);
     }
   };
+
 
   const onUpload = async (files: FileList | null) => {
     if (!files || !files.length) return;
