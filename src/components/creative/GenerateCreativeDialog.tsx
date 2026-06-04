@@ -177,6 +177,7 @@ export function GenerateCreativeDialog() {
       if (data?.error) throw new Error(data.error);
       if (!data?.url) throw new Error("No image returned");
       setGeneratedPhoto({ id: "generated", path: "generated", url: data.url });
+      setOptimizedPrompt(data.optimizedPrompt || "");
     } catch (err: any) {
       toast.error(err?.message || "Could not generate concept image");
     } finally {
