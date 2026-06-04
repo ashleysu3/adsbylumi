@@ -743,7 +743,7 @@ export function GenerateCreativeDialog() {
                         active ? "border-primary shadow-sm" : "border-border hover:border-muted-foreground"
                       }`}
                     >
-                      <div className="aspect-square bg-muted/40 flex items-center justify-center">
+                      <div className="aspect-square bg-muted/40 flex items-center justify-center overflow-hidden">
                         {card.thumb ? (
                           <img
                             src={card.thumb}
@@ -753,6 +753,8 @@ export function GenerateCreativeDialog() {
                               (e.currentTarget as HTMLImageElement).style.display = "none";
                             }}
                           />
+                        ) : card.builtIn ? (
+                          <TemplatePreview kind={card.builtIn} />
                         ) : (
                           <span className="text-[10px] uppercase text-muted-foreground">No preview</span>
                         )}
