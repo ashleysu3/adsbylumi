@@ -249,25 +249,31 @@ export default function BrandColorsAndFonts({ brandId, websiteUrl }: Props) {
             <div>
               <Label className="text-base">Colors</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
-                {COLOR_FIELDS.map(({ key, label }) => (
-                  <div key={key} className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">{label}</Label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={colors[key] || "#000000"}
-                        onChange={(e) => setColors((prev) => ({ ...prev, [key]: e.target.value }))}
-                        className="h-10 w-12 cursor-pointer rounded border border-border bg-transparent"
-                      />
-                      <Input
-                        value={colors[key] || ""}
-                        onChange={(e) => setColors((prev) => ({ ...prev, [key]: e.target.value }))}
-                        placeholder="#000000"
-                        className="font-mono"
-                      />
+                {COLOR_FIELDS.map(({ key, label }) => {
+                  const value = colors[key] || "";
+                  return (
+                    <div key={key} className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">{label}</Label>
+                      <div className="flex items-center gap-2">
+                        <label className="relative h-10 w-12 cursor-pointer overflow-hidden rounded border border-border bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                          {value ? <span className="absolute inset-0" style={{ backgroundColor: value }} /> : "—"}
+                          <input
+                            type="color"
+                            value={value || "#ffffff"}
+                            onChange={(e) => setColors((prev) => ({ ...prev, [key]: e.target.value }))}
+                            className="absolute inset-0 cursor-pointer opacity-0"
+                          />
+                        </label>
+                        <Input
+                          value={value}
+                          onChange={(e) => setColors((prev) => ({ ...prev, [key]: e.target.value }))}
+                          placeholder="No color set"
+                          className="font-mono"
+                        />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
