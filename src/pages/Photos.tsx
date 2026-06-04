@@ -39,8 +39,8 @@ export default function Photos() {
         .eq("brand_id", activeBrand.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      const rows = (data || []) as AssetRow[];
-      const paths = rows.map((r) => r.original_url);
+      const rows = (data || []) as unknown as AssetRow[];
+      const paths = rows.map((r) => r.original_url).filter(Boolean);
       let signed: { path?: string | null; signedUrl: string }[] = [];
       if (paths.length) {
         const { data: s, error: se } = await supabase.storage

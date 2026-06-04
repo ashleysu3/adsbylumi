@@ -120,14 +120,25 @@ export default function AdGenerator() {
     let cancelled = false;
     (async () => {
       setPhotosLoading(true);
+      setPhotos([]);
+      setSelectedPhotoId("");
+      if (brandsLoading) {
+        setPhotosLoading(false);
+        return;
+      }
+      if (!activeBrand?.id) {
+        setPhotosLoading(false);
+        return;
+      }
       try {
         const { data, error } = await supabase
-          .from("user_assets")
+          .from("user_assets" as any)
           .select("id, original_url")
           .eq("kind", "photo")
+          .eq("brand_id", activeBrand.id)
           .order("created_at", { ascending: false });
         if (error) throw error;
-        const rows = data || [];
+        const rows = (data || []) as unknown as Array<{ id: string; original_url: string }>;
         const paths = rows.map((r) => r.original_url as string);
         let signed: { signedUrl: string }[] = [];
         if (paths.length) {
@@ -153,7 +164,7 @@ export default function AdGenerator() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [activeBrand?.id, brandsLoading]);
 
   const compose = async () => {
     if (!creativeDirection.trim()) {
