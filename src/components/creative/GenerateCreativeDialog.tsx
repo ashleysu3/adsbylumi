@@ -695,6 +695,11 @@ export function GenerateCreativeDialog() {
     } else if (card.builtIn) {
       setCustomTemplateId("");
       setTemplate(card.builtIn);
+      if (card.builtIn === "carousel") {
+        setBrief((b) => (b ? { ...b, format: "carousel" } : b));
+      } else if (brief?.format === "carousel") {
+        setBrief((b) => (b ? { ...b, format: "single" } : b));
+      }
     }
   };
 
