@@ -126,7 +126,10 @@ export function GenerateCreativeDialog() {
       if (!detail?.brief) return;
       setBrief(detail.brief);
       const isGen = detail.brief.imageSource === "generated";
-      setTemplate(isGen ? "overlay" : mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
+      setCreativeSource(isGen ? "generated" : "template");
+      setImagePrompt(detail.brief.imagePrompt || detail.brief.concept || "");
+      setAddOverlay(false);
+      setTemplate(isGen ? "imageonly" : mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
       if (isGen) setRemoveBackground(false);
       setGeneratedPhoto(null);
       setOpen(true);
