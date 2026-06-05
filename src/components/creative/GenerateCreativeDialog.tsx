@@ -712,8 +712,26 @@ export function GenerateCreativeDialog() {
     setProgress("");
     try {
       const effectiveLogoUrl = (placeLogo && brandLogoAsset?.url) || logoUrl || undefined;
+      // Force the CTA/button/primary swatches to the brand accent so the
+      // engine can't fall back to a tinted/derived peach. We pass several
+      // common slot names because the engine spec isn't published here.
+      const colorsForEngine = {
+        ...colors,
+        primary: colors.accent,
+        secondary: colors.pop,
+        cta: colors.accent,
+        ctaBg: colors.accent,
+        ctaText: colors.bg,
+        button: colors.accent,
+        buttonBg: colors.accent,
+        buttonText: colors.bg,
+        badge: colors.accent,
+        badgeBg: colors.accent,
+        badgeText: colors.bg,
+      };
       const brandKit = {
-        colors,
+        colors: colorsForEngine,
+        palette: colorsForEngine,
         fonts: {
           displayUrl: fontUrl || undefined,
           displayItalicUrl: fontUrl || undefined,
