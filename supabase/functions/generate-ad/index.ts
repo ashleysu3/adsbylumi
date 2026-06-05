@@ -16,15 +16,13 @@ const headers = {
 const json = (payload: unknown) =>
   new Response(JSON.stringify(payload), { status: 200, headers });
 
-function isOwnStorageUrl(url: string) {
+function isAdPhotoUrl(url: string) {
   try {
     const parsed = new URL(url);
     const storageHost = SUPABASE_URL ? new URL(SUPABASE_URL).hostname : "";
-    const ALLOWED_BUCKETS = ["ad-photos", "brand-assets", "broll-library"];
-    const allowedPath = ALLOWED_BUCKETS.some((bucket) =>
-      parsed.pathname.startsWith(`/storage/v1/object/sign/${bucket}/`) ||
-      parsed.pathname.startsWith(`/storage/v1/object/public/${bucket}/`)
-    );
+    const allowedPath =
+      parsed.pathname.startsWith("/storage/v1/object/sign/ad-photos/") ||
+      parsed.pathname.startsWith("/storage/v1/object/public/ad-photos/");
     return parsed.protocol === "https:" && parsed.hostname === storageHost && allowedPath;
   } catch {
     return false;
@@ -144,12 +142,12 @@ Deno.serve(async (req) => {
     const photoUrl = body?.photo?.url;
     const shouldRemoveBackground = body?.photo?.removeBackground === true;
 
-    // Normalize photo URLs: if a URL isn't on our storage (or we need to
-    // remove background), re-host it in our public broll-library bucket so
-    // the external rendering engine can always fetch it.
+    // Normalize photo URLs: the external renderer only accepts URLs from the
+    // ad-photos bucket. Brand library images, external URLs, and generated
+    // assets are downloaded and re-hosted there before rendering.
     const normalizeUrl = async (url: string, force = false) => {
       if (typeof url !== "string" || !url.startsWith("http")) return url;
-      if (!force && isOwnStorageUrl(url)) return url;
+      if (!force && isAdPhotoUrl(url)) return url;
       const { bytes, contentType } = await fetchImage(url);
       return await uploadPublicEngineImage(bytes, contentType);
     };
