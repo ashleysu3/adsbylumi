@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { HexColorPicker } from "react-colorful";
-import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff } from "lucide-react";
+import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
@@ -940,7 +940,7 @@ export function GenerateCreativeDialog() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" />
-            Generate this creative
+            Generate this creative (beta)
           </DialogTitle>
           <DialogDescription>
             {brief?.concept || "Generate copy + render using your brand kit."}
@@ -961,6 +961,16 @@ export function GenerateCreativeDialog() {
             <span className="ml-1 opacity-70">If this isn't right, switch brands in the sidebar.</span>
           </div>
         </DialogHeader>
+
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-start gap-2 text-sm">
+          <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium text-foreground">Beta feature</p>
+            <p className="text-muted-foreground text-xs">
+              This generator is in beta — bugs are expected. If you run into one, please send us screenshots and bug reports!
+            </p>
+          </div>
+        </div>
 
         {/* Step indicator */}
         <div className="flex items-center gap-2 text-xs">
