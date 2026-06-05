@@ -1261,7 +1261,7 @@ export function GenerateCreativeDialog() {
                       <div className="flex items-center justify-between gap-2">
                         <div>
                           <p className="text-xs font-medium">Tweak &amp; re-render</p>
-                          <p className="text-[11px] text-muted-foreground">Swap colors or background, then re-render.</p>
+                          <p className="text-[11px] text-muted-foreground">Drag colors, resize text, switch case, then re-render.</p>
                         </div>
                         <Button size="sm" onClick={generate} disabled={generating || !canRender}>
                           {generating ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Rendering…</> : <><Sparkles className="h-3 w-3 mr-1" /> Re-render</>}
