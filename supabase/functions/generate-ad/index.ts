@@ -92,20 +92,28 @@ async function fetchImage(url: string) {
 async function uploadPublicEngineImage(bytes: Uint8Array, contentType: string) {
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   const extension = contentType.includes("jpeg") ? "jpg" : contentType.split("/")[1]?.split(";")[0] || "png";
+  // Upload into the ad-photos bucket — the external rendering engine
+  // only accepts URLs from that bucket ("Uploaded image URL is not from
+  // the ad photo library."). Bucket is private, so return a signed URL.
   const path = `ad-generator-render/${crypto.randomUUID()}.${extension}`;
 
-  const { error } = await admin.storage.from("broll-library").upload(path, bytes, {
+  const { error } = await admin.storage.from("ad-photos").upload(path, bytes, {
     cacheControl: "300",
     contentType,
     upsert: true,
   });
 
   if (error) {
-    throw new Error(`Could not prepare image for background removal: ${error.message}`);
+    throw new Error(`Could not prepare image for rendering: ${error.message}`);
   }
 
-  const { data } = admin.storage.from("broll-library").getPublicUrl(path);
-  return data.publicUrl;
+  const { data, error: signErr } = await admin.storage
+    .from("ad-photos")
+    .createSignedUrl(path, 60 * 60);
+  if (signErr || !data?.signedUrl) {
+    throw new Error(`Could not sign image for rendering: ${signErr?.message || "unknown"}`);
+  }
+  return data.signedUrl;
 }
 
 Deno.serve(async (req) => {
