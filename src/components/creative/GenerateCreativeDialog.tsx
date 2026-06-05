@@ -685,9 +685,25 @@ export function GenerateCreativeDialog() {
           }
         : { template };
 
+      // Strip any stray HTML/markdown tags (e.g. <b>...</b>) from copy before rendering
+      const stripTags = (s: any) =>
+        typeof s === "string"
+          ? s.replace(/<\/?[a-zA-Z][^>]*>/g, "").replace(/\s{2,}/g, " ").trim()
+          : s;
+      const sanitizeCopy = (v: any): any => {
+        if (typeof v === "string") return stripTags(v);
+        if (Array.isArray(v)) return v.map(sanitizeCopy);
+        if (v && typeof v === "object") {
+          const out: any = {};
+          for (const k of Object.keys(v)) out[k] = sanitizeCopy(v[k]);
+          return out;
+        }
+        return v;
+      };
+
       if (isCarousel) {
         setProgress("Rendering carousel slides…");
-        const slides = editedSlides;
+        const slides = sanitizeCopy(editedSlides);
         const imgs = await callRender({
           ...templateField,
           brandKit,
@@ -705,7 +721,7 @@ export function GenerateCreativeDialog() {
         const imgs = await callRender({
           ...templateField,
           brandKit,
-          copy: editedSingle,
+          copy: sanitizeCopy(editedSingle),
           photo,
           ...(collagePhotos && collagePhotos.length >= 2 ? { photos: collagePhotos } : {}),
           logoOverlay,
