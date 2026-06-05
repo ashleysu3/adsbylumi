@@ -109,6 +109,57 @@ const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
   devicemockup: "with-background", testimonial: "with-background",
 };
 
+// The external rendering engine only ships with these built-in template names.
+// New copy-only templates must fall back to a supported layout at render time
+// (their richer slots collapse to eyebrow + headline + sub) so they don't error.
+const ENGINE_SUPPORTED_TEMPLATES = new Set([
+  "cutout", "spotlight", "framed", "split", "highlighter", "overlay",
+  "imageonly", "devicemockup", "testimonial", "carousel",
+]);
+const RENDER_FALLBACK: Record<string, string> = {
+  statgrid: "spotlight",
+  checklist: "spotlight",
+  chatproof: "testimonial",
+  event: "spotlight",
+  offer: "spotlight",
+  bigtype: "spotlight",
+  collage: "split",
+};
+const toEngineTemplate = (t: string) =>
+  ENGINE_SUPPORTED_TEMPLATES.has(t) ? t : (RENDER_FALLBACK[t] || "spotlight");
+// Collapse rich slots (stats, items, msgs, etc.) into the eyebrow/headline/sub
+// shape the supported templates expect.
+function collapseCopyForFallback(template: string, copy: any): any {
+  if (!copy || ENGINE_SUPPORTED_TEMPLATES.has(template)) return copy;
+  const out: any = { ...copy };
+  const join = (arr: any[]) => arr.filter((x) => typeof x === "string" && x.trim()).join(" · ");
+  if (template === "statgrid") {
+    const stats = [1, 2, 3, 4]
+      .map((i) => {
+        const n = copy[`stat${i}Num`];
+        const l = copy[`stat${i}Label`];
+        return n ? `${n}${l ? ` ${l}` : ""}` : "";
+      })
+      .filter(Boolean);
+    out.sub = out.sub || join(stats);
+  } else if (template === "checklist") {
+    const items = [1, 2, 3, 4, 5, 6].map((i) => copy[`item${i}`]).filter(Boolean);
+    out.sub = out.sub || items.map((x: string) => `✓ ${x}`).join("  ");
+  } else if (template === "chatproof") {
+    const msgs = [1, 2, 3, 4].map((i) => copy[`msg${i}`]).filter(Boolean);
+    out.sub = out.sub || msgs.map((m: string) => `“${m}”`).join("  ");
+  } else if (template === "event") {
+    out.sub = out.sub || join([copy.datetime, copy.location]);
+  } else if (template === "offer") {
+    out.eyebrow = out.eyebrow || copy.discount || copy.eyebrow;
+    out.sub = out.sub || join([copy.terms, copy.cta]);
+  } else if (template === "bigtype") {
+    // headline already carries it; nothing else to collapse
+  }
+  return out;
+}
+
+
 // Friendly labels for known slot keys (anything unknown falls back to the key)
 const SLOT_LABELS: Record<string, string> = {
   eyebrow: "Eyebrow",
@@ -683,7 +734,7 @@ export function GenerateCreativeDialog() {
               needsPhoto: activeCustom.needs_photo,
             },
           }
-        : { template };
+        : { template: toEngineTemplate(template) };
 
       // Strip any stray HTML/markdown tags (e.g. <b>...</b>) from copy before rendering
       const stripTags = (s: any) =>
@@ -721,7 +772,7 @@ export function GenerateCreativeDialog() {
         const imgs = await callRender({
           ...templateField,
           brandKit,
-          copy: sanitizeCopy(editedSingle),
+          copy: collapseCopyForFallback(template, sanitizeCopy(editedSingle)),
           photo,
           ...(collagePhotos && collagePhotos.length >= 2 ? { photos: collagePhotos } : {}),
           logoOverlay,
