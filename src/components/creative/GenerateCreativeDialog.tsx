@@ -1267,20 +1267,88 @@ export function GenerateCreativeDialog() {
                           {generating ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Rendering…</> : <><Sparkles className="h-3 w-3 mr-1" /> Re-render</>}
                         </Button>
                       </div>
-                      <div className="grid grid-cols-6 gap-2">
-                        {(Object.keys(colors) as Array<keyof Colors>).map((k) => (
-                          <label key={k} className="flex flex-col items-center gap-1 cursor-pointer">
-                            <input
-                              type="color"
-                              value={colors[k]}
-                              onChange={(e) => setColors({ ...colors, [k]: e.target.value })}
-                              className="h-8 w-full rounded border border-border bg-background cursor-pointer"
-                              aria-label={`${k} color`}
-                            />
-                            <span className="text-[10px] text-muted-foreground capitalize">{k}</span>
-                          </label>
-                        ))}
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Colors</p>
+                        <div className="grid grid-cols-6 gap-2">
+                          {(Object.keys(colors) as Array<keyof Colors>).map((k) => (
+                            <Popover key={k}>
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="group flex flex-col items-center gap-1"
+                                  aria-label={`Edit ${k} color`}
+                                >
+                                  <span
+                                    className="h-9 w-full rounded-md border border-border shadow-sm transition group-hover:scale-[1.03]"
+                                    style={{ backgroundColor: colors[k] }}
+                                  />
+                                  <span className="text-[10px] text-muted-foreground capitalize">{k}</span>
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-3" align="start">
+                                <HexColorPicker
+                                  color={colors[k]}
+                                  onChange={(v) => setColors((prev) => ({ ...prev, [k]: v }))}
+                                />
+                                <div className="mt-2 flex items-center gap-2">
+                                  <span className="text-[10px] uppercase text-muted-foreground capitalize">{k}</span>
+                                  <Input
+                                    value={colors[k]}
+                                    onChange={(e) => setColors((prev) => ({ ...prev, [k]: e.target.value }))}
+                                    className="h-7 text-xs font-mono"
+                                  />
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          ))}
+                        </div>
                       </div>
+
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Text case</p>
+                        <ToggleGroup
+                          type="single"
+                          size="sm"
+                          value={textCase}
+                          onValueChange={(v) => v && setTextCase(v as typeof textCase)}
+                          className="justify-start"
+                        >
+                          <ToggleGroupItem value="original" className="text-xs">Original</ToggleGroupItem>
+                          <ToggleGroupItem value="upper" className="text-xs">UPPER</ToggleGroupItem>
+                          <ToggleGroupItem value="lower" className="text-xs">lower</ToggleGroupItem>
+                          <ToggleGroupItem value="title" className="text-xs">Title</ToggleGroupItem>
+                        </ToggleGroup>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Headline size</p>
+                            <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(headlineScale * 100)}%</span>
+                          </div>
+                          <Slider
+                            min={0.6}
+                            max={1.6}
+                            step={0.05}
+                            value={[headlineScale]}
+                            onValueChange={(v) => setHeadlineScale(v[0])}
+                          />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Body size</p>
+                            <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(bodyScale * 100)}%</span>
+                          </div>
+                          <Slider
+                            min={0.6}
+                            max={1.6}
+                            step={0.05}
+                            value={[bodyScale]}
+                            onValueChange={(v) => setBodyScale(v[0])}
+                          />
+                        </div>
+                      </div>
+
                       <div className="flex items-center justify-between rounded border border-border bg-background px-3 py-2">
                         <div>
                           <p className="text-xs font-medium">
@@ -1291,6 +1359,21 @@ export function GenerateCreativeDialog() {
                           </p>
                         </div>
                         <Switch checked={removeBackground} onCheckedChange={setRemoveBackground} />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <button
+                          type="button"
+                          className="text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                          onClick={() => {
+                            setTextCase("original");
+                            setHeadlineScale(1);
+                            setBodyScale(1);
+                          }}
+                        >
+                          Reset tweaks
+                        </button>
+                        <span className="text-[10px] text-muted-foreground">Changes apply on re-render</span>
                       </div>
                     </div>
                   )}
