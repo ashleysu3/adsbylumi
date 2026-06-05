@@ -424,7 +424,7 @@ export type Database = {
       }
       brand_assets: {
         Row: {
-          brand_id: string | null
+          brand_id: string
           created_at: string
           height: number | null
           id: string
@@ -436,7 +436,7 @@ export type Database = {
           width: number | null
         }
         Insert: {
-          brand_id?: string | null
+          brand_id: string
           created_at?: string
           height?: number | null
           id?: string
@@ -448,7 +448,7 @@ export type Database = {
           width?: number | null
         }
         Update: {
-          brand_id?: string | null
+          brand_id?: string
           created_at?: string
           height?: number | null
           id?: string
