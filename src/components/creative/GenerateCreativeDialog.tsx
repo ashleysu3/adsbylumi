@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { HexColorPicker } from "react-colorful";
-import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff } from "lucide-react";
+import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
