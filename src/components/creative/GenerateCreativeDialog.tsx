@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
@@ -1233,6 +1234,45 @@ export function GenerateCreativeDialog() {
                       </Button>
                     )}
                   </div>
+                  {images.length > 0 && !generating && (
+                    <div className="rounded border bg-muted/20 p-3 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-xs font-medium">Tweak &amp; re-render</p>
+                          <p className="text-[11px] text-muted-foreground">Swap colors or background, then re-render.</p>
+                        </div>
+                        <Button size="sm" onClick={generate} disabled={generating || !canRender}>
+                          {generating ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Rendering…</> : <><Sparkles className="h-3 w-3 mr-1" /> Re-render</>}
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-6 gap-2">
+                        {(Object.keys(colors) as Array<keyof Colors>).map((k) => (
+                          <label key={k} className="flex flex-col items-center gap-1 cursor-pointer">
+                            <input
+                              type="color"
+                              value={colors[k]}
+                              onChange={(e) => setColors({ ...colors, [k]: e.target.value })}
+                              className="h-8 w-full rounded border border-border bg-background cursor-pointer"
+                              aria-label={`${k} color`}
+                            />
+                            <span className="text-[10px] text-muted-foreground capitalize">{k}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between rounded border border-border bg-background px-3 py-2">
+                        <div>
+                          <p className="text-xs font-medium">
+                            {removeBackground ? "Background removed" : "Original background"}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {removeBackground ? "We'll cut your subject out." : "Keep the photo as-is."}
+                          </p>
+                        </div>
+                        <Switch checked={removeBackground} onCheckedChange={setRemoveBackground} />
+                      </div>
+                    </div>
+                  )}
+
                   {generating && images.length === 0 && (
                     <div className="rounded border border-dashed p-10 text-center text-sm text-muted-foreground">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
