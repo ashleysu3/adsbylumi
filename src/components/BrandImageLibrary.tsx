@@ -128,7 +128,15 @@ export default function BrandImageLibrary({ brandId, websiteUrl }: { brandId: st
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      toast.success(`Pulled ${(data as any)?.saved ?? 0} images from your site`);
+      const saved = (data as any)?.saved ?? 0;
+      const existing = (data as any)?.existing ?? 0;
+      toast.success(
+        saved > 0
+          ? `Pulled ${saved} images from your site`
+          : existing > 0
+            ? `Your brand images are already pulled (${existing} found)`
+            : "No new brand images found"
+      );
       await load();
     } catch (e: any) {
       toast.error(e?.message || "Couldn't pull images");
