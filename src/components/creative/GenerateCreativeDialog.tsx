@@ -772,7 +772,7 @@ export function GenerateCreativeDialog() {
         const imgs = await callRender({
           ...templateField,
           brandKit,
-          copy: sanitizeCopy(editedSingle),
+          copy: collapseCopyForFallback(template, sanitizeCopy(editedSingle)),
           photo,
           ...(collagePhotos && collagePhotos.length >= 2 ? { photos: collagePhotos } : {}),
           logoOverlay,
