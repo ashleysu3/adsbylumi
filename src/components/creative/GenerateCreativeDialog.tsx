@@ -734,7 +734,7 @@ export function GenerateCreativeDialog() {
               needsPhoto: activeCustom.needs_photo,
             },
           }
-        : { template };
+        : { template: toEngineTemplate(template) };
 
       // Strip any stray HTML/markdown tags (e.g. <b>...</b>) from copy before rendering
       const stripTags = (s: any) =>
