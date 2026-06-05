@@ -166,6 +166,13 @@ Deno.serve(async (req) => {
       );
     }
 
+    console.log("generate-ad render request", JSON.stringify({
+      template: body?.template || body?.customTemplate?.type,
+      colors: body?.brandKit?.colors,
+      fonts: body?.brandKit?.fonts,
+      logoUrl: body?.brandKit?.logoUrl,
+    }));
+
     const r = await fetch(`${ENGINE_URL}/render`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-api-key": ENGINE_KEY },

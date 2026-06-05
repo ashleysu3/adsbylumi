@@ -927,6 +927,21 @@ export function GenerateCreativeDialog() {
           <DialogDescription>
             {brief?.concept || "Generate copy + render using your brand kit."}
           </DialogDescription>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+            <span>Brand kit:</span>
+            <span className="font-medium text-foreground">{activeBrand?.name || "—"}</span>
+            <div className="flex items-center gap-1">
+              {(Object.keys(colors) as Array<keyof Colors>).map((k) => (
+                <span
+                  key={k}
+                  title={`${k}: ${colors[k]}`}
+                  className="h-3 w-3 rounded border border-border"
+                  style={{ backgroundColor: colors[k] }}
+                />
+              ))}
+            </div>
+            <span className="ml-1 opacity-70">If this isn't right, switch brands in the sidebar.</span>
+          </div>
         </DialogHeader>
 
         {/* Step indicator */}
