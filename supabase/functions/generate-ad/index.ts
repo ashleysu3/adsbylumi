@@ -136,12 +136,28 @@ Deno.serve(async (req) => {
     const photoUrl = body?.photo?.url;
     const shouldRemoveBackground = body?.photo?.removeBackground === true;
 
-    if (shouldRemoveBackground && typeof photoUrl === "string" && photoUrl.startsWith("http")) {
-      const { bytes, contentType } = await fetchImage(photoUrl);
-      body.photo = {
-        ...body.photo,
-        url: await uploadPublicEngineImage(bytes, contentType),
-      };
+    // Normalize photo URLs: if a URL isn't on our storage (or we need to
+    // remove background), re-host it in our public broll-library bucket so
+    // the external rendering engine can always fetch it.
+    const normalizeUrl = async (url: string, force = false) => {
+      if (typeof url !== "string" || !url.startsWith("http")) return url;
+      if (!force && isOwnStorageUrl(url)) return url;
+      const { bytes, contentType } = await fetchImage(url);
+      return await uploadPublicEngineImage(bytes, contentType);
+    };
+
+    if (typeof photoUrl === "string" && photoUrl.startsWith("http")) {
+      body.photo = { ...body.photo, url: await normalizeUrl(photoUrl, shouldRemoveBackground) };
+    }
+
+    if (Array.isArray(body?.photos)) {
+      body.photos = await Promise.all(
+        body.photos.map(async (p: any) => {
+          if (typeof p === "string") return await normalizeUrl(p);
+          if (p && typeof p.url === "string") return { ...p, url: await normalizeUrl(p.url) };
+          return p;
+        })
+      );
     }
 
     const r = await fetch(`${ENGINE_URL}/render`, {
