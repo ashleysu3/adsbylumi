@@ -234,6 +234,9 @@ export function GenerateCreativeDialog() {
   const [photosLoading, setPhotosLoading] = useState(false);
   const [selectedPhotoId, setSelectedPhotoId] = useState<string>("");
   const [removeBackground, setRemoveBackground] = useState(true);
+  const [textCase, setTextCase] = useState<"original" | "upper" | "lower" | "title">("original");
+  const [headlineScale, setHeadlineScale] = useState<number>(1);
+  const [bodyScale, setBodyScale] = useState<number>(1);
   const [generatedPhoto, setGeneratedPhoto] = useState<Photo | null>(null);
   const [optimizedPrompt, setOptimizedPrompt] = useState<string>("");
   const [generatingConcept, setGeneratingConcept] = useState(false);
