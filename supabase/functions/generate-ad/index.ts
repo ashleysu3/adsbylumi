@@ -16,17 +16,25 @@ const headers = {
 const json = (payload: unknown) =>
   new Response(JSON.stringify(payload), { status: 200, headers });
 
-function assertAllowedPhotoUrl(url: string) {
-  const parsed = new URL(url);
-  const storageHost = SUPABASE_URL ? new URL(SUPABASE_URL).hostname : parsed.hostname;
-  const ALLOWED_BUCKETS = ["ad-photos", "brand-assets"];
-  const allowedPath = ALLOWED_BUCKETS.some((bucket) =>
-    parsed.pathname.startsWith(`/storage/v1/object/sign/${bucket}/`) ||
-    parsed.pathname.startsWith(`/storage/v1/object/public/${bucket}/`)
-  );
+function isOwnStorageUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    const storageHost = SUPABASE_URL ? new URL(SUPABASE_URL).hostname : "";
+    const ALLOWED_BUCKETS = ["ad-photos", "brand-assets", "broll-library"];
+    const allowedPath = ALLOWED_BUCKETS.some((bucket) =>
+      parsed.pathname.startsWith(`/storage/v1/object/sign/${bucket}/`) ||
+      parsed.pathname.startsWith(`/storage/v1/object/public/${bucket}/`)
+    );
+    return parsed.protocol === "https:" && parsed.hostname === storageHost && allowedPath;
+  } catch {
+    return false;
+  }
+}
 
-  if (parsed.protocol !== "https:" || parsed.hostname !== storageHost || !allowedPath) {
-    throw new Error("Uploaded image URL is not from the ad photo library.");
+function assertHttpsUrl(url: string) {
+  const parsed = new URL(url);
+  if (parsed.protocol !== "https:") {
+    throw new Error("Image URL must be https.");
   }
 }
 
@@ -53,29 +61,29 @@ function decodeProxyImageUrl(req: Request) {
 }
 
 async function fetchImage(url: string) {
-  assertAllowedPhotoUrl(url);
+  assertHttpsUrl(url);
   const imageResponse = await fetch(url, {
     headers: { accept: "image/*,*/*;q=0.8" },
     redirect: "follow",
   });
 
   if (!imageResponse.ok) {
-    throw new Error(`Uploaded image could not be downloaded: HTTP ${imageResponse.status}`);
+    throw new Error(`Image could not be downloaded: HTTP ${imageResponse.status}`);
   }
 
   const contentType = imageResponse.headers.get("content-type") || "image/png";
   if (!contentType.startsWith("image/")) {
-    throw new Error(`Uploaded file is not an image: ${contentType}`);
+    throw new Error(`File is not an image: ${contentType}`);
   }
 
   const contentLength = Number(imageResponse.headers.get("content-length") || "0");
   if (contentLength > MAX_IMAGE_BYTES) {
-    throw new Error("Uploaded image is too large. Please use an image under 8MB.");
+    throw new Error("Image is too large. Please use an image under 8MB.");
   }
 
   const bytes = new Uint8Array(await imageResponse.arrayBuffer());
   if (bytes.byteLength > MAX_IMAGE_BYTES) {
-    throw new Error("Uploaded image is too large. Please use an image under 8MB.");
+    throw new Error("Image is too large. Please use an image under 8MB.");
   }
 
   return { bytes, contentType };
@@ -128,12 +136,28 @@ Deno.serve(async (req) => {
     const photoUrl = body?.photo?.url;
     const shouldRemoveBackground = body?.photo?.removeBackground === true;
 
-    if (shouldRemoveBackground && typeof photoUrl === "string" && photoUrl.startsWith("http")) {
-      const { bytes, contentType } = await fetchImage(photoUrl);
-      body.photo = {
-        ...body.photo,
-        url: await uploadPublicEngineImage(bytes, contentType),
-      };
+    // Normalize photo URLs: if a URL isn't on our storage (or we need to
+    // remove background), re-host it in our public broll-library bucket so
+    // the external rendering engine can always fetch it.
+    const normalizeUrl = async (url: string, force = false) => {
+      if (typeof url !== "string" || !url.startsWith("http")) return url;
+      if (!force && isOwnStorageUrl(url)) return url;
+      const { bytes, contentType } = await fetchImage(url);
+      return await uploadPublicEngineImage(bytes, contentType);
+    };
+
+    if (typeof photoUrl === "string" && photoUrl.startsWith("http")) {
+      body.photo = { ...body.photo, url: await normalizeUrl(photoUrl, shouldRemoveBackground) };
+    }
+
+    if (Array.isArray(body?.photos)) {
+      body.photos = await Promise.all(
+        body.photos.map(async (p: any) => {
+          if (typeof p === "string") return await normalizeUrl(p);
+          if (p && typeof p.url === "string") return { ...p, url: await normalizeUrl(p.url) };
+          return p;
+        })
+      );
     }
 
     const r = await fetch(`${ENGINE_URL}/render`, {
