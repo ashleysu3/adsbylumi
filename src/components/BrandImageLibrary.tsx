@@ -53,21 +53,29 @@ export default function BrandImageLibrary({ brandId, websiteUrl }: { brandId: st
   const [uploading, setUploading] = useState(false);
   const [url, setUrl] = useState(websiteUrl || "");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const activeLoadBrandRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (websiteUrl) setUrl(websiteUrl);
   }, [websiteUrl]);
 
-  const load = async () => {
-    if (!brandId) return;
+  const load = async (targetBrandId = brandId) => {
+    if (!targetBrandId) {
+      setAssets([]);
+      setLoading(false);
+      return;
+    }
+    activeLoadBrandRef.current = targetBrandId;
+    setAssets([]);
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from("brand_assets" as any)
         .select("*")
-        .eq("brand_id", brandId)
+        .eq("brand_id", targetBrandId)
         .order("created_at", { ascending: false });
       if (error) throw error;
+      if (activeLoadBrandRef.current !== targetBrandId) return;
       const rows = (data || []) as unknown as BrandAsset[];
       const paths = rows.map((r) => pathFromUrl(r.url)).filter(Boolean) as string[];
       let signed: { signedUrl: string }[] = [];
@@ -77,6 +85,7 @@ export default function BrandImageLibrary({ brandId, websiteUrl }: { brandId: st
           .createSignedUrls(paths, 60 * 60);
         signed = (s || []) as { signedUrl: string }[];
       }
+      if (activeLoadBrandRef.current !== targetBrandId) return;
       let i = 0;
       setAssets(
         rows.map((r) => {
@@ -86,14 +95,19 @@ export default function BrandImageLibrary({ brandId, websiteUrl }: { brandId: st
         })
       );
     } catch (e: any) {
-      toast.error(e?.message || "Failed to load brand images");
+      if (activeLoadBrandRef.current === targetBrandId) {
+        toast.error(e?.message || "Failed to load brand images");
+      }
     } finally {
-      setLoading(false);
+      if (activeLoadBrandRef.current === targetBrandId) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    load();
+    setAssets([]);
+    load(brandId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brandId]);
 
