@@ -83,20 +83,48 @@ Deno.serve(async (req) => {
     const data = await er.json();
     const assets = (data?.assets || []).slice(0, 40);
     let saved = 0;
+    let existing = 0;
+    let skipped = 0;
     for (const a of assets) {
       try {
+        if (!a?.url || typeof a.url !== "string") {
+          skipped++;
+          continue;
+        }
+        const { data: existingAsset } = await admin
+          .from("brand_assets")
+          .select("id")
+          .eq("brand_id", brandId)
+          .eq("source_url", a.url)
+          .maybeSingle();
+        if (existingAsset) {
+          existing++;
+          continue;
+        }
         const resp = await fetch(a.url);
-        if (!resp.ok) continue;
+        if (!resp.ok) {
+          skipped++;
+          continue;
+        }
         const ct = resp.headers.get("content-type") || "image/jpeg";
-        if (!ct.startsWith("image/")) continue;
+        if (!ct.startsWith("image/")) {
+          skipped++;
+          continue;
+        }
         const buf = new Uint8Array(await resp.arrayBuffer());
-        if (buf.length > 8_000_000 || buf.length < 1000) continue;
+        if (buf.length > 8_000_000 || buf.length < 1000) {
+          skipped++;
+          continue;
+        }
         const ext = ct.includes("png") ? "png" : ct.includes("svg") ? "svg" : ct.includes("webp") ? "webp" : "jpg";
         const filename = `${user.id}/${brandId}/${crypto.randomUUID()}.${ext}`;
         const up = await admin.storage.from("brand-assets").upload(filename, buf, { contentType: ct, upsert: false });
-        if (up.error) continue;
+        if (up.error) {
+          skipped++;
+          continue;
+        }
         const { data: pub } = admin.storage.from("brand-assets").getPublicUrl(filename);
-        await admin.from("brand_assets").insert({
+        const { error: insertError } = await admin.from("brand_assets").insert({
           user_id: user.id,
           brand_id: brandId,
           url: pub.publicUrl,
@@ -105,13 +133,19 @@ Deno.serve(async (req) => {
           width: a.width,
           height: a.height,
         });
+        if (insertError) {
+          await admin.storage.from("brand-assets").remove([filename]);
+          skipped++;
+          continue;
+        }
         saved++;
       } catch (_) {
+        skipped++;
         /* skip bad asset */
       }
     }
     return new Response(
-      JSON.stringify({ saved, found: assets.length }),
+      JSON.stringify({ saved, existing, skipped, found: assets.length }),
       { status: 200, headers: { ...cors, "content-type": "application/json" } },
     );
   } catch (e) {
