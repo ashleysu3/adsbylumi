@@ -749,8 +749,15 @@ export function GenerateCreativeDialog() {
         typeof s === "string"
           ? s.replace(/<\/?[a-zA-Z][^>]*>/g, "").replace(/\s{2,}/g, " ").trim()
           : s;
+      const applyCase = (s: string): string => {
+        if (textCase === "upper") return s.toUpperCase();
+        if (textCase === "lower") return s.toLowerCase();
+        if (textCase === "title")
+          return s.toLowerCase().replace(/\b([a-z])/g, (m) => m.toUpperCase());
+        return s;
+      };
       const sanitizeCopy = (v: any): any => {
-        if (typeof v === "string") return stripTags(v);
+        if (typeof v === "string") return applyCase(stripTags(v));
         if (Array.isArray(v)) return v.map(sanitizeCopy);
         if (v && typeof v === "object") {
           const out: any = {};
@@ -758,6 +765,12 @@ export function GenerateCreativeDialog() {
           return out;
         }
         return v;
+      };
+
+      const styleOverrides = {
+        headlineScale,
+        bodyScale,
+        textCase: textCase === "original" ? undefined : textCase,
       };
 
       if (isCarousel) {
@@ -769,6 +782,7 @@ export function GenerateCreativeDialog() {
           copy: { slides },
           photo,
           logoOverlay,
+          style: styleOverrides,
           placements: activeCustom?.placements ?? ["feed"],
         });
         const labelled = imgs.map((im, i) => ({ ...im, label: `Slide ${i + 1}` }));
@@ -784,6 +798,7 @@ export function GenerateCreativeDialog() {
           photo,
           ...(collagePhotos && collagePhotos.length >= 2 ? { photos: collagePhotos } : {}),
           logoOverlay,
+          style: styleOverrides,
           placements: activeCustom?.placements ?? ["feed", "story"],
         });
         setImages(imgs);
