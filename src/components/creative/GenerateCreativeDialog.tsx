@@ -291,10 +291,8 @@ export function GenerateCreativeDialog() {
       setApprovedIdxs(new Set());
       setBrief(detail.brief);
 
-      const isGen = detail.brief.imageSource === "generated";
-      setImageSource(isGen ? "generated" : "uploads");
-      setImagePrompt(detail.brief.imagePrompt || detail.brief.concept || "");
-      setTemplate(isGen ? "imageonly" : mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
+      setImageSource("uploads");
+      setTemplate(mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
       setCustomTemplateId("");
       setStep("style");
       setGeneratedPhoto(null);
@@ -313,38 +311,7 @@ export function GenerateCreativeDialog() {
     return () => window.removeEventListener("creative-brief:generate", handler as EventListener);
   }, []);
 
-  const generateConceptImage = useCallback(async () => {
-    const prompt = (imagePrompt || "").trim();
-    if (!prompt) {
-      toast.error("Write an image prompt first");
-      return;
-    }
-    setGeneratingConcept(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-concept-image", {
-        body: { prompt },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      if (!data?.url) throw new Error("No image returned");
-      setGeneratedPhoto({ id: "generated", path: "generated", url: data.url });
-      setOptimizedPrompt(data.optimizedPrompt || "");
-    } catch (err: any) {
-      toast.error(err?.message || "Could not generate concept image");
-    } finally {
-      setGeneratingConcept(false);
-    }
-  }, [imagePrompt]);
 
-  useEffect(() => {
-    if (
-      open && step === "image-copy" && imageSource === "generated" &&
-      imagePrompt && !generatedPhoto && !generatingConcept
-    ) {
-      generateConceptImage();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, step, imageSource, brief]);
 
   // Tie background removal to chosen template (cutout/highlighter only).
   useEffect(() => {
