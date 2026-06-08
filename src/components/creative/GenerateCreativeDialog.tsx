@@ -108,7 +108,7 @@ const BUILT_IN_LABELS: Record<string, string> = {
 const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
   cutout: "cutout", highlighter: "cutout",
   spotlight: "with-background", framed: "with-background", split: "with-background",
-  overlay: "with-background", imageonly: "with-background",
+  overlay: "with-background",
   devicemockup: "with-background", testimonial: "with-background",
 };
 
