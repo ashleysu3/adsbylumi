@@ -631,9 +631,9 @@ export function GenerateCreativeDialog() {
 
   // Build the photo picker list based on the active source + template.
   // - "uploads": user uploads only
-  // - "brand": brand_assets (photos always; backgrounds/textures for overlay/imageonly)
+  // - "brand": brand_assets (photos always; backgrounds/textures for overlay)
   const pickerImages = useMemo<Photo[]>(() => {
-    const allowsBackgrounds = template === "overlay" || template === "imageonly";
+    const allowsBackgrounds = template === "overlay";
     if (imageSource === "uploads") {
       return photos.map((p) => ({ ...p, source: "upload" as const }));
     }
