@@ -636,13 +636,10 @@ export function GenerateCreativeDialog() {
     }
   }, [selectedOptionIdx, singleOptions, carouselOptions, isCarousel]);
 
-  const isGeneratedConcept = imageSource === "generated";
-
   // Build the photo picker list based on the active source + template.
   // - "uploads": user uploads only
   // - "brand": brand_assets (photos always; backgrounds/textures for overlay/imageonly)
   const pickerImages = useMemo<Photo[]>(() => {
-    if (isGeneratedConcept) return [];
     const allowsBackgrounds = template === "overlay" || template === "imageonly";
     if (imageSource === "uploads") {
       return photos.map((p) => ({ ...p, source: "upload" as const }));
@@ -654,11 +651,11 @@ export function GenerateCreativeDialog() {
       ];
     }
     return [];
-  }, [isGeneratedConcept, imageSource, template, photos, brandPhotoAssets, brandBackgroundAssets]);
+  }, [imageSource, template, photos, brandPhotoAssets, brandBackgroundAssets]);
 
   const selectedPhoto = useMemo(
-    () => (isGeneratedConcept ? generatedPhoto : pickerImages.find((p) => p.id === selectedPhotoId)),
-    [isGeneratedConcept, generatedPhoto, pickerImages, selectedPhotoId],
+    () => pickerImages.find((p) => p.id === selectedPhotoId),
+    [pickerImages, selectedPhotoId],
   );
 
   const callRender = async (body: Record<string, any>) => {
