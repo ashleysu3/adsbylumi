@@ -26,7 +26,7 @@ import framedThumb from "@/assets/template-thumbs/framed.png.asset.json";
 import splitThumb from "@/assets/template-thumbs/split.png.asset.json";
 import highlighterThumb from "@/assets/template-thumbs/highlighter.png.asset.json";
 import overlayThumb from "@/assets/template-thumbs/overlay.png.asset.json";
-import imageonlyThumb from "@/assets/template-thumbs/imageonly.png.asset.json";
+
 import devicemockupThumb from "@/assets/template-thumbs/devicemockup.png.asset.json";
 import testimonialThumb from "@/assets/template-thumbs/testimonial.png.asset.json";
 import carouselThumb from "@/assets/template-thumbs/carousel.png.asset.json";
