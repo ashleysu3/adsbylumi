@@ -529,7 +529,7 @@ ADDITIONAL FIELDS FOR graphic AND carousel FORMATS (REQUIRED — this is the str
   - cta: the action (e.g. "Save your seat", "Watch free training", "Book a call")
   - audience: who this is for, in a phrase
   - proofPoint: optional result/testimonial/stat string, or null
-  - styleHint: one of "photo-forward" | "type-led" | "highlighter" | "testimonial" | "card" | "framed" | "stats" | "checklist"
+  - styleHint: one of "photo-forward" | "type-led" | "highlighter" | "testimonial" | "card" | "framed" | "stats" | "checklist" | "overlay" | "device"
   - photoTreatment: one of "cutout" | "with-background" | "none"
   - slideCount: 1 for single_graphic; 3 to 6 for carousel
   - slidePlan: for carousel ONLY, an array of slideCount objects each with a "role" — choose from "hook" | "problem" | "framework" | "proof" | "cta" — in narrative order. Omit for single_graphic.
@@ -537,6 +537,10 @@ ADDITIONAL FIELDS FOR graphic AND carousel FORMATS (REQUIRED — this is the str
     • Choose "user-photo" when a real photo of the creator (from their uploads or scraped brand assets) fits the concept.
     • Choose "none" for a pure typographic graphic where words are the design.
     IMPORTANT: There is NO AI image generation. If the concept does not have a real photo behind it, set imageSource to "none" and styleHint to "type-led" with photoTreatment "none" — let the template carry the idea through type.
+  - PHOTO-FORWARD STYLE PICKS (use a real photo, imageSource "user-photo", photoTreatment "with-background"):
+    • "overlay" — full-bleed photo with the headline laid over it. Best when the photo carries the emotion and the line is short and punchy.
+    • "device" — the lead magnet / freebie / training shown ON a phone or laptop screen. Best for "free PDF", "free training", app/website screenshots, course previews, anything that lives on a screen.
+    • "photo-forward" — classic photo + cut-out treatment (the existing default for real photos).
   - Use styleHint "stats" for results/proof concepts built around 2–4 numeric metrics, and "checklist" for "what's included" / "how it works" concepts built around 3–6 short list items. For BOTH, set imageSource to "none" and photoTreatment to "none" — the template is pure type + data.
 
 
