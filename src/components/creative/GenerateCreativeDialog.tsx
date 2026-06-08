@@ -292,8 +292,6 @@ export function GenerateCreativeDialog() {
       setTemplate(mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
       setCustomTemplateId("");
       setStep("style");
-      setGeneratedPhoto(null);
-      setOptimizedPrompt("");
       setOpen(true);
       setSingleOptions([]);
       setCarouselOptions([]);
