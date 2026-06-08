@@ -122,6 +122,124 @@ function buildContextBlock(payload: any): string {
   return parts.join("\n\n");
 }
 
+// ----- Slot length enforcement -----
+
+// Parse the SLOTS description string into per-key word budgets.
+// Recognizes patterns like "key (<=N words ...)" and "key (1-3 words ...)" / "key (2-6 words ...)".
+function parseSlotLimits(template: string): Record<string, { maxWords: number }> {
+  const desc = SLOTS[template] || SLOTS.cutout;
+  const limits: Record<string, { maxWords: number }> = {};
+  const re = /(\w+)\s*\(([^)]*)\)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(desc)) !== null) {
+    const key = m[1];
+    const inner = m[2];
+    let maxWords: number | null = null;
+    const le = inner.match(/<=\s*~?\s*(\d+)\s*words/i);
+    if (le) maxWords = parseInt(le[1], 10);
+    if (maxWords == null) {
+      const range = inner.match(/(\d+)\s*[-–]\s*(\d+)\s*words/i);
+      if (range) maxWords = parseInt(range[2], 10);
+    }
+    if (maxWords != null && (!limits[key] || maxWords < limits[key].maxWords)) {
+      limits[key] = { maxWords };
+    }
+  }
+  return limits;
+}
+
+// Carousel slides use a fixed mini-schema not in SLOTS.
+const CAROUSEL_SLIDE_LIMITS: Record<string, { maxWords: number }> = {
+  eyebrow: { maxWords: 4 },
+  headline: { maxWords: 8 },
+  sub: { maxWords: 15 },
+  cta: { maxWords: 4 },
+};
+
+function wordCount(s: string): number {
+  return s.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function truncateToWords(s: string, maxWords: number): string {
+  const words = s.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return s.trim();
+  return words.slice(0, maxWords).join(" ").replace(/[,;:\-–—.]+$/u, "").trim();
+}
+
+type Violation = { optionIndex: number; slideIndex?: number; key: string; words: number; max: number; value: string };
+
+function findViolations(options: any[], template: string): Violation[] {
+  const out: Violation[] = [];
+  if (template === "carousel") {
+    options.forEach((opt, oi) => {
+      const slides = Array.isArray(opt?.slides) ? opt.slides : [];
+      slides.forEach((slide: any, si: number) => {
+        for (const [key, lim] of Object.entries(CAROUSEL_SLIDE_LIMITS)) {
+          const v = slide?.[key];
+          if (typeof v !== "string" || !v.trim()) continue;
+          const w = wordCount(v);
+          if (w > lim.maxWords) out.push({ optionIndex: oi, slideIndex: si, key, words: w, max: lim.maxWords, value: v });
+        }
+      });
+    });
+    return out;
+  }
+  const limits = parseSlotLimits(template);
+  options.forEach((opt, oi) => {
+    for (const [key, lim] of Object.entries(limits)) {
+      const v = opt?.[key];
+      if (typeof v !== "string" || !v.trim()) continue;
+      const w = wordCount(v);
+      if (w > lim.maxWords) out.push({ optionIndex: oi, key, words: w, max: lim.maxWords, value: v });
+    }
+  });
+  return out;
+}
+
+function applyHardTruncation(options: any[], template: string, violations: Violation[]): void {
+  for (const v of violations) {
+    const opt = options[v.optionIndex];
+    if (!opt) continue;
+    if (template === "carousel" && v.slideIndex != null) {
+      const slide = opt.slides?.[v.slideIndex];
+      if (slide && typeof slide[v.key] === "string") {
+        slide[v.key] = truncateToWords(slide[v.key], v.max);
+      }
+    } else if (typeof opt[v.key] === "string") {
+      opt[v.key] = truncateToWords(opt[v.key], v.max);
+    }
+  }
+}
+
+function formatViolationsForRetry(violations: Violation[]): string {
+  return violations
+    .map((v) => {
+      const loc = v.slideIndex != null
+        ? `option ${v.optionIndex + 1}, slide ${v.slideIndex + 1}, slot "${v.key}"`
+        : `option ${v.optionIndex + 1}, slot "${v.key}"`;
+      return `- ${loc}: "${v.value}" (${v.words} words, max ${v.max}) — rewrite to ${v.max} words or fewer.`;
+    })
+    .join("\n");
+}
+
+async function callModel(systemPrompt: string, userPrompt: string): Promise<any> {
+  const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      temperature: 0.9,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    }),
+  });
+  const d = await r.json();
+  return { ok: r.ok, status: r.status, data: d };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
@@ -140,22 +258,19 @@ serve(async (req) => {
       `${instruction(template, count)}\n\n` +
       `Hard rule: every option must reference at least one SPECIFIC element from the OFFER PSYCHOLOGY or AUDIENCE PSYCHOLOGY above (a named moment, a real pain, a real hesitation, a concrete before/after). Generic copy that could belong to any brand is an instant fail.\n\n` +
       `Output ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST", headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({ model: "google/gemini-2.5-flash", temperature: 0.9, response_format: { type: "json_object" },
-        messages: [ { role: "system", content: VOICE_RULES }, { role: "user", content: user } ] }),
-    });
-    const d = await r.json();
-    if (!r.ok) {
-      const msg = d?.error?.message || `OpenAI HTTP ${r.status}`;
-      console.error("compose-ad openai error:", msg, JSON.stringify(d).slice(0, 500));
+
+    const first = await callModel(VOICE_RULES, user);
+    if (!first.ok) {
+      const msg = first.data?.error?.message || `OpenAI HTTP ${first.status}`;
+      console.error("compose-ad openai error:", msg, JSON.stringify(first.data).slice(0, 500));
       return new Response(JSON.stringify({ error: msg, options: [] }), { status: 200, headers: { ...cors, "content-type": "application/json" } });
     }
-    const content = d?.choices?.[0]?.message?.content;
+    const content = first.data?.choices?.[0]?.message?.content;
     if (!content) {
-      console.error("compose-ad empty content:", JSON.stringify(d).slice(0, 500));
+      console.error("compose-ad empty content:", JSON.stringify(first.data).slice(0, 500));
       return new Response(JSON.stringify({ error: "AI returned no content", options: [] }), { status: 200, headers: { ...cors, "content-type": "application/json" } });
     }
+
     // Strip any HTML/markdown emphasis tags the model may have produced (e.g. <b>...</b>)
     const stripTags = (s: string) => s
       .replace(/<\/?[a-zA-Z][^>]*>/g, "")
@@ -171,14 +286,56 @@ serve(async (req) => {
       }
       return v;
     };
-    let cleaned = content;
+
+    let parsed: any;
     try {
-      const parsed = JSON.parse(content);
-      cleaned = JSON.stringify(sanitize(parsed));
+      parsed = sanitize(JSON.parse(content));
     } catch {
-      cleaned = stripTags(content);
+      // Couldn't parse — return raw stripped content (preserves previous behavior).
+      return new Response(stripTags(content), { status: 200, headers: { ...cors, "content-type": "application/json" } });
     }
-    return new Response(cleaned, { status: 200, headers: { ...cors, "content-type": "application/json" } });
+
+    let options: any[] = Array.isArray(parsed?.options) ? parsed.options : [];
+
+    // Validate slot lengths. If any slot is over, re-prompt ONCE with the specific offenders.
+    let violations = findViolations(options, template);
+    if (violations.length > 0) {
+      console.log(`compose-ad: ${violations.length} slot(s) over budget on first pass, retrying once.`);
+      const retryUser =
+        `The previous JSON had slots that exceeded the per-slot word budget. ` +
+        `Rewrite the SAME options keeping the same angles, ideas, and structure — only shorten the offenders. ` +
+        `Do NOT spill the cut words into another slot. Output the FULL same JSON shape.\n\n` +
+        `OVER-LENGTH SLOTS TO SHORTEN:\n${formatViolationsForRetry(violations)}\n\n` +
+        `Previous JSON:\n${JSON.stringify(parsed)}\n\n` +
+        `Output ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
+      const second = await callModel(VOICE_RULES, retryUser);
+      if (second.ok) {
+        const retryContent = second.data?.choices?.[0]?.message?.content;
+        if (retryContent) {
+          try {
+            const retryParsed = sanitize(JSON.parse(retryContent));
+            if (Array.isArray(retryParsed?.options) && retryParsed.options.length > 0) {
+              parsed = retryParsed;
+              options = retryParsed.options;
+            }
+          } catch (err) {
+            console.error("compose-ad retry parse failed:", err);
+          }
+        }
+      } else {
+        console.error("compose-ad retry HTTP error:", second.status);
+      }
+
+      // Last resort: hard-truncate any remaining offenders at a word boundary.
+      violations = findViolations(options, template);
+      if (violations.length > 0) {
+        console.log(`compose-ad: hard-truncating ${violations.length} remaining over-length slot(s).`);
+        applyHardTruncation(options, template, violations);
+        parsed.options = options;
+      }
+    }
+
+    return new Response(JSON.stringify(parsed), { status: 200, headers: { ...cors, "content-type": "application/json" } });
   } catch (e) {
     console.error("compose-ad exception:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e), options: [] }), { status: 200, headers: { ...cors, "content-type": "application/json" } });
