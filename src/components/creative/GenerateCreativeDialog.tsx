@@ -885,7 +885,7 @@ export function GenerateCreativeDialog() {
   const canRender =
     !generating && !composing &&
     (!needsPhoto || !!selectedPhoto) &&
-    (isImageOnly || copyReady);
+    copyReady;
 
   return (
     <>
