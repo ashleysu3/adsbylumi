@@ -201,6 +201,8 @@ function mapStyleToTemplate(styleHint?: string, format?: string): string {
     offer: "offer", sale: "offer", discount: "offer",
     bigtype: "bigtype", "type-hero": "bigtype",
     collage: "collage", grid: "collage",
+    overlay: "overlay",
+    device: "devicemockup", devicemockup: "devicemockup", mockup: "devicemockup",
   };
   return (styleHint && m[styleHint]) || "cutout";
 }
