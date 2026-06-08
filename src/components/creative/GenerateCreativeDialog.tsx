@@ -26,7 +26,7 @@ import framedThumb from "@/assets/template-thumbs/framed.png.asset.json";
 import splitThumb from "@/assets/template-thumbs/split.png.asset.json";
 import highlighterThumb from "@/assets/template-thumbs/highlighter.png.asset.json";
 import overlayThumb from "@/assets/template-thumbs/overlay.png.asset.json";
-import imageonlyThumb from "@/assets/template-thumbs/imageonly.png.asset.json";
+
 import devicemockupThumb from "@/assets/template-thumbs/devicemockup.png.asset.json";
 import testimonialThumb from "@/assets/template-thumbs/testimonial.png.asset.json";
 import carouselThumb from "@/assets/template-thumbs/carousel.png.asset.json";
@@ -45,7 +45,6 @@ const BUILT_IN_THUMBS: Record<string, string> = {
   split: splitThumb.url,
   highlighter: highlighterThumb.url,
   overlay: overlayThumb.url,
-  imageonly: imageonlyThumb.url,
   devicemockup: devicemockupThumb.url,
   testimonial: testimonialThumb.url,
   carousel: carouselThumb.url,
@@ -84,7 +83,7 @@ type CustomTemplate = {
 };
 
 const BUILT_IN_TEMPLATES = [
-  "cutout", "spotlight", "framed", "split", "highlighter", "overlay", "imageonly", "devicemockup", "testimonial", "statgrid", "checklist", "chatproof", "event", "offer", "bigtype", "collage", "carousel",
+  "cutout", "spotlight", "framed", "split", "highlighter", "overlay", "devicemockup", "testimonial", "statgrid", "checklist", "chatproof", "event", "offer", "bigtype", "collage", "carousel",
 ] as const;
 
 const BUILT_IN_LABELS: Record<string, string> = {
@@ -94,7 +93,6 @@ const BUILT_IN_LABELS: Record<string, string> = {
   split: "Photo + headline",
   highlighter: "Bold highlighter",
   overlay: "Image + text",
-  imageonly: "Image only",
   devicemockup: "Device mockup",
   testimonial: "Testimonial card",
   statgrid: "Stat grid",
@@ -110,7 +108,7 @@ const BUILT_IN_LABELS: Record<string, string> = {
 const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
   cutout: "cutout", highlighter: "cutout",
   spotlight: "with-background", framed: "with-background", split: "with-background",
-  overlay: "with-background", imageonly: "with-background",
+  overlay: "with-background",
   devicemockup: "with-background", testimonial: "with-background",
 };
 
@@ -119,7 +117,7 @@ const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
 // (their richer slots collapse to eyebrow + headline + sub) so they don't error.
 const ENGINE_SUPPORTED_TEMPLATES = new Set([
   "cutout", "spotlight", "framed", "split", "highlighter", "overlay",
-  "imageonly", "devicemockup", "testimonial", "carousel",
+  "devicemockup", "testimonial", "carousel",
 ]);
 const RENDER_FALLBACK: Record<string, string> = {
   statgrid: "spotlight",
@@ -203,6 +201,8 @@ function mapStyleToTemplate(styleHint?: string, format?: string): string {
     offer: "offer", sale: "offer", discount: "offer",
     bigtype: "bigtype", "type-hero": "bigtype",
     collage: "collage", grid: "collage",
+    overlay: "overlay",
+    device: "devicemockup", devicemockup: "devicemockup", mockup: "devicemockup",
   };
   return (styleHint && m[styleHint]) || "cutout";
 }
@@ -273,7 +273,6 @@ export function GenerateCreativeDialog() {
   const isCarousel = activeCustom
     ? activeCustom.type === "carousel"
     : template === "carousel" || brief?.format === "carousel";
-  const isImageOnly = !activeCustom && template === "imageonly";
   const needsPhoto = activeCustom ? activeCustom.needs_photo : true; // all built-ins need a photo
 
   const briefRef = useRef<CreativeBrief | null>(null);
@@ -612,11 +611,10 @@ export function GenerateCreativeDialog() {
   }, [brandVoice, template, activeCustom]);
 
   // Auto-compose when we hit Screen 2, AND whenever the template selection changes.
-  // Skip for imageonly (no copy needed) and while still on the style picker.
+  // Skip while still on the style picker.
   useEffect(() => {
     if (!open || !brief || kitLoading || composing) return;
     if (step !== "image-copy") return;
-    if (isImageOnly) return;
     compose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, brief, kitLoading, step, template, customTemplateId]);
@@ -633,9 +631,9 @@ export function GenerateCreativeDialog() {
 
   // Build the photo picker list based on the active source + template.
   // - "uploads": user uploads only
-  // - "brand": brand_assets (photos always; backgrounds/textures for overlay/imageonly)
+  // - "brand": brand_assets (photos always; backgrounds/textures for overlay)
   const pickerImages = useMemo<Photo[]>(() => {
-    const allowsBackgrounds = template === "overlay" || template === "imageonly";
+    const allowsBackgrounds = template === "overlay";
     if (imageSource === "uploads") {
       return photos.map((p) => ({ ...p, source: "upload" as const }));
     }
@@ -889,7 +887,7 @@ export function GenerateCreativeDialog() {
   const canRender =
     !generating && !composing &&
     (!needsPhoto || !!selectedPhoto) &&
-    (isImageOnly || copyReady);
+    copyReady;
 
   return (
     <>
@@ -1108,7 +1106,8 @@ export function GenerateCreativeDialog() {
                   )}
 
                   {/* Copy */}
-                  {!isImageOnly && (
+                  {(
+
                     <div className="space-y-2">
                       <Label className="text-xs uppercase text-muted-foreground">Copy</Label>
                       {composing ? (
