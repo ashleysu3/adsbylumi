@@ -17,6 +17,10 @@ WHAT MAKES IT CONVERT (non-negotiable):
 - CTA is specific, active, and MATCHES THE OFFER: free class → "Save my seat"; download → "Send me the guide"; training → "Watch the training"; waitlist → "Join the waitlist". The CTA must reflect what actually happens on click.
 - Mirror the brand's voice samples. Sound like a real person talking to one person.
 
+LENGTH DISCIPLINE (non-negotiable):
+- Prioritize ONE dominant headline. Stay within every slot's word limit so type renders large and consistent — never exceed a limit to fit more words.
+- If an idea won't fit the budget, cut words or pick a sharper idea. Do NOT spill into the next slot.
+
 BANNED — using any of these is an instant fail: "learn more", "find out more", "click here", "sign up", "get started", "simplify your approach", "take it to the next level", "maybe it's time", "unlock", "discover the secrets", "proven strategies", "elevate", "game-changer", "in today's world", "are you ready to", "look no further", "the ultimate", "supercharge", "dive in", "kickstart", "level up". No exclamation-mark spam — use the brand's punctuation only.
 
 CALIBRATION — match STRONG, never WEAK:
