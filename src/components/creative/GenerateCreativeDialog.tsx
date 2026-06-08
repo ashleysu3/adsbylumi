@@ -117,7 +117,7 @@ const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
 // (their richer slots collapse to eyebrow + headline + sub) so they don't error.
 const ENGINE_SUPPORTED_TEMPLATES = new Set([
   "cutout", "spotlight", "framed", "split", "highlighter", "overlay",
-  "imageonly", "devicemockup", "testimonial", "carousel",
+  "devicemockup", "testimonial", "carousel",
 ]);
 const RENDER_FALLBACK: Record<string, string> = {
   statgrid: "spotlight",
