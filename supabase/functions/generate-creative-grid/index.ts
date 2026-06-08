@@ -529,7 +529,7 @@ ADDITIONAL FIELDS FOR graphic AND carousel FORMATS (REQUIRED — this is the str
   - cta: the action (e.g. "Save your seat", "Watch free training", "Book a call")
   - audience: who this is for, in a phrase
   - proofPoint: optional result/testimonial/stat string, or null
-  - styleHint: one of "photo-forward" | "type-led" | "highlighter" | "testimonial" | "card" | "framed" | "stats" | "checklist" | "overlay" | "device"
+  - styleHint: one of "photo-forward" | "type-led" | "highlighter" | "testimonial" | "card" | "framed" | "stats" | "checklist" | "overlay" | "device" | "chat" | "event" | "offer" | "bigtype" | "collage"
   - photoTreatment: one of "cutout" | "with-background" | "none"
   - slideCount: 1 for single_graphic; 3 to 6 for carousel
   - slidePlan: for carousel ONLY, an array of slideCount objects each with a "role" — choose from "hook" | "problem" | "framework" | "proof" | "cta" — in narrative order. Omit for single_graphic.
