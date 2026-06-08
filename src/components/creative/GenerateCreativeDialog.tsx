@@ -611,7 +611,7 @@ export function GenerateCreativeDialog() {
   }, [brandVoice, template, activeCustom]);
 
   // Auto-compose when we hit Screen 2, AND whenever the template selection changes.
-  // Skip for imageonly (no copy needed) and while still on the style picker.
+  // Skip while still on the style picker.
   useEffect(() => {
     if (!open || !brief || kitLoading || composing) return;
     if (step !== "image-copy") return;
