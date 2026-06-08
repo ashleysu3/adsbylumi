@@ -533,13 +533,10 @@ ADDITIONAL FIELDS FOR graphic AND carousel FORMATS (REQUIRED — this is the str
   - photoTreatment: one of "cutout" | "with-background" | "none"
   - slideCount: 1 for single_graphic; 3 to 6 for carousel
   - slidePlan: for carousel ONLY, an array of slideCount objects each with a "role" — choose from "hook" | "problem" | "framework" | "proof" | "cta" — in narrative order. Omit for single_graphic.
-  - imageSource: one of "user-photo" | "generated" | "none".
-    • Choose "user-photo" when a real photo of the creator fits the concept.
-    • Choose "generated" ONLY when the concept is a genuine visual scene (a person, an object, a place, an abstract metaphor rendered as a physical image, a product mockup as a tangible prop, etc.). The concept must be something you could photograph or illustrate — not text on a screen.
+  - imageSource: one of "user-photo" | "none".
+    • Choose "user-photo" when a real photo of the creator (from their uploads or scraped brand assets) fits the concept.
     • Choose "none" for a pure typographic graphic where words are the design.
-    IMPORTANT: If the concept is fundamentally a text/UI artifact (a fake notification, a headline graphic, a checklist, a screenshot of a chat/DM, a social post mockup, a quote card), do NOT use "generated". Use "user-photo" (if a real photo can carry the background) or "none" (pure type/template), and let the template add the words.
-  - imagePrompt: when imageSource is "generated", describe the VISUAL ONLY — a single concrete scene or subject, a clear style (photographic / cinematic / 3D render / bold illustration), lighting, mood, and palette. NEVER ask for text, words, headlines, notifications, screenshots, or UI in the image — the template adds the words separately. Translate any text/screen idea into a physical visual metaphor. Keep the lower third clean for overlay. Otherwise null.
-  - When imageSource is "generated", set styleHint to "type-led" and photoTreatment to "with-background" (the bold text sits over the full-bleed image).
+    IMPORTANT: There is NO AI image generation. If the concept does not have a real photo behind it, set imageSource to "none" and styleHint to "type-led" with photoTreatment "none" — let the template carry the idea through type.
   - Use styleHint "stats" for results/proof concepts built around 2–4 numeric metrics, and "checklist" for "what's included" / "how it works" concepts built around 3–6 short list items. For BOTH, set imageSource to "none" and photoTreatment to "none" — the template is pure type + data.
 
 
@@ -881,6 +878,22 @@ Generate exactly ${batchAngles.length * 9} creative cells (${batchAngles.length}
       cell.psychology_trigger = cell.psychology_trigger || "curiosity";
       cell.pain_point_addressed = cell.pain_point_addressed || "general";
       cell.why_this_works = cell.why_this_works || "";
+
+      // Enforce: no AI image generation. Coerce any legacy "generated" to a type-led graphic.
+      if (cell.brief && typeof cell.brief === "object") {
+        if (cell.brief.imageSource === "generated") {
+          cell.brief.imageSource = "none";
+          cell.brief.styleHint = "type-led";
+          cell.brief.photoTreatment = "none";
+        }
+        delete cell.brief.imagePrompt;
+      }
+      if (cell.imageSource === "generated") {
+        cell.imageSource = "none";
+        cell.styleHint = "type-led";
+        cell.photoTreatment = "none";
+      }
+      delete cell.imagePrompt;
       
       if (cell.format === "talking_head") {
         cell.verbal_hook = cell.verbal_hook || cell.hook || "";

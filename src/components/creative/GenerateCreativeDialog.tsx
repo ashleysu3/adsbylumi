@@ -237,17 +237,13 @@ export function GenerateCreativeDialog() {
   const [textCase, setTextCase] = useState<"original" | "upper" | "lower" | "title">("original");
   const [headlineScale, setHeadlineScale] = useState<number>(1);
   const [bodyScale, setBodyScale] = useState<number>(1);
-  const [generatedPhoto, setGeneratedPhoto] = useState<Photo | null>(null);
-  const [optimizedPrompt, setOptimizedPrompt] = useState<string>("");
-  const [generatingConcept, setGeneratingConcept] = useState(false);
 
   const [composing, setComposing] = useState(false);
   const [template, setTemplate] = useState<string>("cutout");
 
   // Two-step UX: pick a style, then provide image + copy.
   const [step, setStep] = useState<"style" | "image-copy">("style");
-  const [imageSource, setImageSource] = useState<"uploads" | "brand" | "generated">("uploads");
-  const [imagePrompt, setImagePrompt] = useState<string>("");
+  const [imageSource, setImageSource] = useState<"uploads" | "brand">("uploads");
 
   // single-template state
   const [singleOptions, setSingleOptions] = useState<SingleOption[]>([]);
@@ -292,14 +288,10 @@ export function GenerateCreativeDialog() {
       setApprovedIdxs(new Set());
       setBrief(detail.brief);
 
-      const isGen = detail.brief.imageSource === "generated";
-      setImageSource(isGen ? "generated" : "uploads");
-      setImagePrompt(detail.brief.imagePrompt || detail.brief.concept || "");
-      setTemplate(isGen ? "imageonly" : mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
+      setImageSource("uploads");
+      setTemplate(mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
       setCustomTemplateId("");
       setStep("style");
-      setGeneratedPhoto(null);
-      setOptimizedPrompt("");
       setOpen(true);
       setSingleOptions([]);
       setCarouselOptions([]);
@@ -314,38 +306,7 @@ export function GenerateCreativeDialog() {
     return () => window.removeEventListener("creative-brief:generate", handler as EventListener);
   }, []);
 
-  const generateConceptImage = useCallback(async () => {
-    const prompt = (imagePrompt || "").trim();
-    if (!prompt) {
-      toast.error("Write an image prompt first");
-      return;
-    }
-    setGeneratingConcept(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-concept-image", {
-        body: { prompt },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      if (!data?.url) throw new Error("No image returned");
-      setGeneratedPhoto({ id: "generated", path: "generated", url: data.url });
-      setOptimizedPrompt(data.optimizedPrompt || "");
-    } catch (err: any) {
-      toast.error(err?.message || "Could not generate concept image");
-    } finally {
-      setGeneratingConcept(false);
-    }
-  }, [imagePrompt]);
 
-  useEffect(() => {
-    if (
-      open && step === "image-copy" && imageSource === "generated" &&
-      imagePrompt && !generatedPhoto && !generatingConcept
-    ) {
-      generateConceptImage();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, step, imageSource, brief]);
 
   // Tie background removal to chosen template (cutout/highlighter only).
   useEffect(() => {
@@ -670,13 +631,10 @@ export function GenerateCreativeDialog() {
     }
   }, [selectedOptionIdx, singleOptions, carouselOptions, isCarousel]);
 
-  const isGeneratedConcept = imageSource === "generated";
-
   // Build the photo picker list based on the active source + template.
   // - "uploads": user uploads only
   // - "brand": brand_assets (photos always; backgrounds/textures for overlay/imageonly)
   const pickerImages = useMemo<Photo[]>(() => {
-    if (isGeneratedConcept) return [];
     const allowsBackgrounds = template === "overlay" || template === "imageonly";
     if (imageSource === "uploads") {
       return photos.map((p) => ({ ...p, source: "upload" as const }));
@@ -688,11 +646,11 @@ export function GenerateCreativeDialog() {
       ];
     }
     return [];
-  }, [isGeneratedConcept, imageSource, template, photos, brandPhotoAssets, brandBackgroundAssets]);
+  }, [imageSource, template, photos, brandPhotoAssets, brandBackgroundAssets]);
 
   const selectedPhoto = useMemo(
-    () => (isGeneratedConcept ? generatedPhoto : pickerImages.find((p) => p.id === selectedPhotoId)),
-    [isGeneratedConcept, generatedPhoto, pickerImages, selectedPhotoId],
+    () => pickerImages.find((p) => p.id === selectedPhotoId),
+    [pickerImages, selectedPhotoId],
   );
 
   const callRender = async (body: Record<string, any>) => {
@@ -1079,62 +1037,15 @@ export function GenerateCreativeDialog() {
                       <Label className="text-xs uppercase text-muted-foreground">Image source</Label>
                       <Tabs
                         value={imageSource}
-                        onValueChange={(v) => setImageSource(v as "uploads" | "brand" | "generated")}
+                        onValueChange={(v) => setImageSource(v as "uploads" | "brand")}
                       >
                         <TabsList className="w-full">
                           <TabsTrigger value="uploads" className="flex-1">Your uploads</TabsTrigger>
                           <TabsTrigger value="brand" className="flex-1">Brand library</TabsTrigger>
-                          <TabsTrigger value="generated" className="flex-1">✨ Generate with AI</TabsTrigger>
                         </TabsList>
                       </Tabs>
 
-                      {imageSource === "generated" ? (
-                        <div className="space-y-2 pt-1">
-                          <Textarea
-                            value={imagePrompt}
-                            onChange={(e) => setImagePrompt(e.target.value)}
-                            rows={3}
-                            placeholder="Describe the image you want…"
-                          />
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant={generatedPhoto ? "ghost" : "outline"}
-                              onClick={generateConceptImage}
-                              disabled={generatingConcept || !imagePrompt.trim()}
-                            >
-                              {generatingConcept ? (
-                                <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Generating…</>
-                              ) : generatedPhoto ? (
-                                <><RefreshCw className="h-3 w-3 mr-1" /> Regenerate</>
-                              ) : (
-                                <><Sparkles className="h-3 w-3 mr-1" /> Generate image</>
-                              )}
-                            </Button>
-                          </div>
-
-                          {generatingConcept && !generatedPhoto && (
-                            <div className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
-                              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
-                              Generating image…
-                            </div>
-                          )}
-
-                          {generatedPhoto && (
-                            <div className="space-y-2">
-                              <div className="relative aspect-square rounded border-2 border-primary overflow-hidden max-w-[260px]">
-                                <img src={generatedPhoto.url} alt="" className="w-full h-full object-cover" />
-                              </div>
-                              {optimizedPrompt && (
-                                <p className="text-[11px] text-muted-foreground leading-snug max-w-[260px]">
-                                  <span className="font-medium text-foreground">Image built from:</span>{" "}
-                                  {optimizedPrompt}
-                                </p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ) : photosLoading ? (
+                      {photosLoading ? (
                         <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
                           <Loader2 className="h-3 w-3 animate-spin" /> Loading…
                         </div>
@@ -1167,6 +1078,7 @@ export function GenerateCreativeDialog() {
                           ))}
                         </div>
                       )}
+
 
                       {brandLogoAsset && (
                         <div className="rounded border bg-muted/30 p-2 space-y-2 mt-2">

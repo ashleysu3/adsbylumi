@@ -59,8 +59,7 @@ export interface CreativeBrief {
   photoTreatment: "cutout" | "with-background" | "none";
   slideCount: number;
   slidePlan?: { role: "hook" | "problem" | "framework" | "proof" | "cta" | string }[];
-  imageSource?: "user-photo" | "generated" | "none";
-  imagePrompt?: string | null;
+  imageSource?: "user-photo" | "none";
 }
 
 export interface ProductionItem {
