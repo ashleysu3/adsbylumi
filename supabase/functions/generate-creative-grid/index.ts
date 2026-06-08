@@ -878,6 +878,22 @@ Generate exactly ${batchAngles.length * 9} creative cells (${batchAngles.length}
       cell.psychology_trigger = cell.psychology_trigger || "curiosity";
       cell.pain_point_addressed = cell.pain_point_addressed || "general";
       cell.why_this_works = cell.why_this_works || "";
+
+      // Enforce: no AI image generation. Coerce any legacy "generated" to a type-led graphic.
+      if (cell.brief && typeof cell.brief === "object") {
+        if (cell.brief.imageSource === "generated") {
+          cell.brief.imageSource = "none";
+          cell.brief.styleHint = "type-led";
+          cell.brief.photoTreatment = "none";
+        }
+        delete cell.brief.imagePrompt;
+      }
+      if (cell.imageSource === "generated") {
+        cell.imageSource = "none";
+        cell.styleHint = "type-led";
+        cell.photoTreatment = "none";
+      }
+      delete cell.imagePrompt;
       
       if (cell.format === "talking_head") {
         cell.verbal_hook = cell.verbal_hook || cell.hook || "";
