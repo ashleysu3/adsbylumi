@@ -93,14 +93,6 @@ export function TemplatePreview({ kind }: { kind: string }) {
           <rect x="10" y="86" width="22" height="5" rx="2" fill={accent} />
         </svg>
       );
-    case "imageonly":
-      return (
-        <svg {...common}>
-          <rect width="100" height="100" fill={photo} />
-          <circle cx="50" cy="42" r="12" fill="white" opacity="0.25" />
-          <rect x="20" y="62" width="60" height="3" rx="1" fill="white" opacity="0.4" />
-        </svg>
-      );
     case "carousel":
       return (
         <svg {...common}>
