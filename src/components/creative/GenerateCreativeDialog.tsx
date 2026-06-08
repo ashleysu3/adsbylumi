@@ -1104,7 +1104,8 @@ export function GenerateCreativeDialog() {
                   )}
 
                   {/* Copy */}
-                  {!isImageOnly && (
+                  {(
+
                     <div className="space-y-2">
                       <Label className="text-xs uppercase text-muted-foreground">Copy</Label>
                       {composing ? (
