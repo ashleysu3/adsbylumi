@@ -271,7 +271,6 @@ export function GenerateCreativeDialog() {
   const isCarousel = activeCustom
     ? activeCustom.type === "carousel"
     : template === "carousel" || brief?.format === "carousel";
-  const isImageOnly = !activeCustom && template === "imageonly";
   const needsPhoto = activeCustom ? activeCustom.needs_photo : true; // all built-ins need a photo
 
   const briefRef = useRef<CreativeBrief | null>(null);
