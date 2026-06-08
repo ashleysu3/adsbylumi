@@ -45,7 +45,6 @@ const BUILT_IN_THUMBS: Record<string, string> = {
   split: splitThumb.url,
   highlighter: highlighterThumb.url,
   overlay: overlayThumb.url,
-  imageonly: imageonlyThumb.url,
   devicemockup: devicemockupThumb.url,
   testimonial: testimonialThumb.url,
   carousel: carouselThumb.url,
