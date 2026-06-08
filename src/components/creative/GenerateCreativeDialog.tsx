@@ -1042,62 +1042,15 @@ export function GenerateCreativeDialog() {
                       <Label className="text-xs uppercase text-muted-foreground">Image source</Label>
                       <Tabs
                         value={imageSource}
-                        onValueChange={(v) => setImageSource(v as "uploads" | "brand" | "generated")}
+                        onValueChange={(v) => setImageSource(v as "uploads" | "brand")}
                       >
                         <TabsList className="w-full">
                           <TabsTrigger value="uploads" className="flex-1">Your uploads</TabsTrigger>
                           <TabsTrigger value="brand" className="flex-1">Brand library</TabsTrigger>
-                          <TabsTrigger value="generated" className="flex-1">✨ Generate with AI</TabsTrigger>
                         </TabsList>
                       </Tabs>
 
-                      {imageSource === "generated" ? (
-                        <div className="space-y-2 pt-1">
-                          <Textarea
-                            value={imagePrompt}
-                            onChange={(e) => setImagePrompt(e.target.value)}
-                            rows={3}
-                            placeholder="Describe the image you want…"
-                          />
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant={generatedPhoto ? "ghost" : "outline"}
-                              onClick={generateConceptImage}
-                              disabled={generatingConcept || !imagePrompt.trim()}
-                            >
-                              {generatingConcept ? (
-                                <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Generating…</>
-                              ) : generatedPhoto ? (
-                                <><RefreshCw className="h-3 w-3 mr-1" /> Regenerate</>
-                              ) : (
-                                <><Sparkles className="h-3 w-3 mr-1" /> Generate image</>
-                              )}
-                            </Button>
-                          </div>
-
-                          {generatingConcept && !generatedPhoto && (
-                            <div className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
-                              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
-                              Generating image…
-                            </div>
-                          )}
-
-                          {generatedPhoto && (
-                            <div className="space-y-2">
-                              <div className="relative aspect-square rounded border-2 border-primary overflow-hidden max-w-[260px]">
-                                <img src={generatedPhoto.url} alt="" className="w-full h-full object-cover" />
-                              </div>
-                              {optimizedPrompt && (
-                                <p className="text-[11px] text-muted-foreground leading-snug max-w-[260px]">
-                                  <span className="font-medium text-foreground">Image built from:</span>{" "}
-                                  {optimizedPrompt}
-                                </p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ) : photosLoading ? (
+                      {photosLoading ? (
                         <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
                           <Loader2 className="h-3 w-3 animate-spin" /> Loading…
                         </div>
@@ -1130,6 +1083,7 @@ export function GenerateCreativeDialog() {
                           ))}
                         </div>
                       )}
+
 
                       {brandLogoAsset && (
                         <div className="rounded border bg-muted/30 p-2 space-y-2 mt-2">
