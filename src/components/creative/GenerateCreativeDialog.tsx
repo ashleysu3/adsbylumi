@@ -246,8 +246,7 @@ export function GenerateCreativeDialog() {
 
   // Two-step UX: pick a style, then provide image + copy.
   const [step, setStep] = useState<"style" | "image-copy">("style");
-  const [imageSource, setImageSource] = useState<"uploads" | "brand" | "generated">("uploads");
-  const [imagePrompt, setImagePrompt] = useState<string>("");
+  const [imageSource, setImageSource] = useState<"uploads" | "brand">("uploads");
 
   // single-template state
   const [singleOptions, setSingleOptions] = useState<SingleOption[]>([]);
