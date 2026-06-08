@@ -237,9 +237,6 @@ export function GenerateCreativeDialog() {
   const [textCase, setTextCase] = useState<"original" | "upper" | "lower" | "title">("original");
   const [headlineScale, setHeadlineScale] = useState<number>(1);
   const [bodyScale, setBodyScale] = useState<number>(1);
-  const [generatedPhoto, setGeneratedPhoto] = useState<Photo | null>(null);
-  const [optimizedPrompt, setOptimizedPrompt] = useState<string>("");
-  const [generatingConcept, setGeneratingConcept] = useState(false);
 
   const [composing, setComposing] = useState(false);
   const [template, setTemplate] = useState<string>("cutout");
