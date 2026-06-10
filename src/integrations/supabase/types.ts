@@ -3511,7 +3511,45 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_approved_reviews: {
+        Row: {
+          approved_at: string | null
+          approved_quote: string | null
+          business_name: string | null
+          created_at: string | null
+          id: string | null
+          instagram_handle: string | null
+          rating: number | null
+          review_text: string | null
+          reviewer_name: string | null
+          status: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_quote?: string | null
+          business_name?: string | null
+          created_at?: string | null
+          id?: string | null
+          instagram_handle?: string | null
+          rating?: number | null
+          review_text?: string | null
+          reviewer_name?: string | null
+          status?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_quote?: string | null
+          business_name?: string | null
+          created_at?: string | null
+          id?: string | null
+          instagram_handle?: string | null
+          rating?: number | null
+          review_text?: string | null
+          reviewer_name?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_team_invite: { Args: { p_token: string }; Returns: Json }

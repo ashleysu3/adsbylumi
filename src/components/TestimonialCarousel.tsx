@@ -23,9 +23,8 @@ const TestimonialCarousel = () => {
   useEffect(() => {
     const fetch = async () => {
       const { data } = await supabase
-        .from("user_reviews" as any)
+        .from("public_approved_reviews" as any)
         .select("id, reviewer_name, business_name, instagram_handle, approved_quote, review_text, rating")
-        .eq("status", "approved")
         .order("approved_at", { ascending: false })
         .limit(20);
       setTestimonials((data as any) || []);
