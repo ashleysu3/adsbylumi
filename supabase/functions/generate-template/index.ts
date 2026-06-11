@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { requirePaidUser } from "../_shared/check-subscription.ts";
 const KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const cors = { "Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, content-type, apikey, x-client-info","Access-Control-Allow-Methods":"POST, OPTIONS" };
 
