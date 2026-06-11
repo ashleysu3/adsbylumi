@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requirePaidUser } from "../_shared/check-subscription.ts";
 import { getCorsHeaders } from '../_shared/cors.ts';
 
 serve(async (req) => {
