@@ -12,9 +12,13 @@ serve(async (req) => {
   }
 
   try {
+    const gate = await requirePaidUser(req, corsHeaders);
+    if (gate.blocked) return gate.blocked;
+
     const { 
       cell, 
       angle, 
+
       brandName, 
       strategyData, 
       audiencePsychology, 
