@@ -11,8 +11,12 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const gate = await requirePaidUser(req, corsHeaders);
+    if (gate.blocked) return gate.blocked;
+
     const { 
       angles, 
+
        brandName, 
        strategyData, 
        audiencePsychology, 
