@@ -13,7 +13,11 @@ serve(async (req) => {
   }
 
   try {
+    const gate = await requirePaidUser(req, corsHeaders);
+    if (gate.blocked) return gate.blocked;
+
     const { angles, brandInfo, offerData, audiencePsychology, brandId, offerId, offerAudiencePsychology, feedback, neverUseWords, perspectiveRole } = await req.json();
+
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
