@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { requirePaidUser } from "../_shared/check-subscription.ts";
 import { getCorsHeaders } from '../_shared/cors.ts';
 
 Deno.serve(async (req) => {
