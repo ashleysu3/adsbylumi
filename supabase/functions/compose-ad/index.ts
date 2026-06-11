@@ -243,6 +243,8 @@ async function callModel(systemPrompt: string, userPrompt: string): Promise<any>
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  const gate = await requirePaidUser(req, cors);
+  if (gate.blocked) return gate.blocked;
   try {
     const body = await req.json();
     const { brief = {}, brandVoice = {}, count = 3, feedback = null } = body;
