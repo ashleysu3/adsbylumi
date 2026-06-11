@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { requirePaidUser } from '../_shared/check-subscription.ts';
 
 const LUMI_NAVIGATOR_PROMPT = `You are Lumi, a friendly app navigation assistant for Your Ad Assistant - an app that helps people create Meta ads.
 
