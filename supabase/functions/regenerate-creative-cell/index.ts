@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { requirePaidUser } from '../_shared/check-subscription.ts';
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -11,9 +12,13 @@ serve(async (req) => {
   }
 
   try {
+    const gate = await requirePaidUser(req, corsHeaders);
+    if (gate.blocked) return gate.blocked;
+
     const { 
       cell, 
       angle, 
+
       brandName, 
       strategyData, 
       audiencePsychology, 

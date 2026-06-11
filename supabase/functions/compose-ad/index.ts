@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { requirePaidUser } from "../_shared/check-subscription.ts";
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -242,6 +243,8 @@ async function callModel(systemPrompt: string, userPrompt: string): Promise<any>
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  const gate = await requirePaidUser(req, cors);
+  if (gate.blocked) return gate.blocked;
   try {
     const body = await req.json();
     const { brief = {}, brandVoice = {}, count = 3, feedback = null } = body;

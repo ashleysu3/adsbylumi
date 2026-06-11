@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.83.0';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { requirePaidUser } from '../_shared/check-subscription.ts';
 
 // UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -87,14 +88,11 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Authenticate user
-    const { userId, error: authError } = await authenticateUser(req, supabase);
-    if (authError || !userId) {
-      return new Response(
-        JSON.stringify({ error: authError || 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Authenticate user + paywall
+    const gate = await requirePaidUser(req, corsHeaders);
+    if (gate.blocked) return gate.blocked;
+    const userId = gate.userId!;
+
 
     const body = await req.json();
     const { offerId, brandId } = body;
