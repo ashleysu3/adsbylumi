@@ -12,6 +12,9 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const gate = await requirePaidUser(req, corsHeaders);
+    if (gate.blocked) return gate.blocked;
+
     const { brandId } = await req.json();
     if (!brandId) {
       return new Response(JSON.stringify({ error: 'brandId required' }), {
