@@ -27,6 +27,8 @@ Return ONLY JSON: {"name":"short-kebab-name","type":"single","needsPhoto":true,"
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  const gate = await requirePaidUser(req, cors);
+  if (gate.blocked) return gate.blocked;
   try {
     const { imageUrl, notes = "" } = await req.json();
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
