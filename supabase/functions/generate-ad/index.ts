@@ -139,6 +139,10 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Gate the render path (POST). The GET/HEAD image proxy above is public by design.
+    const gate = await requirePaidUser(req, headers);
+    if (gate.blocked) return gate.blocked;
+
     const body = await req.json();
     const photoUrl = body?.photo?.url;
     const shouldRemoveBackground = body?.photo?.removeBackground === true;
