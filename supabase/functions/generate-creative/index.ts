@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { requirePaidUser } from '../_shared/check-subscription.ts';
 
 // All Knowledge Base categories that must be used for creative generation
 const ALL_KB_CATEGORIES = [
