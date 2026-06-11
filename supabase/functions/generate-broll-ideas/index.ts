@@ -13,13 +13,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const user = await getAuthenticatedUser(req);
-  if (!user) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  const gate = await requirePaidUser(req, corsHeaders);
+  if (gate.blocked) return gate.blocked;
+  const user = { id: gate.userId! };
+
 
   try {
     const body = await req.json();
