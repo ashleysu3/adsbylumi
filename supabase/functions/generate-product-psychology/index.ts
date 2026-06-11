@@ -88,14 +88,11 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Authenticate user
-    const { userId, error: authError } = await authenticateUser(req, supabase);
-    if (authError || !userId) {
-      return new Response(
-        JSON.stringify({ error: authError || 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Authenticate user + paywall
+    const gate = await requirePaidUser(req, corsHeaders);
+    if (gate.blocked) return gate.blocked;
+    const userId = gate.userId!;
+
 
     const body = await req.json();
     const { offerId, brandId } = body;
