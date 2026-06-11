@@ -1,5 +1,6 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { requirePaidUser } from "../_shared/check-subscription.ts";
 
 const ENGINE_URL = Deno.env.get("ENGINE_URL")!;
 const ENGINE_KEY = Deno.env.get("LUMI_ENGINE_KEY") ?? "";
