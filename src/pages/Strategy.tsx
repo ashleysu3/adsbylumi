@@ -533,8 +533,13 @@ export default function Strategy() {
                 <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
+
+            <div className="pt-4">
+              <StrategyChatPanel />
+            </div>
           </motion.div>
         )}
+
       </div>
     </div>
   );
