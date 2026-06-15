@@ -72,7 +72,10 @@ const STATUS_OPTIONS = [{
   label: "Used",
   color: "bg-green-500/10 text-green-600"
 }];
-export default function ContentLibrary() {
+export default function ContentLibrary({ embedded = false }: { embedded?: boolean } = {}) {
+  const Layout = embedded
+    ? (({ children }: { children: React.ReactNode }) => <>{children}</>)
+    : DashboardLayout;
   const navigate = useNavigate();
   const { activeBrand, loading: brandContextLoading } = useBrand();
   const [loading, setLoading] = useState(true);
