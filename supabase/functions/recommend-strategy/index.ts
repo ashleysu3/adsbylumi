@@ -39,6 +39,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const brand_id: string | undefined = body?.brand_id;
     const user_goal: string | undefined = body?.user_goal;
+    const offer_id: string | undefined = body?.offer_id;
     if (!brand_id) return json({ error: "brand_id required" }, 400);
 
     // Load brand + offers + audiences (scoped to user via RLS)
@@ -53,13 +54,22 @@ Deno.serve(async (req) => {
       return json({ error: "Brand not found" }, 404);
     }
 
+    // If an offer_id was provided, scope offers to just that one so the AI
+    // builds a strategy for the specific thing the user wants to advertise
+    // (a webinar, a smaller product, etc.) — not the brand's default offer.
+    let offersQuery = userClient
+      .from("offers")
+      .select("id,name,description,price_point,target_outcome,url,page_goal")
+      .eq("brand_id", brand_id);
+    if (offer_id) {
+      offersQuery = offersQuery.eq("id", offer_id);
+    } else {
+      offersQuery = offersQuery.limit(10);
+    }
+
     const [{ data: offers }, { data: audiences }, { data: templates }] =
       await Promise.all([
-        userClient
-          .from("offers")
-          .select("name,description,price,offer_type,url")
-          .eq("brand_id", brand_id)
-          .limit(10),
+        offersQuery,
         userClient
           .from("audiences")
           .select("name,demographics,psychographics,pain_points,desires")
@@ -75,6 +85,7 @@ Deno.serve(async (req) => {
     const brandSnapshot = {
       brand: brand,
       offers: offers ?? [],
+      selected_offer: offer_id ? (offers ?? [])[0] ?? null : null,
       audiences: audiences ?? [],
       user_goal,
     };
