@@ -100,7 +100,11 @@ function pickStrategyTemplate(
   if (intent) {
     const byIntent = list.find((t) => {
       const haystack = `${t.objective || ""} ${t.name || ""} ${t.slug || ""} ${t.use_case || ""}`.toLowerCase();
-      return haystack.includes(intent) || (intent === "lead" && haystack.includes("leads"));
+      return (
+        haystack.includes(intent) ||
+        (intent === "awareness" && /video|view|training|education/.test(haystack)) ||
+        (intent === "lead" && haystack.includes("leads"))
+      );
     });
     if (byIntent) return byIntent;
   }
