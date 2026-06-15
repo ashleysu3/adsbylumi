@@ -244,6 +244,7 @@ const App = () => {
                 </Routes>
               </LumiAssistantProvider>
             </BrowserRouter>
+              </CampaignDraftProvider>
               </RenderQueueProvider>
               </BrandProvider>
         </LumiProvider>
