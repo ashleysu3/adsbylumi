@@ -6,6 +6,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Circle,
+  Loader2,
   PlayCircle,
   Sparkles,
   RotateCcw,
@@ -18,6 +19,8 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { CampaignSpine } from "@/components/CampaignSpine";
 import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
+import { useBrand } from "@/contexts/BrandContext";
+import { supabase } from "@/integrations/supabase/client";
 
 type CampaignPlan = {
   name?: string;
@@ -38,7 +41,78 @@ type StoredPlan = {
   campaigns: CampaignPlan[];
   statuses: Array<"todo" | "in_progress" | "done">;
   activeIndex: number | null;
+  workspaceIds?: Array<string | null>;
 };
+
+type CampaignTemplate = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  objective: string;
+  use_case?: string | null;
+  strategy_template: Record<string, any> | null;
+};
+
+const fallbackAngles = [
+  {
+    id: "angle-1",
+    name: "Teach the Hidden Mistake",
+    hook: "The tiny mistake that keeps this feeling harder than it needs to.",
+    description: "Open with the common pain, teach one simple correction, then point viewers toward the full training topic.",
+    psychologyTrigger: "Clarity",
+  },
+  {
+    id: "angle-2",
+    name: "One Shift to Try Today",
+    hook: "Try this before you change your whole strategy.",
+    description: "Give one practical educational takeaway that helps the viewer feel progress immediately.",
+    psychologyTrigger: "Quick win",
+  },
+  {
+    id: "angle-3",
+    name: "What I Wish You Knew",
+    hook: "What I wish more people knew before they tried to fix this.",
+    description: "Reframe the problem with an expert insight and invite viewers to keep learning from the training content.",
+    psychologyTrigger: "Authority",
+  },
+];
+
+function pickStrategyTemplate(
+  list: CampaignTemplate[],
+  objective = "",
+  campaignName = "",
+): CampaignTemplate | null {
+  if (!list.length) return null;
+  const combined = `${objective} ${campaignName}`.toLowerCase();
+  const intent = /awareness|education|educat|training|train|nurture|video[_\s-]?views?|view_content/.test(combined)
+    ? "awareness"
+    : /lead|webinar|freebie|opt.?in|registration|complete_registration/.test(combined)
+    ? "lead"
+    : /traffic|visit|click|instagram|profile/.test(combined)
+    ? "traffic"
+    : /engagement|comment|message|dm|conversation/.test(combined)
+    ? "engagement"
+    : /sales|sale|purchase|conversion|convert|checkout/.test(combined)
+    ? "sales"
+    : "";
+
+  if (intent) {
+    const byIntent = list.find((t) => {
+      const haystack = `${t.objective || ""} ${t.name || ""} ${t.slug || ""} ${t.use_case || ""}`.toLowerCase();
+      return haystack.includes(intent) || (intent === "lead" && haystack.includes("leads"));
+    });
+    if (byIntent) return byIntent;
+  }
+
+  const obj = objective.trim().toLowerCase();
+  if (obj) {
+    const exact = list.find((t) => (t.objective || "").toLowerCase() === obj);
+    if (exact) return exact;
+  }
+
+  return null;
+}
 
 export const STRATEGY_PLAN_KEY = "lumi_strategy_plan";
 
@@ -63,7 +137,9 @@ export function clearStrategyPlan() {
 export default function StrategyPlan() {
   const navigate = useNavigate();
   const { setStrategy, clearDraft } = useCampaignDraft();
+  const { activeBrand } = useBrand();
   const [plan, setPlan] = useState<StoredPlan | null>(null);
+  const [buildingIndex, setBuildingIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const p = loadStrategyPlan();
@@ -88,10 +164,17 @@ export default function StrategyPlan() {
     setPlan(next);
   };
 
-  const startCampaign = (idx: number) => {
+  const startCampaign = async (idx: number) => {
+    if (buildingIndex !== null) return;
+    if (!activeBrand?.id) {
+      toast.error("Choose a brand first.");
+      return;
+    }
+
     const statuses = [...plan.statuses];
     if (statuses[idx] === "todo") statuses[idx] = "in_progress";
-    update({ ...plan, statuses, activeIndex: idx });
+    const startedPlan = { ...plan, statuses, activeIndex: idx };
+    update(startedPlan);
     const c = plan.campaigns[idx];
     const goal = c?.goal;
     const objective = c?.objective;
@@ -112,13 +195,131 @@ export default function StrategyPlan() {
       description: c?.description,
     });
 
-    const params = new URLSearchParams({ from: "strategy" });
-    if (goal) params.set("goal", goal);
-    if (objective) params.set("objective", objective);
-    if (campaignName) params.set("campaignName", campaignName);
-    if (plan.offer_id) params.set("offerId", plan.offer_id);
-    params.set("campaignIdx", String(idx));
-    navigate(`/create?${params.toString()}`);
+    const existingWorkspaceId = startedPlan.workspaceIds?.[idx];
+    if (existingWorkspaceId) {
+      navigate(`/creative-studio?workspace=${existingWorkspaceId}`);
+      return;
+    }
+
+    setBuildingIndex(idx);
+    try {
+      const [{ data: brandData, error: brandError }, { data: templatesData, error: templatesError }] = await Promise.all([
+        supabase.from("brands").select("*").eq("id", activeBrand.id).single(),
+        supabase.from("campaign_templates").select("*").eq("active", true).order("sort_order"),
+      ]);
+      if (brandError) throw brandError;
+      if (templatesError) throw templatesError;
+
+      const templates = (templatesData || []) as CampaignTemplate[];
+      const selectedTemplate = pickStrategyTemplate(templates, objective, campaignName) || templates[0];
+      if (!selectedTemplate) throw new Error("Missing campaign template");
+
+      const { data: selectedOffer } = plan.offer_id
+        ? await supabase.from("offers").select("*").eq("id", plan.offer_id).maybeSingle()
+        : { data: null } as any;
+
+      const strategyJson = {
+        ...(selectedTemplate.strategy_template || {}),
+        objective,
+        campaign_name: campaignName,
+        creative_brief: c?.creative_brief || null,
+        strategyPlanContext: {
+          objective,
+          name: campaignName,
+          goal,
+          audience: c?.audience || null,
+          creative_brief: c?.creative_brief || null,
+        },
+      };
+
+      const { data: anglesData, error: anglesError } = await supabase.functions.invoke("generate-creative-angles", {
+        body: {
+          brandName: (brandData as any).name,
+          strategyData: strategyJson,
+          audiencePsychology: (brandData as any).audience_psychology,
+          offerData: selectedOffer
+            ? {
+                name: (selectedOffer as any).name,
+                description: (selectedOffer as any).description,
+                price: (selectedOffer as any).price_point,
+                product_psychology: (selectedOffer as any).product_psychology,
+              }
+            : {
+                name: campaignName || plan.name,
+                description: c?.description,
+              },
+          campaignObjective: objective,
+          creativeBrief: c?.creative_brief || null,
+          campaignName,
+        },
+      });
+      if (anglesError) throw anglesError;
+
+      const finalAngles = Array.isArray((anglesData as any)?.angles) && (anglesData as any).angles.length > 0
+        ? (anglesData as any).angles
+        : fallbackAngles;
+
+      const workspaceName = campaignName || selectedTemplate.name;
+      const { data: strategy, error: strategyError } = await supabase
+        .from("strategies")
+        .insert({
+          brand_id: activeBrand.id,
+          template_id: selectedTemplate.id,
+          name: workspaceName,
+          campaign_type: (selectedTemplate.strategy_template as any)?.campaign_type || "cold",
+          messaging_framework: (selectedTemplate.strategy_template as any)?.messaging_framework,
+          audience_psychology: (selectedTemplate.strategy_template as any)?.audience_psychology,
+          optimization_goals: (selectedTemplate.strategy_template as any)?.optimization_goals,
+          kpi_benchmarks: (selectedTemplate.strategy_template as any)?.kpi_benchmarks,
+          status: "active",
+          offer_name: (selectedOffer as any)?.name || null,
+          offer_url: (selectedOffer as any)?.url || null,
+          offer_price: (selectedOffer as any)?.price_point || null,
+          offer_description: (selectedOffer as any)?.description || null,
+        })
+        .select()
+        .single();
+      if (strategyError) throw strategyError;
+
+      const { data: workspace, error: workspaceError } = await supabase
+        .from("campaign_workspaces")
+        .insert([{ 
+          brand_id: activeBrand.id,
+          strategy_id: (strategy as any).id,
+          template_id: selectedTemplate.id,
+          name: workspaceName,
+          strategy_json: strategyJson as any,
+          progress_status: "creative_in_progress",
+          offer_id: (selectedOffer as any)?.id || plan.offer_id || null,
+          offer_name: (selectedOffer as any)?.name || null,
+          offer_url: (selectedOffer as any)?.url || null,
+          offer_price: (selectedOffer as any)?.price_point || null,
+          offer_description: (selectedOffer as any)?.description || null,
+          creative_json: {
+            angles: finalAngles.map((a: any) => ({ ...a })),
+            selectedAngleIds: [],
+            selectedCreativeTemplates: [],
+            phase1Flow: true,
+            fromStrategyPlan: true,
+            strategyPlanSlug: plan.slug,
+            strategyPlanCampaignIndex: idx,
+          } as any,
+        }])
+        .select()
+        .single();
+      if (workspaceError) throw workspaceError;
+
+      const workspaceIds = [...(startedPlan.workspaceIds || Array(plan.campaigns.length).fill(null))];
+      workspaceIds[idx] = (workspace as any).id;
+      update({ ...startedPlan, workspaceIds });
+      toast.success("Angles are ready.");
+      navigate(`/creative-studio?workspace=${(workspace as any).id}`);
+    } catch (error: any) {
+      console.error("Error opening strategy campaign:", error);
+      toast.error(error.message || "Failed to open angles");
+    } finally {
+      setBuildingIndex(null);
+    }
   };
 
   const markDone = (idx: number) => {
@@ -276,10 +477,20 @@ export default function StrategyPlan() {
                           <Button
                             size="sm"
                             onClick={() => startCampaign(idx)}
+                            disabled={buildingIndex !== null}
                             className={isActive ? "" : ""}
                           >
-                            {isActive ? "Resume building" : "Start building"}
-                            <ArrowRight className="h-4 w-4 ml-1" />
+                            {buildingIndex === idx ? (
+                              <>
+                                Opening angles
+                                <Loader2 className="h-4 w-4 ml-1 animate-spin" />
+                              </>
+                            ) : (
+                              <>
+                                {isActive ? "Resume building" : "Start building"}
+                                <ArrowRight className="h-4 w-4 ml-1" />
+                              </>
+                            )}
                           </Button>
                         )}
                         {!isDone && isActive && (
