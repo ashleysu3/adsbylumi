@@ -34,7 +34,8 @@ function getStepState(stepKey: string, currentStage: Stage) {
   return "upcoming";
 }
 
-export default function CampaignBuilder() {
+export default function CampaignBuilder({ embedded = false }: { embedded?: boolean } = {}) {
+  const Layout: any = embedded ? (({ children }: any) => <>{children}</>) : DashboardLayout;
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
