@@ -433,6 +433,18 @@ export default function Create() {
     }
   }, [selectedGoal, currentStep, templates]);
 
+  // When the user arrived from the Strategy Plan, skip the "Recommended strategy"
+  // step entirely — they already picked their campaign in the plan. Once an offer
+  // and a template are locked in, generate angles and jump straight to Creative Studio.
+  useEffect(() => {
+    if (!fromStrategy) return;
+    if (currentStep !== 2) return;
+    if (!selectedOfferId || !selectedTemplateId) return;
+    if (isGeneratingAngles || isCreatingCampaign) return;
+    handleGenerateAndNavigate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromStrategy, currentStep, selectedOfferId, selectedTemplateId]);
+
   const handleNext = async () => {
     if (currentStep === 2) {
       // After strategy, generate angles and go directly to Creative Studio
