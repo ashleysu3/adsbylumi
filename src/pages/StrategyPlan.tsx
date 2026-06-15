@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { CampaignSpine } from "@/components/CampaignSpine";
 
 type CampaignPlan = {
   name?: string;
