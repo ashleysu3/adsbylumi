@@ -23,6 +23,7 @@ import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { clearStrategyPlan } from "./StrategyPlan";
+import { StrategyChatPanel } from "@/components/StrategyChatPanel";
 
 type CampaignPlan = {
   name?: string;
@@ -532,8 +533,13 @@ export default function Strategy() {
                 <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
+
+            <div className="pt-4">
+              <StrategyChatPanel />
+            </div>
           </motion.div>
         )}
+
       </div>
     </div>
   );
