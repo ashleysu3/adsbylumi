@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
@@ -8,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Download, Images, Sparkles, Check, Plus } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Loader2, Download, Images, Sparkles, Check, Plus, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
+import { AdPreview } from "@/components/AdPreview";
 
 const EMPTY_COLORS = {
   bg: "#ffffff",
@@ -61,6 +63,7 @@ export default function AdGenerator() {
   const [hasKit, setHasKit] = useState(false);
   const [creativeDirection, setCreativeDirection] = useState("");
   const [composing, setComposing] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   type ComposedOption = {
     eyebrow: string; headlinePre: string; headlineHL: string; headlinePost: string;
     accent: string; sub: string; cta: string; badgeTop: string; badgeBottom: string;
@@ -254,6 +257,26 @@ export default function AdGenerator() {
     a.click();
   };
 
+  // Map AdGenerator's structured copy into the AdPreview "concept" shape
+  // so the live Meta-surface preview reflects what the user is typing.
+  const previewConcept = useMemo(() => {
+    const headline = [copy.headlinePre, copy.headlineHL, copy.headlinePost]
+      .filter(Boolean)
+      .join(" ");
+    return {
+      title: copy.eyebrow || "Live preview",
+      finalCopy: {
+        headline: headline || "Your headline",
+        primaryText: [copy.sub, copy.accent].filter(Boolean).join(" "),
+        description: copy.eyebrow,
+        cta: copy.cta || "Learn more",
+      },
+      linkedAsset: selectedPhoto
+        ? { url: selectedPhoto.url, type: "image" }
+        : undefined,
+    };
+  }, [copy, selectedPhoto]);
+
   const ColorPicker = ({ label, k }: { label: string; k: keyof BrandKitColors }) => (
     <div className="space-y-1">
       <Label className="text-xs">{label}</Label>
@@ -321,7 +344,7 @@ export default function AdGenerator() {
           <p className="text-muted-foreground">Generate branded ad creatives in seconds.</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           {/* LEFT - Form */}
           <div className="space-y-4">
             <Card>
@@ -365,20 +388,6 @@ export default function AdGenerator() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Brand colors</CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <ColorPicker label="Background" k="bg" />
-                <ColorPicker label="Ink" k="ink" />
-                <ColorPicker label="Accent" k="accent" />
-                <ColorPicker label="Pop" k="pop" />
-                <ColorPicker label="Highlight" k="highlight" />
-                <ColorPicker label="Cream" k="cream" />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
                 <CardTitle className="text-base">Your message</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -388,13 +397,7 @@ export default function AdGenerator() {
                   <TextField label="Highlighted word(s)" k="headlineHL" />
                   <TextField label="Headline rest" k="headlinePost" />
                 </div>
-                <TextField label="Italic accent (optional)" k="accent" />
                 <TextField label="Subtext" k="sub" multiline />
-                <TextField label="Button text" k="cta" />
-                <div className="grid grid-cols-2 gap-2">
-                  <TextField label="Badge top" k="badgeTop" />
-                  <TextField label="Badge bottom" k="badgeBottom" />
-                </div>
               </CardContent>
             </Card>
 
@@ -440,25 +443,73 @@ export default function AdGenerator() {
                     ))}
                   </div>
                 )}
-
-                <div className="flex items-center justify-between rounded border border-border p-3">
-                  <div>
-                    <Label className="text-sm">
-                      {removeBackground ? "Remove background" : "Use with background"}
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      {removeBackground
-                        ? "We'll cut your subject out of the photo."
-                        : "Keep the original photo as-is."}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={removeBackground}
-                    onCheckedChange={setRemoveBackground}
-                  />
-                </div>
               </CardContent>
             </Card>
+
+            {/* Advanced — collapsed by default to reduce the wall-of-cards feel */}
+            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+              <Card>
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-6 py-4 text-left"
+                  >
+                    <div>
+                      <p className="text-base font-semibold">Advanced</p>
+                      <p className="text-xs text-muted-foreground">
+                        Colors, badges, button text, italic accent, background
+                      </p>
+                    </div>
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${advancedOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="space-y-5 pt-0">
+                    <div className="space-y-3">
+                      <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Brand colors
+                      </Label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <ColorPicker label="Background" k="bg" />
+                        <ColorPicker label="Ink" k="ink" />
+                        <ColorPicker label="Accent" k="accent" />
+                        <ColorPicker label="Pop" k="pop" />
+                        <ColorPicker label="Highlight" k="highlight" />
+                        <ColorPicker label="Cream" k="cream" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <TextField label="Italic accent (optional)" k="accent" />
+                      <TextField label="Button text" k="cta" />
+                      <div className="grid grid-cols-2 gap-2">
+                        <TextField label="Badge top" k="badgeTop" />
+                        <TextField label="Badge bottom" k="badgeBottom" />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded border border-border p-3">
+                      <div>
+                        <Label className="text-sm">
+                          {removeBackground ? "Remove background" : "Use with background"}
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          {removeBackground
+                            ? "We'll cut your subject out of the photo."
+                            : "Keep the original photo as-is."}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={removeBackground}
+                        onCheckedChange={setRemoveBackground}
+                      />
+                    </div>
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
 
             <Button onClick={generate} disabled={loading || !selectedPhoto} size="lg" className="w-full">
               {loading ? (
@@ -471,83 +522,91 @@ export default function AdGenerator() {
             </Button>
           </div>
 
-          {/* RIGHT - Results */}
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Results</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading && (
-                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                    <Loader2 className="h-8 w-8 animate-spin mb-2" />
-                    <p className="text-sm">Generating your ads (~6–8s)…</p>
-                  </div>
-                )}
-                {!loading && images.length === 0 && (
-                  <p className="text-sm text-muted-foreground py-12 text-center">
-                    Upload a photo and click "Generate ads" to see results.
-                  </p>
-                )}
-                {!loading && images.length > 0 && (
-                  <div className="space-y-6">
-                    {images.map((img, i) => {
-                      const conceptId = `design-${img.placement}-${img.base64.slice(0, 24)}`;
-                      const added = draft.concepts.some((c) => c.id === conceptId);
-                      const dataUrl = `data:image/png;base64,${img.base64}`;
-                      const handleAdd = () => {
-                        if (added) {
-                          removeConcept(conceptId);
-                          toast.success("Removed from launch set");
-                          return;
-                        }
-                        addConcept({
-                          id: conceptId,
-                          title: `Design — ${PLACEMENT_LABELS[img.placement] || img.placement}`,
-                          angle: "Design",
-                          styleHint: img.placement,
-                          templateName: "ad-generator",
-                          assetUrl: dataUrl,
-                          thumbnailUrl: dataUrl,
-                          copy: copy,
-                        });
-                        toast.success("Added to launch set");
-                      };
-                      return (
-                        <div key={i} className="space-y-2">
-                          <div className="flex items-center justify-between gap-2 flex-wrap">
-                            <p className="text-sm font-medium">
-                              {PLACEMENT_LABELS[img.placement] || `${img.placement} ${img.width}×${img.height}`}
-                            </p>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant={added ? "secondary" : "default"}
-                                onClick={handleAdd}
-                              >
-                                {added ? (
-                                  <><Check className="h-3 w-3 mr-1" /> Added</>
-                                ) : (
-                                  <><Plus className="h-3 w-3 mr-1" /> Add to launch</>
-                                )}
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={() => download(img)}>
-                                <Download className="h-3 w-3 mr-1" /> Download
-                              </Button>
+          {/* RIGHT - Sticky live preview + results */}
+          <div className="lg:sticky lg:top-6 space-y-4">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                Live preview
+              </p>
+              <AdPreview
+                concept={previewConcept}
+                brandName={activeBrand?.name || "Your Brand"}
+                websiteUrl={activeBrand?.website_url || undefined}
+              />
+            </div>
+
+            {(loading || images.length > 0) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Generated variations</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {loading && (
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                      <Loader2 className="h-8 w-8 animate-spin mb-2" />
+                      <p className="text-sm">Generating your ads (~6–8s)…</p>
+                    </div>
+                  )}
+                  {!loading && images.length > 0 && (
+                    <div className="space-y-6">
+                      {images.map((img, i) => {
+                        const conceptId = `design-${img.placement}-${img.base64.slice(0, 24)}`;
+                        const added = draft.concepts.some((c) => c.id === conceptId);
+                        const dataUrl = `data:image/png;base64,${img.base64}`;
+                        const handleAdd = () => {
+                          if (added) {
+                            removeConcept(conceptId);
+                            toast.success("Removed from launch set");
+                            return;
+                          }
+                          addConcept({
+                            id: conceptId,
+                            title: `Design — ${PLACEMENT_LABELS[img.placement] || img.placement}`,
+                            angle: "Design",
+                            styleHint: img.placement,
+                            templateName: "ad-generator",
+                            assetUrl: dataUrl,
+                            thumbnailUrl: dataUrl,
+                            copy: copy,
+                          });
+                          toast.success("Added to launch set");
+                        };
+                        return (
+                          <div key={i} className="space-y-2">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <p className="text-sm font-medium">
+                                {PLACEMENT_LABELS[img.placement] || `${img.placement} ${img.width}×${img.height}`}
+                              </p>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant={added ? "secondary" : "default"}
+                                  onClick={handleAdd}
+                                >
+                                  {added ? (
+                                    <><Check className="h-3 w-3 mr-1" /> Added</>
+                                  ) : (
+                                    <><Plus className="h-3 w-3 mr-1" /> Add to launch</>
+                                  )}
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => download(img)}>
+                                  <Download className="h-3 w-3 mr-1" /> Download
+                                </Button>
+                              </div>
                             </div>
+                            <img
+                              src={dataUrl}
+                              alt={img.placement}
+                              className="w-full rounded border border-border"
+                            />
                           </div>
-                          <img
-                            src={dataUrl}
-                            alt={img.placement}
-                            className="w-full rounded border border-border"
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
