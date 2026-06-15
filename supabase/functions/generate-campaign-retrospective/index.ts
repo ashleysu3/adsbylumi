@@ -67,6 +67,23 @@ interface RetrospectiveJSON {
     goal_actual?: number | null;
     goal_hit?: boolean | null;
     goal_delta_pct?: number | null;
+    /** Set when the objective's native KPI returned 0 results and we
+     *  re-evaluated against a signal that actually moved. */
+    kpi_fallback_from?: string | null;
+    kpi_fallback_from_label?: string | null;
+    kpi_fallback_to?: string | null;
+    kpi_fallback_to_label?: string | null;
+    kpi_fallback_note?: string | null;
+    /** Always-on cross-KPI strip so even when the primary is 0 you can see
+     *  what did happen. */
+    other_signals?: {
+      spend: number;
+      impressions: number;
+      clicks: number;
+      leads: number;
+      purchases: number;
+      video_views: number;
+    } | null;
   };
   data_quality: 'high' | 'medium' | 'low' | 'insufficient';
   data_quality_note?: string;
@@ -79,6 +96,7 @@ interface RetrospectiveJSON {
   recommendations: Array<{ insight: string; supporting_data?: string; confidence: 'high' | 'medium' | 'low' }>;
   generated_at: string;
 }
+
 
 async function canAccessBrand(sb: any, ownerId: string, userId: string, brandId: string): Promise<boolean> {
   if (ownerId === userId) return true;
@@ -259,10 +277,56 @@ Deno.serve(async req => {
 
     const durationDays = computeDurationDays(performance, dateRange, workspace);
 
+    // --- KPI auto-fallback ----------------------------------------------------
+    // If the objective's native KPI returned ZERO results but another signal
+    // actually moved (leads / purchases / clicks / video views), re-evaluate
+    // the retro against that signal so the user sees a real debrief instead
+    // of a card full of zeros. We label it clearly so it's never silent.
+    let effectiveKpi = primaryKpi;
+    let kpiFallback: {
+      from: string; from_label: string; to: string; to_label: string; note: string;
+    } | null = null;
+    if (performance?.totals) {
+      const t = performance.totals;
+      const primaryResults = Number(t.results || 0);
+      if (primaryResults === 0 && Number(t.spend || 0) > 0) {
+        const fb = pickFallbackKpi(primaryKpi, t);
+        if (fb && fb !== primaryKpi) {
+          effectiveKpi = fb;
+          // Recompute totals.results against the fallback so downstream
+          // (stats.total_results, prompt summary) reflects the new KPI.
+          t.results = recountResultsFor(fb, t);
+          kpiFallback = {
+            from: primaryKpi,
+            from_label: KPI_LABELS[primaryKpi] || primaryKpi,
+            to: fb,
+            to_label: KPI_LABELS[fb] || fb,
+            note: `Your objective was ${KPI_LABELS[primaryKpi] || primaryKpi}, but Meta reported 0 ${KPI_LABELS[primaryKpi]?.toLowerCase() || primaryKpi} results, so we evaluated against ${KPI_LABELS[fb] || fb} (which had real signal) instead.`,
+          };
+          // Also re-roll adset/ad breakdowns under the new KPI so the prompt's
+          // per-row "results" + kpi_value reflect what we're actually judging.
+          if (Array.isArray(performance.adsets)) {
+            performance.adsets = performance.adsets.map((a: any) => {
+              if (!a._kpi) return a;
+              a._kpi.results = recountResultsFor(fb, a._kpi);
+              return a;
+            });
+          }
+          if (Array.isArray(performance.ads)) {
+            performance.ads = performance.ads.map((a: any) => {
+              if (!a._kpi) return a;
+              a._kpi.results = recountResultsFor(fb, a._kpi);
+              return a;
+            });
+          }
+        }
+      }
+    }
+
     const actualValue = goal && performance?.totals
       ? extractKpiValue(performance.totals, goal.kpi)
       : performance?.totals
-        ? extractKpiValue(performance.totals, primaryKpi)
+        ? extractKpiValue(performance.totals, effectiveKpi)
         : null;
     const goalEval = goal && actualValue != null ? evalGoal(goal, actualValue) : null;
 
@@ -276,14 +340,17 @@ Deno.serve(async req => {
       brandName: brand.name,
       offerName: workspace.offer_name || workspace.name || 'Unnamed campaign',
       durationDays, dateRange,
-      primaryKpi, primaryKpiLabel: KPI_LABELS[primaryKpi] || primaryKpi,
+      primaryKpi: effectiveKpi,
+      primaryKpiLabel: KPI_LABELS[effectiveKpi] || effectiveKpi,
       goal, goalEval, dataQuality: dq,
       strategy: workspace.strategy_json,
       creative: workspace.creative_json,
       productionItems: workspace.production_items,
       performance,
       isImported: !workspace.creative_json,
+      kpiFallback,
     });
+
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) return json({ error: 'LOVABLE_API_KEY not configured' }, 500);
@@ -329,8 +396,8 @@ Deno.serve(async req => {
         avg_cpl: actualValue,
         duration_days: durationDays,
         objective: workspace.strategy_json?.objective || metaCampaignObjective || performance?.totals?.objective || null,
-        primary_kpi: primaryKpi,
-        primary_kpi_label: KPI_LABELS[primaryKpi] || primaryKpi,
+        primary_kpi: effectiveKpi,
+        primary_kpi_label: KPI_LABELS[effectiveKpi] || effectiveKpi,
         goal_label: goal?.label ?? null,
         goal_threshold: goal?.threshold ?? null,
         goal_unit: goal?.unit ?? null,
@@ -338,9 +405,23 @@ Deno.serve(async req => {
         goal_actual: actualValue,
         goal_hit: goalEval?.hit ?? null,
         goal_delta_pct: goalEval?.deltaPct ?? null,
+        kpi_fallback_from: kpiFallback?.from ?? null,
+        kpi_fallback_from_label: kpiFallback?.from_label ?? null,
+        kpi_fallback_to: kpiFallback?.to ?? null,
+        kpi_fallback_to_label: kpiFallback?.to_label ?? null,
+        kpi_fallback_note: kpiFallback?.note ?? null,
+        other_signals: performance?.totals ? {
+          spend: Number(performance.totals.spend || 0),
+          impressions: Number(performance.totals.impressions || 0),
+          clicks: Number(performance.totals.clicks || 0),
+          leads: Number(performance.totals.leads || 0),
+          purchases: Number(performance.totals.purchases || 0),
+          video_views: Number(performance.totals.video_views || 0),
+        } : null,
       },
       data_quality: dq.level,
       data_quality_note: dq.note,
+
       wins: normalizeBullets(parsed.wins),
       misses: normalizeBullets(parsed.underperformers || parsed.misses),
       recommendations: normalizeBullets(parsed.test_ideas || parsed.recommendations),
@@ -429,6 +510,41 @@ function numberish(v: any): number | null {
   const n = Number(v);
   return isFinite(n) ? n : null;
 }
+
+// Choose a fallback KPI when the campaign's native KPI returned zero results.
+// Priority: stay close to commercial intent (purchases > leads), then clicks,
+// then video views. We only fall back to a signal that actually moved.
+function pickFallbackKpi(currentKpi: string, totals: any): string | null {
+  const purchases = Number(totals?.purchases || 0);
+  const leads = Number(totals?.leads || 0);
+  const clicks = Number(totals?.clicks || 0);
+  const videoViews = Number(totals?.video_views || 0);
+  const candidates: Array<{ kpi: string; count: number }> = [];
+  if (currentKpi !== 'cpp' && currentKpi !== 'roas' && purchases > 0) candidates.push({ kpi: 'cpp', count: purchases });
+  if (currentKpi !== 'cpl' && leads > 0) candidates.push({ kpi: 'cpl', count: leads });
+  if (currentKpi !== 'cpc' && currentKpi !== 'ctr' && clicks > 0) candidates.push({ kpi: 'cpc', count: clicks });
+  if (currentKpi !== 'costPerThruPlay' && videoViews > 0) candidates.push({ kpi: 'costPerThruPlay', count: videoViews });
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => b.count - a.count);
+  // If the native KPI was sales/purchases but only leads exist, prefer leads
+  // (commercial-adjacent) over clicks even if clicks count is higher.
+  if ((currentKpi === 'roas' || currentKpi === 'cpp') && leads > 0) return 'cpl';
+  return candidates[0].kpi;
+}
+
+function recountResultsFor(kpi: string, totals: any): number {
+  switch (kpi) {
+    case 'cpl': return Number(totals?.leads || 0);
+    case 'cpp':
+    case 'roas': return Number(totals?.purchases || 0);
+    case 'cpc':
+    case 'ctr': return Number(totals?.clicks || 0);
+    case 'cpm': return Number(totals?.impressions || 0);
+    case 'costPerThruPlay': return Number(totals?.video_views || 0);
+    default: return Number(totals?.leads || 0);
+  }
+}
+
 
 function assessDataQuality(args: {
   totalSpend: number; totalResults: number; durationDays: number | null; goal: GoalContext | null;
@@ -586,6 +702,8 @@ function buildPrompt(args: {
   goalEval: { hit: boolean; deltaPct: number } | null;
   dataQuality: { level: string; note?: string };
   strategy: any; creative: any; productionItems: any; performance: any; isImported: boolean;
+  kpiFallback?: { from: string; from_label: string; to: string; to_label: string; note: string } | null;
+
 }): string {
   const goalLine = args.goal
     ? `Stated goal: ${args.goal.label} ${args.goal.direction === 'less_than' ? 'at or below' : 'at or above'} ${formatGoalValue(args.goal)}.${
@@ -624,8 +742,9 @@ function buildPrompt(args: {
   return `Debrief this Meta ads campaign for the person who ran it.
 
 PRIMARY KPI: ${args.primaryKpiLabel} (${args.primaryKpi}). Every "result" reference should refer to this metric — do NOT substitute a different metric.
-
+${args.kpiFallback ? `\nIMPORTANT — KPI FALLBACK APPLIED: The campaign's objective KPI was ${args.kpiFallback.from_label}, but Meta reported zero ${args.kpiFallback.from_label.toLowerCase()} results. We've evaluated this debrief against ${args.kpiFallback.to_label} instead, since that signal actually moved. In your narrative, explicitly call this out in plain English near the top (e.g. "Heads up — your campaign was set up for ${args.kpiFallback.from_label.toLowerCase()}, but Meta didn't track any. We're looking at ${args.kpiFallback.to_label.toLowerCase()} instead because that's where the real signal showed up."). Then proceed with the debrief.\n` : ''}
 ${goalLine}
+
 
 Pre-computed data quality: ${args.dataQuality.level.toUpperCase()}${args.dataQuality.note ? ` — ${args.dataQuality.note}` : ''}
 

@@ -43,6 +43,19 @@ export interface CampaignRetrospectiveJSON {
     goal_actual?: number | null;
     goal_hit?: boolean | null;
     goal_delta_pct?: number | null;
+    kpi_fallback_from?: string | null;
+    kpi_fallback_from_label?: string | null;
+    kpi_fallback_to?: string | null;
+    kpi_fallback_to_label?: string | null;
+    kpi_fallback_note?: string | null;
+    other_signals?: {
+      spend: number;
+      impressions: number;
+      clicks: number;
+      leads: number;
+      purchases: number;
+      video_views: number;
+    } | null;
   };
   data_quality?: 'high' | 'medium' | 'low' | 'insufficient';
   data_quality_note?: string;
@@ -51,6 +64,7 @@ export interface CampaignRetrospectiveJSON {
   recommendations: Array<{ insight: string; supporting_data?: string; confidence: 'high' | 'medium' | 'low' }>;
   generated_at: string;
 }
+
 
 interface BrandHeaderInfo {
   campaignName: string;
@@ -239,6 +253,21 @@ export function CampaignRetrospective({
           </Card>
         )}
 
+        {/* KPI fallback note — when the objective's native KPI returned 0 results */}
+        {retro.stats.kpi_fallback_note && (
+          <Card className="border-blue-500/40 bg-blue-500/5">
+            <CardContent className="p-3 flex gap-2 items-start">
+              <Info className="h-4 w-4 shrink-0 mt-0.5 text-blue-600" />
+              <div className="space-y-1 text-sm">
+                <p className="font-semibold text-blue-900 dark:text-blue-100">
+                  Evaluated against {retro.stats.kpi_fallback_to_label}
+                </p>
+                <p className="text-xs text-muted-foreground leading-snug">{retro.stats.kpi_fallback_note}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Stats strip */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatTile label="Spend" value={fmtCurrency(retro.stats.total_spend)} />
@@ -246,6 +275,23 @@ export function CampaignRetrospective({
           <StatTile label={'Avg ' + (retro.stats.primary_kpi_label || 'cost / result')} value={retro.stats.avg_cpl != null ? fmtCurrency(retro.stats.avg_cpl) : '—'} />
           <StatTile label="Duration" value={retro.stats.duration_days != null ? `${retro.stats.duration_days}d` : '—'} />
         </div>
+
+        {/* Other signals — always show so even when the primary KPI is 0 you can see what did happen */}
+        {retro.stats.other_signals && (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+              Other signals
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <StatTile label="Impressions" value={fmtNumber(retro.stats.other_signals.impressions)} compact />
+              <StatTile label="Clicks" value={fmtNumber(retro.stats.other_signals.clicks)} compact />
+              <StatTile label="Leads" value={fmtNumber(retro.stats.other_signals.leads)} compact />
+              <StatTile label="Purchases" value={fmtNumber(retro.stats.other_signals.purchases)} compact />
+              <StatTile label="Video views" value={fmtNumber(retro.stats.other_signals.video_views)} compact />
+            </div>
+          </div>
+        )}
+
 
         {/* Plain-English narrative */}
         {retro.narrative && (
@@ -348,14 +394,15 @@ function NoGoalCard() {
   );
 }
 
-function StatTile({ label, value }: { label: string; value: string }) {
+function StatTile({ label, value, compact }: { label: string; value: string; compact?: boolean }) {
   return (
-    <div className="rounded-lg border bg-muted/30 p-3">
+    <div className={cn('rounded-lg border bg-muted/30', compact ? 'p-2' : 'p-3')}>
       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="text-lg font-semibold mt-0.5">{value}</p>
+      <p className={cn('font-semibold mt-0.5', compact ? 'text-sm' : 'text-lg')}>{value}</p>
     </div>
   );
 }
+
 
 function Section({
   title, subtitle, icon, items, emptyText, accentClass, showArrow,
