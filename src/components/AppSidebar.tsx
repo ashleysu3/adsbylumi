@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Package, Link2, LifeBuoy, Plus, CheckCircle2, AlertTriangle, Gift, Wrench, TrendingUp, Lock, Palette, LayoutGrid, Paintbrush, Activity } from "lucide-react";
+import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Package, Link2, LifeBuoy, Plus, CheckCircle2, AlertTriangle, Gift, Wrench, TrendingUp, Lock, Palette, LayoutGrid, Paintbrush, Activity, Lightbulb, Rocket } from "lucide-react";
 import { LadybugIcon } from "@/components/LadybugIcon";
 import { useState as useReactState } from "react";
 import { BugReportModal } from "@/components/BugReportModal";
@@ -29,18 +29,18 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const createNav = [
-  { path: "/campaigns", icon: FolderKanban, label: "My Campaigns", tooltip: "See and manage all your ads" },
-  { path: "/retrospectives", icon: Sparkles, label: "Campaign Retrospectives", tooltip: "Post-mortems on past campaigns from your Meta account" },
-  { path: "/creative-studio", icon: Paintbrush, label: "Creative Studio", tooltip: "Build your ad angles, copy, and creative briefs" },
-  { path: "/creative-toolkit", icon: Wrench, label: "Creative Toolkit", tooltip: "Templates, B-roll ideas, music, and production tools" },
-  
+// Primary workflow — the 4 steps every campaign moves through.
+const primaryNav = [
+  { path: "/strategy", icon: Lightbulb, label: "Strategy", tooltip: "Plan your campaign angle and audience" },
+  { path: "/creative", icon: Paintbrush, label: "Creative", tooltip: "Build your ad copy and visuals" },
+  { path: "/launch", icon: Rocket, label: "Launch", tooltip: "Push your campaign live to Meta" },
+  { path: "/performance", icon: BarChart3, label: "Performance", tooltip: "See what's working and optimize" },
 ];
 
-const brandNav = [
-  { path: "/dashboard", icon: Building2, label: "Home", tooltip: "Your brand info, offers, and settings" },
-  { path: "/style", icon: Palette, label: "Style", tooltip: "Ad copy voice, emojis, b-roll, and text overlays" },
-  { path: "/content-library", icon: Library, label: "Concept Library", tooltip: "Browse your saved ad concepts" },
+// "Set once" — brand-level configuration you rarely revisit.
+const setOnceNav = [
+  { path: "/dashboard", icon: Building2, label: "Brand", tooltip: "Your brand info, offers, and voice" },
+  { path: "/settings", icon: Settings, label: "Settings", tooltip: "Account, billing, and preferences" },
 ];
 
 interface AppSidebarProps {
@@ -228,11 +228,11 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
 
       {/* Main Navigation */}
       <SidebarContent>
+        {/* Primary workflow */}
         <SidebarGroup>
-          <SidebarGroupLabel>Create</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {createNav.map((item) => (
+              {primaryNav.map((item) => (
                 <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton asChild tooltip={item.tooltip}>
                     <NavLink
@@ -253,12 +253,12 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
 
         <SidebarSeparator />
 
-        {/* Tools */}
+        {/* Set once — brand-level config */}
         <SidebarGroup>
-          <SidebarGroupLabel>My Brand</SidebarGroupLabel>
+          <SidebarGroupLabel>Set once</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {brandNav.map((item) => (
+              {setOnceNav.map((item) => (
                 <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton asChild tooltip={item.tooltip}>
                     <NavLink
@@ -314,6 +314,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
 
         <SidebarSeparator />
 

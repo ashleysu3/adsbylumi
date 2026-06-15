@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { CampaignSpine } from "@/components/CampaignSpine";
 
 type CampaignPlan = {
   name?: string;
@@ -116,6 +117,7 @@ export default function StrategyPlan() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8">
+        <CampaignSpine currentStep={1} />
         <Button
           variant="ghost"
           size="sm"

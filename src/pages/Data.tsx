@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { LumiEducationCard } from '@/components/LumiEducationCard';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
+import { CampaignSpine } from '@/components/CampaignSpine';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -1120,6 +1121,8 @@ export default function AdPerformance() {
   return (
     <DashboardLayout>
       <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4">
+        <CampaignSpine currentStep={4} />
+
 
         {/* ─── Red Alert Banner ─── */}
         {redCampaignCount > 0 && view === 'home' && (

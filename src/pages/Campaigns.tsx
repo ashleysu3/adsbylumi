@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import DashboardLayout from "@/components/DashboardLayout";
+import { CampaignSpine } from "@/components/CampaignSpine";
 import { CampaignsList } from "@/components/CampaignsList";
 import { ResumeWorkspaceBanner } from "@/components/ResumeWorkspaceBanner";
 import { GridShimmer } from "@/components/GradientShimmer";
@@ -79,6 +80,7 @@ export default function Campaigns() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        <CampaignSpine currentStep={3} />
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-3xl font-display font-bold tracking-tight">
