@@ -277,10 +277,56 @@ Deno.serve(async req => {
 
     const durationDays = computeDurationDays(performance, dateRange, workspace);
 
+    // --- KPI auto-fallback ----------------------------------------------------
+    // If the objective's native KPI returned ZERO results but another signal
+    // actually moved (leads / purchases / clicks / video views), re-evaluate
+    // the retro against that signal so the user sees a real debrief instead
+    // of a card full of zeros. We label it clearly so it's never silent.
+    let effectiveKpi = primaryKpi;
+    let kpiFallback: {
+      from: string; from_label: string; to: string; to_label: string; note: string;
+    } | null = null;
+    if (performance?.totals) {
+      const t = performance.totals;
+      const primaryResults = Number(t.results || 0);
+      if (primaryResults === 0 && Number(t.spend || 0) > 0) {
+        const fb = pickFallbackKpi(primaryKpi, t);
+        if (fb && fb !== primaryKpi) {
+          effectiveKpi = fb;
+          // Recompute totals.results against the fallback so downstream
+          // (stats.total_results, prompt summary) reflects the new KPI.
+          t.results = recountResultsFor(fb, t);
+          kpiFallback = {
+            from: primaryKpi,
+            from_label: KPI_LABELS[primaryKpi] || primaryKpi,
+            to: fb,
+            to_label: KPI_LABELS[fb] || fb,
+            note: `Your objective was ${KPI_LABELS[primaryKpi] || primaryKpi}, but Meta reported 0 ${KPI_LABELS[primaryKpi]?.toLowerCase() || primaryKpi} results, so we evaluated against ${KPI_LABELS[fb] || fb} (which had real signal) instead.`,
+          };
+          // Also re-roll adset/ad breakdowns under the new KPI so the prompt's
+          // per-row "results" + kpi_value reflect what we're actually judging.
+          if (Array.isArray(performance.adsets)) {
+            performance.adsets = performance.adsets.map((a: any) => {
+              if (!a._kpi) return a;
+              a._kpi.results = recountResultsFor(fb, a._kpi);
+              return a;
+            });
+          }
+          if (Array.isArray(performance.ads)) {
+            performance.ads = performance.ads.map((a: any) => {
+              if (!a._kpi) return a;
+              a._kpi.results = recountResultsFor(fb, a._kpi);
+              return a;
+            });
+          }
+        }
+      }
+    }
+
     const actualValue = goal && performance?.totals
       ? extractKpiValue(performance.totals, goal.kpi)
       : performance?.totals
-        ? extractKpiValue(performance.totals, primaryKpi)
+        ? extractKpiValue(performance.totals, effectiveKpi)
         : null;
     const goalEval = goal && actualValue != null ? evalGoal(goal, actualValue) : null;
 
@@ -294,14 +340,17 @@ Deno.serve(async req => {
       brandName: brand.name,
       offerName: workspace.offer_name || workspace.name || 'Unnamed campaign',
       durationDays, dateRange,
-      primaryKpi, primaryKpiLabel: KPI_LABELS[primaryKpi] || primaryKpi,
+      primaryKpi: effectiveKpi,
+      primaryKpiLabel: KPI_LABELS[effectiveKpi] || effectiveKpi,
       goal, goalEval, dataQuality: dq,
       strategy: workspace.strategy_json,
       creative: workspace.creative_json,
       productionItems: workspace.production_items,
       performance,
       isImported: !workspace.creative_json,
+      kpiFallback,
     });
+
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) return json({ error: 'LOVABLE_API_KEY not configured' }, 500);
