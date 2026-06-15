@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,25 +14,22 @@ import {
   HelpCircle,
   Clock,
   History,
-  DollarSign,
   Target,
   Loader2,
-  AlertTriangle,
+  BarChart2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
-// /performance — Step 4 of the campaign spine ("Optimize").
+// /performance — leads with the engine's single highest-impact recommendation
+// across all active campaigns for the active brand.
 //
-// Everyday view. Calls evaluate-campaign-status (the decision engine) for
-// the active campaign and renders:
-//   1) Hero "the one thing this week" card from topRecommendation
-//   2) KPI cards (spend, primary KPI, cost-per-X, secondary KPI)
-//   3) "Your ads right now" with engine status badges
-//   4) Link to /retrospectives for lifetime history
-//
-// No engine logic is re-implemented here — purely a presentation layer
-// over the function output.
+// Data flow:
+//  1. Load campaign_workspaces for active brand where meta_campaign_ids is set
+//     and status != 'draft' (same shape as Data.tsx).
+//  2. For each, invoke `evaluate-campaign-status` with { brandId, metaCampaignId }.
+//  3. Collect topRecommendation from every result; pick the one with the
+//     highest `recommendation.impact`. Render hero card from it.
 // ============================================================================
 
 type Status =
@@ -49,25 +46,27 @@ interface AdEval {
   name: string;
   level: "campaign" | "adset" | "ad";
   status: Status;
-  primary: { value: number | null; vsGoalPct: number | null };
+  primary: { value: number | null; vsGoalPct: number | null; trendDirection?: string };
   secondary: { value: number | null; label: string } | null;
-  windows: {
-    long: { spend: number; results: number; kpiValue: number | null };
-  };
+  reach?: number;
+  daysLive?: number;
   recommendation: {
     action: string;
     reasoning: string;
     confidence: "high" | "medium" | "low";
+    impact: number;
+    impactReasoning: string;
   };
 }
 
 interface EngineResult {
+  success?: boolean;
   meta: {
     primaryKpi: string;
     primaryKpiLabel: string;
     primaryGoal: number | null;
-    primaryDirection: "less_than" | "greater_than";
     secondaryKpi: string | null;
+    campaignType?: string;
   };
   campaign: AdEval;
   adsets: AdEval[];
@@ -76,47 +75,26 @@ interface EngineResult {
 }
 
 const STATUS_STYLE: Record<Status, { label: string; cls: string }> = {
-  scaling_ready: {
-    label: "Scaling ready",
-    cls: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
-  },
-  performing: {
-    label: "Performing",
-    cls: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
-  },
-  promising: {
-    label: "Promising",
-    cls: "bg-sky-500/15 text-sky-700 border-sky-500/30",
-  },
-  learning: {
-    label: "Learning",
-    cls: "bg-muted text-muted-foreground border-border",
-  },
-  fatigued: {
-    label: "Fatigued",
-    cls: "bg-amber-500/15 text-amber-700 border-amber-500/30",
-  },
-  spend_starved: {
-    label: "Spend starved",
-    cls: "bg-amber-500/15 text-amber-700 border-amber-500/30",
-  },
-  underperforming: {
-    label: "Underperforming",
-    cls: "bg-destructive/15 text-destructive border-destructive/30",
-  },
+  scaling_ready: { label: "Scaling ready", cls: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" },
+  performing: { label: "Performing", cls: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" },
+  promising: { label: "Promising", cls: "bg-amber-500/15 text-amber-700 border-amber-500/30" },
+  learning: { label: "Learning", cls: "bg-muted text-muted-foreground border-border" },
+  fatigued: { label: "Fatigued", cls: "bg-amber-500/15 text-amber-700 border-amber-500/30" },
+  spend_starved: { label: "Spend starved", cls: "bg-orange-500/15 text-orange-700 border-orange-500/30" },
+  underperforming: { label: "Underperforming", cls: "bg-destructive/15 text-destructive border-destructive/30" },
 };
 
-const ACTION_LABEL: Record<string, string> = {
-  turn_off: "Turn it off",
+const ACTION_VERB: Record<string, string> = {
+  turn_off: "Turn off",
   promote_to_scaling: "Promote to scaling",
-  add_similar_variants: "Add similar variants",
-  increase_budget: "Increase budget",
-  hold: "Hold steady",
-  wait: "Give it more time",
-  refresh_creative: "Refresh creative",
-  push_delivery: "Push delivery",
-  broaden_audience: "Broaden audience",
-  reduce_budget: "Reduce budget",
+  add_similar_variants: "Add more like",
+  increase_budget: "Increase budget on",
+  hold: "Hold steady on",
+  wait: "Give more time to",
+  refresh_creative: "Refresh creative for",
+  push_delivery: "Push delivery on",
+  broaden_audience: "Broaden audience on",
+  reduce_budget: "Reduce budget on",
 };
 
 function formatKpi(kpi: string, value: number | null): string {
@@ -128,100 +106,121 @@ function formatKpi(kpi: string, value: number | null): string {
 
 export default function Performance() {
   const navigate = useNavigate();
-  const [params] = useSearchParams();
-  const workspaceIdFromUrl = params.get("workspace");
   const { activeBrand, loading: brandLoading } = useBrand();
 
-  const [workspaceId, setWorkspaceId] = useState<string | null>(
-    workspaceIdFromUrl,
-  );
-  const [workspaceName, setWorkspaceName] = useState<string>("Campaign");
-  const [result, setResult] = useState<EngineResult | null>(null);
+  const [results, setResults] = useState<EngineResult[]>([]);
+  const [chosen, setChosen] = useState<{ result: EngineResult; rec: AdEval } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [hasActive, setHasActive] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
   const [snoozedUntil, setSnoozedUntil] = useState<string | null>(null);
 
-  // Pick a workspace if one wasn't supplied
   useEffect(() => {
-    if (workspaceId || brandLoading || !activeBrand) return;
-    (async () => {
-      const { data } = await supabase
-        .from("campaign_workspaces")
-        .select("id, name")
-        .eq("brand_id", activeBrand.id)
-        .not("meta_campaign_ids", "is", null)
-        .neq("meta_campaign_status", "draft")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (data?.id) {
-        setWorkspaceId(data.id);
-        setWorkspaceName(data.name || "Campaign");
-      } else {
-        setLoading(false);
-      }
-    })();
-  }, [workspaceId, activeBrand, brandLoading]);
-
-  // Run the engine
-  useEffect(() => {
-    if (!workspaceId) return;
+    if (brandLoading || !activeBrand) return;
     let cancelled = false;
     setLoading(true);
-    setError(null);
+    setResults([]);
+    setChosen(null);
+
     (async () => {
       try {
-        const { data, error } = await supabase.functions.invoke(
-          "evaluate-campaign-status",
-          { body: { workspaceId } },
+        const { data: workspaces, error } = await supabase
+          .from("campaign_workspaces")
+          .select("id, name, meta_campaign_ids, meta_campaign_status")
+          .eq("brand_id", activeBrand.id)
+          .not("meta_campaign_ids", "is", null)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+
+        const active = (workspaces || []).filter((w: any) => {
+          const cid = (w.meta_campaign_ids as any)?.campaignId;
+          if (!cid) return false;
+          if (typeof cid === "string" && cid.includes("_")) {
+            const parts = cid.split("_");
+            const ts = parseInt(parts[parts.length - 1]);
+            const now = Date.now();
+            if (ts > now - 365 * 86400000 && ts <= now) return false;
+          }
+          if ((w.meta_campaign_status || "").toLowerCase() === "draft") return false;
+          return true;
+        });
+
+        if (cancelled) return;
+        setHasActive(active.length > 0);
+        if (active.length === 0) {
+          setLoading(false);
+          return;
+        }
+
+        const settled = await Promise.allSettled(
+          active.map((w: any) =>
+            supabase.functions.invoke("evaluate-campaign-status", {
+              body: {
+                brandId: activeBrand.id,
+                metaCampaignId: (w.meta_campaign_ids as any).campaignId,
+              },
+            }),
+          ),
         );
         if (cancelled) return;
-        if (error) throw error;
-        if ((data as any)?.error) throw new Error((data as any).error);
-        setResult(data as EngineResult);
-        if ((data as any)?.campaign?.name)
-          setWorkspaceName((data as any).campaign.name);
+
+        const ok: EngineResult[] = [];
+        settled.forEach((s) => {
+          if (s.status === "fulfilled" && s.value.data && !(s.value as any).error) {
+            const d = s.value.data as any;
+            if (d && d.campaign) ok.push(d as EngineResult);
+          }
+        });
+        setResults(ok);
+
+        let best: { result: EngineResult; rec: AdEval } | null = null;
+        for (const r of ok) {
+          const t = r.topRecommendation;
+          if (!t) continue;
+          const impact = t.recommendation?.impact ?? 0;
+          if (!best || impact > (best.rec.recommendation?.impact ?? 0)) {
+            best = { result: r, rec: t };
+          }
+        }
+        setChosen(best);
       } catch (e: any) {
-        if (!cancelled) setError(e?.message || "Couldn't load performance");
+        console.error("[performance] load error", e);
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
+
     return () => {
       cancelled = true;
     };
-  }, [workspaceId]);
+  }, [activeBrand, brandLoading]);
 
-  const top = result?.topRecommendation ?? null;
-  const primaryKpi = result?.meta.primaryKpi || "cpl";
-  const primaryLabel = result?.meta.primaryKpiLabel || "Cost per Lead";
-  const secondaryKpi = result?.meta.secondaryKpi || null;
-  const campaign = result?.campaign;
-
-  const totalSpend = useMemo(() => {
-    return campaign?.windows?.long?.spend ?? 0;
-  }, [campaign]);
-  const totalResults = campaign?.windows?.long?.results ?? 0;
+  const heroTitle = useMemo(() => {
+    if (!chosen) return "";
+    const verb = ACTION_VERB[chosen.rec.recommendation.action] || chosen.rec.recommendation.action;
+    return `${verb} "${chosen.rec.name}"`;
+  }, [chosen]);
 
   function handleSnooze() {
     const until = new Date();
     until.setDate(until.getDate() + 5);
     setSnoozedUntil(until.toISOString());
     toast.success("Snoozed for 5 days", {
-      description:
-        "We'll surface this again on " + until.toLocaleDateString() + ".",
+      description: "We'll resurface this on " + until.toLocaleDateString() + ".",
     });
-    // Note: persists to local UI only — wire to recommendation_overrides
-    // when that table lands.
+    // TODO: persist to recommendation_overrides once that table exists.
   }
 
   function handleDoIt() {
-    toast.success("Got it — opening campaign settings.", {
-      description: top?.recommendation?.reasoning,
+    toast.success("Got it — opening campaign details.", {
+      description: chosen?.rec.recommendation.reasoning,
     });
-    navigate(`/ad-performance?workspace=${workspaceId}`);
+    navigate("/data");
   }
+
+  const campaign = chosen?.result.campaign;
+  const meta = chosen?.result.meta;
+  const ads = chosen?.result.ads ?? [];
 
   return (
     <DashboardLayout>
@@ -230,16 +229,12 @@ export default function Performance() {
 
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold">{workspaceName}</h1>
+            <h1 className="text-2xl font-bold">{campaign?.name || "Performance"}</h1>
             <p className="text-sm text-muted-foreground">
               Your daily look at what's working and what to do next.
             </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => navigate("/retrospectives")}
-            className="gap-2"
-          >
+          <Button variant="outline" onClick={() => navigate("/retrospectives")} className="gap-2">
             <History className="h-4 w-4" />
             History
           </Button>
@@ -254,31 +249,24 @@ export default function Performance() {
           </Card>
         )}
 
-        {!loading && error && (
+        {!loading && (!hasActive || !chosen) && (
           <Card>
-            <CardContent className="py-8 text-center space-y-3">
-              <AlertTriangle className="h-6 w-6 text-amber-500 mx-auto" />
-              <p className="text-sm text-muted-foreground">{error}</p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setWorkspaceId((id) => id)}
-              >
-                Try again
-              </Button>
+            <CardContent className="py-10 text-center space-y-2">
+              <Sparkles className="h-6 w-6 text-lumi-pink-1 mx-auto" />
+              <p className="text-sm text-muted-foreground">
+                Once your ads have run a few days, LUMI's recommendation shows up here. ✨
+              </p>
+              {hasActive && (
+                <Button variant="link" onClick={() => navigate("/data")} className="gap-2">
+                  <BarChart2 className="h-4 w-4" />
+                  See all metrics
+                </Button>
+              )}
             </CardContent>
           </Card>
         )}
 
-        {!loading && !error && !workspaceId && (
-          <Card>
-            <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              No live campaigns yet. Launch one to see daily insights here.
-            </CardContent>
-          </Card>
-        )}
-
-        {!loading && !error && result && (
+        {!loading && chosen && (
           <>
             {/* Hero: the one thing this week */}
             <Card className="relative overflow-hidden border-transparent">
@@ -293,117 +281,85 @@ export default function Performance() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {top ? (
-                  <>
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">
-                        {top.level === "campaign"
-                          ? "Campaign"
-                          : top.level === "adset"
-                            ? "Ad set"
-                            : "Ad"}{" "}
-                        · {top.name}
-                      </div>
-                      <div className="text-lg font-semibold">
-                        {ACTION_LABEL[top.recommendation.action] ||
-                          top.recommendation.action}
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        {top.recommendation.reasoning}
-                      </p>
-                    </div>
-
-                    {whyOpen && (
-                      <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
-                        <div>
-                          <strong className="text-foreground">
-                            Confidence:
-                          </strong>{" "}
-                          {top.recommendation.confidence}
-                        </div>
-                        <div>
-                          <strong className="text-foreground">Status:</strong>{" "}
-                          {STATUS_STYLE[top.status]?.label || top.status}
-                        </div>
-                        <div>
-                          <strong className="text-foreground">
-                            Last 30 days:
-                          </strong>{" "}
-                          ${top.windows.long.spend.toFixed(2)} spend ·{" "}
-                          {top.windows.long.results} results
-                        </div>
-                      </div>
-                    )}
-
-                    {snoozedUntil && (
-                      <div className="text-xs text-muted-foreground italic">
-                        Snoozed until{" "}
-                        {new Date(snoozedUntil).toLocaleDateString()}.
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap gap-2">
-                      <Button onClick={handleDoIt} className="gap-2">
-                        <CheckCircle2 className="h-4 w-4" />
-                        Do it
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => setWhyOpen((v) => !v)}
-                        className="gap-2"
-                      >
-                        <HelpCircle className="h-4 w-4" />
-                        Why?
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        onClick={handleSnooze}
-                        className="gap-2"
-                      >
-                        <Clock className="h-4 w-4" />
-                        Snooze 5 days
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Nothing urgent — everything's tracking. We'll holler when
-                    that changes. ✨
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">
+                    {chosen.rec.level === "campaign" ? "Campaign" : chosen.rec.level === "adset" ? "Ad set" : "Ad"}
+                  </div>
+                  <div className="text-lg font-semibold">{heroTitle}</div>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {chosen.rec.recommendation.reasoning}
                   </p>
+                  {chosen.rec.recommendation.impactReasoning && (
+                    <p className="text-xs text-muted-foreground mt-2 italic">
+                      {chosen.rec.recommendation.impactReasoning}
+                    </p>
+                  )}
+                </div>
+
+                {whyOpen && (
+                  <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
+                    <div>
+                      <strong className="text-foreground">Confidence:</strong>{" "}
+                      {chosen.rec.recommendation.confidence}
+                    </div>
+                    <div>
+                      <strong className="text-foreground">Status:</strong>{" "}
+                      {STATUS_STYLE[chosen.rec.status]?.label || chosen.rec.status}
+                    </div>
+                    {chosen.rec.daysLive != null && (
+                      <div>
+                        <strong className="text-foreground">Days live:</strong> {chosen.rec.daysLive}
+                      </div>
+                    )}
+                  </div>
                 )}
+
+                {snoozedUntil && (
+                  <div className="text-xs text-muted-foreground italic">
+                    Snoozed until {new Date(snoozedUntil).toLocaleDateString()}.
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={handleDoIt} className="gap-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Do it
+                  </Button>
+                  <Button variant="outline" onClick={() => setWhyOpen((v) => !v)} className="gap-2">
+                    <HelpCircle className="h-4 w-4" />
+                    Why?
+                  </Button>
+                  <Button variant="ghost" onClick={handleSnooze} className="gap-2">
+                    <Clock className="h-4 w-4" />
+                    Snooze 5 days
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
-            {/* KPI cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <KpiCard
-                icon={<DollarSign className="h-4 w-4" />}
-                label="Spend (30d)"
-                value={`$${totalSpend.toFixed(2)}`}
-              />
+            {/* KPI cards from the chosen campaign */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
               <KpiCard
                 icon={<Target className="h-4 w-4" />}
-                label="Results (30d)"
-                value={`${totalResults}`}
-              />
-              <KpiCard
-                icon={<Target className="h-4 w-4" />}
-                label={primaryLabel}
-                value={formatKpi(primaryKpi, campaign?.primary.value ?? null)}
+                label={meta?.primaryKpiLabel || "Primary KPI"}
+                value={formatKpi(meta?.primaryKpi || "", campaign?.primary.value ?? null)}
                 hint={
-                  campaign?.primary.vsGoalPct != null
-                    ? `${campaign.primary.vsGoalPct > 0 ? "+" : ""}${campaign.primary.vsGoalPct.toFixed(0)}% vs goal`
+                  meta?.primaryGoal != null
+                    ? `Goal ${formatKpi(meta.primaryKpi, meta.primaryGoal)}`
                     : undefined
                 }
               />
+              {campaign?.secondary && (
+                <KpiCard
+                  icon={<Target className="h-4 w-4" />}
+                  label={campaign.secondary.label}
+                  value={formatKpi(meta?.secondaryKpi || "", campaign.secondary.value)}
+                />
+              )}
               <KpiCard
                 icon={<Target className="h-4 w-4" />}
-                label={campaign?.secondary?.label || "Secondary"}
-                value={
-                  campaign?.secondary
-                    ? formatKpi(secondaryKpi || "", campaign.secondary.value)
-                    : "—"
-                }
+                label="Status"
+                value={STATUS_STYLE[campaign!.status]?.label || campaign!.status}
               />
             </div>
 
@@ -413,33 +369,23 @@ export default function Performance() {
                 <CardTitle className="text-base">Your ads right now</CardTitle>
               </CardHeader>
               <CardContent>
-                {result.ads.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No ads in this window.
-                  </p>
+                {ads.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No ads in this window.</p>
                 ) : (
                   <ul className="divide-y">
-                    {result.ads.map((ad) => {
+                    {ads.map((ad) => {
                       const s = STATUS_STYLE[ad.status] ?? STATUS_STYLE.learning;
                       return (
-                        <li
-                          key={ad.id}
-                          className="py-3 flex items-center justify-between gap-3"
-                        >
+                        <li key={ad.id} className="py-3 flex items-center justify-between gap-3">
                           <div className="min-w-0">
-                            <div className="text-sm font-medium truncate">
-                              {ad.name}
-                            </div>
+                            <div className="text-sm font-medium truncate">{ad.name}</div>
                             <div className="text-xs text-muted-foreground truncate">
-                              {formatKpi(primaryKpi, ad.primary.value)} ·{" "}
-                              {ad.windows.long.results} results · $
-                              {ad.windows.long.spend.toFixed(0)} spend
+                              {formatKpi(meta?.primaryKpi || "", ad.primary.value)}
+                              {ad.daysLive != null && ` · ${ad.daysLive}d live`}
+                              {ad.reach != null && ` · ${ad.reach.toLocaleString()} reach`}
                             </div>
                           </div>
-                          <Badge
-                            variant="outline"
-                            className={cn("flex-shrink-0", s.cls)}
-                          >
+                          <Badge variant="outline" className={cn("flex-shrink-0", s.cls)}>
                             {s.label}
                           </Badge>
                         </li>
@@ -451,13 +397,9 @@ export default function Performance() {
             </Card>
 
             <div className="text-center">
-              <Button
-                variant="link"
-                onClick={() => navigate("/retrospectives")}
-                className="gap-2"
-              >
-                <History className="h-4 w-4" />
-                See full lifetime history
+              <Button variant="link" onClick={() => navigate("/data")} className="gap-2">
+                <BarChart2 className="h-4 w-4" />
+                See all metrics
               </Button>
             </div>
           </>
@@ -486,9 +428,7 @@ function KpiCard({
           <span className="truncate">{label}</span>
         </div>
         <div className="text-xl font-semibold">{value}</div>
-        {hint && (
-          <div className="text-xs text-muted-foreground mt-1">{hint}</div>
-        )}
+        {hint && <div className="text-xs text-muted-foreground mt-1">{hint}</div>}
       </CardContent>
     </Card>
   );
