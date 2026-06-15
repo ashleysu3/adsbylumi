@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Download, Images, Sparkles } from "lucide-react";
+import { Loader2, Download, Images, Sparkles, Check, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
 
 const EMPTY_COLORS = {
   bg: "#ffffff",
@@ -46,6 +47,7 @@ type GalleryPhoto = { id: string; path: string; url: string };
 export default function AdGenerator() {
   const navigate = useNavigate();
   const { activeBrand, loading: brandsLoading } = useBrand();
+  const { draft, addConcept, removeConcept } = useCampaignDraft();
   const [colors, setColors] = useState<BrandKitColors>(EMPTY_COLORS);
   const [fontUrl, setFontUrl] = useState<string>("");
   const [copy, setCopy] = useState(DEFAULT_COPY);
@@ -489,23 +491,59 @@ export default function AdGenerator() {
                 )}
                 {!loading && images.length > 0 && (
                   <div className="space-y-6">
-                    {images.map((img, i) => (
-                      <div key={i} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium">
-                            {PLACEMENT_LABELS[img.placement] || `${img.placement} ${img.width}×${img.height}`}
-                          </p>
-                          <Button size="sm" variant="outline" onClick={() => download(img)}>
-                            <Download className="h-3 w-3 mr-1" /> Download
-                          </Button>
+                    {images.map((img, i) => {
+                      const conceptId = `design-${img.placement}-${img.base64.slice(0, 24)}`;
+                      const added = draft.concepts.some((c) => c.id === conceptId);
+                      const dataUrl = `data:image/png;base64,${img.base64}`;
+                      const handleAdd = () => {
+                        if (added) {
+                          removeConcept(conceptId);
+                          toast.success("Removed from launch set");
+                          return;
+                        }
+                        addConcept({
+                          id: conceptId,
+                          title: `Design — ${PLACEMENT_LABELS[img.placement] || img.placement}`,
+                          angle: "Design",
+                          styleHint: img.placement,
+                          templateName: "ad-generator",
+                          assetUrl: dataUrl,
+                          thumbnailUrl: dataUrl,
+                          copy: copy,
+                        });
+                        toast.success("Added to launch set");
+                      };
+                      return (
+                        <div key={i} className="space-y-2">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <p className="text-sm font-medium">
+                              {PLACEMENT_LABELS[img.placement] || `${img.placement} ${img.width}×${img.height}`}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant={added ? "secondary" : "default"}
+                                onClick={handleAdd}
+                              >
+                                {added ? (
+                                  <><Check className="h-3 w-3 mr-1" /> Added</>
+                                ) : (
+                                  <><Plus className="h-3 w-3 mr-1" /> Add to launch</>
+                                )}
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => download(img)}>
+                                <Download className="h-3 w-3 mr-1" /> Download
+                              </Button>
+                            </div>
+                          </div>
+                          <img
+                            src={dataUrl}
+                            alt={img.placement}
+                            className="w-full rounded border border-border"
+                          />
                         </div>
-                        <img
-                          src={`data:image/png;base64,${img.base64}`}
-                          alt={img.placement}
-                          className="w-full rounded border border-border"
-                        />
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
