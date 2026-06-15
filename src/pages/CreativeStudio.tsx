@@ -1213,7 +1213,7 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
             </Card>
           </div>
         </motion.div>
-      </DashboardLayout>
+      </Layout>
     );
   }
 
