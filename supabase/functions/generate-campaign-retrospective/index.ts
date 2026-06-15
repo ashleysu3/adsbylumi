@@ -707,8 +707,9 @@ function buildPrompt(args: {
   return `Debrief this Meta ads campaign for the person who ran it.
 
 PRIMARY KPI: ${args.primaryKpiLabel} (${args.primaryKpi}). Every "result" reference should refer to this metric — do NOT substitute a different metric.
-
+${args.kpiFallback ? `\nIMPORTANT — KPI FALLBACK APPLIED: The campaign's objective KPI was ${args.kpiFallback.from_label}, but Meta reported zero ${args.kpiFallback.from_label.toLowerCase()} results. We've evaluated this debrief against ${args.kpiFallback.to_label} instead, since that signal actually moved. In your narrative, explicitly call this out in plain English near the top (e.g. "Heads up — your campaign was set up for ${args.kpiFallback.from_label.toLowerCase()}, but Meta didn't track any. We're looking at ${args.kpiFallback.to_label.toLowerCase()} instead because that's where the real signal showed up."). Then proceed with the debrief.\n` : ''}
 ${goalLine}
+
 
 Pre-computed data quality: ${args.dataQuality.level.toUpperCase()}${args.dataQuality.note ? ` — ${args.dataQuality.note}` : ''}
 
