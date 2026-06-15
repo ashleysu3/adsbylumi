@@ -43,6 +43,19 @@ export interface CampaignRetrospectiveJSON {
     goal_actual?: number | null;
     goal_hit?: boolean | null;
     goal_delta_pct?: number | null;
+    kpi_fallback_from?: string | null;
+    kpi_fallback_from_label?: string | null;
+    kpi_fallback_to?: string | null;
+    kpi_fallback_to_label?: string | null;
+    kpi_fallback_note?: string | null;
+    other_signals?: {
+      spend: number;
+      impressions: number;
+      clicks: number;
+      leads: number;
+      purchases: number;
+      video_views: number;
+    } | null;
   };
   data_quality?: 'high' | 'medium' | 'low' | 'insufficient';
   data_quality_note?: string;
@@ -51,6 +64,7 @@ export interface CampaignRetrospectiveJSON {
   recommendations: Array<{ insight: string; supporting_data?: string; confidence: 'high' | 'medium' | 'low' }>;
   generated_at: string;
 }
+
 
 interface BrandHeaderInfo {
   campaignName: string;
