@@ -94,6 +94,6 @@ export default function CreativeToolkit({ embedded = false }: { embedded?: boole
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </Layout>
   );
 }
