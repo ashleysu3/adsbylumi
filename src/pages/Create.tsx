@@ -157,6 +157,7 @@ export default function Create() {
   const strategyGoal = searchParams.get("goal") || "";
   const strategyObjective = searchParams.get("objective") || "";
   const strategyCampaignName = searchParams.get("campaignName") || "";
+  const strategyOfferId = searchParams.get("offerId") || "";
   const VALID_GOALS = ["promote_offer", "grow_social", "get_leads", "book_calls", "dm_leads", "local", "event_location"];
   const initialGoal = fromStrategy && VALID_GOALS.includes(strategyGoal) ? strategyGoal : (fromStrategy ? "promote_offer" : "");
 
@@ -203,7 +204,7 @@ export default function Create() {
 
   // Wizard state
   const [selectedGoal, setSelectedGoal] = useState<string>(initialGoal);
-  const [selectedOfferId, setSelectedOfferId] = useState<string>("");
+  const [selectedOfferId, setSelectedOfferId] = useState<string>(fromStrategy ? strategyOfferId : "");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [recommendedTemplate, setRecommendedTemplate] = useState<CampaignTemplate | null>(null);
   const [selectedAngle, setSelectedAngle] = useState<CreativeAngle | null>(null);
@@ -282,14 +283,14 @@ export default function Create() {
   // Reset state when brand changes
   useEffect(() => {
     setSelectedGoal(initialGoal);
-    setSelectedOfferId("");
+    setSelectedOfferId(fromStrategy ? strategyOfferId : "");
     setSelectedTemplateId("");
     setSelectedAngle(null);
     setGeneratedAngles([]);
     setSelectedCreativeTemplates([]);
     setShowSocialGrowthFlow(false);
     setCurrentStep(fromStrategy ? 1 : 0);
-  }, [activeBrand?.id]);
+  }, [activeBrand?.id, fromStrategy, strategyOfferId]);
 
   const fetchData = async () => {
     try {
