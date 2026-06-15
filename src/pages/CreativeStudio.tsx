@@ -1953,6 +1953,6 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
         )}
         <GenerateCreativeDialog />
       </motion.div>
-    </DashboardLayout>
+    </Layout>
   );
 }
