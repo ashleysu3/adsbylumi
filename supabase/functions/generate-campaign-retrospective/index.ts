@@ -511,6 +511,41 @@ function numberish(v: any): number | null {
   return isFinite(n) ? n : null;
 }
 
+// Choose a fallback KPI when the campaign's native KPI returned zero results.
+// Priority: stay close to commercial intent (purchases > leads), then clicks,
+// then video views. We only fall back to a signal that actually moved.
+function pickFallbackKpi(currentKpi: string, totals: any): string | null {
+  const purchases = Number(totals?.purchases || 0);
+  const leads = Number(totals?.leads || 0);
+  const clicks = Number(totals?.clicks || 0);
+  const videoViews = Number(totals?.video_views || 0);
+  const candidates: Array<{ kpi: string; count: number }> = [];
+  if (currentKpi !== 'cpp' && currentKpi !== 'roas' && purchases > 0) candidates.push({ kpi: 'cpp', count: purchases });
+  if (currentKpi !== 'cpl' && leads > 0) candidates.push({ kpi: 'cpl', count: leads });
+  if (currentKpi !== 'cpc' && currentKpi !== 'ctr' && clicks > 0) candidates.push({ kpi: 'cpc', count: clicks });
+  if (currentKpi !== 'costPerThruPlay' && videoViews > 0) candidates.push({ kpi: 'costPerThruPlay', count: videoViews });
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => b.count - a.count);
+  // If the native KPI was sales/purchases but only leads exist, prefer leads
+  // (commercial-adjacent) over clicks even if clicks count is higher.
+  if ((currentKpi === 'roas' || currentKpi === 'cpp') && leads > 0) return 'cpl';
+  return candidates[0].kpi;
+}
+
+function recountResultsFor(kpi: string, totals: any): number {
+  switch (kpi) {
+    case 'cpl': return Number(totals?.leads || 0);
+    case 'cpp':
+    case 'roas': return Number(totals?.purchases || 0);
+    case 'cpc':
+    case 'ctr': return Number(totals?.clicks || 0);
+    case 'cpm': return Number(totals?.impressions || 0);
+    case 'costPerThruPlay': return Number(totals?.video_views || 0);
+    default: return Number(totals?.leads || 0);
+  }
+}
+
+
 function assessDataQuality(args: {
   totalSpend: number; totalResults: number; durationDays: number | null; goal: GoalContext | null;
 }): { level: RetrospectiveJSON['data_quality']; note?: string } {
