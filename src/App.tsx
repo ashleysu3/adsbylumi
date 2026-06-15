@@ -111,6 +111,7 @@ import BrandSetup from "./pages/BrandSetup";
 import Photos from "./pages/Photos";
 import Creative from "./pages/Creative";
 import Launch from "./pages/Launch";
+import Performance from "./pages/Performance";
 
 
 const queryClient = new QueryClient();
