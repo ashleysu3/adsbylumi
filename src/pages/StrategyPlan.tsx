@@ -61,7 +61,7 @@ export function clearStrategyPlan() {
 
 export default function StrategyPlan() {
   const navigate = useNavigate();
-  const { setStrategy } = useCampaignDraft();
+  const { setStrategy, clearDraft } = useCampaignDraft();
   const [plan, setPlan] = useState<StoredPlan | null>(null);
 
   useEffect(() => {
@@ -137,18 +137,33 @@ export default function StrategyPlan() {
     navigate("/dashboard");
   };
 
+  const handleStartOver = () => {
+    const ok = window.confirm(
+      "Start over? This clears your current strategy plan and in-progress campaign draft so you can pick a different offer.",
+    );
+    if (!ok) return;
+    clearStrategyPlan();
+    clearDraft();
+    toast.success("Cleared. Let's build a fresh strategy.");
+    navigate("/recommended-strategy");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8">
         <CampaignSpine currentStep={1} />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate("/recommended-strategy")}
-          className="mb-6"
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to recommendation
-        </Button>
+        <div className="flex items-center justify-between mb-6 gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/recommended-strategy")}
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back to recommendation
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleStartOver}>
+            <RotateCcw className="h-4 w-4 mr-1" /> Start over
+          </Button>
+        </div>
 
         <div className="text-center space-y-2 mb-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-lumi-pink-1/10 to-lumi-purple-1/10 border border-lumi-pink-1/20 mb-2">

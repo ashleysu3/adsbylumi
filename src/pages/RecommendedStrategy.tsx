@@ -1,18 +1,15 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Sparkles,
   ArrowRight,
   ArrowLeft,
   Loader2,
-  Package,
-  MessageCircle,
-  Users,
-  Instagram,
-  MapPin,
   CheckCircle2,
   Mail,
+  RotateCcw,
+  Sparkles,
+  Package,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,14 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-const GOALS = [
-  { id: "promote_offer", icon: Package, title: "Promote an offer or landing page" },
-  { id: "book_calls", icon: MessageCircle, title: "Get people to contact me" },
-  { id: "dm_leads", icon: Users, title: "Get people to DM me" },
-  { id: "grow_social", icon: Instagram, title: "Grow my social presence" },
-  { id: "local", icon: MapPin, title: "Promote a local business or event" },
-];
+import { clearStrategyPlan } from "./StrategyPlan";
+import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
 
 type CampaignPlan = {
   name?: string;
@@ -48,24 +39,29 @@ type MatchedStrategy = {
   campaigns: CampaignPlan[];
 };
 
+type OfferRow = {
+  id: string;
+  name: string | null;
+  description: string | null;
+  price_point: string | null;
+  target_outcome: string | null;
+  url: string | null;
+};
+
 const CYCLE_PHRASES = [
   "your website",
   "your audience psychological profile",
   "your brand information",
-  "your offers",
+  "your selected offer",
   "your goals",
 ];
 
 function CyclingReviewing() {
   const [index, setIndex] = useState(0);
-
   useEffect(() => {
-    const timer = setInterval(() => {
-      setIndex((prev) => (prev + 1) % CYCLE_PHRASES.length);
-    }, 2500);
-    return () => clearInterval(timer);
+    const t = setInterval(() => setIndex((p) => (p + 1) % CYCLE_PHRASES.length), 2500);
+    return () => clearInterval(t);
   }, []);
-
   return (
     <p className="text-sm text-muted-foreground mt-3">
       Reviewing{" "}
@@ -93,7 +89,13 @@ function CyclingReviewing() {
 export default function RecommendedStrategy() {
   const navigate = useNavigate();
   const { activeBrand, loading: brandsLoading } = useBrand();
-  const [step, setStep] = useState<"thinking" | "result" | "error">("thinking");
+  const { clearDraft } = useCampaignDraft();
+  const [step, setStep] = useState<"pick_offer" | "thinking" | "result" | "error">(
+    "pick_offer",
+  );
+  const [offers, setOffers] = useState<OfferRow[]>([]);
+  const [offersLoading, setOffersLoading] = useState(true);
+  const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
   const [matched, setMatched] = useState<MatchedStrategy | null>(null);
   const [intro, setIntro] = useState<string>("");
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
@@ -106,15 +108,46 @@ export default function RecommendedStrategy() {
     }
   }, [brandsLoading, activeBrand, navigate]);
 
-  const runRecommendation = async () => {
+  // Load offers for the active brand
+  useEffect(() => {
+    if (!activeBrand) return;
+    let cancelled = false;
+    (async () => {
+      setOffersLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("offers")
+          .select("id,name,description,price_point,target_outcome,url")
+          .eq("brand_id", activeBrand.id)
+          .eq("archived", false)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        if (!cancelled) setOffers((data ?? []) as unknown as OfferRow[]);
+      } catch (err: any) {
+        console.error(err);
+        if (!cancelled) setOffers([]);
+      } finally {
+        if (!cancelled) setOffersLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeBrand]);
+
+  const runRecommendation = async (offerId: string | null) => {
     if (!activeBrand) return;
     setStep("thinking");
     setErrorMsg(null);
+    setMatched(null);
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "recommend-strategy",
-        { body: { brand_id: activeBrand.id, user_goal: "auto" } },
-      );
+      const { data, error } = await supabase.functions.invoke("recommend-strategy", {
+        body: {
+          brand_id: activeBrand.id,
+          user_goal: "auto",
+          offer_id: offerId,
+        },
+      });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
@@ -134,12 +167,14 @@ export default function RecommendedStrategy() {
     }
   };
 
-  useEffect(() => {
-    if (activeBrand && step === "thinking" && !matched) {
-      runRecommendation();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBrand]);
+  const handleStartOver = () => {
+    clearStrategyPlan();
+    clearDraft();
+    setMatched(null);
+    setIntro("");
+    setSelectedOfferId(null);
+    setStep("pick_offer");
+  };
 
   const handleBuild = () => {
     if (!matched) return;
@@ -152,6 +187,7 @@ export default function RecommendedStrategy() {
       campaigns,
       statuses: campaigns.map(() => "todo" as const),
       activeIndex: null as number | null,
+      offer_id: selectedOfferId,
     };
     sessionStorage.setItem("lumi_strategy_plan", JSON.stringify(stored));
     navigate("/strategy-plan");
@@ -181,9 +217,131 @@ export default function RecommendedStrategy() {
           )}
         </div>
 
+        {step === "pick_offer" && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-5"
+          >
+            <Card className="p-5 border-lumi-pink-1/30 bg-gradient-to-br from-lumi-pink-1/5 to-lumi-purple-1/5">
+              <div className="flex items-start gap-3">
+                <Sparkles className="h-5 w-5 text-lumi-pink-1 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h2 className="font-semibold mb-1">
+                    What are we promoting?
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Pick the specific offer (webinar, course, product, service)
+                    you want to run ads to. Your strategy is built around it —
+                    not just your main website.
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            {offersLoading ? (
+              <div className="text-center py-10">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+              </div>
+            ) : offers.length === 0 ? (
+              <Card className="p-6 text-center">
+                <Package className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                <p className="font-medium mb-1">No offers yet</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Add the webinar, course, or product you want to advertise so
+                  LUMI builds the right strategy.
+                </p>
+                <div className="flex gap-2 justify-center flex-wrap">
+                  <Button onClick={() => navigate("/dashboard?tab=offers")}>
+                    Add an offer
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => runRecommendation(null)}
+                  >
+                    Skip — use brand defaults
+                  </Button>
+                </div>
+              </Card>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {offers.map((o) => {
+                    const isSelected = selectedOfferId === o.id;
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => setSelectedOfferId(o.id)}
+                        className={`w-full text-left rounded-lg border p-4 transition ${
+                          isSelected
+                            ? "border-lumi-pink-1 bg-lumi-pink-1/5 shadow-glow"
+                            : "border-border hover:border-lumi-pink-1/50"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`h-5 w-5 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center ${
+                              isSelected
+                                ? "border-lumi-pink-1 bg-lumi-pink-1"
+                                : "border-muted-foreground/40"
+                            }`}
+                          >
+                            {isSelected && (
+                              <CheckCircle2 className="h-4 w-4 text-white" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold">
+                                {o.name ?? "Untitled offer"}
+                              </span>
+                              {o.target_outcome && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {o.target_outcome}
+                                </Badge>
+                              )}
+                              {o.price_point && (
+                                <Badge variant="outline" className="text-xs">
+                                  {o.price_point}
+                                </Badge>
+                              )}
+                            </div>
+                            {o.description && (
+                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                {o.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate("/dashboard?tab=offers")}
+                    className="flex-1"
+                  >
+                    Add a different offer
+                  </Button>
+                  <Button
+                    onClick={() => runRecommendation(selectedOfferId)}
+                    disabled={!selectedOfferId}
+                    className="flex-1"
+                  >
+                    Build my strategy <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </>
+            )}
+          </motion.div>
+        )}
+
         {step === "error" && (
           <motion.div
-            key="error"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center py-10 space-y-4"
@@ -192,10 +350,12 @@ export default function RecommendedStrategy() {
               {errorMsg ?? "We couldn't generate a recommendation right now."}
             </p>
             <div className="flex gap-3 justify-center">
-              <Button variant="outline" onClick={() => navigate("/create")}>
-                Pick a campaign myself
+              <Button variant="outline" onClick={handleStartOver}>
+                Start over
               </Button>
-              <Button onClick={runRecommendation}>Try again</Button>
+              <Button onClick={() => runRecommendation(selectedOfferId)}>
+                Try again
+              </Button>
             </div>
           </motion.div>
         )}
@@ -272,9 +432,16 @@ export default function RecommendedStrategy() {
               ))}
             </div>
 
-            <div className="flex gap-3 pt-2">
-              <Button variant="outline" onClick={() => navigate("/create")} className="flex-1">
-                Pick a different goal
+            <div className="flex gap-3 pt-2 flex-wrap">
+              <Button variant="ghost" onClick={handleStartOver}>
+                <RotateCcw className="h-4 w-4 mr-1" /> Start over
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setStep("pick_offer")}
+                className="flex-1"
+              >
+                Pick a different offer
               </Button>
               <Button onClick={handleBuild} className="flex-1">
                 Build this strategy <ArrowRight className="h-4 w-4 ml-1" />
@@ -305,8 +472,8 @@ export default function RecommendedStrategy() {
               </p>
             )}
             <div className="flex gap-3 justify-center">
-              <Button variant="outline" onClick={() => navigate("/create")}>
-                Pick a campaign myself
+              <Button variant="outline" onClick={handleStartOver}>
+                Start over
               </Button>
               <Button onClick={() => navigate("/create")}>
                 <CheckCircle2 className="h-4 w-4 mr-1" /> Got it
