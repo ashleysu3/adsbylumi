@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { CampaignSpine } from "@/components/CampaignSpine";
+import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
 
 type CampaignPlan = {
   name?: string;
@@ -60,6 +61,7 @@ export function clearStrategyPlan() {
 
 export default function StrategyPlan() {
   const navigate = useNavigate();
+  const { setStrategy } = useCampaignDraft();
   const [plan, setPlan] = useState<StoredPlan | null>(null);
 
   useEffect(() => {
@@ -89,9 +91,30 @@ export default function StrategyPlan() {
     const statuses = [...plan.statuses];
     if (statuses[idx] === "todo") statuses[idx] = "in_progress";
     update({ ...plan, statuses, activeIndex: idx });
-    const goal = plan.campaigns[idx]?.goal;
+    const c = plan.campaigns[idx];
+    const goal = c?.goal;
+    const objective = c?.objective;
+    const campaignName = c?.name;
+
+    // Persist the chosen strategy step into the CampaignDraft so it survives
+    // route changes into /creative and /launch.
+    setStrategy({
+      slug: plan.slug,
+      name: plan.name,
+      campaignIndex: idx,
+      campaignName,
+      goal,
+      objective,
+      audience: c?.audience,
+      creative_brief: c?.creative_brief,
+      description: c?.description,
+    });
+
     const params = new URLSearchParams({ from: "strategy" });
     if (goal) params.set("goal", goal);
+    if (objective) params.set("objective", objective);
+    if (campaignName) params.set("campaignName", campaignName);
+    params.set("campaignIdx", String(idx));
     navigate(`/create?${params.toString()}`);
   };
 

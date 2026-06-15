@@ -155,8 +155,42 @@ export default function Create() {
   const [searchParams] = useSearchParams();
   const fromStrategy = searchParams.get("from") === "strategy";
   const strategyGoal = searchParams.get("goal") || "";
+  const strategyObjective = searchParams.get("objective") || "";
+  const strategyCampaignName = searchParams.get("campaignName") || "";
   const VALID_GOALS = ["promote_offer", "grow_social", "get_leads", "book_calls", "dm_leads", "local", "event_location"];
   const initialGoal = fromStrategy && VALID_GOALS.includes(strategyGoal) ? strategyGoal : (fromStrategy ? "promote_offer" : "");
+
+  // Pick a template that matches the strategy plan's chosen campaign (objective/name).
+  // Returns null when nothing matches — caller should leave selection untouched.
+  const pickStrategyTemplate = (
+    list: CampaignTemplate[],
+    objective: string,
+    campaignName: string,
+  ): CampaignTemplate | null => {
+    if (!list.length) return null;
+    const obj = objective.trim().toLowerCase();
+    const name = campaignName.trim().toLowerCase();
+    if (obj) {
+      const exact = list.find((t) => (t.objective || "").toLowerCase() === obj);
+      if (exact) return exact;
+      const fuzzyObj = list.find(
+        (t) =>
+          (t.name || "").toLowerCase().includes(obj) ||
+          (t.slug || "").toLowerCase().includes(obj) ||
+          (t.objective || "").toLowerCase().includes(obj),
+      );
+      if (fuzzyObj) return fuzzyObj;
+    }
+    if (name) {
+      const fuzzyName = list.find(
+        (t) =>
+          (t.name || "").toLowerCase().includes(name) ||
+          (t.slug || "").toLowerCase().includes(name),
+      );
+      if (fuzzyName) return fuzzyName;
+    }
+    return null;
+  };
   const { activeBrand } = useBrand();
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(fromStrategy ? 1 : 0); // 0 = entry choice
@@ -339,7 +373,19 @@ export default function Create() {
     if (selectedOfferId) {
       // Skip template override for system offers — they set their own template directly
       if (SYSTEM_OFFER_IDS.includes(selectedOfferId)) return;
-      
+
+      // If the user arrived from the Strategy Plan with a specific campaign type,
+      // keep that authoritative instead of falling back to the offer's recommended
+      // template (or the "Sales" default).
+      if (fromStrategy && (strategyObjective || strategyCampaignName)) {
+        const match = pickStrategyTemplate(templates, strategyObjective, strategyCampaignName);
+        if (match) {
+          setRecommendedTemplate(match);
+          setSelectedTemplateId(match.id);
+          return;
+        }
+      }
+
       const offer = offers.find((o) => o.id === selectedOfferId);
       if (offer?.recommended_template_id) {
         const template = templates.find((t) => t.id === offer.recommended_template_id);
@@ -356,7 +402,22 @@ export default function Create() {
         }
       }
     }
-  }, [selectedOfferId, offers, templates]);
+  }, [selectedOfferId, offers, templates, fromStrategy, strategyObjective, strategyCampaignName]);
+
+  // When arriving from Strategy Plan, seed the template selection from the
+  // chosen strategy campaign as soon as templates load — even before an offer
+  // is picked, and re-apply if the user changes offers.
+  useEffect(() => {
+    if (!fromStrategy) return;
+    if (!templates.length) return;
+    if (!strategyObjective && !strategyCampaignName) return;
+    const match = pickStrategyTemplate(templates, strategyObjective, strategyCampaignName);
+    if (match) {
+      setRecommendedTemplate(match);
+      setSelectedTemplateId(match.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromStrategy, templates, strategyObjective, strategyCampaignName]);
 
   // Auto-advance the "Event & location targeting" goal — it's a single-option flow
   useEffect(() => {
