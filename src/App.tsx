@@ -102,6 +102,7 @@ import BrandPatterns from "./pages/BrandPatterns";
 import Retrospectives from "./pages/Retrospectives";
 import RecommendedStrategy from "./pages/RecommendedStrategy";
 import StrategyPlan from "./pages/StrategyPlan";
+import Strategy from "./pages/Strategy";
 import AdminStrategies from "./pages/admin/Strategies";
 import OfficeHours from "./pages/OfficeHours";
 import PartnerPortal from "./pages/PartnerPortal";
