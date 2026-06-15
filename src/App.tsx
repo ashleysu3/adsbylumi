@@ -109,11 +109,9 @@ import PartnerPortal from "./pages/PartnerPortal";
 import AdGenerator from "./pages/AdGenerator";
 import BrandSetup from "./pages/BrandSetup";
 import Photos from "./pages/Photos";
+import Creative from "./pages/Creative";
 
-function CreativeRedirect() {
-  const location = useLocation();
-  return <Navigate to={`/creative-studio${location.search}`} replace />;
-}
+
 const queryClient = new QueryClient();
 
 const App = () => {
