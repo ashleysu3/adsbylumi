@@ -485,13 +485,13 @@ export default function ContentLibrary({ embedded = false }: { embedded?: boolea
     return STATUS_OPTIONS.find(s => s.value === status) || STATUS_OPTIONS[0];
   };
   if (loading) {
-    return <DashboardLayout>
+    return <Layout>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
-      </DashboardLayout>;
+      </Layout>;
   }
-  return <DashboardLayout>
+  return <Layout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
