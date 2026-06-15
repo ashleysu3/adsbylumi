@@ -43,8 +43,8 @@ type OfferRow = {
   id: string;
   name: string | null;
   description: string | null;
-  price: number | null;
-  offer_type: string | null;
+  price_point: string | null;
+  target_outcome: string | null;
   url: string | null;
 };
 
