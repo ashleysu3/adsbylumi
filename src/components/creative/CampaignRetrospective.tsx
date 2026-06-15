@@ -253,6 +253,21 @@ export function CampaignRetrospective({
           </Card>
         )}
 
+        {/* KPI fallback note — when the objective's native KPI returned 0 results */}
+        {retro.stats.kpi_fallback_note && (
+          <Card className="border-blue-500/40 bg-blue-500/5">
+            <CardContent className="p-3 flex gap-2 items-start">
+              <Info className="h-4 w-4 shrink-0 mt-0.5 text-blue-600" />
+              <div className="space-y-1 text-sm">
+                <p className="font-semibold text-blue-900 dark:text-blue-100">
+                  Evaluated against {retro.stats.kpi_fallback_to_label}
+                </p>
+                <p className="text-xs text-muted-foreground leading-snug">{retro.stats.kpi_fallback_note}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Stats strip */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatTile label="Spend" value={fmtCurrency(retro.stats.total_spend)} />
@@ -260,6 +275,23 @@ export function CampaignRetrospective({
           <StatTile label={'Avg ' + (retro.stats.primary_kpi_label || 'cost / result')} value={retro.stats.avg_cpl != null ? fmtCurrency(retro.stats.avg_cpl) : '—'} />
           <StatTile label="Duration" value={retro.stats.duration_days != null ? `${retro.stats.duration_days}d` : '—'} />
         </div>
+
+        {/* Other signals — always show so even when the primary KPI is 0 you can see what did happen */}
+        {retro.stats.other_signals && (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+              Other signals
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <StatTile label="Impressions" value={fmtNumber(retro.stats.other_signals.impressions)} compact />
+              <StatTile label="Clicks" value={fmtNumber(retro.stats.other_signals.clicks)} compact />
+              <StatTile label="Leads" value={fmtNumber(retro.stats.other_signals.leads)} compact />
+              <StatTile label="Purchases" value={fmtNumber(retro.stats.other_signals.purchases)} compact />
+              <StatTile label="Video views" value={fmtNumber(retro.stats.other_signals.video_views)} compact />
+            </div>
+          </div>
+        )}
+
 
         {/* Plain-English narrative */}
         {retro.narrative && (
