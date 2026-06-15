@@ -72,7 +72,10 @@ const STATUS_OPTIONS = [{
   label: "Used",
   color: "bg-green-500/10 text-green-600"
 }];
-export default function ContentLibrary() {
+export default function ContentLibrary({ embedded = false }: { embedded?: boolean } = {}) {
+  const Layout = embedded
+    ? (({ children }: any) => <>{children}</>)
+    : DashboardLayout;
   const navigate = useNavigate();
   const { activeBrand, loading: brandContextLoading } = useBrand();
   const [loading, setLoading] = useState(true);
@@ -482,13 +485,13 @@ export default function ContentLibrary() {
     return STATUS_OPTIONS.find(s => s.value === status) || STATUS_OPTIONS[0];
   };
   if (loading) {
-    return <DashboardLayout>
+    return <Layout>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
-      </DashboardLayout>;
+      </Layout>;
   }
-  return <DashboardLayout>
+  return <Layout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -924,5 +927,5 @@ export default function ContentLibrary() {
           </div>
         </DialogContent>
       </Dialog>
-    </DashboardLayout>;
+    </Layout>;
 }

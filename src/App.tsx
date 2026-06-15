@@ -109,11 +109,9 @@ import PartnerPortal from "./pages/PartnerPortal";
 import AdGenerator from "./pages/AdGenerator";
 import BrandSetup from "./pages/BrandSetup";
 import Photos from "./pages/Photos";
+import Creative from "./pages/Creative";
 
-function CreativeRedirect() {
-  const location = useLocation();
-  return <Navigate to={`/creative-studio${location.search}`} replace />;
-}
+
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -166,7 +164,7 @@ const App = () => {
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/planning" element={<Navigate to="/campaigns" replace />} />
                   <Route path="/strategy" element={<Strategy />} />
-                  <Route path="/creative" element={<CreativeRedirect />} />
+                  <Route path="/creative" element={<Creative />} />
                   <Route path="/launch" element={<Navigate to="/campaigns" replace />} />
                   <Route path="/ad-performance" element={<AdPerformance />} />
                   <Route path="/data" element={<Navigate to="/ad-performance" replace />} />

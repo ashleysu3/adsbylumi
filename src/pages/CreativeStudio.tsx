@@ -36,6 +36,7 @@ import { CreativeStudioExplainer, useCreativeStudioExplainer } from "@/component
 import { Json } from "@/integrations/supabase/types";
 import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
 import { useBrand } from "@/contexts/BrandContext";
+import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -168,11 +169,15 @@ function effectiveBrand<T extends Record<string, any> | null | undefined>(
 }
 
 
-export default function CreativeStudio() {
+export default function CreativeStudio({ embedded = false }: { embedded?: boolean } = {}) {
+  const Layout = embedded
+    ? (({ children }: any) => <>{children}</>)
+    : DashboardLayout;
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { showExplainer, closeExplainer } = useCreativeStudioExplainer();
   const { activeBrand, brands, setActiveBrand, loading: brandLoading } = useBrand();
+  const { setConcepts: setDraftConcepts } = useCampaignDraft();
   
   const [loading, setLoading] = useState(true);
   const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([]);
@@ -190,6 +195,26 @@ export default function CreativeStudio() {
   const [activeAngleId, setActiveAngleId] = useState<string>("");
   const [gridData, setGridData] = useState<CreativeCellData[]>([]);
   const [productionItems, setProductionItems] = useState<ProductionItem[]>([]);
+
+  // Sync selected production items to shared campaign draft so LaunchTray
+  // and downstream /launch can read "what ads will go live".
+  useEffect(() => {
+    setDraftConcepts(
+      productionItems.map((p) => ({
+        id: p.id,
+        title: p.hook,
+        angle: p.angleName,
+        styleHint: p.format,
+        copy: {
+          verbal_hook: p.verbal_hook,
+          written_hook: p.written_hook,
+          visual_hook: p.visual_hook,
+          script_lines: p.script_lines,
+        },
+      })),
+    );
+  }, [productionItems, setDraftConcepts]);
+
   
   // Copy state (lifted from ProductionManager)
   const [angleCopy, setAngleCopy] = useState<Record<string, any>>({});
@@ -1175,12 +1200,12 @@ export default function CreativeStudio() {
 
   const primaryAction = getPrimaryAction();
 
-  if (loading) return <DashboardLayout><div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></DashboardLayout>;
+  if (loading) return <Layout><div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></Layout>;
 
   // No workspaces with strategy - show helpful empty state
   if (workspaces.length === 0) {
     return (
-      <DashboardLayout>
+      <Layout>
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1208,12 +1233,12 @@ export default function CreativeStudio() {
             </Card>
           </div>
         </motion.div>
-      </DashboardLayout>
+      </Layout>
     );
   }
 
   return (
-    <DashboardLayout>
+    <Layout>
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1948,6 +1973,6 @@ export default function CreativeStudio() {
         )}
         <GenerateCreativeDialog />
       </motion.div>
-    </DashboardLayout>
+    </Layout>
   );
 }

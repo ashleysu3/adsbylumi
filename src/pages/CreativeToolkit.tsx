@@ -10,7 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import type { ToolkitConfig } from "@/components/admin/CreativeToolkitManager";
 
-export default function CreativeToolkit() {
+export default function CreativeToolkit({ embedded = false }: { embedded?: boolean } = {}) {
+  const Layout = embedded
+    ? (({ children }: any) => <>{children}</>)
+    : DashboardLayout;
   const [config, setConfig] = useState<ToolkitConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,7 +34,7 @@ export default function CreativeToolkit() {
   const isLive = config?.live === true;
 
   return (
-    <DashboardLayout>
+    <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6 relative">
         {/* Page Header */}
         <div className="flex items-start gap-4">
@@ -91,6 +94,6 @@ export default function CreativeToolkit() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </Layout>
   );
 }
