@@ -61,6 +61,7 @@ export function clearStrategyPlan() {
 
 export default function StrategyPlan() {
   const navigate = useNavigate();
+  const { setStrategy } = useCampaignDraft();
   const [plan, setPlan] = useState<StoredPlan | null>(null);
 
   useEffect(() => {
