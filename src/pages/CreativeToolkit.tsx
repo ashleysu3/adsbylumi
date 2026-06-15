@@ -12,7 +12,7 @@ import type { ToolkitConfig } from "@/components/admin/CreativeToolkitManager";
 
 export default function CreativeToolkit({ embedded = false }: { embedded?: boolean } = {}) {
   const Layout = embedded
-    ? (({ children }: { children: React.ReactNode }) => <>{children}</>)
+    ? (({ children }: any) => <>{children}</>)
     : DashboardLayout;
   const [config, setConfig] = useState<ToolkitConfig | null>(null);
   const [loading, setLoading] = useState(true);
