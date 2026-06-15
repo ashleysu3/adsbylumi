@@ -23,6 +23,7 @@ import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { clearStrategyPlan } from "./StrategyPlan";
+import { StrategyChatPanel } from "@/components/StrategyChatPanel";
 
 type CampaignPlan = {
   name?: string;
