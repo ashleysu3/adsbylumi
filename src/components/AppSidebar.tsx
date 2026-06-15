@@ -209,7 +209,16 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                       className="transition-all duration-200"
                       activeClassName="bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-md shadow-lumi-pink-1/20 font-semibold [&>svg]:text-white"
                     >
-                      <item.icon className="h-4 w-4" />
+                      {item.path === '/performance' ? (
+                        <span className="relative">
+                          <item.icon className="h-4 w-4" />
+                          {hasRedAlert && (
+                            <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
+                          )}
+                        </span>
+                      ) : (
+                        <item.icon className="h-4 w-4" />
+                      )}
                       {!collapsed && <span>{item.label}</span>}
                     </NavLink>
                   </SidebarMenuButton>
