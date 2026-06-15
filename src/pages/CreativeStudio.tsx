@@ -1151,7 +1151,7 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
   }, [productionItems, workspace, availableAngles, saveProductionItems]);
 
   const workflowTabs = [
-    { id: "angles" as const, label: "Strategy", icon: Target },
+    { id: "angles" as const, label: "Angles", icon: Target },
     { id: "concepts" as const, label: "Concepts", icon: Lightbulb },
     { id: "copy" as const, label: "Ad Copy", icon: FileText },
     { id: "build" as const, label: "Production", icon: Rocket },
