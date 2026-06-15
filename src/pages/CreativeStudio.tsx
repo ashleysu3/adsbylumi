@@ -168,11 +168,15 @@ function effectiveBrand<T extends Record<string, any> | null | undefined>(
 }
 
 
-export default function CreativeStudio() {
+export default function CreativeStudio({ embedded = false }: { embedded?: boolean } = {}) {
+  const Layout = embedded
+    ? (({ children }: any) => <>{children}</>)
+    : DashboardLayout;
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { showExplainer, closeExplainer } = useCreativeStudioExplainer();
   const { activeBrand, brands, setActiveBrand, loading: brandLoading } = useBrand();
+  const { setConcepts: setDraftConcepts } = useCampaignDraft();
   
   const [loading, setLoading] = useState(true);
   const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([]);
