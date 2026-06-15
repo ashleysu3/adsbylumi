@@ -394,14 +394,15 @@ function NoGoalCard() {
   );
 }
 
-function StatTile({ label, value }: { label: string; value: string }) {
+function StatTile({ label, value, compact }: { label: string; value: string; compact?: boolean }) {
   return (
-    <div className="rounded-lg border bg-muted/30 p-3">
+    <div className={cn('rounded-lg border bg-muted/30', compact ? 'p-2' : 'p-3')}>
       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="text-lg font-semibold mt-0.5">{value}</p>
+      <p className={cn('font-semibold mt-0.5', compact ? 'text-sm' : 'text-lg')}>{value}</p>
     </div>
   );
 }
+
 
 function Section({
   title, subtitle, icon, items, emptyText, accentClass, showArrow,
