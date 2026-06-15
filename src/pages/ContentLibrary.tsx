@@ -927,5 +927,5 @@ export default function ContentLibrary({ embedded = false }: { embedded?: boolea
           </div>
         </DialogContent>
       </Dialog>
-    </DashboardLayout>;
+    </Layout>;
 }
