@@ -195,6 +195,26 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
   const [activeAngleId, setActiveAngleId] = useState<string>("");
   const [gridData, setGridData] = useState<CreativeCellData[]>([]);
   const [productionItems, setProductionItems] = useState<ProductionItem[]>([]);
+
+  // Sync selected production items to shared campaign draft so LaunchTray
+  // and downstream /launch can read "what ads will go live".
+  useEffect(() => {
+    setDraftConcepts(
+      productionItems.map((p) => ({
+        id: p.id,
+        title: p.hook,
+        angle: p.angleName,
+        styleHint: p.format,
+        copy: {
+          verbal_hook: p.verbal_hook,
+          written_hook: p.written_hook,
+          visual_hook: p.visual_hook,
+          script_lines: p.script_lines,
+        },
+      })),
+    );
+  }, [productionItems, setDraftConcepts]);
+
   
   // Copy state (lifted from ProductionManager)
   const [angleCopy, setAngleCopy] = useState<Record<string, any>>({});
