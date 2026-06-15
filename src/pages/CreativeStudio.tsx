@@ -1180,7 +1180,7 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
 
   const primaryAction = getPrimaryAction();
 
-  if (loading) return <DashboardLayout><div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></DashboardLayout>;
+  if (loading) return <Layout><div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></Layout>;
 
   // No workspaces with strategy - show helpful empty state
   if (workspaces.length === 0) {
