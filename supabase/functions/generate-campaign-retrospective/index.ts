@@ -667,6 +667,8 @@ function buildPrompt(args: {
   goalEval: { hit: boolean; deltaPct: number } | null;
   dataQuality: { level: string; note?: string };
   strategy: any; creative: any; productionItems: any; performance: any; isImported: boolean;
+  kpiFallback?: { from: string; from_label: string; to: string; to_label: string; note: string } | null;
+
 }): string {
   const goalLine = args.goal
     ? `Stated goal: ${args.goal.label} ${args.goal.direction === 'less_than' ? 'at or below' : 'at or above'} ${formatGoalValue(args.goal)}.${
