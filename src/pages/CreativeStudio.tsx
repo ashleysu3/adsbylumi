@@ -869,6 +869,11 @@ export default function CreativeStudio() {
         }
       }
       
+      const strategyJson = (workspace.strategy_json as any) || {};
+      const wsObjective = (workspace as any).objective || strategyJson.objective || null;
+      const wsCreativeBrief = strategyJson.creative_brief || strategyJson.creativeBrief || null;
+      const wsCampaignName = strategyJson.campaign_name || strategyJson.name || (workspace as any).campaign_name || null;
+
       const { data, error } = await supabase.functions.invoke('generate-creative-grid', {
         body: { 
           angles, 
@@ -890,6 +895,9 @@ export default function CreativeStudio() {
            brandId,
            offerId: workspace.offer_id,
            perspectiveRole: (workspace.creative_json as Record<string, any>)?.preGenerationContext?.perspectiveRole || 'seller',
+           campaignObjective: wsObjective,
+           creativeBrief: wsCreativeBrief,
+           campaignName: wsCampaignName,
          }
       });
       if (error) throw error;
