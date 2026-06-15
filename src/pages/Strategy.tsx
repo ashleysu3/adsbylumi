@@ -395,8 +395,13 @@ export default function Strategy() {
                 </div>
               </>
             )}
+
+            <div className="pt-4">
+              <StrategyChatPanel />
+            </div>
           </motion.div>
         )}
+
 
         {step === "thinking" && (
           <motion.div
