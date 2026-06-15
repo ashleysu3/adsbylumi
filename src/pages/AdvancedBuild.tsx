@@ -45,7 +45,8 @@ interface SharedCopy {
   generating: boolean;
 }
 
-export default function AdvancedBuild() {
+export default function AdvancedBuild({ embedded = false }: { embedded?: boolean } = {}) {
+  const Layout: any = embedded ? (({ children }: any) => <>{children}</>) : DashboardLayout;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const workspaceId = searchParams.get("workspace");
