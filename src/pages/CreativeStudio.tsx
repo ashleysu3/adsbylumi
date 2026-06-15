@@ -1218,7 +1218,7 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
   }
 
   return (
-    <DashboardLayout>
+    <Layout>
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
