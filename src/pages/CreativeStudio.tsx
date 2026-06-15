@@ -764,6 +764,11 @@ export default function CreativeStudio() {
         console.warn("Could not fetch previous angles:", e);
       }
 
+      const _strategyJson = (workspace.strategy_json as any) || {};
+      const _wsObjective = (workspace as any).objective || _strategyJson.objective || null;
+      const _wsCreativeBrief = _strategyJson.creative_brief || _strategyJson.creativeBrief || null;
+      const _wsCampaignName = _strategyJson.campaign_name || _strategyJson.name || (workspace as any).campaign_name || null;
+
       const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
          body: { 
            brandName: workspace.brands?.name, 
@@ -779,6 +784,9 @@ export default function CreativeStudio() {
            neverUseWords: (workspace.brands as any)?.never_use_words || [],
            brandId,
            offerId: workspace.offer_id,
+           campaignObjective: _wsObjective,
+           creativeBrief: _wsCreativeBrief,
+           campaignName: _wsCampaignName,
          }
       });
       if (error) throw error;
