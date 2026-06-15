@@ -44,6 +44,7 @@ import lumiLogo from "@/assets/lumi-logo.png";
 import { SocialGrowthFlow } from "@/components/SocialGrowthFlow";
 import { LumiEducationCard } from "@/components/LumiEducationCard";
 import { StrategyPlanBanner } from "@/components/StrategyPlanBanner";
+import { loadStrategyPlan } from "@/pages/StrategyPlan";
 
 // System offer IDs
 const SOCIAL_GROWTH_OFFER_ID = "system-social-growth";
@@ -154,10 +155,15 @@ export default function Create() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const fromStrategy = searchParams.get("from") === "strategy";
-  const strategyGoal = searchParams.get("goal") || "";
-  const strategyObjective = searchParams.get("objective") || "";
-  const strategyCampaignName = searchParams.get("campaignName") || "";
-  const strategyOfferId = searchParams.get("offerId") || "";
+  const strategyPlan = fromStrategy ? loadStrategyPlan() : null;
+  const strategyCampaignIdx = Number(searchParams.get("campaignIdx") ?? strategyPlan?.activeIndex ?? 0);
+  const strategyCampaign = Number.isFinite(strategyCampaignIdx)
+    ? strategyPlan?.campaigns?.[strategyCampaignIdx]
+    : null;
+  const strategyGoal = searchParams.get("goal") || strategyCampaign?.goal || "";
+  const strategyObjective = searchParams.get("objective") || strategyCampaign?.objective || "";
+  const strategyCampaignName = searchParams.get("campaignName") || strategyCampaign?.name || "";
+  const strategyOfferId = searchParams.get("offerId") || strategyPlan?.offer_id || "";
   const VALID_GOALS = ["promote_offer", "grow_social", "get_leads", "book_calls", "dm_leads", "local", "event_location"];
   const initialGoal = fromStrategy && VALID_GOALS.includes(strategyGoal) ? strategyGoal : (fromStrategy ? "promote_offer" : "");
 
@@ -171,6 +177,26 @@ export default function Create() {
     if (!list.length) return null;
     const obj = objective.trim().toLowerCase();
     const name = campaignName.trim().toLowerCase();
+    const combined = `${obj} ${name}`;
+    const intent =
+      /awareness|education|educat|training|train|nurture|video[_\s-]?views?|view_content/.test(combined)
+        ? "awareness"
+        : /lead|webinar|freebie|opt.?in|registration|complete_registration/.test(combined)
+        ? "lead"
+        : /traffic|visit|click|instagram|profile/.test(combined)
+        ? "traffic"
+        : /engagement|comment|message|dm|conversation/.test(combined)
+        ? "engagement"
+        : /sales|sale|purchase|conversion|convert|checkout/.test(combined)
+        ? "sales"
+        : "";
+    if (intent) {
+      const byIntent = list.find((t) => {
+        const haystack = `${t.objective || ""} ${t.name || ""} ${t.slug || ""} ${t.use_case || ""}`.toLowerCase();
+        return haystack.includes(intent) || (intent === "lead" && haystack.includes("leads"));
+      });
+      if (byIntent) return byIntent;
+    }
     if (obj) {
       const exact = list.find((t) => (t.objective || "").toLowerCase() === obj);
       if (exact) return exact;
@@ -709,7 +735,7 @@ export default function Create() {
         if (selectedGoal === "book_calls") return "Choose your inquiry page";
         if (selectedGoal === "get_leads") return "Choose your lead magnet";
         return "Choose your offer";
-      case 2:return "Recommended strategy";
+      case 2:return fromStrategy ? "Building your campaign" : "Recommended strategy";
       default:return "";
     }
   };
@@ -724,7 +750,9 @@ export default function Create() {
         if (selectedGoal === "book_calls") return "Where should people go to book a call or send an inquiry?";
         if (selectedGoal === "get_leads") return "What freebie or opt-in are we promoting?";
         return "What are we promoting?";
-      case 2:return isLocalStrategy ?
+      case 2:return fromStrategy ?
+        "LUMI already has your selected plan and offer" :
+        isLocalStrategy ?
         "Lumi matched this location-based strategy for you" :
         isSocialGrowth ?
         "Lumi's recommendation for your strategy" :
@@ -1412,7 +1440,24 @@ export default function Create() {
             }
 
             {/* Step 2: Strategy Recommendation */}
-            {currentStep === 2 &&
+            {currentStep === 2 && fromStrategy &&
+            <motion.div
+              key="step-2-strategy-build"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="text-center py-12 space-y-3">
+              <div className="h-12 w-12 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                <Wand2 className="h-6 w-6 text-primary animate-pulse" />
+              </div>
+              <p className="font-medium">Building from your strategy plan…</p>
+              <p className="text-sm text-muted-foreground">
+                LUMI is using the campaign and offer you already picked.
+              </p>
+            </motion.div>
+            }
+
+            {currentStep === 2 && !fromStrategy &&
             <motion.div
               key="step-2"
               initial={{ opacity: 0, x: 20 }}
