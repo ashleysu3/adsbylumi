@@ -10,6 +10,7 @@ import { BrandProvider } from "@/contexts/BrandContext";
 import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
 import { LumiAssistantProvider } from "@/components/LumiAssistant";
 import { RenderQueueProvider } from "@/contexts/RenderQueueContext";
+import { CampaignDraftProvider } from "@/contexts/CampaignDraftContext";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { GlobalAnnouncementBanner } from "@/components/GlobalAnnouncementBanner";
 import { PartnerWelcomeModal } from "@/components/PartnerWelcomeModal";
@@ -133,6 +134,7 @@ const App = () => {
           <LumiProvider>
               <BrandProvider>
               <RenderQueueProvider>
+              <CampaignDraftProvider>
               <SplashScreen isVisible={showSplash} />
               <Toaster />
               <Sonner />
@@ -242,6 +244,7 @@ const App = () => {
                 </Routes>
               </LumiAssistantProvider>
             </BrowserRouter>
+              </CampaignDraftProvider>
               </RenderQueueProvider>
               </BrandProvider>
         </LumiProvider>
