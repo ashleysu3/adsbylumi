@@ -228,11 +228,11 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
 
       {/* Main Navigation */}
       <SidebarContent>
+        {/* Primary workflow */}
         <SidebarGroup>
-          <SidebarGroupLabel>Create</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {createNav.map((item) => (
+              {primaryNav.map((item) => (
                 <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton asChild tooltip={item.tooltip}>
                     <NavLink
@@ -253,12 +253,12 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
 
         <SidebarSeparator />
 
-        {/* Tools */}
+        {/* Set once — brand-level config */}
         <SidebarGroup>
-          <SidebarGroupLabel>My Brand</SidebarGroupLabel>
+          <SidebarGroupLabel>Set once</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {brandNav.map((item) => (
+              {setOnceNav.map((item) => (
                 <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton asChild tooltip={item.tooltip}>
                     <NavLink
@@ -314,6 +314,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
 
         <SidebarSeparator />
 
