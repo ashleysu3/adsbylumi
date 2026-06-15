@@ -155,8 +155,42 @@ export default function Create() {
   const [searchParams] = useSearchParams();
   const fromStrategy = searchParams.get("from") === "strategy";
   const strategyGoal = searchParams.get("goal") || "";
+  const strategyObjective = searchParams.get("objective") || "";
+  const strategyCampaignName = searchParams.get("campaignName") || "";
   const VALID_GOALS = ["promote_offer", "grow_social", "get_leads", "book_calls", "dm_leads", "local", "event_location"];
   const initialGoal = fromStrategy && VALID_GOALS.includes(strategyGoal) ? strategyGoal : (fromStrategy ? "promote_offer" : "");
+
+  // Pick a template that matches the strategy plan's chosen campaign (objective/name).
+  // Returns null when nothing matches — caller should leave selection untouched.
+  const pickStrategyTemplate = (
+    list: CampaignTemplate[],
+    objective: string,
+    campaignName: string,
+  ): CampaignTemplate | null => {
+    if (!list.length) return null;
+    const obj = objective.trim().toLowerCase();
+    const name = campaignName.trim().toLowerCase();
+    if (obj) {
+      const exact = list.find((t) => (t.objective || "").toLowerCase() === obj);
+      if (exact) return exact;
+      const fuzzyObj = list.find(
+        (t) =>
+          (t.name || "").toLowerCase().includes(obj) ||
+          (t.slug || "").toLowerCase().includes(obj) ||
+          (t.objective || "").toLowerCase().includes(obj),
+      );
+      if (fuzzyObj) return fuzzyObj;
+    }
+    if (name) {
+      const fuzzyName = list.find(
+        (t) =>
+          (t.name || "").toLowerCase().includes(name) ||
+          (t.slug || "").toLowerCase().includes(name),
+      );
+      if (fuzzyName) return fuzzyName;
+    }
+    return null;
+  };
   const { activeBrand } = useBrand();
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(fromStrategy ? 1 : 0); // 0 = entry choice
