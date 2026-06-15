@@ -422,38 +422,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Footer: Ask Lumi + Sign Out */}
-      <SidebarFooter className="p-3 pt-2 space-y-2">
-        <button
-          onClick={openChat}
-          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl
-                     bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1
-                     text-white font-medium text-sm
-                     shadow-md shadow-lumi-pink-1/20 hover:shadow-lg hover:shadow-lumi-pink-1/30
-                     transition-all relative group"
-        >
-          <SparkleIcon size="xs" state="idle" className="group-hover:animate-pulse flex-shrink-0" />
-          {!collapsed && <span>Ask Lumi</span>}
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-white text-lumi-pink-1 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          )}
-        </button>
-
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Sign Out"
-              onClick={handleSignOut}
-              className="text-muted-foreground hover:text-destructive"
-            >
-              <LogOut className="h-4 w-4" />
-              {!collapsed && <span>Sign Out</span>}
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+      <SidebarFooter />
      </Sidebar>
       <BugReportModal
         open={bugReportOpen}
