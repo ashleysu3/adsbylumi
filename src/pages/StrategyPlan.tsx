@@ -34,6 +34,7 @@ type StoredPlan = {
   name: string;
   why_it_works?: string;
   intro?: string;
+  offer_id?: string | null;
   campaigns: CampaignPlan[];
   statuses: Array<"todo" | "in_progress" | "done">;
   activeIndex: number | null;
@@ -101,6 +102,7 @@ export default function StrategyPlan() {
     setStrategy({
       slug: plan.slug,
       name: plan.name,
+      offer_id: plan.offer_id,
       campaignIndex: idx,
       campaignName,
       goal,
@@ -114,6 +116,7 @@ export default function StrategyPlan() {
     if (goal) params.set("goal", goal);
     if (objective) params.set("objective", objective);
     if (campaignName) params.set("campaignName", campaignName);
+    if (plan.offer_id) params.set("offerId", plan.offer_id);
     params.set("campaignIdx", String(idx));
     navigate(`/create?${params.toString()}`);
   };
