@@ -74,7 +74,7 @@ const STATUS_OPTIONS = [{
 }];
 export default function ContentLibrary({ embedded = false }: { embedded?: boolean } = {}) {
   const Layout = embedded
-    ? (({ children }: { children: React.ReactNode }) => <>{children}</>)
+    ? (({ children }: any) => <>{children}</>)
     : DashboardLayout;
   const navigate = useNavigate();
   const { activeBrand, loading: brandContextLoading } = useBrand();
