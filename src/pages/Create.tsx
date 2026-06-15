@@ -194,7 +194,7 @@ export default function Create() {
   };
   const { activeBrand } = useBrand();
   const [loading, setLoading] = useState(true);
-  const [currentStep, setCurrentStep] = useState(fromStrategy ? 1 : 0); // 0 = entry choice
+  const [currentStep, setCurrentStep] = useState(fromStrategy && strategyOfferId ? 2 : fromStrategy ? 1 : 0); // 0 = entry choice
   const totalSteps = 2;
 
   // Data
@@ -289,7 +289,7 @@ export default function Create() {
     setGeneratedAngles([]);
     setSelectedCreativeTemplates([]);
     setShowSocialGrowthFlow(false);
-    setCurrentStep(fromStrategy ? 1 : 0);
+    setCurrentStep(fromStrategy && strategyOfferId ? 2 : fromStrategy ? 1 : 0);
   }, [activeBrand?.id, fromStrategy, strategyOfferId]);
 
   const fetchData = async () => {
@@ -337,7 +337,7 @@ export default function Create() {
       setTemplates(templatesData || []);
 
       // Check for saved progress after data is loaded
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = fromStrategy ? null : localStorage.getItem(STORAGE_KEY);
       if (saved) {
         try {
           const progress: WizardProgress = JSON.parse(saved);
