@@ -34,7 +34,8 @@ function getStepState(stepKey: string, currentStage: Stage) {
   return "upcoming";
 }
 
-export default function CampaignBuilder() {
+export default function CampaignBuilder({ embedded = false }: { embedded?: boolean } = {}) {
+  const Layout: any = embedded ? (({ children }: any) => <>{children}</>) : DashboardLayout;
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -292,29 +293,29 @@ export default function CampaignBuilder() {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      <Layout>
         <div className="flex items-center justify-center h-[60vh]">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </DashboardLayout>
+      </Layout>
     );
   }
 
   if (!workspace) {
     return (
-      <DashboardLayout>
+      <Layout>
         <div className="text-center py-12">
           <p className="text-muted-foreground">Workspace not found</p>
           <Button onClick={() => navigate('/dashboard')} className="mt-4">Back to Dashboard</Button>
         </div>
-      </DashboardLayout>
+      </Layout>
     );
   }
 
   // ── Mobile Layout ──
   if (isMobile) {
     return (
-      <DashboardLayout>
+      <Layout>
         <div className="px-4 pb-24">
           <div className="flex items-center gap-3 py-4">
             <Button variant="ghost" size="icon" onClick={() => navigate(`/production?workspace=${workspaceId}`)} className="touch-target">
@@ -386,13 +387,13 @@ export default function CampaignBuilder() {
             </>
           )}
         </div>
-      </DashboardLayout>
+      </Layout>
     );
   }
 
   // ── Desktop Layout ──
   return (
-    <DashboardLayout>
+    <Layout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -503,7 +504,7 @@ export default function CampaignBuilder() {
           )}
         </div>
       </div>
-    </DashboardLayout>
+    </Layout>
   );
 }
 

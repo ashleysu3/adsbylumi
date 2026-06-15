@@ -45,7 +45,8 @@ interface SharedCopy {
   generating: boolean;
 }
 
-export default function AdvancedBuild() {
+export default function AdvancedBuild({ embedded = false }: { embedded?: boolean } = {}) {
+  const Layout: any = embedded ? (({ children }: any) => <>{children}</>) : DashboardLayout;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const workspaceId = searchParams.get("workspace");
@@ -495,14 +496,14 @@ export default function AdvancedBuild() {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      <Layout>
         <PageShimmer />
-      </DashboardLayout>
+      </Layout>
     );
   }
 
   return (
-    <DashboardLayout>
+    <Layout>
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -958,6 +959,6 @@ export default function AdvancedBuild() {
           )}
         </AnimatePresence>
       </div>
-    </DashboardLayout>
+    </Layout>
   );
 }
