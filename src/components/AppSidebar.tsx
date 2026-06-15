@@ -142,7 +142,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
     navigate("/auth");
   };
 
-  const isActive = (path: string) => location.pathname === path;
+  
 
   const MetaStatusIcon = () => {
     if (metaStatus === 'connected') {
