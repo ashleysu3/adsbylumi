@@ -10,7 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import type { ToolkitConfig } from "@/components/admin/CreativeToolkitManager";
 
-export default function CreativeToolkit() {
+export default function CreativeToolkit({ embedded = false }: { embedded?: boolean } = {}) {
+  const Layout = embedded
+    ? (({ children }: { children: React.ReactNode }) => <>{children}</>)
+    : DashboardLayout;
   const [config, setConfig] = useState<ToolkitConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
