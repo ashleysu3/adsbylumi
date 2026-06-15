@@ -295,53 +295,49 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
 
         <SidebarSeparator />
 
-        {/* Account */}
+        {/* Agency */}
+        {isAgencyUser && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Agency</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Manage all clients, reviews, and reports">
+                    <NavLink
+                      to="/ads-manager"
+                      className="transition-all duration-200"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    >
+                      <LayoutGrid className="h-4 w-4" />
+                      {!collapsed && <span>Manage All Accounts</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Customize agency branding for client materials">
+                    <NavLink
+                      to="/agency-settings"
+                      end
+                      className="transition-all duration-200"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    >
+                      <Palette className="h-4 w-4" />
+                      {!collapsed && <span>Agency Settings</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        <SidebarSeparator />
+
+        {/* Help */}
         <SidebarGroup>
-          <SidebarGroupLabel>Account</SidebarGroupLabel>
+          <SidebarGroupLabel>Help</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {isAgencyUser && (
-                <>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Manage all clients, reviews, and reports">
-                      <NavLink
-                        to="/ads-manager"
-                        className="transition-all duration-200"
-                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                      >
-                        <LayoutGrid className="h-4 w-4" />
-                        {!collapsed && <span>Manage All Accounts</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Customize agency branding for client materials">
-                      <NavLink
-                        to="/agency-settings"
-                        end
-                        className="transition-all duration-200"
-                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                      >
-                        <Palette className="h-4 w-4" />
-                        {!collapsed && <span>Agency Settings</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </>
-              )}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Settings">
-                  <NavLink
-                    to="/settings"
-                    end
-                    className="transition-all duration-200"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  >
-                    <Settings className="h-4 w-4" />
-                    {!collapsed && <span>Settings</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Learn advertising terms and concepts">
                   <NavLink
@@ -378,6 +374,25 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                   {!collapsed && <span>Report a Bug</span>}
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="Ask Lumi"
+                  onClick={openChat}
+                  className="transition-all duration-200"
+                >
+                  <SparkleIcon size="xs" state="idle" className="flex-shrink-0" />
+                  {!collapsed && (
+                    <span className="flex items-center gap-2 flex-1">
+                      Ask Lumi
+                      {unreadCount > 0 && (
+                        <span className="ml-auto min-w-4 h-4 px-1 bg-lumi-pink-1 text-white rounded-full flex items-center justify-center text-[10px] font-bold">
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               {isAdmin && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="Admin">
@@ -392,6 +407,16 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="Sign Out"
+                  onClick={handleSignOut}
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  <LogOut className="h-4 w-4" />
+                  {!collapsed && <span>Sign Out</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
