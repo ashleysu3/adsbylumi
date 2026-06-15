@@ -117,11 +117,12 @@ export default function RecommendedStrategy() {
       try {
         const { data, error } = await supabase
           .from("offers")
-          .select("id,name,description,price,offer_type,url")
+          .select("id,name,description,price_point,target_outcome,url")
           .eq("brand_id", activeBrand.id)
+          .eq("archived", false)
           .order("created_at", { ascending: false });
         if (error) throw error;
-        if (!cancelled) setOffers((data ?? []) as OfferRow[]);
+        if (!cancelled) setOffers((data ?? []) as unknown as OfferRow[]);
       } catch (err: any) {
         console.error(err);
         if (!cancelled) setOffers([]);
