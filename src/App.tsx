@@ -110,6 +110,7 @@ import AdGenerator from "./pages/AdGenerator";
 import BrandSetup from "./pages/BrandSetup";
 import Photos from "./pages/Photos";
 import Creative from "./pages/Creative";
+import Launch from "./pages/Launch";
 
 
 const queryClient = new QueryClient();
