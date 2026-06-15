@@ -358,17 +358,17 @@ export default function Strategy() {
                               <span className="font-semibold">
                                 {o.name ?? "Untitled offer"}
                               </span>
-                              {o.target_outcome && (
-                                <Badge variant="secondary" className="text-xs">
-                                  {o.target_outcome}
-                                </Badge>
-                              )}
                               {o.price_point && (
                                 <Badge variant="outline" className="text-xs">
                                   {o.price_point}
                                 </Badge>
                               )}
                             </div>
+                            {o.target_outcome && (
+                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                {o.target_outcome}
+                              </p>
+                            )}
                             {o.description && (
                               <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                                 {o.description}
