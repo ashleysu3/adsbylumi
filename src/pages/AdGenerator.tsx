@@ -47,6 +47,7 @@ type GalleryPhoto = { id: string; path: string; url: string };
 export default function AdGenerator() {
   const navigate = useNavigate();
   const { activeBrand, loading: brandsLoading } = useBrand();
+  const { draft, addConcept, removeConcept } = useCampaignDraft();
   const [colors, setColors] = useState<BrandKitColors>(EMPTY_COLORS);
   const [fontUrl, setFontUrl] = useState<string>("");
   const [copy, setCopy] = useState(DEFAULT_COPY);
