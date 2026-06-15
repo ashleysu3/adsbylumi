@@ -69,17 +69,6 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
     });
   }, []);
 
-  // Lightweight check for campaign count
-  useEffect(() => {
-    if (!brandId) return;
-    supabase
-      .from("campaign_workspaces")
-      .select("id", { count: "exact", head: true })
-      .eq("brand_id", brandId)
-      .then(({ count }) => {
-        setHasCampaigns((count ?? 0) > 0);
-      });
-  }, [brandId]);
 
   // Check Meta connection status
   useEffect(() => {
