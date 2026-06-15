@@ -29,8 +29,69 @@ Deno.serve(async (req) => {
         offerId,
         offerAudiencePsychology,
         creativeIntelligence,
-        perspectiveRole
+        perspectiveRole,
+        campaignObjective,
+        creativeBrief,
+        campaignName,
      } = await req.json();
+
+    // Derive the campaign INTENT so we constrain CTAs + angle behaviour.
+    // The strategy plan tells us the actual Meta objective for THIS campaign
+    // (educational awareness vs. lead-gen webinar vs. sales). Without this,
+    // the generator defaulted to "Save your seat" / "Register now" CTAs for
+    // every funnel stage — wrong for a top-of-funnel video-views campaign.
+    const objStr = String(campaignObjective || "").toLowerCase();
+    const briefStr = String(creativeBrief || "");
+    const intent: "awareness" | "traffic" | "leads" | "sales" | "engagement" | "generic" =
+      /awareness|video[_\s-]?views?|reach|brand[_\s-]?awareness/.test(objStr)
+        ? "awareness"
+        : /traffic|link[_\s-]?clicks|visit|profile/.test(objStr)
+        ? "traffic"
+        : /lead|registration|webinar/.test(objStr)
+        ? "leads"
+        : /sales|purchase|conversion|checkout|outcome_sales/.test(objStr)
+        ? "sales"
+        : /engagement|message|conversation/.test(objStr)
+        ? "engagement"
+        : "generic";
+
+    const intentRules: Record<string, string> = {
+      awareness: [
+        "CAMPAIGN INTENT: EDUCATIONAL AWARENESS (video views, top of funnel).",
+        "- This campaign is NOT a webinar, opt-in, or registration funnel.",
+        "- Goal: teach something useful, build affinity, earn the follow.",
+        "- ALLOWED CTAs: 'Follow for more', 'Save this', 'Send to a friend', 'Watch till the end'. Soft, social-only.",
+        "- BANNED CTAs (instant fail — rewrite): 'Save your seat', 'Register now', 'Sign up', 'Join the free training', 'Reserve your spot', 'Claim your spot', 'Book a call', 'Get the guide', any opt-in language.",
+        "- Every cell must deliver real value in the body — micro-lesson, reframe, contrarian take, mistake-they're-making.",
+        "- Hooks lean educational/curiosity, not urgency/registration.",
+      ].join("\n"),
+      traffic: [
+        "CAMPAIGN INTENT: TRAFFIC (drive profile visits / link clicks, usually to Instagram).",
+        "- ALLOWED CTAs: 'Tap to see more', 'Visit the profile', 'Check the link in bio', 'See the full post'.",
+        "- BANNED CTAs: 'Save your seat', 'Register', 'Sign up', 'Book a call' (this is not a lead-gen campaign).",
+        "- Hooks tease a payoff that lives at the destination, not in the ad.",
+      ].join("\n"),
+      leads: [
+        "CAMPAIGN INTENT: LEAD-GEN (webinar / free training registration / lead form / opt-in).",
+        "- ALLOWED CTAs: 'Save your seat', 'Register free', 'Sign up', 'Reserve your spot', 'Get the free training', 'Grab the guide'.",
+        "- Hook → biggest pain → tease the result of attending. Make the registration the obvious next step.",
+      ].join("\n"),
+      sales: [
+        "CAMPAIGN INTENT: SALES / CONVERSION.",
+        "- ALLOWED CTAs: 'Shop now', 'Get started', 'Join today', 'Book a call', 'Buy now'.",
+        "- Lead with proof, transformation, offer specifics. Address top objections.",
+      ].join("\n"),
+      engagement: [
+        "CAMPAIGN INTENT: ENGAGEMENT (comments / DMs).",
+        "- ALLOWED CTAs: 'Comment {keyword}', 'DM us {keyword}', 'Tag a friend'.",
+        "- Hooks invite participation / a tiny commitment, not a click.",
+      ].join("\n"),
+      generic: "CAMPAIGN INTENT: unspecified. Default to balanced direct-response.",
+    };
+    const campaignIntentBlock = `=== CAMPAIGN INTENT (HARD CONSTRAINT) ===
+${campaignName ? `Campaign: ${campaignName}\n` : ""}${campaignObjective ? `Meta objective: ${campaignObjective}\n` : ""}${briefStr ? `Creative brief from strategy plan: ${briefStr}\n` : ""}
+${intentRules[intent]}
+Every cell — talking_head, broll, graphic, carousel — must obey these CTA rules. The "cta" overlay and the graphic/carousel "cta" field must match the intent above.`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -602,6 +663,8 @@ ${truncateJson(messagingGuidelines)}` : ''}
 
 ${productPsychology ? `=== PRODUCT PSYCHOLOGY ===
 ${truncateJson(productPsychology)}` : ''}
+
+${campaignIntentBlock}
 
 === STRATEGY CONTEXT ===
 ${truncateJson(strategyData, 600)}

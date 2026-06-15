@@ -16,7 +16,31 @@ Deno.serve(async (req) => {
     const gate = await requirePaidUser(req, corsHeaders);
     if (gate.blocked) return gate.blocked;
 
-    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext, creativeIntelligence, previouslyUsedAngles, neverUseWords, singleAngleReplacement, maxAngles } = await req.json();
+    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext, creativeIntelligence, previouslyUsedAngles, neverUseWords, singleAngleReplacement, maxAngles, campaignObjective, creativeBrief, campaignName } = await req.json();
+
+    // Map the campaign's Meta objective to an angle-shaping intent. Keeps
+    // top-of-funnel awareness campaigns from generating webinar-registration
+    // angles, and vice versa.
+    const _obj = String(campaignObjective || "").toLowerCase();
+    const campaignIntent: "awareness" | "traffic" | "leads" | "sales" | "engagement" | "generic" =
+      /awareness|video[_\s-]?views?|reach/.test(_obj) ? "awareness"
+      : /traffic|link[_\s-]?clicks|visit|profile/.test(_obj) ? "traffic"
+      : /lead|registration|webinar/.test(_obj) ? "leads"
+      : /sales|purchase|conversion|checkout/.test(_obj) ? "sales"
+      : /engagement|message|conversation/.test(_obj) ? "engagement"
+      : "generic";
+    const intentBlock = (() => {
+      const header = `\n\n=== CAMPAIGN INTENT (HARD CONSTRAINT FOR ANGLES) ===\n${campaignName ? `Campaign: ${campaignName}\n` : ""}${campaignObjective ? `Meta objective: ${campaignObjective}\n` : ""}${creativeBrief ? `Creative brief: ${creativeBrief}\n` : ""}`;
+      const map: Record<string, string> = {
+        awareness: `INTENT: EDUCATIONAL AWARENESS / VIDEO VIEWS (top of funnel).\n- Angles must be educational, value-first, scroll-stopping. Teach, reframe, or expose a mistake.\n- DO NOT generate angles built around webinar registration, opt-ins, or "save your seat" CTAs.\n- DO NOT generate angles whose entire premise is "sign up for the free training". This is a video-views ad, not a registration ad.\n- The implicit CTA is "follow / watch / save", not "register / sign up / book".`,
+        traffic: `INTENT: TRAFFIC (drive profile visits or link clicks).\n- Angles tease a payoff that lives at the destination (Instagram profile, blog post).\n- No registration framing. No "save your seat".`,
+        leads: `INTENT: LEAD-GEN (webinar / free training registration / opt-in).\n- Angles should set up a clear "register to get [specific result]" payoff.\n- The free training IS the offer here.`,
+        sales: `INTENT: SALES / CONVERSION.\n- Angles must build buying conviction: proof, transformation, objection-handling, offer specifics.\n- Avoid pure-curiosity angles with no path to purchase.`,
+        engagement: `INTENT: ENGAGEMENT (comments / DMs).\n- Angles invite a tiny commitment ("comment WORD", "DM me YES").`,
+        generic: `INTENT: unspecified. Use balanced direct-response angles.`,
+      };
+      return header + map[campaignIntent] + "\n";
+    })();
 
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -406,6 +430,7 @@ ${offerData?.price ? `Price: ${offerData.price}` : ""}
 
 STRATEGY CONTEXT:
 ${JSON.stringify(strategyData, null, 2)}
+${intentBlock}
 ${dmContext}
 
 ${audiencePsychology ? `BRAND-LEVEL AUDIENCE PSYCHOLOGY:\n${JSON.stringify(audiencePsychology, null, 2)}` : ""}

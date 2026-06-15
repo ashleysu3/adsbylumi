@@ -592,7 +592,29 @@ export default function Create() {
         strategy_id: strategy.id,
         template_id: selectedTemplate.id,
         name: campaignName,
-        strategy_json: selectedTemplate.strategy_template as any,
+        strategy_json: {
+          ...(selectedTemplate.strategy_template as any),
+          // When the user came in from the Strategy Plan, persist the EXACT
+          // campaign step they're building (objective, name, creative brief)
+          // so the angle + creative generators can constrain output to match.
+          // Without this, a TOFU "Educational awareness" step inherits the
+          // template's generic strategy and the AI defaults to webinar-style
+          // angles / "Save your seat" CTAs.
+          ...(fromStrategy && strategyCampaign
+            ? {
+                objective: strategyCampaign.objective || strategyObjective,
+                campaign_name: strategyCampaign.name || strategyCampaignName,
+                creative_brief: (strategyCampaign as any).creative_brief || null,
+                strategyPlanContext: {
+                  objective: strategyCampaign.objective || strategyObjective,
+                  name: strategyCampaign.name || strategyCampaignName,
+                  goal: strategyCampaign.goal || strategyGoal,
+                  audience: (strategyCampaign as any).audience || null,
+                  creative_brief: (strategyCampaign as any).creative_brief || null,
+                },
+              }
+            : {}),
+        } as any,
         progress_status: "creative_in_progress",
         offer_id: selectedOffer?.id || null,
         offer_name: selectedOffer?.name || null,
