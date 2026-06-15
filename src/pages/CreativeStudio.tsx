@@ -1185,7 +1185,7 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
   // No workspaces with strategy - show helpful empty state
   if (workspaces.length === 0) {
     return (
-      <DashboardLayout>
+      <Layout>
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
