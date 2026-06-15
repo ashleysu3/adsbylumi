@@ -134,6 +134,7 @@ const App = () => {
           <LumiProvider>
               <BrandProvider>
               <RenderQueueProvider>
+              <CampaignDraftProvider>
               <SplashScreen isVisible={showSplash} />
               <Toaster />
               <Sonner />
