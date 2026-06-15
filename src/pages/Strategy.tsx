@@ -364,11 +364,6 @@ export default function Strategy() {
                                 </Badge>
                               )}
                             </div>
-                            {o.target_outcome && (
-                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                {o.target_outcome}
-                              </p>
-                            )}
                             {o.description && (
                               <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                                 {o.description}
