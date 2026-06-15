@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Package, Link2, LifeBuoy, Plus, CheckCircle2, AlertTriangle, Gift, Wrench, TrendingUp, Lock, Palette, LayoutGrid, Paintbrush, Activity, Lightbulb, Rocket } from "lucide-react";
+import { BarChart3, Building2, BookOpen, Settings, Shield, LogOut, Link2, Plus, CheckCircle2, AlertTriangle, Gift, Lock, Palette, LayoutGrid, Paintbrush, Activity, Lightbulb, Rocket } from "lucide-react";
 import { LadybugIcon } from "@/components/LadybugIcon";
 import { useState as useReactState } from "react";
 import { BugReportModal } from "@/components/BugReportModal";
@@ -56,7 +56,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
   const { openChat, unreadCount } = useLumiAssistant();
   const { activeBrand, isAgencyUser } = useBrand();
   const { isSubscribed, isLoading: subLoading } = useSubscription();
-  const [hasCampaigns, setHasCampaigns] = useState(false);
+  
   const [metaStatus, setMetaStatus] = useState<'connected' | 'expired' | 'disconnected'>('disconnected');
   const [hasRedAlert, setHasRedAlert] = useState(false);
   const [bugReportOpen, setBugReportOpen] = useReactState(false);
@@ -69,17 +69,6 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
     });
   }, []);
 
-  // Lightweight check for campaign count
-  useEffect(() => {
-    if (!brandId) return;
-    supabase
-      .from("campaign_workspaces")
-      .select("id", { count: "exact", head: true })
-      .eq("brand_id", brandId)
-      .then(({ count }) => {
-        setHasCampaigns((count ?? 0) > 0);
-      });
-  }, [brandId]);
 
   // Check Meta connection status
   useEffect(() => {
@@ -153,7 +142,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
     navigate("/auth");
   };
 
-  const isActive = (path: string) => location.pathname === path;
+  
 
   const MetaStatusIcon = () => {
     if (metaStatus === 'connected') {
@@ -188,7 +177,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
         </div>
 
         {/* Action Button */}
-        <div className="mt-3 space-y-2">
+        <div className="mt-3">
           <button
             onClick={() => !subLoading && isSubscribed ? navigate("/create") : navigate("/auth")}
             className="w-full relative group overflow-hidden rounded-xl"
@@ -197,28 +186,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
             <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
             <span className="relative flex items-center justify-center gap-2 py-2.5 px-3 text-white font-semibold text-sm">
               {!subLoading && !isSubscribed ? <Lock className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-              {!collapsed && <span>{!subLoading && !isSubscribed ? "Upgrade to Create" : "Create a New Ad"}</span>}
-            </span>
-          </button>
-
-          <button
-            onClick={() => navigate("/ad-performance")}
-            className="w-full relative group overflow-hidden rounded-xl"
-          >
-            <div className={`absolute inset-0 transition-opacity ${
-              isActive("/ad-performance")
-                ? "bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 opacity-100"
-                : "bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 opacity-70 group-hover:opacity-90"
-            }`} />
-            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
-            <span className="relative flex items-center justify-center gap-2 py-2.5 px-3 text-white font-semibold text-sm">
-              <span className="relative">
-                <BarChart3 className="h-4 w-4" />
-                {hasRedAlert && (
-                  <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                )}
-              </span>
-              {!collapsed && <span>Ad Performance</span>}
+              {!collapsed && <span>{!subLoading && !isSubscribed ? "Upgrade to Create" : "+ New campaign"}</span>}
             </span>
           </button>
         </div>
@@ -241,7 +209,16 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                       className="transition-all duration-200"
                       activeClassName="bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-md shadow-lumi-pink-1/20 font-semibold [&>svg]:text-white"
                     >
-                      <item.icon className="h-4 w-4" />
+                      {item.path === '/performance' ? (
+                        <span className="relative">
+                          <item.icon className="h-4 w-4" />
+                          {hasRedAlert && (
+                            <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
+                          )}
+                        </span>
+                      ) : (
+                        <item.icon className="h-4 w-4" />
+                      )}
                       {!collapsed && <span>{item.label}</span>}
                     </NavLink>
                   </SidebarMenuButton>
@@ -318,53 +295,49 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
 
         <SidebarSeparator />
 
-        {/* Account */}
+        {/* Agency */}
+        {isAgencyUser && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Agency</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Manage all clients, reviews, and reports">
+                    <NavLink
+                      to="/ads-manager"
+                      className="transition-all duration-200"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    >
+                      <LayoutGrid className="h-4 w-4" />
+                      {!collapsed && <span>Manage All Accounts</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Customize agency branding for client materials">
+                    <NavLink
+                      to="/agency-settings"
+                      end
+                      className="transition-all duration-200"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    >
+                      <Palette className="h-4 w-4" />
+                      {!collapsed && <span>Agency Settings</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        <SidebarSeparator />
+
+        {/* Help */}
         <SidebarGroup>
-          <SidebarGroupLabel>Account</SidebarGroupLabel>
+          <SidebarGroupLabel>Help</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {isAgencyUser && (
-                <>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Manage all clients, reviews, and reports">
-                      <NavLink
-                        to="/ads-manager"
-                        className="transition-all duration-200"
-                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                      >
-                        <LayoutGrid className="h-4 w-4" />
-                        {!collapsed && <span>Manage All Accounts</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Customize agency branding for client materials">
-                      <NavLink
-                        to="/agency-settings"
-                        end
-                        className="transition-all duration-200"
-                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                      >
-                        <Palette className="h-4 w-4" />
-                        {!collapsed && <span>Agency Settings</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </>
-              )}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Settings">
-                  <NavLink
-                    to="/settings"
-                    end
-                    className="transition-all duration-200"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  >
-                    <Settings className="h-4 w-4" />
-                    {!collapsed && <span>Settings</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Learn advertising terms and concepts">
                   <NavLink
@@ -401,6 +374,25 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                   {!collapsed && <span>Report a Bug</span>}
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="Ask Lumi"
+                  onClick={openChat}
+                  className="transition-all duration-200"
+                >
+                  <SparkleIcon size="xs" state="idle" className="flex-shrink-0" />
+                  {!collapsed && (
+                    <span className="flex items-center gap-2 flex-1">
+                      Ask Lumi
+                      {unreadCount > 0 && (
+                        <span className="ml-auto min-w-4 h-4 px-1 bg-lumi-pink-1 text-white rounded-full flex items-center justify-center text-[10px] font-bold">
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               {isAdmin && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="Admin">
@@ -415,43 +407,22 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="Sign Out"
+                  onClick={handleSignOut}
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  <LogOut className="h-4 w-4" />
+                  {!collapsed && <span>Sign Out</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Footer: Ask Lumi + Sign Out */}
-      <SidebarFooter className="p-3 pt-2 space-y-2">
-        <button
-          onClick={openChat}
-          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl
-                     bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1
-                     text-white font-medium text-sm
-                     shadow-md shadow-lumi-pink-1/20 hover:shadow-lg hover:shadow-lumi-pink-1/30
-                     transition-all relative group"
-        >
-          <SparkleIcon size="xs" state="idle" className="group-hover:animate-pulse flex-shrink-0" />
-          {!collapsed && <span>Ask Lumi</span>}
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-white text-lumi-pink-1 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          )}
-        </button>
-
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Sign Out"
-              onClick={handleSignOut}
-              className="text-muted-foreground hover:text-destructive"
-            >
-              <LogOut className="h-4 w-4" />
-              {!collapsed && <span>Sign Out</span>}
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+      <SidebarFooter />
      </Sidebar>
       <BugReportModal
         open={bugReportOpen}
