@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { LumiEducationCard } from '@/components/LumiEducationCard';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
+import { CampaignSpine } from '@/components/CampaignSpine';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
