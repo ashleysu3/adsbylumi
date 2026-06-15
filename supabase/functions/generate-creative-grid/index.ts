@@ -664,6 +664,8 @@ ${truncateJson(messagingGuidelines)}` : ''}
 ${productPsychology ? `=== PRODUCT PSYCHOLOGY ===
 ${truncateJson(productPsychology)}` : ''}
 
+${campaignIntentBlock}
+
 === STRATEGY CONTEXT ===
 ${truncateJson(strategyData, 600)}
 
