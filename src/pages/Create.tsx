@@ -373,7 +373,19 @@ export default function Create() {
     if (selectedOfferId) {
       // Skip template override for system offers — they set their own template directly
       if (SYSTEM_OFFER_IDS.includes(selectedOfferId)) return;
-      
+
+      // If the user arrived from the Strategy Plan with a specific campaign type,
+      // keep that authoritative instead of falling back to the offer's recommended
+      // template (or the "Sales" default).
+      if (fromStrategy && (strategyObjective || strategyCampaignName)) {
+        const match = pickStrategyTemplate(templates, strategyObjective, strategyCampaignName);
+        if (match) {
+          setRecommendedTemplate(match);
+          setSelectedTemplateId(match.id);
+          return;
+        }
+      }
+
       const offer = offers.find((o) => o.id === selectedOfferId);
       if (offer?.recommended_template_id) {
         const template = templates.find((t) => t.id === offer.recommended_template_id);
@@ -390,7 +402,22 @@ export default function Create() {
         }
       }
     }
-  }, [selectedOfferId, offers, templates]);
+  }, [selectedOfferId, offers, templates, fromStrategy, strategyObjective, strategyCampaignName]);
+
+  // When arriving from Strategy Plan, seed the template selection from the
+  // chosen strategy campaign as soon as templates load — even before an offer
+  // is picked, and re-apply if the user changes offers.
+  useEffect(() => {
+    if (!fromStrategy) return;
+    if (!templates.length) return;
+    if (!strategyObjective && !strategyCampaignName) return;
+    const match = pickStrategyTemplate(templates, strategyObjective, strategyCampaignName);
+    if (match) {
+      setRecommendedTemplate(match);
+      setSelectedTemplateId(match.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromStrategy, templates, strategyObjective, strategyCampaignName]);
 
   // Auto-advance the "Event & location targeting" goal — it's a single-option flow
   useEffect(() => {
