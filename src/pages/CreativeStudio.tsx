@@ -36,6 +36,7 @@ import { CreativeStudioExplainer, useCreativeStudioExplainer } from "@/component
 import { Json } from "@/integrations/supabase/types";
 import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
 import { useBrand } from "@/contexts/BrandContext";
+import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
 import {
   AlertDialog,
   AlertDialogAction,
