@@ -116,6 +116,7 @@ export default function StrategyPlan() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8">
+        <CampaignSpine currentStep={1} />
         <Button
           variant="ghost"
           size="sm"
