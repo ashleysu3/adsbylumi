@@ -111,6 +111,7 @@ import BrandSetup from "./pages/BrandSetup";
 import Photos from "./pages/Photos";
 import Creative from "./pages/Creative";
 import Launch from "./pages/Launch";
+import Performance from "./pages/Performance";
 
 
 const queryClient = new QueryClient();
@@ -169,7 +170,7 @@ const App = () => {
                   <Route path="/launch" element={<Launch />} />
                   <Route path="/ad-performance" element={<AdPerformance />} />
                   <Route path="/data" element={<Navigate to="/ad-performance" replace />} />
-                  <Route path="/performance" element={<Navigate to="/ad-performance" replace />} />
+                  <Route path="/performance" element={<Performance />} />
                   <Route path="/performance-history" element={<Navigate to="/ad-performance" replace />} />
                   <Route path="/past-reports" element={<Navigate to="/ad-performance" replace />} />
                   <Route path="/production" element={<Navigate to="/campaigns" replace />} />
