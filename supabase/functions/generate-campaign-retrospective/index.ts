@@ -67,6 +67,23 @@ interface RetrospectiveJSON {
     goal_actual?: number | null;
     goal_hit?: boolean | null;
     goal_delta_pct?: number | null;
+    /** Set when the objective's native KPI returned 0 results and we
+     *  re-evaluated against a signal that actually moved. */
+    kpi_fallback_from?: string | null;
+    kpi_fallback_from_label?: string | null;
+    kpi_fallback_to?: string | null;
+    kpi_fallback_to_label?: string | null;
+    kpi_fallback_note?: string | null;
+    /** Always-on cross-KPI strip so even when the primary is 0 you can see
+     *  what did happen. */
+    other_signals?: {
+      spend: number;
+      impressions: number;
+      clicks: number;
+      leads: number;
+      purchases: number;
+      video_views: number;
+    } | null;
   };
   data_quality: 'high' | 'medium' | 'low' | 'insufficient';
   data_quality_note?: string;
@@ -79,6 +96,7 @@ interface RetrospectiveJSON {
   recommendations: Array<{ insight: string; supporting_data?: string; confidence: 'high' | 'medium' | 'low' }>;
   generated_at: string;
 }
+
 
 async function canAccessBrand(sb: any, ownerId: string, userId: string, brandId: string): Promise<boolean> {
   if (ownerId === userId) return true;
