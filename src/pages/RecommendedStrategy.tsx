@@ -296,14 +296,14 @@ export default function RecommendedStrategy() {
                               <span className="font-semibold">
                                 {o.name ?? "Untitled offer"}
                               </span>
-                              {o.offer_type && (
+                              {o.target_outcome && (
                                 <Badge variant="secondary" className="text-xs">
-                                  {o.offer_type}
+                                  {o.target_outcome}
                                 </Badge>
                               )}
-                              {typeof o.price === "number" && o.price > 0 && (
+                              {o.price_point && (
                                 <Badge variant="outline" className="text-xs">
-                                  ${o.price}
+                                  {o.price_point}
                                 </Badge>
                               )}
                             </div>
