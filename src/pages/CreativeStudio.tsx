@@ -11,8 +11,12 @@ import {
   Target, Lightbulb, FileText, Rocket, 
   ChevronRight, CheckCircle2, Circle, Loader2,
   Sparkles, ArrowRight, Video, Film, Image, Trash2,
-  X, Check, FileDown, Printer, BarChart3, RefreshCw, Upload, MessageSquare
+  X, Check, FileDown, Printer, BarChart3, RefreshCw, Upload, MessageSquare,
+  Bookmark, Wrench, Palette
 } from "lucide-react";
+import AdGenerator from "@/pages/AdGenerator";
+import CreativeToolkit from "@/pages/CreativeToolkit";
+import ContentLibrary from "@/pages/ContentLibrary";
 import { printCreativeBrief } from "@/lib/print-creative-brief";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
