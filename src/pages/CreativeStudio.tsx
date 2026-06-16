@@ -1298,7 +1298,7 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
 
 
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkflowTab)}>
-            <TabsList className="grid w-full grid-cols-4 mb-6 h-12 bg-transparent p-0 gap-2 rounded-none">
+            <TabsList className="grid w-full grid-cols-5 mb-6 h-12 bg-transparent p-0 gap-2 rounded-none">
             {workflowTabs.map((t) => {
               const isActive = activeTab === t.id;
               const colorMap: Record<string, { active: string; inactive: string }> = {
@@ -1317,6 +1317,10 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
                 build: {
                   active: "bg-tab-blue-light text-primary-foreground shadow-md",
                   inactive: "bg-tab-blue-light/10 text-tab-blue-dark hover:bg-tab-blue-light/20 border border-tab-blue-light/20",
+                },
+                saved: {
+                  active: "bg-muted-foreground text-primary-foreground shadow-md",
+                  inactive: "bg-muted/40 text-muted-foreground hover:bg-muted/60 border border-border",
                 },
               };
               const colors = colorMap[t.id] || colorMap.angles;
