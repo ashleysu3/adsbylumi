@@ -1158,7 +1158,8 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
     { id: "angles" as const, label: "Angles", icon: Target },
     { id: "concepts" as const, label: "Concepts", icon: Lightbulb },
     { id: "copy" as const, label: "Ad Copy", icon: FileText },
-    { id: "build" as const, label: "Production", icon: Rocket },
+    { id: "build" as const, label: "Produce", icon: Rocket },
+    { id: "saved" as const, label: "Saved", icon: Bookmark },
   ];
 
   // Tab progress indicators
@@ -1173,6 +1174,7 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
       const assets = workspace?.user_uploaded_assets || [];
       return assets.some((a: any) => a.linked_concept_id === item.id);
     }),
+    saved: false,
   };
 
   // Context-aware primary action for top-right
