@@ -70,7 +70,7 @@ import { BYOCreativeUploader } from "@/components/creative/BYOCreativeUploader";
 import { CopyRegenerateDialog, CopyFeedback } from "@/components/creative/CopyRegenerateDialog";
 import { GenerateCreativeDialog } from "@/components/creative/GenerateCreativeDialog";
 
-type WorkflowTab = "angles" | "concepts" | "copy" | "build";
+type WorkflowTab = "angles" | "concepts" | "copy" | "build" | "saved";
 
 function normalizeScriptLines(input: unknown): string[] | undefined {
   if (!input) return undefined;
