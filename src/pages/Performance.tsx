@@ -136,6 +136,27 @@ export default function Performance() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pausing, setPausing] = useState(false);
 
+  // Budget update dialog state
+  const [budgetOpen, setBudgetOpen] = useState(false);
+  const [budgetLoadingPreview, setBudgetLoadingPreview] = useState(false);
+  const [budgetSubmitting, setBudgetSubmitting] = useState(false);
+  const [budgetPreview, setBudgetPreview] = useState<{
+    isCBO: boolean;
+    level: string;
+    current: number | null;
+    adSetId: string | null;
+  } | null>(null);
+  const [newBudgetInput, setNewBudgetInput] = useState<string>("");
+  const [budgetActionKind, setBudgetActionKind] = useState<"increase_budget" | "reduce_budget">("increase_budget");
+
+  // Refresh creative dialog state
+  const [refreshOpen, setRefreshOpen] = useState(false);
+  const [refreshSubmitting, setRefreshSubmitting] = useState(false);
+  const [benchCandidates, setBenchCandidates] = useState<Array<{ id: string; meta_ad_id: string; production_item_id: string | null }>>([]);
+  const [selectedBenchId, setSelectedBenchId] = useState<string>("");
+
+
+
   useEffect(() => {
     if (brandLoading || !activeBrand) return;
     let cancelled = false;
