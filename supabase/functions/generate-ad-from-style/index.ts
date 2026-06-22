@@ -16,15 +16,23 @@ interface GenInput {
   brandId?: string;
   copy?: { headline?: string; subhead?: string; cta?: string };
   count?: number;
+  selectedImageUrls?: string[];
+  selectedItemIds?: string[];
 }
 
-async function ensureStyle(
-  admin: any,
+async function buildStyle(
   userAuthHeader: string,
   boardId: string,
   existingStyleId: string | null,
+  selectedImageUrls?: string[],
+  selectedItemIds?: string[],
 ): Promise<string> {
-  if (existingStyleId) return existingStyleId;
+  // When the caller passes an explicit selection, ALWAYS build a fresh style
+  // from those exact images and don't cache it on the board.
+  const hasSelection = (selectedImageUrls && selectedImageUrls.length > 0) ||
+    (selectedItemIds && selectedItemIds.length > 0);
+  if (existingStyleId && !hasSelection) return existingStyleId;
+
   const r = await fetch(
     `${Deno.env.get("SUPABASE_URL")}/functions/v1/recraft-style-from-board`,
     {
@@ -33,7 +41,12 @@ async function ensureStyle(
         "Content-Type": "application/json",
         Authorization: userAuthHeader,
       },
-      body: JSON.stringify({ boardId }),
+      body: JSON.stringify({
+        boardId,
+        selectedImageUrls,
+        selectedItemIds,
+        cacheOnBoard: !hasSelection,
+      }),
     },
   );
   const j = await r.json();
@@ -51,7 +64,7 @@ serve(async (req) => {
     if (!RECRAFT_API_KEY) throw new Error("RECRAFT_API_KEY not configured");
 
     const body = (await req.json()) as GenInput;
-    const { boardId, brandId, copy, count } = body;
+    const { boardId, brandId, copy, count, selectedImageUrls, selectedItemIds } = body;
     if (!boardId) throw new Error("boardId required");
     const n = Math.min(Math.max(count ?? 4, 1), 6);
 
@@ -76,7 +89,13 @@ serve(async (req) => {
       .maybeSingle();
     if (!board || board.user_id !== user.id) throw new Error("Board not found");
 
-    const styleId = await ensureStyle(admin, authHeader, boardId, board.recraft_style_id);
+    const styleId = await buildStyle(
+      authHeader,
+      boardId,
+      board.recraft_style_id,
+      selectedImageUrls,
+      selectedItemIds,
+    );
 
     // Brand colors + name for the prompt.
     let brandName = "the brand";
