@@ -54,6 +54,7 @@ function todayISO() {
 
 export default function Launch() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const workspaceId = searchParams.get("workspace");
   const { draft } = useCampaignDraft();
   const { activeBrand } = useBrand();
