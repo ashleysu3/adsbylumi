@@ -129,6 +129,7 @@ interface BuildResult {
   campaignId?: string;
   adSetIds: string[];
   adIds: string[];
+  warmAdIds: string[];
   failedAds: Array<{ conceptId: string; conceptTitle: string; error: string }>;
   warnings: string[];
 }
@@ -288,6 +289,7 @@ Deno.serve(async (req) => {
       success: false,
       adSetIds: [],
       adIds: [],
+      warmAdIds: [],
       failedAds: [],
       warnings: []
     };
@@ -1083,6 +1085,42 @@ Deno.serve(async (req) => {
 
         result.adIds.push(adData.id);
         console.log(`Ad created: ${adData.id}`);
+
+        // Mirror the ad into the warm retargeting ad set, reusing the same creative
+        if (warmAdSetId) {
+          try {
+            const warmAdParams: Record<string, string> = {
+              adset_id: warmAdSetId,
+              name: `${adName} - Warm`,
+              creative: JSON.stringify({ creative_id: creativeId }),
+              status: launchStatus,
+              multi_advertiser_ads: JSON.stringify({ use_multi_advertiser_ads: false }),
+              access_token: metaAccessToken,
+            };
+            if (trackingSpecs) {
+              warmAdParams.tracking_specs = JSON.stringify(trackingSpecs);
+            }
+            const warmAdResp = await fetch(
+              `https://graph.facebook.com/v25.0/act_${accountId}/ads`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams(warmAdParams),
+              }
+            );
+            const warmAdData = await warmAdResp.json();
+            if (warmAdData.error) {
+              console.error(`Warm ad creation failed for ${adName}:`, warmAdData.error);
+              result.warnings.push(`Warm retargeting ad failed for "${adName}": ${getMetaErrorMessage(warmAdData.error)}`);
+            } else {
+              result.warmAdIds.push(warmAdData.id);
+              console.log(`Warm ad created: ${warmAdData.id}`);
+            }
+          } catch (warmErr: any) {
+            console.error(`Warm ad error for ${adName}:`, warmErr);
+            result.warnings.push(`Warm retargeting ad error for "${adName}": ${warmErr.message}`);
+          }
+        }
       } catch (adError: any) {
         console.error(`Error creating ad for ${adName}:`, adError);
         result.failedAds.push({
@@ -1175,6 +1213,43 @@ Deno.serve(async (req) => {
 
             result.adIds.push(adData.id);
             console.log(`Existing post ad created: ${adData.id}`);
+
+            // Mirror existing-post ad into the warm retargeting ad set
+            if (warmAdSetId) {
+              try {
+                const warmIgName = `IG Post - ${post.caption?.slice(0, 30) || post.id} - Warm`;
+                const warmIgParams: Record<string, string> = {
+                  adset_id: warmAdSetId,
+                  name: warmIgName,
+                  creative: JSON.stringify({ creative_id: creativeData.id }),
+                  status: launchStatus,
+                  multi_advertiser_ads: JSON.stringify({ use_multi_advertiser_ads: false }),
+                  access_token: metaAccessToken,
+                };
+                if (trackingSpecs) {
+                  warmIgParams.tracking_specs = JSON.stringify(trackingSpecs);
+                }
+                const warmIgResp = await fetch(
+                  `https://graph.facebook.com/v25.0/act_${accountId}/ads`,
+                  {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams(warmIgParams),
+                  }
+                );
+                const warmIgData = await warmIgResp.json();
+                if (warmIgData.error) {
+                  console.error(`Warm existing-post ad failed (${post.id}):`, warmIgData.error);
+                  result.warnings.push(`Warm retargeting ad failed for IG post ${post.id}: ${getMetaErrorMessage(warmIgData.error)}`);
+                } else {
+                  result.warmAdIds.push(warmIgData.id);
+                  console.log(`Warm existing-post ad created: ${warmIgData.id}`);
+                }
+              } catch (warmIgErr: any) {
+                console.error(`Warm existing-post ad error (${post.id}):`, warmIgErr);
+                result.warnings.push(`Warm retargeting ad error for IG post ${post.id}: ${warmIgErr.message}`);
+              }
+            }
           } catch (postError: any) {
             console.error(`Error creating ad for existing post ${post.id}:`, postError);
             result.failedAds.push({
@@ -1210,6 +1285,7 @@ Deno.serve(async (req) => {
       warm_ad_set_id: warmAdSetId,
       ad_set_ids: result.adSetIds,
       ad_ids: result.adIds,
+      warm_ad_ids: result.warmAdIds,
       failed_ads: result.failedAds,
       warnings: result.warnings
     };
@@ -1246,6 +1322,7 @@ Deno.serve(async (req) => {
         adSetId: primaryAdSetId,
         warmAdSetId,
         adIds: result.adIds,
+        warmAdIds: result.warmAdIds,
         totalAdsCreated: result.adIds.length,
         totalAdsFailed: result.failedAds.length,
         failedAds: result.failedAds,
