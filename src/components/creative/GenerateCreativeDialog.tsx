@@ -1512,6 +1512,62 @@ export function GenerateCreativeDialog() {
 
               <div className="grid grid-cols-1 lg:grid-cols-[1fr,1.1fr] gap-6">
                 <div className="space-y-5">
+                  {/* Brand background generator (beta) */}
+                  <div className="rounded border border-primary/30 bg-primary/5 p-3 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <Label className="text-xs uppercase text-primary flex items-center gap-1">
+                          <Sparkles className="h-3 w-3" /> Brand background (beta)
+                        </Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          Generate a clean on-brand background — no faces. Your headshot, copy &amp; logo layer on top.
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={bgOptions.length ? "outline" : "default"}
+                        onClick={runBrandBackground}
+                        disabled={bgGenerating}
+                      >
+                        {bgGenerating ? (
+                          <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Generating…</>
+                        ) : bgOptions.length ? (
+                          <><RefreshCw className="h-3 w-3 mr-1" /> Regenerate</>
+                        ) : (
+                          <>Generate</>
+                        )}
+                      </Button>
+                    </div>
+                    {brandBackgroundAssets.length === 0 && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Tip: add background or texture examples in <b>Brand Assets</b> for more on-brand results.
+                      </p>
+                    )}
+                    {bgOptions.length > 0 && (
+                      <div className="grid grid-cols-4 gap-2 pt-1">
+                        {bgOptions.map((o) => (
+                          <button
+                            key={o.path}
+                            type="button"
+                            onClick={() => setBgSelectedUrl(o.url === bgSelectedUrl ? "" : o.url)}
+                            className={`relative aspect-square rounded border-2 overflow-hidden transition ${
+                              bgSelectedUrl === o.url ? "border-primary" : "border-border hover:border-muted-foreground"
+                            }`}
+                            title={`Background ${o.aspect}`}
+                          >
+                            <img src={o.url} alt="" className="w-full h-full object-cover" />
+                            <span className="absolute bottom-0 left-0 right-0 text-[9px] uppercase text-white bg-black/55 py-0.5 text-center leading-none">
+                              {o.aspect}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {bgSelectedUrl && (
+                      <p className="text-[11px] text-primary">✓ Will be sent as <code>backgroundUrl</code> to the renderer.</p>
+                    )}
+                  </div>
+
                   {/* Image source */}
                   {needsPhoto && (
                     <div className="space-y-2">
