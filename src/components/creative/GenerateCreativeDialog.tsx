@@ -686,7 +686,9 @@ export function GenerateCreativeDialog() {
         }, 30000);
       });
       setBoardApprovedIdxs((prev) => new Set(prev).add(idx));
-      toast.success("Approved and saved to your creative ✅");
+      toast.success("Approved and saved to your Production Checklist ✅", {
+        description: "Find it on this creative card under Asset — use the eye icon to preview it.",
+      });
     } catch (e: any) {
       toast.error(e?.message || "Could not approve");
     } finally {
