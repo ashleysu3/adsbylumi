@@ -43,12 +43,15 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { workspaceId, newBudget, adSetId } = await req.json();
+    const { workspaceId, newBudget, adSetId, preview } = await req.json();
 
     if (!workspaceId) throw new Error("workspaceId is required");
-    if (!newBudget || typeof newBudget !== "number" || newBudget < 1) {
-      throw new Error("newBudget must be a positive number (dollars/day)");
+    if (!preview) {
+      if (!newBudget || typeof newBudget !== "number" || newBudget < 1) {
+        throw new Error("newBudget must be a positive number (dollars/day)");
+      }
     }
+
 
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
@@ -117,7 +120,7 @@ Deno.serve(async (req) => {
 
     const campaignId = metaCampaignIds.campaignId;
     const accessToken = brand.meta_access_token;
-    const budgetCents = Math.round(newBudget * 100).toString(); // Meta uses cents
+    const budgetCents = preview ? "0" : Math.round(newBudget * 100).toString(); // Meta uses cents
 
     // ------------------------------------------------------------
     // Step 0: Detect current budget level (CBO vs ABO) from Meta.
@@ -159,9 +162,52 @@ Deno.serve(async (req) => {
     });
 
     // ------------------------------------------------------------
+    // Preview branch — read-only. Returns the current daily budget
+    // (in dollars) for the requested level + whether the campaign is CBO.
+    // No POST / mutation happens here.
+    // ------------------------------------------------------------
+    if (preview) {
+      let currentDaily: number | null = null;
+      let level: "campaign" | "adset" | "adset_single" | "ambiguous" = "campaign";
+      if (isCBO) {
+        level = "campaign";
+        currentDaily = campData.daily_budget ? parseFloat(campData.daily_budget) / 100 : null;
+      } else if (adSetId) {
+        const match = allAdSets.find((as) => as.id === adSetId);
+        level = "adset";
+        currentDaily = match?.daily_budget ? parseFloat(match.daily_budget) / 100 : null;
+      } else if (activeAdSets.length === 1) {
+        level = "adset_single";
+        currentDaily = activeAdSets[0].daily_budget
+          ? parseFloat(activeAdSets[0].daily_budget) / 100
+          : null;
+      } else {
+        level = "ambiguous";
+      }
+      return new Response(
+        JSON.stringify({
+          success: true,
+          preview: true,
+          isCBO,
+          level,
+          current_daily_budget: currentDaily,
+          ad_set_id: level === "adset" ? adSetId : level === "adset_single" ? activeAdSets[0].id : null,
+          active_ad_sets: activeAdSets.map((as: any) => ({
+            id: as.id,
+            name: as.name,
+            status: as.status,
+            dailyBudget: as.daily_budget ? parseFloat(as.daily_budget) / 100 : null,
+          })),
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
+    // ------------------------------------------------------------
     // Case A — caller specified an ad set to target.
     // ------------------------------------------------------------
     if (adSetId) {
+
       // Guard: if the campaign is CBO, updating a single ad set's budget
       // would either fail or (worse) flip the campaign to ABO. Refuse.
       if (isCBO) {

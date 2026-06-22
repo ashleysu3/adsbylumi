@@ -27,8 +27,14 @@ import {
   Target,
   Loader2,
   BarChart2,
+  DollarSign,
+  RefreshCw,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
+
 
 
 // ============================================================================
@@ -129,6 +135,27 @@ export default function Performance() {
   const [snoozedUntil, setSnoozedUntil] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pausing, setPausing] = useState(false);
+
+  // Budget update dialog state
+  const [budgetOpen, setBudgetOpen] = useState(false);
+  const [budgetLoadingPreview, setBudgetLoadingPreview] = useState(false);
+  const [budgetSubmitting, setBudgetSubmitting] = useState(false);
+  const [budgetPreview, setBudgetPreview] = useState<{
+    isCBO: boolean;
+    level: string;
+    current: number | null;
+    adSetId: string | null;
+  } | null>(null);
+  const [newBudgetInput, setNewBudgetInput] = useState<string>("");
+  const [budgetActionKind, setBudgetActionKind] = useState<"increase_budget" | "reduce_budget">("increase_budget");
+
+  // Refresh creative dialog state
+  const [refreshOpen, setRefreshOpen] = useState(false);
+  const [refreshSubmitting, setRefreshSubmitting] = useState(false);
+  const [benchCandidates, setBenchCandidates] = useState<Array<{ id: string; meta_ad_id: string; production_item_id: string | null }>>([]);
+  const [selectedBenchId, setSelectedBenchId] = useState<string>("");
+
+
 
   useEffect(() => {
     if (brandLoading || !activeBrand) return;
@@ -250,20 +277,233 @@ export default function Performance() {
     }
   }
 
-  function handleDoIt() {
+  async function handleDoIt() {
     if (!chosen) return;
     const action = chosen.rec.recommendation.action;
     if (action === "turn_off") {
       setConfirmOpen(true);
       return;
     }
-    const creativeActions = new Set(["refresh_creative", "add_similar_variants"]);
+    if (action === "increase_budget" || action === "reduce_budget") {
+      await openBudgetDialog(action);
+      return;
+    }
+    if (action === "refresh_creative") {
+      await openRefreshDialog();
+      return;
+    }
+    if (action === "promote_to_scaling") {
+      toast.message("Set up scaling", {
+        description: chosen.rec.recommendation.reasoning,
+      });
+      navigate("/launch", { state: { recommendation: chosen.rec, workspaceId: chosen.result.workspaceId } });
+      return;
+    }
+    const creativeActions = new Set(["add_similar_variants"]);
     const dest = creativeActions.has(action) ? "/creative" : "/data";
     toast.message("Here's how to do it", {
       description: chosen.rec.recommendation.reasoning,
     });
     navigate(dest);
   }
+
+  function removeChosenFromQueue() {
+    if (!chosen) return;
+    const id = chosen.rec.id;
+    let best: { result: EngineResult; rec: AdEval } | null = null;
+    for (const r of results) {
+      const t = r.topRecommendation;
+      if (!t || t.id === id) continue;
+      const impact = t.recommendation?.impact ?? 0;
+      if (!best || impact > (best.rec.recommendation?.impact ?? 0)) {
+        best = { result: r, rec: t };
+      }
+    }
+    setChosen(best);
+  }
+
+  async function logOverride(action: string, user_action: string) {
+    if (!activeBrand || !chosen) return;
+    try {
+      await supabase.from("recommendation_overrides").insert({
+        brand_id: activeBrand.id,
+        ad_id: chosen.rec.id,
+        recommendation_action: action,
+        user_action,
+      });
+    } catch (e) {
+      console.error("override log error", e);
+    }
+  }
+
+  // -----------------------------------------------------------------
+  // Budget update flow (increase_budget / reduce_budget)
+  // -----------------------------------------------------------------
+  async function openBudgetDialog(kind: "increase_budget" | "reduce_budget") {
+    if (!chosen || !activeBrand) return;
+    setBudgetActionKind(kind);
+    setBudgetPreview(null);
+    setNewBudgetInput("");
+    setBudgetOpen(true);
+    setBudgetLoadingPreview(true);
+    try {
+      const adSetId = chosen.rec.level === "adset" ? chosen.rec.id : undefined;
+      const { data, error } = await supabase.functions.invoke("update-meta-budget", {
+        body: {
+          workspaceId: chosen.result.workspaceId,
+          adSetId,
+          preview: true,
+        },
+      });
+      if (error || !data?.success) {
+        const msg = error?.message || data?.error || "Couldn't read current budget";
+        toast.error("Couldn't read current budget", { description: msg });
+        setBudgetOpen(false);
+        return;
+      }
+      const current: number | null = data.current_daily_budget;
+      const proposed = current
+        ? Math.max(1, Math.round((kind === "increase_budget" ? current * 1.25 : current * 0.75)))
+        : kind === "increase_budget" ? 25 : 10;
+      setBudgetPreview({
+        isCBO: !!data.isCBO,
+        level: data.level,
+        current,
+        adSetId: data.ad_set_id ?? null,
+      });
+      setNewBudgetInput(String(proposed));
+    } catch (e: any) {
+      toast.error("Couldn't read current budget", { description: e?.message || "Unknown error" });
+      setBudgetOpen(false);
+    } finally {
+      setBudgetLoadingPreview(false);
+    }
+  }
+
+  async function confirmBudget() {
+    if (!chosen || !activeBrand || !budgetPreview) return;
+    const newBudget = parseFloat(newBudgetInput);
+    if (!Number.isFinite(newBudget) || newBudget < 1) {
+      toast.error("Enter a valid daily budget (min $1).");
+      return;
+    }
+    setBudgetSubmitting(true);
+    try {
+      const adSetIdInitial = budgetPreview.isCBO
+        ? undefined
+        : chosen.rec.level === "adset"
+          ? chosen.rec.id
+          : undefined;
+
+      const callUpdate = async (adSetId?: string) =>
+        supabase.functions.invoke("update-meta-budget", {
+          body: {
+            workspaceId: chosen.result.workspaceId,
+            newBudget,
+            adSetId,
+          },
+        });
+
+      let { data, error } = await callUpdate(adSetIdInitial);
+      // CBO refusal: retry without adSetId
+      const cboRefusal =
+        data?.error && typeof data.error === "string" && /Campaign Budget Optimization \(CBO\)/i.test(data.error);
+      if (cboRefusal && adSetIdInitial) {
+        ({ data, error } = await callUpdate(undefined));
+      }
+
+      if (error) {
+        toast.error("Couldn't update budget in Meta", { description: error.message });
+        return;
+      }
+      if (!data?.success) {
+        toast.error("Couldn't update budget in Meta", { description: data?.error || "Unknown error" });
+        return;
+      }
+      toast.success(`Budget updated to $${newBudget}/day in Meta`);
+      await logOverride(budgetActionKind, "modified");
+      removeChosenFromQueue();
+      setBudgetOpen(false);
+    } catch (e: any) {
+      toast.error("Couldn't update budget in Meta", { description: e?.message || "Unknown error" });
+    } finally {
+      setBudgetSubmitting(false);
+    }
+  }
+
+  // -----------------------------------------------------------------
+  // Refresh creative flow
+  // -----------------------------------------------------------------
+  async function openRefreshDialog() {
+    if (!chosen || !activeBrand) return;
+    try {
+      const nowIso = new Date().toISOString();
+      const { data, error } = await supabase
+        .from("creative_bench")
+        .select("id, meta_ad_id, production_item_id, retest_eligible_at, status")
+        .eq("brand_id", activeBrand.id)
+        .eq("workspace_id", chosen.result.workspaceId)
+        .in("status", ["bench", "paused", "retesting"])
+        .not("meta_ad_id", "is", null);
+      if (error) throw error;
+      const candidates = (data || [])
+        .filter((r: any) => !r.retest_eligible_at || r.retest_eligible_at <= nowIso)
+        .map((r: any) => ({ id: r.id, meta_ad_id: r.meta_ad_id, production_item_id: r.production_item_id }));
+
+      if (candidates.length === 0) {
+        toast.message("No fresh creative is ready to swap in — let's make one.");
+        navigate("/creative", {
+          state: { recommendation: chosen.rec, workspaceId: chosen.result.workspaceId },
+        });
+        return;
+      }
+      setBenchCandidates(candidates);
+      setSelectedBenchId(candidates[0].id);
+      setRefreshOpen(true);
+    } catch (e: any) {
+      toast.error("Couldn't load bench creatives", { description: e?.message || "Unknown error" });
+    }
+  }
+
+  async function confirmRefresh() {
+    if (!chosen || !activeBrand) return;
+    const picked = benchCandidates.find((c) => c.id === selectedBenchId);
+    if (!picked) {
+      toast.error("Pick a creative to swap in.");
+      return;
+    }
+    setRefreshSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("rotate-creative", {
+        body: {
+          workspaceId: chosen.result.workspaceId,
+          brandId: activeBrand.id,
+          fatigueAdId: chosen.rec.id,
+          benchAdId: picked.meta_ad_id,
+          reason: chosen.rec.recommendation.reasoning,
+          isAutoRotation: false,
+        },
+      });
+      if (error) {
+        toast.error("Couldn't rotate creative in Meta", { description: error.message });
+        return;
+      }
+      if (!data?.success) {
+        toast.error("Couldn't rotate creative in Meta", { description: data?.error || "Unknown error" });
+        return;
+      }
+      toast.success("Creative swapped in Meta");
+      await logOverride("refresh_creative", "modified");
+      removeChosenFromQueue();
+      setRefreshOpen(false);
+    } catch (e: any) {
+      toast.error("Couldn't rotate creative in Meta", { description: e?.message || "Unknown error" });
+    } finally {
+      setRefreshSubmitting(false);
+    }
+  }
+
+
 
   async function confirmPause() {
     if (!chosen || !activeBrand) return;
@@ -421,7 +661,14 @@ export default function Performance() {
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={handleDoIt} className="gap-2">
                     <CheckCircle2 className="h-4 w-4" />
-                    {chosen.rec.recommendation.action === "turn_off" ? "Do it" : "Show me how"}
+                    {(() => {
+                      const a = chosen.rec.recommendation.action;
+                      if (a === "turn_off") return "Do it";
+                      if (a === "increase_budget" || a === "reduce_budget") return "Update budget";
+                      if (a === "refresh_creative") return "Swap creative";
+                      if (a === "promote_to_scaling") return "Set up scaling";
+                      return "Show me how";
+                    })()}
                   </Button>
                   <Button variant="outline" onClick={() => setWhyOpen((v) => !v)} className="gap-2">
                     <HelpCircle className="h-4 w-4" />
@@ -466,6 +713,139 @@ export default function Performance() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+
+            {/* Budget update dialog */}
+            <AlertDialog
+              open={budgetOpen}
+              onOpenChange={(o) => !budgetSubmitting && !budgetLoadingPreview && setBudgetOpen(o)}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    {budgetActionKind === "increase_budget" ? "Increase budget" : "Reduce budget"} on "{chosen.rec.name}"?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription asChild>
+                    <div className="space-y-3 pt-2">
+                      {budgetLoadingPreview && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Reading current budget from Meta…
+                        </div>
+                      )}
+                      {!budgetLoadingPreview && budgetPreview && (
+                        <>
+                          <div className="text-sm">
+                            <span className="font-medium text-foreground">
+                              Current: ${budgetPreview.current?.toFixed(2) ?? "—"}/day
+                            </span>{" "}
+                            <span className="text-muted-foreground">
+                              on {budgetPreview.isCBO ? "the campaign (CBO)" : budgetPreview.level === "adset" || budgetPreview.level === "adset_single" ? "this ad set" : "the campaign"}
+                            </span>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="new-budget" className="text-foreground">New daily budget (USD)</Label>
+                            <Input
+                              id="new-budget"
+                              type="number"
+                              min={1}
+                              step="1"
+                              value={newBudgetInput}
+                              onChange={(e) => setNewBudgetInput(e.target.value)}
+                              disabled={budgetSubmitting}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            This will change spend in Meta immediately. Meta's learning may reset after large changes.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={budgetSubmitting}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={(e) => {
+                      e.preventDefault();
+                      confirmBudget();
+                    }}
+                    disabled={budgetSubmitting || budgetLoadingPreview || !budgetPreview}
+                  >
+                    {budgetSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Updating…
+                      </>
+                    ) : (
+                      "Update budget in Meta"
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Refresh creative dialog */}
+            <AlertDialog
+              open={refreshOpen}
+              onOpenChange={(o) => !refreshSubmitting && setRefreshOpen(o)}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                    Swap to a fresh creative?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription asChild>
+                    <div className="space-y-3 pt-2">
+                      <div className="text-sm">
+                        This pauses <span className="font-medium text-foreground">"{chosen.rec.name}"</span> and activates the selected bench creative in Meta.
+                      </div>
+                      {benchCandidates.length > 1 ? (
+                        <RadioGroup value={selectedBenchId} onValueChange={setSelectedBenchId} className="space-y-2">
+                          {benchCandidates.map((c) => (
+                            <div key={c.id} className="flex items-center gap-2 rounded-md border p-2">
+                              <RadioGroupItem value={c.id} id={`bench-${c.id}`} />
+                              <Label htmlFor={`bench-${c.id}`} className="text-sm font-normal cursor-pointer">
+                                <span className="font-medium text-foreground">Ad {c.meta_ad_id}</span>
+                                {c.production_item_id ? ` · ${c.production_item_id}` : ""}
+                              </Label>
+                            </div>
+                          ))}
+                        </RadioGroup>
+                      ) : (
+                        benchCandidates[0] && (
+                          <div className="rounded-md border p-2 text-sm">
+                            <span className="font-medium text-foreground">Ad {benchCandidates[0].meta_ad_id}</span>
+                            {benchCandidates[0].production_item_id ? ` · ${benchCandidates[0].production_item_id}` : ""}
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={refreshSubmitting}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={(e) => {
+                      e.preventDefault();
+                      confirmRefresh();
+                    }}
+                    disabled={refreshSubmitting || !selectedBenchId}
+                  >
+                    {refreshSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Swapping…
+                      </>
+                    ) : (
+                      "Swap in Meta"
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
 
             {/* KPI cards from the chosen campaign */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
