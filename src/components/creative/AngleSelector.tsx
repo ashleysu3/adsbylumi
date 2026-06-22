@@ -105,6 +105,27 @@ export function AngleSelector({
   const [clarificationQuestion, setClarificationQuestion] = useState<string | null>(null);
   const [clarificationAnswer, setClarificationAnswer] = useState("");
   const [originalInput, setOriginalInput] = useState("");
+  const [awarenessFilter, setAwarenessFilter] = useState<AwarenessLevel | "all">(
+    defaultAwarenessLevel || "all"
+  );
+
+  // Awareness levels actually present in the current angle set (excluding defaults).
+  const availableAwareness = useMemo(() => {
+    const present = new Set<AwarenessLevel>();
+    angles.forEach((a) => {
+      if (a.awareness_level && AWARENESS_ORDER.includes(a.awareness_level)) {
+        present.add(a.awareness_level);
+      }
+    });
+    return AWARENESS_ORDER.filter((lvl) => present.has(lvl));
+  }, [angles]);
+
+  const filteredAngles = useMemo(() => {
+    if (awarenessFilter === "all") return angles;
+    return angles.filter(
+      (a) => a.isDefault || a.isCustom || a.awareness_level === awarenessFilter
+    );
+  }, [angles, awarenessFilter]);
 
   const toggleAngle = (angleId: string) => {
     const angle = angles.find(a => a.id === angleId);
