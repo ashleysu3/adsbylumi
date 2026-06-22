@@ -19,6 +19,7 @@ import { ArrowRight, X } from "lucide-react";
 import { SubscriptionBanner } from "@/components/SubscriptionGate";
 import { DashboardFooter } from "@/components/DashboardFooter";
 import { PartnerPortalBanner } from "@/components/PartnerPortalBanner";
+import { ReturnToWorkButton } from "@/components/ReturnToWorkButton";
 
 
 
