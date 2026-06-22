@@ -165,6 +165,23 @@ serve(async (req) => {
       }
     }
 
+    // FALLBACK: if the brand has approved background/texture assets,
+    // skip generation entirely (no model = no gibberish text, no invented
+    // faces). Return those URLs directly as the "images" so the dialog can
+    // composite them as the background layer.
+    if (mode === "brand_background" && brandRefUrls.length > 0) {
+      const stored = brandRefUrls.slice(0, 4).map((u, i) => ({
+        aspect: i % 2 === 0 ? "1x1" : "4x5",
+        url: u,
+        path: `brand-asset:${i}`,
+        source: "brand_asset" as const,
+      }));
+      return new Response(
+        JSON.stringify({ success: true, style_id: null, images: stored, used_brand_assets: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const styleId = await buildStyle(authHeader, {
       boardId,
       brandId,
@@ -175,22 +192,24 @@ serve(async (req) => {
 
     const palette = colors.length ? `Brand color palette: ${colors.join(", ")}.` : "";
     const offerHint = [copy?.headline, copy?.subhead].filter(Boolean).join(" — ");
-    const noPeople = `STRICTLY no people, no faces, no hands, no body parts, no portraits, no characters, no figures, no silhouettes of people.`;
-    const noText = `Do NOT bake in any words, letters, logos, headlines, captions, or CTAs — text will be overlaid separately.`;
-    const layoutSpace = `Composition must leave generous CLEAN, UNCLUTTERED negative space (especially the center and lower-third) for an overlaid text card and a circular headshot.`;
+    const noPeople = `ABSOLUTELY NO people, NO faces, NO human figures, NO hands, NO arms, NO body parts, NO portraits, NO characters, NO silhouettes of humans, NO mannequins, NO crowd, NO eyes, NO mouths.`;
+    const noText = `ABSOLUTELY NO text, NO letters, NO words, NO numbers, NO typography, NO captions, NO headlines, NO labels, NO signs, NO writing of any kind, NO logos, NO watermarks, NO brand marks, NO CTAs, NO buttons. The image must be 100% text-free.`;
+    const layoutSpace = `Leave the CENTER and LOWER area clean, empty, and uncluttered — no objects in the middle — so a text card and circular headshot can be overlaid on top.`;
     const sceneHint = mode === "brand_background"
-      ? `Clean BACKGROUND / texture / lifestyle SCENE only: soft surfaces, tabletop flatlays, abstract textures, gradients, paper, fabric, light leaks, or empty editorial environments. ${brandRefUrls.length === 0 ? "Use a neutral, premium on-brand look built from the brand color palette." : "Match the aesthetic, mood, and color world of the brand reference textures/backgrounds."}`
+      ? `Render ONLY one of: a soft abstract gradient, a subtle paper/fabric/wall texture, a calm tabletop flatlay with a few small props at the edges, a soft light-leak, or an empty editorial environment. ${brandRefUrls.length === 0 ? "Use a neutral, premium on-brand look built from the brand color palette." : "Match the aesthetic, mood, and color world of the brand reference textures/backgrounds."}`
       : `Match the aesthetic, mood, and color world of the reference style. Premium, scroll-stopping, creator-friendly editorial feel.`;
 
     const prompt = [
-      `An on-brand Meta ad BACKGROUND for ${brandName}.`,
-      offerHint ? `Offer context: ${offerHint}.` : "",
+      `Plain on-brand BACKGROUND IMAGE for ${brandName} — background only, nothing else.`,
+      offerHint ? `(Offer context for color/mood only — do NOT depict it: ${offerHint}.)` : "",
       palette,
       sceneHint,
       layoutSpace,
       noText,
       noPeople,
     ].filter(Boolean).join(" ");
+
+    const negativePrompt = "text, letters, words, numbers, typography, captions, headlines, watermark, logo, signature, signs, writing, gibberish text, fake text, garbled letters, people, person, face, faces, portrait, hands, arms, body, human figure, silhouette of a person, character, mannequin, eyes, mouth, hair";
 
     const sizes: Array<{ label: "1x1" | "4x5"; size: string }> = [
       { label: "1x1", size: "1024x1024" },
@@ -201,6 +220,7 @@ serve(async (req) => {
     for (const s of sizes) {
       const genBody: Record<string, unknown> = {
         prompt,
+        negative_prompt: negativePrompt,
         model: "recraftv3",
         n,
         size: s.size,
