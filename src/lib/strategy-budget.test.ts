@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { computeStrategyBudget, parsePricePoint } from "./strategy-budget";
 
 const threeCampaignFunnel = [
-  // Front-end lead capture — webinar CPL max ~$40 → lean ~$171/day, ideal ~$286/day
+  // Front-end lead capture — webinar CPL max ~$40 → lean ~$86/day, ideal ~$143/day
   { name: "Webinar registration", objective: "webinar" },
-  // Cold conversion — Sales/ROAS, $97 offer → target ~$48.50, lean ~$208/day
+  // Cold conversion — Sales/ROAS, $97 offer → lean floor ~$49/day
   { name: "Cold sales", objective: "Sales" },
   // Warm retargeting — same target cost as cold sales
   { name: "Warm retargeting", objective: "Sales" },
@@ -79,5 +79,14 @@ describe("computeStrategyBudget", () => {
     expect(result.leanTotalDaily).toBeGreaterThan(0);
     expect(result.idealTotalDaily).toBeGreaterThanOrEqual(result.leanTotalDaily);
     expect(result.rationale).toMatch(/\$\d+–\$\d+\/day/);
+  });
+
+  it("uses half the offer price as the cold-sales starter floor", () => {
+    const result = computeStrategyBudget({
+      campaigns: [{ name: "Cold conversion", objective: "OUTCOME_SALES" }],
+      pricePoint: "$497",
+    });
+    expect(result.stages[0].leanDaily).toBe(249);
+    expect(result.leanTotalDaily).toBe(249);
   });
 });
