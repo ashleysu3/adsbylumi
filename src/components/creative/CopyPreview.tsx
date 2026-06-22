@@ -11,12 +11,14 @@ import { RefreshCw, Copy, Check, CheckCircle2, Sparkles, FileText, MessageSquare
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AngleCopyNav } from "./AngleCopyNav";
+import { HookScoreBadge, type HookScore } from "./HookScoreBadge";
 
 interface CopyVariation {
   text: string;
   framework: string;
   character_count?: number;
   length?: string;
+  score?: HookScore;
 }
 
 interface AngleCopy {
