@@ -129,9 +129,9 @@ function parseBudget(message: string): { amount: number | null; warning?: string
 
 function parsePricePoint(price?: string | null): number | null {
   if (!price) return null;
-  const match = String(price).replace(/,/g, '').match(/\d+(\.\d+)?/);
-  if (!match) return null;
-  const value = Number(match[0]);
+  const matches = String(price).replace(/,/g, '').match(/\d+(\.\d+)?/g);
+  if (!matches?.length) return null;
+  const value = Math.max(...matches.map(Number).filter((n) => Number.isFinite(n)));
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
