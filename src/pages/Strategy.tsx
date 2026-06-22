@@ -526,32 +526,140 @@ export default function Strategy() {
                 {matched.name}
               </h2>
 
-              <div className="grid sm:grid-cols-3 gap-3 mb-5">
+              <div className="grid gap-3 mb-5">
+                {/* Campaign-type block — one row per stage */}
                 <div className="rounded-lg bg-background/60 border border-border/60 p-3">
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-2">
                     <Target className="h-3.5 w-3.5" /> Campaign type
                   </div>
-                  <p className="text-sm font-medium">
-                    {summarizeCampaignType(matched)}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-background/60 border border-border/60 p-3">
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-1">
-                    <Users className="h-3.5 w-3.5" /> Audience
+                  <div className="space-y-2">
+                    {(matched.campaigns?.length ? matched.campaigns : [{ name: matched.name }]).map((c, i) => (
+                      <div key={i} className="text-sm">
+                        <p className="font-medium">
+                          {i + 1}. {c.name || `Campaign ${i + 1}`}
+                          {c.objective && (
+                            <span className="ml-2 text-xs font-normal text-muted-foreground">
+                              · {prettyObjective(c.objective)}
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {campaignRoleLine(c)}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-sm font-medium">
-                    {summarizeAudience(matched.campaigns ?? [])}
-                  </p>
                 </div>
-                <div className="rounded-lg bg-background/60 border border-border/60 p-3">
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-1">
-                    <Wallet className="h-3.5 w-3.5" /> Starting budget
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-background/60 border border-border/60 p-3">
+                    <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                      <Users className="h-3.5 w-3.5" /> Audience
+                    </div>
+                    <p className="text-sm font-medium">
+                      {summarizeAudience(matched.campaigns ?? [])}
+                    </p>
                   </div>
-                  <p className="text-sm font-medium">
-                    {STARTING_BUDGET_DEFAULT}
-                  </p>
+
+                  <div className="rounded-lg bg-background/60 border border-border/60 p-3">
+                    <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                      <Wallet className="h-3.5 w-3.5" /> Starting budget
+                    </div>
+                    {budget ? (
+                      <p className="text-sm font-medium">
+                        {budget.mode === "range"
+                          ? `~$${budget.leanTotalDaily}–$${budget.idealTotalDaily}/day`
+                          : budget.totalDaily > 0
+                            ? `$${budget.totalDaily}/day · ~$${budget.totalMonthly}/mo`
+                            : "—"}
+                      </p>
+                    ) : (
+                      <p className="text-sm font-medium text-muted-foreground">—</p>
+                    )}
+                  </div>
                 </div>
+
+                {/* Budget breakdown + inputs */}
+                {budget && (
+                  <div className="rounded-lg bg-background/60 border border-border/60 p-4 space-y-3">
+                    <div className="space-y-1.5">
+                      {budget.stages.map((s, i) => (
+                        <div
+                          key={i}
+                          className={`flex items-center justify-between text-sm ${
+                            s.included ? "" : "opacity-50"
+                          }`}
+                        >
+                          <span>
+                            {s.name}
+                            {!s.included && (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                (skipped — budget too low)
+                              </span>
+                            )}
+                          </span>
+                          <span className="font-medium tabular-nums">
+                            {s.included ? `$${s.dailyBudget}/day` : "—"}
+                          </span>
+                        </div>
+                      ))}
+                      {budget.totalDaily > 0 && (
+                        <div className="flex items-center justify-between text-sm pt-1.5 mt-1 border-t border-border/60 font-semibold">
+                          <span>Total</span>
+                          <span className="tabular-nums">
+                            ${budget.totalDaily}/day · ~${budget.totalMonthly}/mo
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {budget.warning && (
+                      <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-500/10 rounded-md p-2">
+                        ⚠️ {budget.warning}
+                      </p>
+                    )}
+
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      <span className="font-medium text-foreground">Why this budget: </span>
+                      Meta needs ~50 results a week per campaign to stop guessing. {budget.rationale}
+                    </p>
+
+                    <div className="grid sm:grid-cols-2 gap-2 pt-1">
+                      <div>
+                        <Label htmlFor="monthly-budget" className="text-xs text-muted-foreground">
+                          Monthly budget ($)
+                        </Label>
+                        <Input
+                          id="monthly-budget"
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          placeholder="e.g. 1500"
+                          value={monthlyBudgetInput}
+                          onChange={(e) => setMonthlyBudgetInput(e.target.value)}
+                          className="h-9 mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="goal-count" className="text-xs text-muted-foreground">
+                          Goal (results / month)
+                        </Label>
+                        <Input
+                          id="goal-count"
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          placeholder="e.g. 40 leads"
+                          value={goalCountInput}
+                          onChange={(e) => setGoalCountInput(e.target.value)}
+                          className="h-9 mt-1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
+
 
               {(matched.why_it_works || intro) && (
                 <div className="text-sm text-foreground/90 leading-relaxed">
