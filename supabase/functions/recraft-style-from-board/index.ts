@@ -128,9 +128,19 @@ serve(async (req) => {
 
     const form = new FormData();
     form.append("style", "digital_illustration");
+    let attached = 0;
     for (const u of urls) {
       const blob = await fetchAsPng(u);
-      if (blob) form.append("files", blob, `ref-${crypto.randomUUID()}.png`);
+      if (blob) {
+        form.append("files", blob, `ref-${crypto.randomUUID()}.png`);
+        attached++;
+      }
+    }
+    if (attached === 0) {
+      return new Response(
+        JSON.stringify({ success: false, error: "None of the selected references could be decoded as a valid image (>= 256px). Try larger, higher-quality images." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     const styleRes = await fetch(`${RECRAFT_BASE}/styles`, {
