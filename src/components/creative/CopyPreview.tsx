@@ -234,6 +234,9 @@ export function CopyPreview({
                   <span className="text-muted-foreground capitalize">• {variation.length}</span>
                 )}
               </Badge>
+              {(type === "headline" || type === "primary") && variation.score && (
+                <HookScoreBadge score={variation.score} />
+              )}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
