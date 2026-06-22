@@ -661,7 +661,14 @@ export default function Performance() {
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={handleDoIt} className="gap-2">
                     <CheckCircle2 className="h-4 w-4" />
-                    {chosen.rec.recommendation.action === "turn_off" ? "Do it" : "Show me how"}
+                    {(() => {
+                      const a = chosen.rec.recommendation.action;
+                      if (a === "turn_off") return "Do it";
+                      if (a === "increase_budget" || a === "reduce_budget") return "Update budget";
+                      if (a === "refresh_creative") return "Swap creative";
+                      if (a === "promote_to_scaling") return "Set up scaling";
+                      return "Show me how";
+                    })()}
                   </Button>
                   <Button variant="outline" onClick={() => setWhyOpen((v) => !v)} className="gap-2">
                     <HelpCircle className="h-4 w-4" />
@@ -706,6 +713,139 @@ export default function Performance() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+
+            {/* Budget update dialog */}
+            <AlertDialog
+              open={budgetOpen}
+              onOpenChange={(o) => !budgetSubmitting && !budgetLoadingPreview && setBudgetOpen(o)}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    {budgetActionKind === "increase_budget" ? "Increase budget" : "Reduce budget"} on "{chosen.rec.name}"?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription asChild>
+                    <div className="space-y-3 pt-2">
+                      {budgetLoadingPreview && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Reading current budget from Meta…
+                        </div>
+                      )}
+                      {!budgetLoadingPreview && budgetPreview && (
+                        <>
+                          <div className="text-sm">
+                            <span className="font-medium text-foreground">
+                              Current: ${budgetPreview.current?.toFixed(2) ?? "—"}/day
+                            </span>{" "}
+                            <span className="text-muted-foreground">
+                              on {budgetPreview.isCBO ? "the campaign (CBO)" : budgetPreview.level === "adset" || budgetPreview.level === "adset_single" ? "this ad set" : "the campaign"}
+                            </span>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="new-budget" className="text-foreground">New daily budget (USD)</Label>
+                            <Input
+                              id="new-budget"
+                              type="number"
+                              min={1}
+                              step="1"
+                              value={newBudgetInput}
+                              onChange={(e) => setNewBudgetInput(e.target.value)}
+                              disabled={budgetSubmitting}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            This will change spend in Meta immediately. Meta's learning may reset after large changes.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={budgetSubmitting}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={(e) => {
+                      e.preventDefault();
+                      confirmBudget();
+                    }}
+                    disabled={budgetSubmitting || budgetLoadingPreview || !budgetPreview}
+                  >
+                    {budgetSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Updating…
+                      </>
+                    ) : (
+                      "Update budget in Meta"
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Refresh creative dialog */}
+            <AlertDialog
+              open={refreshOpen}
+              onOpenChange={(o) => !refreshSubmitting && setRefreshOpen(o)}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                    Swap to a fresh creative?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription asChild>
+                    <div className="space-y-3 pt-2">
+                      <div className="text-sm">
+                        This pauses <span className="font-medium text-foreground">"{chosen.rec.name}"</span> and activates the selected bench creative in Meta.
+                      </div>
+                      {benchCandidates.length > 1 ? (
+                        <RadioGroup value={selectedBenchId} onValueChange={setSelectedBenchId} className="space-y-2">
+                          {benchCandidates.map((c) => (
+                            <div key={c.id} className="flex items-center gap-2 rounded-md border p-2">
+                              <RadioGroupItem value={c.id} id={`bench-${c.id}`} />
+                              <Label htmlFor={`bench-${c.id}`} className="text-sm font-normal cursor-pointer">
+                                <span className="font-medium text-foreground">Ad {c.meta_ad_id}</span>
+                                {c.production_item_id ? ` · ${c.production_item_id}` : ""}
+                              </Label>
+                            </div>
+                          ))}
+                        </RadioGroup>
+                      ) : (
+                        benchCandidates[0] && (
+                          <div className="rounded-md border p-2 text-sm">
+                            <span className="font-medium text-foreground">Ad {benchCandidates[0].meta_ad_id}</span>
+                            {benchCandidates[0].production_item_id ? ` · ${benchCandidates[0].production_item_id}` : ""}
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={refreshSubmitting}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={(e) => {
+                      e.preventDefault();
+                      confirmRefresh();
+                    }}
+                    disabled={refreshSubmitting || !selectedBenchId}
+                  >
+                    {refreshSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Swapping…
+                      </>
+                    ) : (
+                      "Swap in Meta"
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
 
             {/* KPI cards from the chosen campaign */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
