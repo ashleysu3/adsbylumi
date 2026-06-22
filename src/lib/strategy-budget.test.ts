@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest";
 import { computeStrategyBudget, parsePricePoint } from "./strategy-budget";
 
 const threeCampaignFunnel = [
-  // Front-end lead capture (CPL benchmark max = $40 for webinar → ideal ~$286/day)
-  { name: "Free training opt-in", objective: "OUTCOME_LEADS" },
-  // Cold conversion (Sales/ROAS → defaults to price * 0.5 clamped)
-  { name: "Cold sales", objective: "OUTCOME_SALES" },
-  // Warm retargeting (treated as conversion)
-  { name: "Warm retargeting", objective: "OUTCOME_SALES" },
+  // Front-end lead capture — webinar CPL max ~$40 → lean ~$171/day, ideal ~$286/day
+  { name: "Webinar registration", objective: "webinar" },
+  // Cold conversion — Sales/ROAS, $97 offer → target ~$48.50, lean ~$208/day
+  { name: "Cold sales", objective: "Sales" },
+  // Warm retargeting — same target cost as cold sales
+  { name: "Warm retargeting", objective: "Sales" },
 ];
 
 describe("parsePricePoint", () => {
