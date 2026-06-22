@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -166,6 +166,7 @@ export function CreativeChecklistCard({
   brand,
 }: CreativeChecklistCardProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [justFocused, setJustFocused] = useState(false);
   const [showRationale, setShowRationale] = useState(false);
   const [selectedBrollClipId, setSelectedBrollClipId] = useState<string | null>(null);
   const [brollSource, setBrollSource] = useState<"lumi" | "upload">("lumi");
@@ -192,6 +193,21 @@ export function CreativeChecklistCard({
   const isRanked = typeof rank === 'number';
   const isTalkingHead = item.format === "talking_head";
   const hasScriptDetails = isTalkingHead && (item.script_lines?.length || item.verbal_hook || item.written_hook || item.visual_hook);
+
+  const focusSavedDesign = () => {
+    setIsOpen(true);
+    setJustFocused(true);
+    setTimeout(() => setJustFocused(false), 3500);
+  };
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { itemId?: string };
+      if (detail?.itemId === item.id) focusSavedDesign();
+    };
+    window.addEventListener("creative-render:focus-item", handler as EventListener);
+    return () => window.removeEventListener("creative-render:focus-item", handler as EventListener);
+  }, [item.id]);
 
   const copyScriptToClipboard = () => {
     if (!item.script_lines || item.script_lines.length === 0) {
@@ -224,7 +240,8 @@ export function CreativeChecklistCard({
       <Card className={cn(
         "transition-all border-l-4",
         isRanked ? "border-l-amber-500 bg-amber-50/30 dark:bg-amber-950/10 ring-1 ring-amber-200 dark:ring-amber-800" :
-        hasAsset ? "border-l-green-500 bg-green-50/30 dark:bg-green-950/10" : "border-l-primary/50"
+        hasAsset ? "border-l-green-500 bg-green-50/30 dark:bg-green-950/10" : "border-l-primary/50",
+        justFocused && "ring-2 ring-primary shadow-lg"
       )}>
         <CollapsibleTrigger asChild>
           <CardContent className="pt-4 pb-4 cursor-pointer hover:bg-muted/30 transition-colors">
@@ -292,10 +309,26 @@ export function CreativeChecklistCard({
                     </Badge>
                   )}
                   {hasAsset && (
-                    <CheckCircle2 className="h-4 w-4 text-green-500 ml-auto flex-shrink-0" />
+                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 text-xs ml-auto">
+                      {isGeneratedAsset ? "Generated design saved" : "Asset saved"}
+                    </Badge>
                   )}
                 </div>
                 <p className="font-medium text-sm line-clamp-2">{item.hook}</p>
+                {isGeneratedAsset && uploadedAsset && (
+                  <div className="mt-3 flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-2 dark:border-green-800 dark:bg-green-950/20">
+                    <img src={uploadedAsset.file_url} alt="Generated design preview" className="h-14 w-14 rounded object-cover" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-green-800 dark:text-green-300">Generated design saved here</p>
+                      <p className="text-[11px] text-muted-foreground">Open this card or tap Preview to review it.</p>
+                    </div>
+                    {onPreview && (
+                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onPreview(uploadedAsset); }}>
+                        <Eye className="h-3.5 w-3.5 mr-1" /> Preview
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
               
               <Button variant="ghost" size="icon" className="flex-shrink-0">
