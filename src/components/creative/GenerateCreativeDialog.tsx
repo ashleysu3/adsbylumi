@@ -731,10 +731,11 @@ export function GenerateCreativeDialog() {
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Background generation failed");
       const imgs = (data.images || []) as Array<{ aspect: string; url: string; path: string }>;
-      // Prefer 4x5 for vertical, but show all; we just need a URL the engine can fetch.
+      const usedBrandAssets = !!data.used_brand_assets;
       setBgOptions(imgs);
       if (imgs[0]) setBgSelectedUrl(imgs[0].url);
-      if (!imgs.length) toast.error("Recraft returned no backgrounds.");
+      if (!imgs.length) toast.error("No backgrounds available.");
+      else if (usedBrandAssets) toast.success(`Using ${imgs.length} approved brand backgrounds (no AI generation — zero gibberish-text risk).`);
       else toast.success(`Generated ${imgs.length} brand backgrounds`);
     } catch (e: any) {
       console.error(e);
