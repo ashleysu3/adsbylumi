@@ -502,8 +502,186 @@ export function GenerateCreativeDialog() {
         /* templates table may not be available; ignore */
       }
     })();
+    // Load the user's boards for the inspiration flow.
+    (async () => {
+      setBoardsLoading(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data, error } = await supabase
+          .from("boards")
+          .select("id, name")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        if (cancelled) return;
+        const list = (data || []) as BoardRow[];
+        setBoards(list);
+        setSelectedBoardId((prev) => prev || list[0]?.id || "");
+      } catch (e: any) {
+        if (!cancelled) console.warn("load boards failed", e);
+      } finally {
+        if (!cancelled) setBoardsLoading(false);
+      }
+    })();
     return () => { cancelled = true; };
   }, [open, activeBrand?.id, brandsLoading, navigate]);
+
+  // Load images for the currently selected board.
+  useEffect(() => {
+    if (!open || !selectedBoardId) {
+      setBoardImages([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setBoardImagesLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("board_items")
+          .select("id, uploaded_image_url, inspiration_items(image_url)")
+          .eq("board_id", selectedBoardId)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        const resolved: BoardImg[] = [];
+        for (const it of (data || []) as any[]) {
+          const raw = (it.uploaded_image_url as string | null) ||
+            (it.inspiration_items?.image_url as string | null) || null;
+          if (!raw) continue;
+          let url = raw;
+          if (!raw.startsWith("http")) {
+            const { data: s } = await supabase.storage
+              .from("inspiration")
+              .createSignedUrl(raw, 60 * 60);
+            url = s?.signedUrl || "";
+          }
+          if (url) resolved.push({ id: it.id as string, url, rawSrc: raw });
+        }
+        if (cancelled) return;
+        setBoardImages(resolved);
+        setSelectedBoardImageIds(new Set());
+      } catch (e: any) {
+        if (!cancelled) {
+          console.warn("load board images failed", e);
+          setBoardImages([]);
+        }
+      } finally {
+        if (!cancelled) setBoardImagesLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, selectedBoardId]);
+
+  const toggleBoardImage = (id: string) => {
+    setSelectedBoardImageIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else {
+        if (next.size >= 5) {
+          toast.error("Pick up to 5 images.");
+          return prev;
+        }
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const runBoardGenerate = async () => {
+    if (!selectedBoardId) {
+      toast.error("Choose a board first.");
+      return;
+    }
+    if (selectedBoardImageIds.size < 3) {
+      toast.error("Pick at least 3 images.");
+      return;
+    }
+    if (!boardCopy.headline.trim()) {
+      toast.error("Add a headline.");
+      return;
+    }
+    setBoardGenerating(true);
+    setBoardResults([]);
+    setBoardApprovedIdxs(new Set());
+    try {
+      const selectedImageUrls = boardImages
+        .filter((b) => selectedBoardImageIds.has(b.id))
+        .map((b) => b.url);
+      const { data, error } = await supabase.functions.invoke("generate-ad-from-style", {
+        body: {
+          boardId: selectedBoardId,
+          brandId: activeBrand?.id,
+          copy: boardCopy,
+          count: 4,
+          selectedImageUrls,
+        },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Generation failed");
+      const images = (data.images || []) as Array<{ aspect: string; url: string; path: string }>;
+      setBoardResults(images);
+      if (!images.length) toast.error("Recraft returned no images. Try again.");
+      else toast.success(`Generated ${images.length} visuals`);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Failed to generate ads");
+    } finally {
+      setBoardGenerating(false);
+    }
+  };
+
+  const approveBoardResult = async (
+    r: { aspect: string; url: string; path: string },
+    idx: number,
+  ) => {
+    if (!itemId) {
+      toast.error("Open this from a creative card to approve it.");
+      return;
+    }
+    setBoardApprovingIdx(idx);
+    try {
+      const imgRes = await fetch(r.url);
+      if (!imgRes.ok) throw new Error("Could not fetch generated image");
+      const buf = new Uint8Array(await imgRes.arrayBuffer());
+      let bin = "";
+      for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+      const base64 = btoa(bin);
+      const isVertical = r.aspect === "4x5" || r.aspect.includes("9x16");
+      await new Promise<void>((resolve, reject) => {
+        const reqId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const onDone = (e: Event) => {
+          const d = (e as CustomEvent).detail as { reqId: string; ok: boolean; error?: string };
+          if (d?.reqId !== reqId) return;
+          window.removeEventListener("creative-render:approved", onDone as EventListener);
+          if (d.ok) resolve();
+          else reject(new Error(d.error || "Could not save"));
+        };
+        window.addEventListener("creative-render:approved", onDone as EventListener);
+        window.dispatchEvent(
+          new CustomEvent("creative-render:approve", {
+            detail: {
+              reqId,
+              itemId,
+              base64,
+              mime: "image/png",
+              fileName: `recraft-${r.aspect}-${idx + 1}.png`,
+              isVertical,
+            },
+          }),
+        );
+        setTimeout(() => {
+          window.removeEventListener("creative-render:approved", onDone as EventListener);
+          reject(new Error("Timed out saving the render"));
+        }, 30000);
+      });
+      setBoardApprovedIdxs((prev) => new Set(prev).add(idx));
+      toast.success("Approved and saved to your creative ✅");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not approve");
+    } finally {
+      setBoardApprovingIdx(null);
+    }
+  };
 
   const compose = useCallback(async (feedback?: CopyFeedback | null) => {
     const b = briefRef.current;
