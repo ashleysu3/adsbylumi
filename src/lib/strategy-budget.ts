@@ -264,14 +264,16 @@ export function computeStrategyBudget(
   const primaryMainIdeal = primaryMain?.idealDaily ?? 0;
   const primaryMainLean = primaryMain?.leanDaily ?? 0;
 
-  const supplementalLeanTotal = supplementalStages.reduce(
-    (s, x) => s + supplementalDailyFor(primaryMainLean, x.leanDaily),
-    0,
-  );
-  const supplementalIdealTotal = supplementalStages.reduce(
-    (s, x) => s + supplementalDailyFor(primaryMainIdeal, x.idealDaily),
-    0,
-  );
+  const supplementalLeanTotal = allocateSupplementalBudgets(
+    primaryMainLean,
+    supplementalStages,
+    "leanDaily",
+  ).reduce((s, x) => s + x, 0);
+  const supplementalIdealTotal = allocateSupplementalBudgets(
+    primaryMainIdeal,
+    supplementalStages,
+    "idealDaily",
+  ).reduce((s, x) => s + x, 0);
   const leanTotalDaily =
     mainStages.reduce((s, x) => s + x.leanDaily, 0) + supplementalLeanTotal;
   const idealTotalDaily =
@@ -289,7 +291,9 @@ export function computeStrategyBudget(
     stages = stages.map((s) => ({ ...s, included: false, dailyBudget: 0 }));
     let remaining = dailyCap;
 
-    // 1. Fund the primary main first — ideal, then fall back to lean.
+    // 1. Fund the primary main first — ideal, then fall back to lean, then
+    // whatever budget exists. The main campaign always gets the money first;
+    // warnings explain if it is under the 25/week optimization target.
     const primary = stages[primaryMainIdx];
     if (primary) {
       if (remaining >= primary.idealDaily) {
@@ -300,6 +304,10 @@ export function computeStrategyBudget(
         primary.included = true;
         primary.dailyBudget = primary.leanDaily;
         remaining -= primary.leanDaily;
+      } else if (remaining > 0) {
+        primary.included = true;
+        primary.dailyBudget = Math.floor(remaining) || remaining;
+        remaining = 0;
       }
     }
 
@@ -317,17 +325,22 @@ export function computeStrategyBudget(
       }
     }
 
-    // 3. Layer in supplemental at ~15% of primary main spend.
+    // 3. Layer in supplemental at a small capped share of primary main spend.
     const primarySpend = primary?.dailyBudget ?? 0;
-    for (const s of stages) {
-      if (s.tier !== "supplemental") continue;
-      const target = supplementalDailyFor(primarySpend, s.idealDaily);
+    const supplementalCandidates = stages.filter((s) => s.tier === "supplemental");
+    const supplementalAllocations = allocateSupplementalBudgets(
+      primarySpend,
+      supplementalCandidates,
+      "idealDaily",
+    );
+    supplementalCandidates.forEach((s, index) => {
+      const target = supplementalAllocations[index] ?? 0;
       if (target > 0 && remaining >= target) {
         s.included = true;
         s.dailyBudget = target;
         remaining -= target;
       }
-    }
+    });
 
     // 4. Push leftover (>$1/day) into the primary main.
     if (remaining >= 1 && primary?.included) {
@@ -339,12 +352,12 @@ export function computeStrategyBudget(
     const supplementalIncluded = included.filter((s) => s.tier === "supplemental");
 
     if (!primary || !primary.included) {
-      const need = primary?.leanDaily ?? 0;
-      warning = primary
-        ? `Your main ${primary.roleLabel.toLowerCase()} campaign needs at least $${need}/day to give Meta enough data — at $${Math.round(dailyCap)}/day it can't run.`
-        : `This funnel has no main conversion campaign to fund.`;
+      warning = `This funnel has no main conversion campaign to fund.`;
       rationale = `Your budget can't yet cover the required main campaign.`;
     } else {
+      if (primary.dailyBudget < primary.leanDaily) {
+        warning = `Your main ${primary.roleLabel.toLowerCase()} campaign is getting the budget first, but $${primary.dailyBudget}/day is below the $${primary.leanDaily}/day lean target and may not reach 25 conversions/week.`;
+      }
       const supBits =
         supplementalIncluded.length > 0
           ? ` plus ${supplementalIncluded.length} supplemental ${supplementalIncluded.length === 1 ? "campaign" : "campaigns"} (~$${supplementalIncluded.reduce((s, x) => s + x.dailyBudget, 0)}/day) to lift results`
