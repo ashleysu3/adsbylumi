@@ -371,9 +371,6 @@ export function AngleSelector({
             </Card>
           );
         })}
-            </Card>
-          );
-        })}
 
         {/* Add Your Own card */}
         <Card
