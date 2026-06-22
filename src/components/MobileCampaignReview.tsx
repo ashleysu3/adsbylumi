@@ -23,6 +23,7 @@ import {
   Archive
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { PolicyCheckBadge } from "./PolicyCheckBadge";
 
 interface MobileCampaignReviewProps {
   workspace: any;
