@@ -362,6 +362,55 @@ Make sure each angle's copy reflects its UNIQUE positioning and psychological ap
       throw new Error('Failed to parse copy variations');
     }
 
+    // === Hook-score normalization + banned-word penalty pass ===
+    const clampInt = (n: any, min: number, max: number) => {
+      const v = Math.round(Number(n));
+      if (!Number.isFinite(v)) return 0;
+      return Math.max(min, Math.min(max, v));
+    };
+    const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const bannedRegexes = allBannedWords
+      .filter((w: string) => typeof w === 'string' && w.trim().length > 0)
+      .map((w: string) => ({ word: w, re: new RegExp(`\\b${escapeRe(w.trim())}\\b`, 'i') }));
+
+    const scoreHook = (text: string, raw: any) => {
+      const specificity = clampInt(raw?.specificity, 0, 3);
+      const tension = clampInt(raw?.tension, 0, 3);
+      const clarity = clampInt(raw?.clarity, 0, 2);
+      const scrollStop = clampInt(raw?.scroll_stop ?? raw?.scrollStop, 0, 2);
+      const baseTotal = clampInt(raw?.total ?? specificity + tension + clarity + scrollStop, 0, 10);
+
+      // Banned-word penalty applied to HOOK (headline OR first line of primary)
+      const hookText = String(text || '').split(/\r?\n/)[0] || '';
+      const flagged: string[] = [];
+      for (const { word, re } of bannedRegexes) {
+        if (re.test(hookText)) flagged.push(word);
+      }
+      const penalty = Math.min(3, flagged.length);
+      const total = Math.max(0, baseTotal - penalty);
+
+      return {
+        specificity,
+        tension,
+        clarity,
+        scroll_stop: scrollStop,
+        total,
+        ...(penalty > 0 ? { banned_word_penalty: penalty, flagged_banned_words: flagged } : {}),
+      };
+    };
+
+    for (const angleId of Object.keys(angleCopy || {})) {
+      const block = angleCopy[angleId];
+      if (!block) continue;
+      for (const key of ['headlines', 'primary_copy'] as const) {
+        const arr = Array.isArray(block[key]) ? block[key] : [];
+        for (const v of arr) {
+          if (!v || typeof v.text !== 'string') continue;
+          v.score = scoreHook(v.text, v.score);
+        }
+      }
+    }
+
     console.log(`Generated copy for ${Object.keys(angleCopy).length} angles`);
 
     return new Response(JSON.stringify({ angle_copy: angleCopy }), {
