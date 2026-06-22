@@ -45,7 +45,6 @@ describe("computeStrategyBudget", () => {
       monthlyBudget: 150, // ~$5/day
     });
     expect(result.warning).toBeTruthy();
-    expect(result.stages.every((s) => !s.included)).tob;
     expect(result.stages.every((s) => !s.included)).toBe(true);
   });
 
