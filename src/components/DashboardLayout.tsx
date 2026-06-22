@@ -163,6 +163,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <MobileOnboardingTour onComplete={completeTour} onSkip={completeTour} />
         )}
         <CreateAdModal open={createAdModalOpen} onOpenChange={setCreateAdModalOpen} />
+        <ReturnToWorkButton />
       </div>
     );
   }
