@@ -89,6 +89,12 @@ export function CopyVariations({ variations, onSelect, onCancel, currentCopy }: 
                       <Sparkles className="h-3 w-3" />
                       {variation.framework_used}
                     </Badge>
+                    {variation.score && (
+                      <HookScoreBadge score={variation.score} label="Primary hook" />
+                    )}
+                    {variation.headline_score && (
+                      <HookScoreBadge score={variation.headline_score} label="Headline" />
+                    )}
                     <HoverCard>
                       <HoverCardTrigger asChild>
                         <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
