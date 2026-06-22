@@ -240,23 +240,32 @@ ${useEmojis ? `
 8. NEVER write walls of text. Every 1-2 sentences should have a line break.
 9. Think of it like texting a friend — short bursts, not long paragraphs.
 
+## HOOK / OPENING-LINE SCORING (REQUIRED — per KB doc "10 Hook Formulas + the 0-10 Scoring Rubric")
+Every headline AND every primary_copy variation MUST include a "score" object that rates the HOOK (the headline itself, or the FIRST line of the primary copy).
+Score honestly. Do not inflate. Use the rubric:
+- specificity (0-3): Names a specific person, niche, number, or scenario. 0 = generic; 3 = uncomfortably specific.
+- tension (0-3): Creates an unresolved gap, contradiction, or stakes. 0 = no tension; 3 = strong tension that forces a stop.
+- clarity (0-2): Reader instantly understands the promise in <2 seconds. 0 = confusing; 2 = crystal clear.
+- scroll_stop (0-2): Pattern-interrupt power on a feed full of other ads. 0 = forgettable; 2 = thumb-stopping.
+- total (0-10): sum of the four dimensions above. Be conservative — most decent hooks land 6-8, rare elite hooks hit 9-10.
+
 ## OUTPUT FORMAT
 Return valid JSON with this structure:
 {
   "angle_copy": {
     "[angle_id]": {
       "headlines": [
-        { "text": "...", "framework": "AIDA", "character_count": 25 },
-        { "text": "...", "framework": "Curiosity", "character_count": 23 }
+        { "text": "...", "framework": "AIDA", "character_count": 25, "score": { "specificity": 2, "tension": 2, "clarity": 2, "scroll_stop": 2, "total": 8 } },
+        { "text": "...", "framework": "Curiosity", "character_count": 23, "score": { "specificity": 1, "tension": 3, "clarity": 2, "scroll_stop": 2, "total": 8 } }
       ],
       "descriptions": [
         { "text": "Start your free trial", "framework": "Direct", "character_count": 21 },
         { "text": "See real results now", "framework": "Action", "character_count": 20 }
       ],
       "primary_copy": [
-        { "text": "...", "framework": "Story Opening", "length": "short" },
-        { "text": "...", "framework": "Direct Benefit", "length": "medium" },
-        { "text": "...", "framework": "Social Proof", "length": "long" }
+        { "text": "...", "framework": "Story Opening", "length": "short", "score": { "specificity": 3, "tension": 2, "clarity": 2, "scroll_stop": 2, "total": 9 } },
+        { "text": "...", "framework": "Direct Benefit", "length": "medium", "score": { "specificity": 2, "tension": 1, "clarity": 2, "scroll_stop": 1, "total": 6 } },
+        { "text": "...", "framework": "Social Proof", "length": "long", "score": { "specificity": 2, "tension": 2, "clarity": 2, "scroll_stop": 1, "total": 7 } }
       ]
     }
   }
