@@ -122,24 +122,8 @@ export default function Knowledge() {
     );
   }
 
-  const fetchDocuments = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("knowledge_documents")
-        .select("*")
-        .order("priority", { ascending: false })
-        .order("category", { ascending: true })
-        .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setDocuments(data || []);
-    } catch (error: any) {
-      toast.error("Failed to load knowledge documents");
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const handleSave = async () => {
     if (!formTitle || !formContent || !formCategory) {
