@@ -239,8 +239,46 @@ export function AngleSelector({
         </div>
       </div>
 
+      {availableAwareness.length > 0 && (
+        <div className="flex flex-wrap items-center justify-center gap-1.5">
+          <span className="text-xs text-muted-foreground mr-1">Awareness:</span>
+          <button
+            type="button"
+            onClick={() => setAwarenessFilter("all")}
+            className={cn(
+              "text-[11px] px-2 py-1 rounded-full border transition-colors",
+              awarenessFilter === "all"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:border-primary/50"
+            )}
+          >
+            All
+          </button>
+          {availableAwareness.map((lvl) => (
+            <button
+              key={lvl}
+              type="button"
+              onClick={() => setAwarenessFilter(lvl)}
+              className={cn(
+                "text-[11px] px-2 py-1 rounded-full border transition-colors",
+                awarenessFilter === lvl
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-primary/50"
+              )}
+            >
+              {AWARENESS_LABELS[lvl]}
+            </button>
+          ))}
+          {defaultAwarenessLevel && (
+            <span className="text-[10px] text-muted-foreground ml-1">
+              · default: {AWARENESS_LABELS[defaultAwarenessLevel]}
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-        {angles.map((angle) => {
+        {filteredAngles.map((angle) => {
           const isSelected = selectedAngles.includes(angle.id);
           const isDefault = angle.isDefault === true;
           const isDisabled = isDefault || (!isSelected && selectedAngles.length >= 5);
