@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CampaignSpine } from "@/components/CampaignSpine";
 import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
 import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle2, AlertTriangle, Loader2, Rocket, Layers, ShieldCheck } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Loader2, Rocket, Layers, ShieldCheck, ArrowLeft, Sparkles } from "lucide-react";
 import CampaignBuilder from "@/pages/CampaignBuilder";
 import AdvancedBuild from "@/pages/AdvancedBuild";
 
@@ -53,6 +54,7 @@ function todayISO() {
 
 export default function Launch() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const workspaceId = searchParams.get("workspace");
   const { draft } = useCampaignDraft();
   const { activeBrand } = useBrand();
@@ -197,6 +199,68 @@ export default function Launch() {
     <DashboardLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
         <CampaignSpine currentStep={3} />
+
+        {/* Missing prerequisites — shown when the draft is empty */}
+        {(concepts.length === 0 || !strategy) && (
+          <Card className="border-amber-300 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-900">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base text-amber-900 dark:text-amber-200">
+                <AlertTriangle className="h-4 w-4" />
+                You're not ready to launch yet
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-amber-900/90 dark:text-amber-100/90">
+                Meta needs creative (and a strategy) before this campaign can go
+                live. Here's what's still missing:
+              </p>
+              <ul className="space-y-3">
+                {!strategy && (
+                  <li className="flex items-start justify-between gap-3 rounded-lg border border-amber-200 bg-background p-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium">No strategy picked</div>
+                      <div className="text-xs text-muted-foreground">
+                        Pick a recommended strategy so LUMI knows the goal and
+                        audience.
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => navigate("/strategy")}
+                      className="gap-1 flex-shrink-0"
+                    >
+                      <ArrowLeft className="h-3 w-3" />
+                      Go to Strategy
+                    </Button>
+                  </li>
+                )}
+                {concepts.length === 0 && (
+                  <li className="flex items-start justify-between gap-3 rounded-lg border border-amber-200 bg-background p-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium">
+                        No creative concepts selected
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Choose at least 4 concepts in Creative so Meta has
+                        enough to test.
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => navigate("/creative")}
+                      className="gap-1 flex-shrink-0"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      Pick concepts
+                    </Button>
+                  </li>
+                )}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+
 
         {/* Structure */}
         <Card>
