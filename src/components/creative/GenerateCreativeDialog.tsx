@@ -425,13 +425,15 @@ export function GenerateCreativeDialog() {
       try {
         const { data, error } = await supabase
           .from("user_assets" as any)
-          .select("id, original_url")
+          .select("id, original_url, cutout_url")
           .eq("kind", "photo")
           .eq("brand_id", activeBrand.id)
           .order("created_at", { ascending: false });
         if (error) throw error;
-        const rows = (data || []) as unknown as Array<{ id: string; original_url: string }>;
-        const paths = rows.map((r) => r.original_url as string);
+        const rows = (data || []) as unknown as Array<{ id: string; original_url: string; cutout_url: string | null }>;
+        // Prefer the background-removed cutout when available so headshots
+        // composite cleanly inside the template's avatar/circle slot.
+        const paths = rows.map((r) => r.cutout_url || r.original_url);
         let signed: { signedUrl: string }[] = [];
         if (paths.length) {
           const { data: s } = await supabase.storage
@@ -442,7 +444,7 @@ export function GenerateCreativeDialog() {
         if (cancelled) return;
         const next: Photo[] = rows.map((r, i) => ({
           id: r.id as string,
-          path: r.original_url as string,
+          path: r.cutout_url || r.original_url,
           url: signed[i]?.signedUrl || "",
         }));
         setPhotos(next);
