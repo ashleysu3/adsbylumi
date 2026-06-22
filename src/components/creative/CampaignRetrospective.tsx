@@ -62,6 +62,7 @@ export interface CampaignRetrospectiveJSON {
   wins: Array<{ insight: string; supporting_data?: string; confidence: 'high' | 'medium' | 'low' }>;
   misses: Array<{ insight: string; supporting_data?: string; confidence: 'high' | 'medium' | 'low' }>;
   recommendations: Array<{ insight: string; supporting_data?: string; confidence: 'high' | 'medium' | 'low' }>;
+  pattern_notes?: string[];
   generated_at: string;
 }
 
