@@ -1285,6 +1285,7 @@ Deno.serve(async (req) => {
       warm_ad_set_id: warmAdSetId,
       ad_set_ids: result.adSetIds,
       ad_ids: result.adIds,
+      warm_ad_ids: result.warmAdIds,
       failed_ads: result.failedAds,
       warnings: result.warnings
     };
