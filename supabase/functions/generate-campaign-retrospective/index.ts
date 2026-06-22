@@ -848,6 +848,7 @@ function buildPrompt(args: {
       results: a._kpi?.results ?? 0, kpi_value: a._kpi ? extractKpiValue(a._kpi, args.primaryKpi) : null,
       ctr: a._kpi?.ctr ?? Number(a.ctr || 0),
     })),
+    override_patterns: args.overridePatterns || null,
   };
 
   return `Debrief this Meta ads campaign for the person who ran it.
