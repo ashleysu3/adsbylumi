@@ -433,6 +433,12 @@ Deno.serve(async req => {
       durationDays, goal,
     });
 
+    // Override-pattern surfacing (§8.3) — read-only, never adjusts thresholds.
+    // Skipped when data_quality is insufficient (no point pattern-matching on noise).
+    const overridePatterns = dq.level === 'insufficient'
+      ? null
+      : await buildOverridePatterns(sb, brand.id, performance);
+
     const prompt = buildPrompt({
       brandName: brand.name,
       offerName: workspace.offer_name || workspace.name || 'Unnamed campaign',
@@ -446,6 +452,7 @@ Deno.serve(async req => {
       performance,
       isImported: !workspace.creative_json,
       kpiFallback,
+      overridePatterns,
     });
 
 
