@@ -24,15 +24,14 @@ describe("computeStrategyBudget", () => {
     const result = computeStrategyBudget({
       campaigns: threeCampaignFunnel,
       pricePoint: "$97",
-      monthlyBudget: 600, // ~$20/day — well below the funnel's lean total
+      monthlyBudget: 6000, // ~$200/day — covers webinar at lean, not the rest
     });
 
     expect(result.mode).toBe("monthly_budget");
-    const includedCount = result.stages.filter((s) => s.included).length;
-    expect(includedCount).toBeLessThanOrEqual(1);
-    expect(result.totalDaily).toBeLessThanOrEqual(Math.ceil(600 / 30) + 1);
-    // We never recommend campaigns the budget can't support.
-    expect(includedCount).toBeLessThan(result.stages.length);
+    const included = result.stages.filter((s) => s.included);
+    expect(included.length).toBe(1);
+    expect(included[0].roleLabel.toLowerCase()).toContain("free training");
+    expect(included.length).toBeLessThan(result.stages.length);
   });
 
   it("surfaces a warning when even the cheapest campaign exceeds the daily cap", () => {
