@@ -277,20 +277,233 @@ export default function Performance() {
     }
   }
 
-  function handleDoIt() {
+  async function handleDoIt() {
     if (!chosen) return;
     const action = chosen.rec.recommendation.action;
     if (action === "turn_off") {
       setConfirmOpen(true);
       return;
     }
-    const creativeActions = new Set(["refresh_creative", "add_similar_variants"]);
+    if (action === "increase_budget" || action === "reduce_budget") {
+      await openBudgetDialog(action);
+      return;
+    }
+    if (action === "refresh_creative") {
+      await openRefreshDialog();
+      return;
+    }
+    if (action === "promote_to_scaling") {
+      toast.message("Set up scaling", {
+        description: chosen.rec.recommendation.reasoning,
+      });
+      navigate("/launch", { state: { recommendation: chosen.rec, workspaceId: chosen.result.workspaceId } });
+      return;
+    }
+    const creativeActions = new Set(["add_similar_variants"]);
     const dest = creativeActions.has(action) ? "/creative" : "/data";
     toast.message("Here's how to do it", {
       description: chosen.rec.recommendation.reasoning,
     });
     navigate(dest);
   }
+
+  function removeChosenFromQueue() {
+    if (!chosen) return;
+    const id = chosen.rec.id;
+    let best: { result: EngineResult; rec: AdEval } | null = null;
+    for (const r of results) {
+      const t = r.topRecommendation;
+      if (!t || t.id === id) continue;
+      const impact = t.recommendation?.impact ?? 0;
+      if (!best || impact > (best.rec.recommendation?.impact ?? 0)) {
+        best = { result: r, rec: t };
+      }
+    }
+    setChosen(best);
+  }
+
+  async function logOverride(action: string, user_action: string) {
+    if (!activeBrand || !chosen) return;
+    try {
+      await supabase.from("recommendation_overrides").insert({
+        brand_id: activeBrand.id,
+        ad_id: chosen.rec.id,
+        recommendation_action: action,
+        user_action,
+      });
+    } catch (e) {
+      console.error("override log error", e);
+    }
+  }
+
+  // -----------------------------------------------------------------
+  // Budget update flow (increase_budget / reduce_budget)
+  // -----------------------------------------------------------------
+  async function openBudgetDialog(kind: "increase_budget" | "reduce_budget") {
+    if (!chosen || !activeBrand) return;
+    setBudgetActionKind(kind);
+    setBudgetPreview(null);
+    setNewBudgetInput("");
+    setBudgetOpen(true);
+    setBudgetLoadingPreview(true);
+    try {
+      const adSetId = chosen.rec.level === "adset" ? chosen.rec.id : undefined;
+      const { data, error } = await supabase.functions.invoke("update-meta-budget", {
+        body: {
+          workspaceId: chosen.result.workspaceId,
+          adSetId,
+          preview: true,
+        },
+      });
+      if (error || !data?.success) {
+        const msg = error?.message || data?.error || "Couldn't read current budget";
+        toast.error("Couldn't read current budget", { description: msg });
+        setBudgetOpen(false);
+        return;
+      }
+      const current: number | null = data.current_daily_budget;
+      const proposed = current
+        ? Math.max(1, Math.round((kind === "increase_budget" ? current * 1.25 : current * 0.75)))
+        : kind === "increase_budget" ? 25 : 10;
+      setBudgetPreview({
+        isCBO: !!data.isCBO,
+        level: data.level,
+        current,
+        adSetId: data.ad_set_id ?? null,
+      });
+      setNewBudgetInput(String(proposed));
+    } catch (e: any) {
+      toast.error("Couldn't read current budget", { description: e?.message || "Unknown error" });
+      setBudgetOpen(false);
+    } finally {
+      setBudgetLoadingPreview(false);
+    }
+  }
+
+  async function confirmBudget() {
+    if (!chosen || !activeBrand || !budgetPreview) return;
+    const newBudget = parseFloat(newBudgetInput);
+    if (!Number.isFinite(newBudget) || newBudget < 1) {
+      toast.error("Enter a valid daily budget (min $1).");
+      return;
+    }
+    setBudgetSubmitting(true);
+    try {
+      const adSetIdInitial = budgetPreview.isCBO
+        ? undefined
+        : chosen.rec.level === "adset"
+          ? chosen.rec.id
+          : undefined;
+
+      const callUpdate = async (adSetId?: string) =>
+        supabase.functions.invoke("update-meta-budget", {
+          body: {
+            workspaceId: chosen.result.workspaceId,
+            newBudget,
+            adSetId,
+          },
+        });
+
+      let { data, error } = await callUpdate(adSetIdInitial);
+      // CBO refusal: retry without adSetId
+      const cboRefusal =
+        data?.error && typeof data.error === "string" && /Campaign Budget Optimization \(CBO\)/i.test(data.error);
+      if (cboRefusal && adSetIdInitial) {
+        ({ data, error } = await callUpdate(undefined));
+      }
+
+      if (error) {
+        toast.error("Couldn't update budget in Meta", { description: error.message });
+        return;
+      }
+      if (!data?.success) {
+        toast.error("Couldn't update budget in Meta", { description: data?.error || "Unknown error" });
+        return;
+      }
+      toast.success(`Budget updated to $${newBudget}/day in Meta`);
+      await logOverride(budgetActionKind, "modified");
+      removeChosenFromQueue();
+      setBudgetOpen(false);
+    } catch (e: any) {
+      toast.error("Couldn't update budget in Meta", { description: e?.message || "Unknown error" });
+    } finally {
+      setBudgetSubmitting(false);
+    }
+  }
+
+  // -----------------------------------------------------------------
+  // Refresh creative flow
+  // -----------------------------------------------------------------
+  async function openRefreshDialog() {
+    if (!chosen || !activeBrand) return;
+    try {
+      const nowIso = new Date().toISOString();
+      const { data, error } = await supabase
+        .from("creative_bench")
+        .select("id, meta_ad_id, production_item_id, retest_eligible_at, status")
+        .eq("brand_id", activeBrand.id)
+        .eq("workspace_id", chosen.result.workspaceId)
+        .in("status", ["bench", "paused", "retesting"])
+        .not("meta_ad_id", "is", null);
+      if (error) throw error;
+      const candidates = (data || [])
+        .filter((r: any) => !r.retest_eligible_at || r.retest_eligible_at <= nowIso)
+        .map((r: any) => ({ id: r.id, meta_ad_id: r.meta_ad_id, production_item_id: r.production_item_id }));
+
+      if (candidates.length === 0) {
+        toast.message("No fresh creative is ready to swap in — let's make one.");
+        navigate("/creative", {
+          state: { recommendation: chosen.rec, workspaceId: chosen.result.workspaceId },
+        });
+        return;
+      }
+      setBenchCandidates(candidates);
+      setSelectedBenchId(candidates[0].id);
+      setRefreshOpen(true);
+    } catch (e: any) {
+      toast.error("Couldn't load bench creatives", { description: e?.message || "Unknown error" });
+    }
+  }
+
+  async function confirmRefresh() {
+    if (!chosen || !activeBrand) return;
+    const picked = benchCandidates.find((c) => c.id === selectedBenchId);
+    if (!picked) {
+      toast.error("Pick a creative to swap in.");
+      return;
+    }
+    setRefreshSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("rotate-creative", {
+        body: {
+          workspaceId: chosen.result.workspaceId,
+          brandId: activeBrand.id,
+          fatigueAdId: chosen.rec.id,
+          benchAdId: picked.meta_ad_id,
+          reason: chosen.rec.recommendation.reasoning,
+          isAutoRotation: false,
+        },
+      });
+      if (error) {
+        toast.error("Couldn't rotate creative in Meta", { description: error.message });
+        return;
+      }
+      if (!data?.success) {
+        toast.error("Couldn't rotate creative in Meta", { description: data?.error || "Unknown error" });
+        return;
+      }
+      toast.success("Creative swapped in Meta");
+      await logOverride("refresh_creative", "modified");
+      removeChosenFromQueue();
+      setRefreshOpen(false);
+    } catch (e: any) {
+      toast.error("Couldn't rotate creative in Meta", { description: e?.message || "Unknown error" });
+    } finally {
+      setRefreshSubmitting(false);
+    }
+  }
+
+
 
   async function confirmPause() {
     if (!chosen || !activeBrand) return;
