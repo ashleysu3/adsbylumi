@@ -9,6 +9,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { HookScoreBadge, type HookScore } from "@/components/creative/HookScoreBadge";
 
 interface Variation {
   variation_name: string;
@@ -19,6 +20,8 @@ interface Variation {
   framework_used: string;
   why_this_angle: string;
   best_for: string;
+  score?: HookScore;
+  headline_score?: HookScore;
 }
 
 interface CopyVariationsProps {
@@ -86,6 +89,12 @@ export function CopyVariations({ variations, onSelect, onCancel, currentCopy }: 
                       <Sparkles className="h-3 w-3" />
                       {variation.framework_used}
                     </Badge>
+                    {variation.score && (
+                      <HookScoreBadge score={variation.score} label="Primary hook" />
+                    )}
+                    {variation.headline_score && (
+                      <HookScoreBadge score={variation.headline_score} label="Headline" />
+                    )}
                     <HoverCard>
                       <HoverCardTrigger asChild>
                         <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
@@ -202,6 +211,7 @@ export function CopyVariations({ variations, onSelect, onCancel, currentCopy }: 
                       <Badge variant="outline" className="text-xs">
                         {variation.framework_used}
                       </Badge>
+                      {variation.score && <HookScoreBadge score={variation.score} />}
                     </div>
                     <p className="text-xs text-muted-foreground truncate">
                       {variation.headline}
