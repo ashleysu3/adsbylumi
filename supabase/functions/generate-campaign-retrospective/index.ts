@@ -529,6 +529,12 @@ Deno.serve(async req => {
       wins: normalizeBullets(parsed.wins),
       misses: normalizeBullets(parsed.underperformers || parsed.misses),
       recommendations: normalizeBullets(parsed.test_ideas || parsed.recommendations),
+      pattern_notes: Array.isArray(parsed.pattern_notes)
+        ? parsed.pattern_notes
+            .filter((x: any) => typeof x === 'string' && x.trim().length > 0)
+            .slice(0, 4)
+            .map((x: string) => x.slice(0, 500))
+        : [],
       generated_at: new Date().toISOString(),
     };
 
