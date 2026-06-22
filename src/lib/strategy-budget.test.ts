@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { computeStrategyBudget, parsePricePoint } from "./strategy-budget";
 
 const threeCampaignFunnel = [
-  // Front-end lead capture — webinar (main)
+  // Front-end lead capture — webinar (supplemental when cold sales exists)
   { name: "Webinar registration", objective: "webinar" },
-  // Cold conversion — sales, $97 offer (secondary main)
+  // Cold conversion — sales, $97 offer (main)
   { name: "Cold sales", objective: "Sales" },
   // Warm retargeting (supplemental)
   { name: "Warm retargeting", objective: "Sales" },
@@ -32,11 +32,13 @@ describe("computeStrategyBudget", () => {
     const required = result.stages.filter((s) => s.required);
     expect(required.length).toBe(1);
     expect(required[0].tier).toBe("main");
+    expect(required[0].roleLabel).toBe("Cold conversion");
     const includedMain = result.stages.find((s) => s.included && s.required);
     expect(includedMain).toBeTruthy();
+    expect(result.mainDaily).toBeGreaterThan(result.supplementalDaily);
   });
 
-  it("surfaces a warning when the required main campaign can't be funded", () => {
+  it("keeps the required main funded first and warns when it is under target", () => {
     const result = computeStrategyBudget({
       campaigns: [
         { name: "Discovery call booking", objective: "OUTCOME_LEADS" },
@@ -45,7 +47,8 @@ describe("computeStrategyBudget", () => {
       monthlyBudget: 150, // ~$5/day
     });
     expect(result.warning).toBeTruthy();
-    expect(result.stages.every((s) => !s.included)).toBe(true);
+    expect(result.stages[0].included).toBe(true);
+    expect(result.stages[0].dailyBudget).toBe(5);
   });
 
   it("funds the full funnel with supplemental at a small fraction when budget is healthy", () => {
@@ -56,10 +59,27 @@ describe("computeStrategyBudget", () => {
     });
     expect(result.mode).toBe("monthly_budget");
     expect(result.stages.every((s) => s.included)).toBe(true);
-    expect(result.stages[0].tier).toBe("main");
+    expect(result.stages.find((s) => s.required)?.roleLabel).toBe("Cold conversion");
     // Supplemental spend is far smaller than main spend.
     expect(result.supplementalDaily).toBeLessThan(result.mainDaily);
     expect(result.supplementalDaily).toBeGreaterThan(0);
+  });
+
+  it("never lets top-of-funnel supplemental layers take the majority", () => {
+    const result = computeStrategyBudget({
+      campaigns: [
+        { name: "Awareness warm up", objective: "OUTCOME_AWARENESS" },
+        { name: "Traffic warm up", objective: "OUTCOME_TRAFFIC" },
+        { name: "Cold sales", objective: "OUTCOME_SALES" },
+        { name: "Warm retargeting", objective: "OUTCOME_SALES" },
+      ],
+      pricePoint: "$997",
+      monthlyBudget: 3000,
+    });
+    expect(result.stages.find((s) => s.required)?.roleLabel).toBe("Cold conversion");
+    expect(result.mainDaily).toBeGreaterThan(result.supplementalDaily);
+    expect(result.stages.filter((s) => s.tier === "supplemental").every((s) => !s.required)).toBe(true);
+    expect(result.warning).toContain("may not reach 25 conversions/week");
   });
 
   it("only funds the main campaign when sized to a per-month goal", () => {

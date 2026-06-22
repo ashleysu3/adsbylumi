@@ -169,13 +169,26 @@ const SUPPLEMENTAL_PCT = 0.15;
 const SUPPLEMENTAL_MIN_DAILY = 5;
 const SUPPLEMENTAL_MAX_PCT = 0.25;
 
-function supplementalDailyFor(mainDaily: number, stageIdeal: number) {
-  const target = Math.max(
-    SUPPLEMENTAL_MIN_DAILY,
-    Math.round(mainDaily * SUPPLEMENTAL_PCT),
-  );
-  const cap = Math.max(SUPPLEMENTAL_MIN_DAILY, Math.round(mainDaily * SUPPLEMENTAL_MAX_PCT));
-  return Math.min(stageIdeal, Math.min(cap, target));
+function allocateSupplementalBudgets<T extends { leanDaily: number; idealDaily: number }>(
+  mainDaily: number,
+  supplementalStages: T[],
+  targetKey: "leanDaily" | "idealDaily",
+) {
+  // Supplemental layers are useful, but the main campaign must always carry
+  // the majority of spend. This caps the entire supplemental layer, not each
+  // individual campaign, so multiple TOF/warm-up campaigns cannot add up to
+  // more than the main campaign.
+  let remainingSupplementalCap = Math.floor(mainDaily * SUPPLEMENTAL_MAX_PCT);
+  return supplementalStages.map((stage) => {
+    const target = Math.min(
+      stage[targetKey],
+      Math.max(SUPPLEMENTAL_MIN_DAILY, Math.round(mainDaily * SUPPLEMENTAL_PCT)),
+    );
+    const amount = Math.min(target, remainingSupplementalCap);
+    if (amount < SUPPLEMENTAL_MIN_DAILY) return 0;
+    remainingSupplementalCap -= amount;
+    return amount;
+  });
 }
 
 export function computeStrategyBudget(
@@ -215,14 +228,28 @@ export function computeStrategyBudget(
     };
   });
 
-  // Order: main first (by priority), supplemental after.
+  // Pick the required main before ordering: cold sales wins when present;
+  // otherwise use the first main-stage campaign.
+  const coldSalesSourceIdx = enriched.findIndex((s) => s.role.roleLabel === "Cold conversion");
+  const firstMainSourceIdx = enriched.findIndex((s) => s.role.tier === "main");
+  const primarySourceIdx =
+    coldSalesSourceIdx >= 0
+      ? coldSalesSourceIdx
+      : firstMainSourceIdx >= 0
+        ? firstMainSourceIdx
+        : 0;
+
+  // Order: required main first, then optional layers.
   const ordered = [...enriched].sort((a, b) => {
+    if (a._i === primarySourceIdx) return -1;
+    if (b._i === primarySourceIdx) return 1;
     if (a.role.tier !== b.role.tier) return a.role.tier === "main" ? -1 : 1;
     return a.role.priority - b.role.priority || a._i - b._i;
   });
 
-  // The first main campaign is "the" main — the only required one.
-  const primaryMainIdx = ordered.findIndex((s) => s.role.tier === "main");
+  // Every non-primary campaign becomes supplemental, even if its objective can
+  // technically optimize.
+  const primaryMainIdx = 0;
 
   let stages: StageBudget[] = ordered.map((s, idx) => ({
     name: s.name,
@@ -236,7 +263,7 @@ export function computeStrategyBudget(
     dailyBudget: s.idealDaily,
     roleLabel: s.role.roleLabel,
     roleDescription: s.role.roleDescription,
-    tier: s.role.tier,
+    tier: idx === primaryMainIdx ? "main" : "supplemental",
     required: idx === primaryMainIdx,
   }));
 
@@ -247,14 +274,16 @@ export function computeStrategyBudget(
   const primaryMainIdeal = primaryMain?.idealDaily ?? 0;
   const primaryMainLean = primaryMain?.leanDaily ?? 0;
 
-  const supplementalLeanTotal = supplementalStages.reduce(
-    (s, x) => s + supplementalDailyFor(primaryMainLean, x.leanDaily),
-    0,
-  );
-  const supplementalIdealTotal = supplementalStages.reduce(
-    (s, x) => s + supplementalDailyFor(primaryMainIdeal, x.idealDaily),
-    0,
-  );
+  const supplementalLeanTotal = allocateSupplementalBudgets(
+    primaryMainLean,
+    supplementalStages,
+    "leanDaily",
+  ).reduce((s, x) => s + x, 0);
+  const supplementalIdealTotal = allocateSupplementalBudgets(
+    primaryMainIdeal,
+    supplementalStages,
+    "idealDaily",
+  ).reduce((s, x) => s + x, 0);
   const leanTotalDaily =
     mainStages.reduce((s, x) => s + x.leanDaily, 0) + supplementalLeanTotal;
   const idealTotalDaily =
@@ -272,7 +301,9 @@ export function computeStrategyBudget(
     stages = stages.map((s) => ({ ...s, included: false, dailyBudget: 0 }));
     let remaining = dailyCap;
 
-    // 1. Fund the primary main first — ideal, then fall back to lean.
+    // 1. Fund the primary main first — ideal, then fall back to lean, then
+    // whatever budget exists. The main campaign always gets the money first;
+    // warnings explain if it is under the 25/week optimization target.
     const primary = stages[primaryMainIdx];
     if (primary) {
       if (remaining >= primary.idealDaily) {
@@ -283,6 +314,10 @@ export function computeStrategyBudget(
         primary.included = true;
         primary.dailyBudget = primary.leanDaily;
         remaining -= primary.leanDaily;
+      } else if (remaining > 0) {
+        primary.included = true;
+        primary.dailyBudget = Math.floor(remaining) || remaining;
+        remaining = 0;
       }
     }
 
@@ -300,17 +335,22 @@ export function computeStrategyBudget(
       }
     }
 
-    // 3. Layer in supplemental at ~15% of primary main spend.
+    // 3. Layer in supplemental at a small capped share of primary main spend.
     const primarySpend = primary?.dailyBudget ?? 0;
-    for (const s of stages) {
-      if (s.tier !== "supplemental") continue;
-      const target = supplementalDailyFor(primarySpend, s.idealDaily);
+    const supplementalCandidates = stages.filter((s) => s.tier === "supplemental");
+    const supplementalAllocations = allocateSupplementalBudgets(
+      primarySpend,
+      supplementalCandidates,
+      "idealDaily",
+    );
+    supplementalCandidates.forEach((s, index) => {
+      const target = supplementalAllocations[index] ?? 0;
       if (target > 0 && remaining >= target) {
         s.included = true;
         s.dailyBudget = target;
         remaining -= target;
       }
-    }
+    });
 
     // 4. Push leftover (>$1/day) into the primary main.
     if (remaining >= 1 && primary?.included) {
@@ -322,12 +362,12 @@ export function computeStrategyBudget(
     const supplementalIncluded = included.filter((s) => s.tier === "supplemental");
 
     if (!primary || !primary.included) {
-      const need = primary?.leanDaily ?? 0;
-      warning = primary
-        ? `Your main ${primary.roleLabel.toLowerCase()} campaign needs at least $${need}/day to give Meta enough data — at $${Math.round(dailyCap)}/day it can't run.`
-        : `This funnel has no main conversion campaign to fund.`;
+      warning = `This funnel has no main conversion campaign to fund.`;
       rationale = `Your budget can't yet cover the required main campaign.`;
     } else {
+      if (primary.dailyBudget < primary.leanDaily) {
+        warning = `Your main ${primary.roleLabel.toLowerCase()} campaign is getting the budget first, but $${primary.dailyBudget}/day is below the $${primary.leanDaily}/day lean target and may not reach 25 conversions/week.`;
+      }
       const supBits =
         supplementalIncluded.length > 0
           ? ` plus ${supplementalIncluded.length} supplemental ${supplementalIncluded.length === 1 ? "campaign" : "campaigns"} (~$${supplementalIncluded.reduce((s, x) => s + x.dailyBudget, 0)}/day) to lift results`
