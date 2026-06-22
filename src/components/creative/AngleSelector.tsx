@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,13 +17,59 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+export type AwarenessLevel =
+  | "unaware"
+  | "problem_aware"
+  | "solution_aware"
+  | "product_aware"
+  | "most_aware";
+
+export type FrameworkType =
+  | "problem"
+  | "desire"
+  | "contrarian"
+  | "mechanism"
+  | "identity"
+  | "fomo"
+  | "social_proof"
+  | "enemy";
+
 export interface CreativeAngle {
   id: string;
   name: string;
   description: string;
   isDefault?: boolean;
   isCustom?: boolean;
+  framework_type?: FrameworkType;
+  awareness_level?: AwarenessLevel;
 }
+
+const AWARENESS_LABELS: Record<AwarenessLevel, string> = {
+  unaware: "Unaware",
+  problem_aware: "Problem-aware",
+  solution_aware: "Solution-aware",
+  product_aware: "Product-aware",
+  most_aware: "Most aware",
+};
+
+const FRAMEWORK_LABELS: Record<FrameworkType, string> = {
+  problem: "Problem",
+  desire: "Desire",
+  contrarian: "Contrarian",
+  mechanism: "Mechanism",
+  identity: "Identity",
+  fomo: "FOMO",
+  social_proof: "Social Proof",
+  enemy: "Enemy",
+};
+
+const AWARENESS_ORDER: AwarenessLevel[] = [
+  "unaware",
+  "problem_aware",
+  "solution_aware",
+  "product_aware",
+  "most_aware",
+];
 
 interface AngleSelectorProps {
   angles: CreativeAngle[];
@@ -36,6 +82,8 @@ interface AngleSelectorProps {
   regeneratingAngleId?: string | null;
   brandName?: string;
   offerData?: { name?: string; description?: string; price?: string };
+  /** If provided, the awareness filter defaults to this level. */
+  defaultAwarenessLevel?: AwarenessLevel;
 }
 
 export function AngleSelector({
@@ -48,7 +96,8 @@ export function AngleSelector({
   onRegenerateAngle,
   regeneratingAngleId,
   brandName,
-  offerData
+  offerData,
+  defaultAwarenessLevel,
 }: AngleSelectorProps) {
   const [showCustomDialog, setShowCustomDialog] = useState(false);
   const [customInput, setCustomInput] = useState("");
