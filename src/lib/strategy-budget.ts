@@ -235,14 +235,26 @@ export function computeStrategyBudget(
     }
 
     const included = stages.filter((s) => s.included);
+    const excludedColdSales = stages.find(
+      (s) => !s.included && s.roleLabel === "Cold conversion",
+    );
     if (included.length === 0) {
       const first = stages[0];
       warning = `This objective needs at least $${first.leanDaily}/day to give Meta enough data — at $${Math.round(dailyCap)}/day it'll struggle to optimize.`;
-      rationale = `Your budget can't yet support this objective at Meta's learning-phase floor (~50 results/week).`;
+      rationale = `Your budget can't yet support this objective at Meta's learning-phase floor (~25 results/week).`;
     } else if (included.length < stages.length) {
       rationale = `Your $${input.monthlyBudget}/mo (~$${Math.round(dailyCap)}/day) supports ${included.length} of ${stages.length} campaigns — start with the ${included[0].roleLabel.toLowerCase()} campaign and add the rest once it's working.`;
     } else {
       rationale = `Your $${input.monthlyBudget}/mo (~$${Math.round(dailyCap)}/day) supports the full ${stages.length}-campaign funnel.`;
+    }
+
+    // Cold sales has a hard floor (price ÷ 2). If we couldn't fit it,
+    // the honest recommendation is a different entry mechanism — not a
+    // smaller cold-sales budget.
+    if (excludedColdSales && price) {
+      const floor = Math.ceil(price * 0.5);
+      const note = `Selling a $${price} offer cold needs at least $${floor}/day so Meta can actually buy a sale. If that's too much, lead with a free training, lead magnet, or challenge instead of selling cold — it's the right move at this budget, not a workaround.`;
+      warning = warning ? `${warning} ${note}` : note;
     }
   } else if (input.goalCount && input.goalCount > 0 && stages.length > 0) {
     mode = "goal";
