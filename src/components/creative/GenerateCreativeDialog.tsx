@@ -1007,6 +1007,7 @@ export function GenerateCreativeDialog() {
           logoOverlay,
           style: styleOverrides,
           placements: activeCustom?.placements ?? ["feed", "story"],
+          ...(bgSelectedUrl ? { backgroundUrl: bgSelectedUrl } : {}),
         });
         setImages(imgs);
         setProgress("");
