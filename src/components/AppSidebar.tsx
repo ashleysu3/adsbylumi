@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { BarChart3, Building2, BookOpen, Settings, Shield, LogOut, Link2, Plus, CheckCircle2, AlertTriangle, Gift, Lock, Palette, LayoutGrid, Paintbrush, Activity, Lightbulb, Rocket } from "lucide-react";
+import { BarChart3, Building2, BookOpen, Settings, Shield, LogOut, Link2, Plus, CheckCircle2, AlertTriangle, Gift, Lock, Palette, LayoutGrid, Paintbrush, Activity, Lightbulb, Rocket, Images } from "lucide-react";
 import { LadybugIcon } from "@/components/LadybugIcon";
 import { useState as useReactState } from "react";
 import { BugReportModal } from "@/components/BugReportModal";
