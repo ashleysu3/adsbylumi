@@ -16,15 +16,23 @@ interface GenInput {
   brandId?: string;
   copy?: { headline?: string; subhead?: string; cta?: string };
   count?: number;
+  selectedImageUrls?: string[];
+  selectedItemIds?: string[];
 }
 
-async function ensureStyle(
-  admin: any,
+async function buildStyle(
   userAuthHeader: string,
   boardId: string,
   existingStyleId: string | null,
+  selectedImageUrls?: string[],
+  selectedItemIds?: string[],
 ): Promise<string> {
-  if (existingStyleId) return existingStyleId;
+  // When the caller passes an explicit selection, ALWAYS build a fresh style
+  // from those exact images and don't cache it on the board.
+  const hasSelection = (selectedImageUrls && selectedImageUrls.length > 0) ||
+    (selectedItemIds && selectedItemIds.length > 0);
+  if (existingStyleId && !hasSelection) return existingStyleId;
+
   const r = await fetch(
     `${Deno.env.get("SUPABASE_URL")}/functions/v1/recraft-style-from-board`,
     {
@@ -33,7 +41,12 @@ async function ensureStyle(
         "Content-Type": "application/json",
         Authorization: userAuthHeader,
       },
-      body: JSON.stringify({ boardId }),
+      body: JSON.stringify({
+        boardId,
+        selectedImageUrls,
+        selectedItemIds,
+        cacheOnBoard: !hasSelection,
+      }),
     },
   );
   const j = await r.json();
