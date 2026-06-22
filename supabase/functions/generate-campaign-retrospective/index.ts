@@ -877,6 +877,9 @@ Return a JSON object with this EXACT shape (no prose, no code fences):
   ],
   "test_ideas": [
     { "insight": "Specific thing to test in the next round of creative or audiences.", "supporting_data": "What in this campaign's data points to this idea.", "confidence": "..." }
+  ],
+  "pattern_notes": [
+    "Optional. Plain-English observation(s) about override_patterns when present. Omit (empty array) when override_patterns is null."
   ]
 }
 
