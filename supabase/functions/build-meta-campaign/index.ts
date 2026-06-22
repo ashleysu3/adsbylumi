@@ -1213,6 +1213,43 @@ Deno.serve(async (req) => {
 
             result.adIds.push(adData.id);
             console.log(`Existing post ad created: ${adData.id}`);
+
+            // Mirror existing-post ad into the warm retargeting ad set
+            if (warmAdSetId) {
+              try {
+                const warmIgName = `IG Post - ${post.caption?.slice(0, 30) || post.id} - Warm`;
+                const warmIgParams: Record<string, string> = {
+                  adset_id: warmAdSetId,
+                  name: warmIgName,
+                  creative: JSON.stringify({ creative_id: creativeData.id }),
+                  status: launchStatus,
+                  multi_advertiser_ads: JSON.stringify({ use_multi_advertiser_ads: false }),
+                  access_token: metaAccessToken,
+                };
+                if (trackingSpecs) {
+                  warmIgParams.tracking_specs = JSON.stringify(trackingSpecs);
+                }
+                const warmIgResp = await fetch(
+                  `https://graph.facebook.com/v25.0/act_${accountId}/ads`,
+                  {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams(warmIgParams),
+                  }
+                );
+                const warmIgData = await warmIgResp.json();
+                if (warmIgData.error) {
+                  console.error(`Warm existing-post ad failed (${post.id}):`, warmIgData.error);
+                  result.warnings.push(`Warm retargeting ad failed for IG post ${post.id}: ${getMetaErrorMessage(warmIgData.error)}`);
+                } else {
+                  result.warmAdIds.push(warmIgData.id);
+                  console.log(`Warm existing-post ad created: ${warmIgData.id}`);
+                }
+              } catch (warmIgErr: any) {
+                console.error(`Warm existing-post ad error (${post.id}):`, warmIgErr);
+                result.warnings.push(`Warm retargeting ad error for IG post ${post.id}: ${warmIgErr.message}`);
+              }
+            }
           } catch (postError: any) {
             console.error(`Error creating ad for existing post ${post.id}:`, postError);
             result.failedAds.push({
