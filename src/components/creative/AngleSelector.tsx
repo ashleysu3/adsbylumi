@@ -345,9 +345,32 @@ export function AngleSelector({
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
+              <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0 space-y-2">
                 <CardDescription className="text-xs sm:text-sm">{angle.description}</CardDescription>
+                {(angle.framework_type || angle.awareness_level) && (
+                  <div className="flex flex-wrap gap-1">
+                    {angle.framework_type && FRAMEWORK_LABELS[angle.framework_type] && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] px-1.5 py-0 h-5 font-normal bg-muted/40"
+                      >
+                        {FRAMEWORK_LABELS[angle.framework_type]}
+                      </Badge>
+                    )}
+                    {angle.awareness_level && AWARENESS_LABELS[angle.awareness_level] && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] px-1.5 py-0 h-5 font-normal border-primary/30 text-primary/80"
+                      >
+                        {AWARENESS_LABELS[angle.awareness_level]}
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </CardContent>
+            </Card>
+          );
+        })}
             </Card>
           );
         })}
