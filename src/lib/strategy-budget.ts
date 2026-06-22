@@ -46,9 +46,9 @@ export type StrategyBudgetInput = {
 
 export function parsePricePoint(price?: string | null): number | null {
   if (!price) return null;
-  const m = String(price).replace(/,/g, "").match(/\d+(\.\d+)?/);
-  if (!m) return null;
-  const n = Number(m[0]);
+  const matches = String(price).replace(/,/g, "").match(/\d+(\.\d+)?/g);
+  if (!matches?.length) return null;
+  const n = Math.max(...matches.map(Number).filter((value) => isFinite(value)));
   return isFinite(n) && n > 0 ? n : null;
 }
 
