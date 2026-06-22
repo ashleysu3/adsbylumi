@@ -129,6 +129,7 @@ interface BuildResult {
   campaignId?: string;
   adSetIds: string[];
   adIds: string[];
+  warmAdIds: string[];
   failedAds: Array<{ conceptId: string; conceptTitle: string; error: string }>;
   warnings: string[];
 }
