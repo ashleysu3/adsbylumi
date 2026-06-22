@@ -20,6 +20,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AdPreview } from "./AdPreview";
 import { PreBuildCopySummary } from "./PreBuildCopySummary";
 import { PixelPreflightCheck } from "./PixelPreflightCheck";
+import { PolicyCheckBadge } from "./PolicyCheckBadge";
 import { useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -390,10 +391,17 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
                           <div className="flex-1">
                             <p className="text-sm font-medium">{item.concept?.title || (item as any).hook || 'Untitled'}</p>
                             <p className="text-xs text-muted-foreground line-clamp-1">{item.concept?.hook || (item as any).guidance}</p>
-                            <Badge variant="default" className="text-xs bg-green-500/10 text-green-600 mt-1">
-                              <CheckCircle2 className="h-3 w-3 mr-1" />
-                              Ready
-                            </Badge>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              <Badge variant="default" className="text-xs bg-green-500/10 text-green-600">
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Ready
+                              </Badge>
+                              <PolicyCheckBadge
+                                workspaceId={workspace.id}
+                                item={item}
+                                niche={(brand as any)?.niche || (brand as any)?.industry}
+                              />
+                            </div>
                           </div>
                         </div>
                       ))

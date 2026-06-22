@@ -23,6 +23,7 @@ import {
   Archive
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { PolicyCheckBadge } from "./PolicyCheckBadge";
 
 interface MobileCampaignReviewProps {
   workspace: any;
@@ -221,9 +222,16 @@ export function MobileCampaignReview({
             {readyConcepts.length > 0 ? (
               <div className="space-y-2">
                 {readyConcepts.slice(0, 3).map((item: any, index: number) => (
-                  <div key={index} className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 rounded-full bg-green-500" />
-                    <span className="truncate">{item.concept?.title || `Creative ${index + 1}`}</span>
+                  <div key={index} className="flex items-center justify-between gap-2 text-sm">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                      <span className="truncate">{item.concept?.title || `Creative ${index + 1}`}</span>
+                    </div>
+                    <PolicyCheckBadge
+                      workspaceId={workspace.id}
+                      item={item}
+                      niche={(brand as any)?.niche || (brand as any)?.industry}
+                    />
                   </div>
                 ))}
                 {readyConcepts.length > 3 && (
