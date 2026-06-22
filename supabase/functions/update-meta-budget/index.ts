@@ -43,12 +43,15 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { workspaceId, newBudget, adSetId } = await req.json();
+    const { workspaceId, newBudget, adSetId, preview } = await req.json();
 
     if (!workspaceId) throw new Error("workspaceId is required");
-    if (!newBudget || typeof newBudget !== "number" || newBudget < 1) {
-      throw new Error("newBudget must be a positive number (dollars/day)");
+    if (!preview) {
+      if (!newBudget || typeof newBudget !== "number" || newBudget < 1) {
+        throw new Error("newBudget must be a positive number (dollars/day)");
+      }
     }
+
 
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
