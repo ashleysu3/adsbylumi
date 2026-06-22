@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CampaignSpine } from "@/components/CampaignSpine";
 import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
 import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle2, AlertTriangle, Loader2, Rocket, Layers, ShieldCheck } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Loader2, Rocket, Layers, ShieldCheck, ArrowLeft, Sparkles } from "lucide-react";
 import CampaignBuilder from "@/pages/CampaignBuilder";
 import AdvancedBuild from "@/pages/AdvancedBuild";
 
