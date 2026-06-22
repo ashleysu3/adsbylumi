@@ -12,34 +12,45 @@ const corsHeaders = {
 };
 
 const RECRAFT_BASE = "https://external.api.recraft.ai/v1";
-const MIN_DIM = 320; // Recraft requires >= 256; give margin.
+const MIN_DIM = 512; // Recraft requires >= 256; keep generous margin.
 
 async function fetchAsPng(url: string): Promise<Blob | null> {
   try {
     const r = await fetch(url);
-    if (!r.ok) return null;
+    if (!r.ok) {
+      console.warn("fetch ref not ok", r.status, url);
+      return null;
+    }
     const buf = new Uint8Array(await r.arrayBuffer());
     let decoded: any;
     try {
       decoded = await decodeImage(buf);
     } catch (e) {
-      console.warn("decode failed for", url, e);
+      console.warn("decode failed for", url, String(e));
       return null;
     }
-    // Animated GIFs return a Frame array — take the first frame.
     const img: Image = Array.isArray(decoded) ? decoded[0] : decoded;
-    if (!img || !img.width || !img.height) return null;
+    if (!img || !img.width || !img.height) {
+      console.warn("no dims after decode", url);
+      return null;
+    }
     let w = img.width, h = img.height;
+    console.log("ref decoded", url.slice(0, 80), `${w}x${h}`);
     if (w < MIN_DIM || h < MIN_DIM) {
       const scale = MIN_DIM / Math.min(w, h);
-      w = Math.round(w * scale);
-      h = Math.round(h * scale);
+      w = Math.max(MIN_DIM, Math.round(w * scale));
+      h = Math.max(MIN_DIM, Math.round(h * scale));
       img.resize(w, h);
+      console.log("ref resized to", `${img.width}x${img.height}`);
+    }
+    if (img.width < 256 || img.height < 256) {
+      console.warn("ref still under 256 after resize", img.width, img.height);
+      return null;
     }
     const png = await img.encode();
     return new Blob([png], { type: "image/png" });
   } catch (e) {
-    console.warn("fetchAsPng error", url, e);
+    console.warn("fetchAsPng error", url, String(e));
     return null;
   }
 }
