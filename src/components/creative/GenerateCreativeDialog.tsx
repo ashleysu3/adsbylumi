@@ -235,6 +235,11 @@ export function GenerateCreativeDialog() {
   const [photosLoading, setPhotosLoading] = useState(false);
   const [selectedPhotoId, setSelectedPhotoId] = useState<string>("");
   const [removeBackground, setRemoveBackground] = useState(true);
+  // Beta: AI-generated brand background composited behind the layout.
+  const [bgBetaOpen, setBgBetaOpen] = useState(false);
+  const [bgGenerating, setBgGenerating] = useState(false);
+  const [bgOptions, setBgOptions] = useState<Array<{ aspect: string; url: string; path: string }>>([]);
+  const [bgSelectedUrl, setBgSelectedUrl] = useState<string>("");
   const [textCase, setTextCase] = useState<"original" | "upper" | "lower" | "title">("original");
   const [headlineScale, setHeadlineScale] = useState<number>(1);
   const [bodyScale, setBodyScale] = useState<number>(1);
