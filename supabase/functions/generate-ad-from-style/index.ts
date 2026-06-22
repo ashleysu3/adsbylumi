@@ -12,12 +12,16 @@ const corsHeaders = {
 const RECRAFT_BASE = "https://external.api.recraft.ai/v1";
 
 interface GenInput {
-  boardId: string;
+  boardId?: string;
   brandId?: string;
   copy?: { headline?: string; subhead?: string; cta?: string };
   count?: number;
   selectedImageUrls?: string[];
   selectedItemIds?: string[];
+  // Beta: composite mode — generate a clean BACKGROUND (no people, no text)
+  // styled from the brand's approved background/texture assets. The caller
+  // composites the headshot + copy + logo over the result.
+  mode?: "board" | "brand_background";
 }
 
 async function buildStyle(
