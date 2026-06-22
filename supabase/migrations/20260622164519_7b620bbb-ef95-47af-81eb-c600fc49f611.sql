@@ -1,0 +1,2 @@
+ALTER TABLE public.knowledge_documents DROP CONSTRAINT knowledge_documents_category_check;
+ALTER TABLE public.knowledge_documents ADD CONSTRAINT knowledge_documents_category_check CHECK (category = ANY (ARRAY['ad_planner','creative_department','creative_angles','hooks','copy_formulas','visual_guidelines','psychology','meta_best_practices','best_practices','hook_ideas','strategies','trends','examples','creative_templates']));
