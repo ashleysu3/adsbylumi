@@ -72,6 +72,7 @@ interface AdEval {
 
 interface EngineResult {
   success?: boolean;
+  workspaceId?: string;
   meta: {
     primaryKpi: string;
     primaryKpiLabel: string;
@@ -84,6 +85,7 @@ interface EngineResult {
   ads: AdEval[];
   topRecommendation: AdEval | null;
 }
+
 
 const STATUS_STYLE: Record<Status, { label: string; cls: string }> = {
   scaling_ready: { label: "Scaling ready", cls: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" },
