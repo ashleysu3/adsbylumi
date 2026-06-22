@@ -15,11 +15,20 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useLumiAssistant } from "@/components/LumiAssistant";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { ArrowRight, X } from "lucide-react";
+import { ArrowRight, X, CheckSquare, Sparkles, Gift, Heart, CreditCard, Star, Briefcase, Shield, LogOut } from "lucide-react";
 import { SubscriptionBanner } from "@/components/SubscriptionGate";
 import { DashboardFooter } from "@/components/DashboardFooter";
 import { PartnerPortalBanner } from "@/components/PartnerPortalBanner";
 import { ReturnToWorkButton } from "@/components/ReturnToWorkButton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast as sonnerToast } from "sonner";
 
 
 
@@ -186,15 +195,66 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   ? (agencyName || profile?.full_name || 'Agency')
                   : isAgencyUser && activeBrand ? activeBrand.name : (profile?.full_name || user?.email)}
               </span>
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                  {location.pathname.startsWith('/admin')
-                    ? 'A'
-                    : location.pathname === '/ads-manager' && isAgencyUser
-                    ? (agencyName || profile?.full_name || 'A').charAt(0).toUpperCase()
-                    : isAgencyUser && activeBrand ? activeBrand.name.charAt(0).toUpperCase() : (profile?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase())}
-                </AvatarFallback>
-              </Avatar>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                        {location.pathname.startsWith('/admin')
+                          ? 'A'
+                          : location.pathname === '/ads-manager' && isAgencyUser
+                          ? (agencyName || profile?.full_name || 'A').charAt(0).toUpperCase()
+                          : isAgencyUser && activeBrand ? activeBrand.name.charAt(0).toUpperCase() : (profile?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase())}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-card z-50">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">{profile?.full_name || "User"}</span>
+                      <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/tasks")}>
+                    <CheckSquare className="mr-2 h-4 w-4" /> my tasks
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/strategy-plan")}>
+                    <Sparkles className="mr-2 h-4 w-4" /> my ad strategy
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/refer")}>
+                    <Gift className="mr-2 h-4 w-4" /> refer & earn
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/review")}>
+                    <Heart className="mr-2 h-4 w-4" /> loving LUMI?!
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/settings")}>
+                    <CreditCard className="mr-2 h-4 w-4" /> billing & plan
+                  </DropdownMenuItem>
+                  {/* TODO: gate VIP bonuses / Partner Dashboard on real flags (hasReferralBonuses, isPartner). */}
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/admin/users")} className="text-amber-600">
+                        <Shield className="mr-2 h-4 w-4" /> Admin Dashboard
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      await supabase.auth.signOut();
+                      sonnerToast.success("Signed out");
+                      navigate("/auth");
+                    }}
+                    className="text-destructive"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" /> Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </header>
 

@@ -1,18 +1,39 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { BarChart3, Building2, BookOpen, Settings, Shield, LogOut, Link2, Plus, CheckCircle2, AlertTriangle, Gift, Lock, Palette, LayoutGrid, Paintbrush, Activity, Lightbulb, Rocket, Images } from "lucide-react";
+import {
+  Target,
+  Palette,
+  Tag,
+  Plug,
+  Building2,
+  LifeBuoy,
+  ChevronDown,
+  Activity,
+  Loader2,
+  Plus,
+  Lightbulb,
+  Images,
+  Wrench,
+  Package,
+  Mic,
+  Users,
+  Link2,
+  BookOpen,
+  Flag,
+  LayoutGrid,
+  Paintbrush,
+  HelpCircle,
+  Settings as SettingsIcon,
+  PenLine,
+  Sparkles,
+} from "lucide-react";
 import { LadybugIcon } from "@/components/LadybugIcon";
-import { useState as useReactState } from "react";
 import { BugReportModal } from "@/components/BugReportModal";
 import { NavLink } from "@/components/NavLink";
 import { BrandSelector } from "@/components/BrandSelector";
 import { RenderQueueBell } from "@/components/RenderQueueBell";
-import { SparkleIcon } from "@/components/SparkleIcon";
-import { useLumiAssistant } from "@/components/LumiAssistant";
 import { useBrand } from "@/contexts/BrandContext";
-import { useSubscription } from "@/contexts/SubscriptionContext";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import lumiLogo from "@/assets/lumi-logo.png";
 import {
   Sidebar,
@@ -28,425 +49,275 @@ import {
   SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
-// Primary workflow — the 4 steps every campaign moves through.
-const primaryNav = [
-  { path: "/strategy", icon: Lightbulb, label: "Strategy", tooltip: "Plan your campaign angle and audience" },
-  { path: "/creative", icon: Paintbrush, label: "Creative", tooltip: "Build your ad copy and visuals" },
-  { path: "/launch", icon: Rocket, label: "Launch", tooltip: "Push your campaign live to Meta" },
-  { path: "/performance", icon: BarChart3, label: "Performance", tooltip: "See what's working and optimize" },
+type NavItem =
+  | { label: string; to: string; icon: any; tooltip?: string }
+  | { label: string; action: "bug-report"; icon: any; tooltip?: string };
+
+type NavGroup = {
+  key: string;
+  label: string;
+  icon: any;
+  emoji: string;
+  items: NavItem[];
+};
+
+// NOTE: route mapping uses the EXISTING pages today.
+// Items without a dedicated page link to a placeholder (// TODO).
+const groups: NavGroup[] = [
+  {
+    key: "ads",
+    label: "Ad Management",
+    icon: Target,
+    emoji: "🎯",
+    items: [
+      { label: "Live Ads", to: "/ad-performance", icon: Activity },
+      { label: "In Progress", to: "/campaigns", icon: Loader2 },
+      { label: "Create New", to: "/create", icon: Plus },
+    ],
+  },
+  {
+    key: "creative",
+    label: "Creative Studio",
+    icon: Palette,
+    emoji: "🎨",
+    items: [
+      { label: "Inspiration", to: "/boards", icon: Lightbulb },
+      { label: "My Creative", to: "/creative-studio", icon: Images },
+      { label: "Tools & Resources", to: "/creative-toolkit", icon: Wrench },
+    ],
+  },
+  {
+    key: "brand",
+    label: "My Brand",
+    icon: Tag,
+    emoji: "🏷️",
+    items: [
+      { label: "Design Guide", to: "/style", icon: Paintbrush },
+      // TODO: dedicated voice page — currently routes to placeholder.
+      { label: "Voice + Examples", to: "/voice", icon: Mic },
+      // TODO: dedicated audience page.
+      { label: "Audience", to: "/audience", icon: Users },
+      { label: "Offers", to: "/offers", icon: Package },
+    ],
+  },
+  {
+    key: "tech",
+    label: "Tech + Data",
+    icon: Plug,
+    emoji: "🔌",
+    items: [
+      { label: "Meta Connection", to: "/meta-settings", icon: Link2 },
+      { label: "Tracking", to: "/tracking-setup", icon: Activity },
+      { label: "Ad Glossary", to: "/glossary", icon: BookOpen },
+      // TODO: dedicated goals page.
+      { label: "Goals", to: "/goals", icon: Flag },
+    ],
+  },
 ];
 
-// "Set once" — brand-level configuration you rarely revisit.
-const setOnceNav = [
-  { path: "/dashboard", icon: Building2, label: "Brand", tooltip: "Your brand info, offers, and voice" },
-  { path: "/settings", icon: Settings, label: "Settings", tooltip: "Account, billing, and preferences" },
-];
+const agencyGroup: NavGroup = {
+  key: "agency",
+  label: "Agency",
+  icon: Building2,
+  emoji: "🏢",
+  items: [
+    { label: "Manage All Accounts", to: "/ads-manager", icon: LayoutGrid },
+    { label: "Agency Settings", to: "/agency-settings", icon: SettingsIcon },
+  ],
+};
+
+const supportGroup: NavGroup = {
+  key: "support",
+  label: "Support",
+  icon: LifeBuoy,
+  emoji: "🆘",
+  items: [
+    { label: "Report a bug", action: "bug-report", icon: LadybugIcon },
+    // TODO: dedicated troubleshooting page.
+    { label: "Troubleshooting", to: "/troubleshooting", icon: HelpCircle },
+    { label: "Human Help", to: "/office-hours", icon: Users },
+    { label: "Initial Setup", to: "/onboarding", icon: PenLine },
+  ],
+};
 
 interface AppSidebarProps {
   isAdmin: boolean;
   brandId?: string;
 }
 
-export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
+export function AppSidebar({ isAdmin: _isAdmin, brandId: _brandId }: AppSidebarProps) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
-  const { openChat, unreadCount } = useLumiAssistant();
-  const { activeBrand, isAgencyUser } = useBrand();
-  const { isSubscribed, isLoading: subLoading } = useSubscription();
-  
-  const [metaStatus, setMetaStatus] = useState<'connected' | 'expired' | 'disconnected'>('disconnected');
-  const [hasRedAlert, setHasRedAlert] = useState(false);
-  const [bugReportOpen, setBugReportOpen] = useReactState(false);
-  const [userEmail, setUserEmail] = useReactState("");
+  const { isAgencyUser } = useBrand();
 
-  // Fetch user email for bug reports
+  const [bugReportOpen, setBugReportOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
+  const [intent, setIntent] = useState("");
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.email) setUserEmail(user.email);
     });
   }, []);
 
+  const allGroups: NavGroup[] = [
+    ...groups,
+    ...(isAgencyUser ? [agencyGroup] : []),
+    supportGroup,
+  ];
 
-  // Check Meta connection status
+  // Auto-expand the group containing the active route.
+  const isItemActive = (item: NavItem) =>
+    "to" in item && location.pathname === item.to;
+  const activeGroupKey =
+    allGroups.find((g) => g.items.some(isItemActive))?.key ?? "ads";
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
+    [activeGroupKey]: true,
+  }));
+
   useEffect(() => {
-    const effectiveBrandId = activeBrand?.id || brandId;
-    if (!effectiveBrandId) {
-      setMetaStatus('disconnected');
-      return;
-    }
-    supabase
-      .from("brands")
-      .select("meta_account_id, meta_token_expires_at")
-      .eq("id", effectiveBrandId)
-      .single()
-      .then(({ data }) => {
-        if (!data?.meta_account_id) {
-          setMetaStatus('disconnected');
-        } else if (data.meta_token_expires_at && new Date(data.meta_token_expires_at) < new Date()) {
-          setMetaStatus('expired');
-        } else {
-          setMetaStatus('connected');
-        }
-      });
-  }, [brandId, activeBrand]);
+    setOpenGroups((prev) =>
+      prev[activeGroupKey] ? prev : { ...prev, [activeGroupKey]: true }
+    );
+  }, [activeGroupKey]);
 
-  // Check for red-status campaigns in latest report
-  useEffect(() => {
-    const effectiveBrandId = activeBrand?.id || brandId;
-    if (!effectiveBrandId) return;
-
-    supabase
-      .from("optimization_reports")
-      .select("id, report_data")
-      .eq("brand_id", effectiveBrandId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single()
-      .then(({ data }) => {
-        if (!data) { setHasRedAlert(false); return; }
-        const reportData = (data.report_data || []) as any[];
-        const hasRed = reportData.some((c: any) => c.status === 'red');
-        if (!hasRed) { setHasRedAlert(false); return; }
-        const reviewedKey = `lumi_last_reviewed_report_${effectiveBrandId}`;
-        const lastReviewed = localStorage.getItem(reviewedKey);
-        setHasRedAlert(lastReviewed !== data.id);
-      });
-  }, [brandId, activeBrand]);
-
-  // Mark as reviewed when visiting ad-performance
-  useEffect(() => {
-    const effectiveBrandId = activeBrand?.id || brandId;
-    if (location.pathname === '/ad-performance' && effectiveBrandId && hasRedAlert) {
-      supabase
-        .from("optimization_reports")
-        .select("id")
-        .eq("brand_id", effectiveBrandId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single()
-        .then(({ data }) => {
-          if (data) {
-            localStorage.setItem(`lumi_last_reviewed_report_${effectiveBrandId}`, data.id);
-            setHasRedAlert(false);
-          }
-        });
-    }
-  }, [location.pathname, activeBrand, brandId, hasRedAlert]);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    toast.success("Signed out successfully");
-    navigate("/auth");
+  const handleIntentSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    // TODO: connect to AI intent router + task tray
+    navigate("/create");
   };
 
-  
-
-  const MetaStatusIcon = () => {
-    if (metaStatus === 'connected') {
-      return <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />;
+  const renderItem = (item: NavItem) => {
+    const Icon = item.icon;
+    if ("action" in item && item.action === "bug-report") {
+      return (
+        <SidebarMenuItem key={item.label}>
+          <SidebarMenuButton
+            tooltip={item.label}
+            onClick={() => setBugReportOpen(true)}
+          >
+            <Icon className="h-4 w-4" />
+            {!collapsed && <span>{item.label}</span>}
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      );
     }
-    return <AlertTriangle className="h-3.5 w-3.5 text-destructive" />;
+    if ("to" in item) {
+      return (
+        <SidebarMenuItem key={item.label}>
+          <SidebarMenuButton asChild tooltip={item.label}>
+            <NavLink
+              to={item.to}
+              end
+              className="transition-colors"
+              activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+            >
+              <Icon className="h-4 w-4" />
+              {!collapsed && <span>{item.label}</span>}
+            </NavLink>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      );
+    }
+    return null;
   };
-
-  const metaTooltip = metaStatus === 'disconnected' || metaStatus === 'expired'
-    ? "Action needed: Connect your Meta account to publish ads"
-    : "Meta Connection";
 
   return (
     <>
-    <Sidebar collapsible="icon">
-      {/* Header: Logo + Brand Selector + Render Queue Bell */}
-      <SidebarHeader className="p-3 pb-2">
-        <div className="flex items-center gap-2 min-h-[40px]">
-          <img
-            alt="Lumi"
-            className="h-8 w-auto object-contain flex-shrink-0 cursor-pointer"
-            src={lumiLogo}
-            onClick={() => navigate("/start")}
-          />
+      <Sidebar collapsible="icon">
+        {/* Header: Logo + Brand selector + bell */}
+        <SidebarHeader className="p-3 pb-2">
+          <div className="flex items-center gap-2 min-h-[40px]">
+            <img
+              alt="Lumi"
+              className="h-8 w-auto object-contain flex-shrink-0 cursor-pointer"
+              src={lumiLogo}
+              onClick={() => navigate("/start")}
+            />
+            {!collapsed && (
+              <>
+                <BrandSelector className="ml-auto" compact />
+                <RenderQueueBell />
+              </>
+            )}
+          </div>
+
+          {/* "What do you want to do?" intent input */}
           {!collapsed && (
-            <>
-              <BrandSelector className="ml-auto" compact />
-              {/* Bell icon renders itself only when there are active renders. */}
-              <RenderQueueBell />
-            </>
+            <form onSubmit={handleIntentSubmit} className="mt-3">
+              <div className="relative rounded-xl p-[1.5px] overflow-hidden">
+                {/* Animated gradient border */}
+                <span
+                  aria-hidden
+                  className="absolute inset-0 rounded-xl bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1"
+                />
+                <span
+                  aria-hidden
+                  className="absolute inset-0 rounded-xl before:absolute before:inset-0 before:rounded-xl before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent before:animate-shimmer"
+                />
+                <div className="relative flex items-center gap-2 rounded-[10px] bg-sidebar px-2.5 py-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-lumi-pink-1 flex-shrink-0" />
+                  <input
+                    value={intent}
+                    onChange={(e) => setIntent(e.target.value)}
+                    placeholder="What do you want to do?"
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
+                  />
+                </div>
+              </div>
+            </form>
           )}
-        </div>
-
-        {/* Action Button */}
-        <div className="mt-3">
-          <button
-            onClick={() => !subLoading && isSubscribed ? navigate("/create") : navigate("/auth")}
-            className="w-full relative group overflow-hidden rounded-xl"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 opacity-90 group-hover:opacity-100 transition-opacity" />
-            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
-            <span className="relative flex items-center justify-center gap-2 py-2.5 px-3 text-white font-semibold text-sm">
-              {!subLoading && !isSubscribed ? <Lock className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-              {!collapsed && <span>{!subLoading && !isSubscribed ? "Upgrade to Create" : "+ New campaign"}</span>}
-            </span>
-          </button>
-        </div>
-      </SidebarHeader>
-
-      <SidebarSeparator />
-
-      {/* Main Navigation */}
-      <SidebarContent>
-        {/* Primary workflow */}
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {primaryNav.map((item) => (
-                <SidebarMenuItem key={item.path}>
-                  <SidebarMenuButton asChild tooltip={item.tooltip}>
-                    <NavLink
-                      to={item.path}
-                      end
-                      className="transition-all duration-200"
-                      activeClassName="bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-md shadow-lumi-pink-1/20 font-semibold [&>svg]:text-white"
-                    >
-                      {item.path === '/performance' ? (
-                        <span className="relative">
-                          <item.icon className="h-4 w-4" />
-                          {hasRedAlert && (
-                            <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
-                          )}
-                        </span>
-                      ) : (
-                        <item.icon className="h-4 w-4" />
-                      )}
-                      {!collapsed && <span>{item.label}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        </SidebarHeader>
 
         <SidebarSeparator />
 
-        {/* Library — reference material (inspiration boards, uploaded examples) */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Library</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Save and upload ad examples to inspire your creative.">
-                  <NavLink
-                    to="/boards"
-                    className="transition-all duration-200"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  >
-                    <Images className="h-4 w-4" />
-                    {!collapsed && <span>Inspiration</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarSeparator />
-
-        {/* Set once — brand-level config */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Set once</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {setOnceNav.map((item) => (
-                <SidebarMenuItem key={item.path}>
-                  <SidebarMenuButton asChild tooltip={item.tooltip}>
-                    <NavLink
-                      to={item.path}
-                      end
-                      className="transition-all duration-200"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.label}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-              {/* Meta Connection with status indicator */}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip={metaTooltip}>
-                  <NavLink
-                    to="/meta-settings"
-                    end
-                    className="transition-all duration-200"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  >
-                    <div className="relative">
-                      <Link2 className="h-4 w-4" />
-                      {(metaStatus === 'disconnected' || metaStatus === 'expired') && (
-                        <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[hsl(var(--lumi-orange-1))] animate-pulse" />
-                      )}
-                    </div>
-                    {!collapsed && (
-                      <span className="flex items-center gap-2 flex-1">
-                        Meta Connection
-                        <MetaStatusIcon />
-                      </span>
-                    )}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              {/* Tracking & Pixel — nested under Meta Connection */}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Set up your Meta Pixel & event tracking">
-                  <NavLink
-                    to="/tracking-setup"
-                    end
-                    className="transition-all duration-200 pl-8"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  >
-                    <Activity className="h-4 w-4" />
-                    {!collapsed && <span>Tracking & Pixel</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-
-        <SidebarSeparator />
-
-        {/* Agency */}
-        {isAgencyUser && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Agency</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Manage all clients, reviews, and reports">
-                    <NavLink
-                      to="/ads-manager"
-                      className="transition-all duration-200"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    >
-                      <LayoutGrid className="h-4 w-4" />
-                      {!collapsed && <span>Manage All Accounts</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Customize agency branding for client materials">
-                    <NavLink
-                      to="/agency-settings"
-                      end
-                      className="transition-all duration-200"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    >
-                      <Palette className="h-4 w-4" />
-                      {!collapsed && <span>Agency Settings</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        <SidebarSeparator />
-
-        {/* Help */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Help</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Learn advertising terms and concepts">
-                  <NavLink
-                    to="/glossary"
-                    end
-                    className="transition-all duration-200"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  >
-                    <BookOpen className="h-4 w-4" />
-                    {!collapsed && <span>Ad Glossary</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Share LUMI and earn $40 per referral">
-                  <NavLink
-                    to="/refer"
-                    end
-                    className="transition-all duration-200"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  >
-                    <Gift className="h-4 w-4" />
-                    {!collapsed && <span>Refer & Earn</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  tooltip="Report a Bug"
-                  onClick={() => setBugReportOpen(true)}
-                  className="transition-all duration-200"
+        <SidebarContent>
+          {allGroups.map((group) => {
+            const GroupIcon = group.icon;
+            const isOpen = openGroups[group.key] ?? false;
+            return (
+              <SidebarGroup key={group.key}>
+                <Collapsible
+                  open={collapsed ? true : isOpen}
+                  onOpenChange={(v) =>
+                    setOpenGroups((p) => ({ ...p, [group.key]: v }))
+                  }
                 >
-                  <LadybugIcon className="h-4 w-4" />
-                  {!collapsed && <span>Report a Bug</span>}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  tooltip="Ask Lumi"
-                  onClick={openChat}
-                  className="transition-all duration-200"
-                >
-                  <SparkleIcon size="xs" state="idle" className="flex-shrink-0" />
                   {!collapsed && (
-                    <span className="flex items-center gap-2 flex-1">
-                      Ask Lumi
-                      {unreadCount > 0 && (
-                        <span className="ml-auto min-w-4 h-4 px-1 bg-lumi-pink-1 text-white rounded-full flex items-center justify-center text-[10px] font-bold">
-                          {unreadCount > 9 ? "9+" : unreadCount}
-                        </span>
-                      )}
-                    </span>
+                    <CollapsibleTrigger asChild>
+                      <SidebarGroupLabel className="flex items-center gap-2 cursor-pointer hover:text-foreground transition-colors">
+                        <GroupIcon className="h-4 w-4" />
+                        <span className="flex-1 text-left">{group.label}</span>
+                        <ChevronDown
+                          className={`h-3.5 w-3.5 transition-transform ${
+                            isOpen ? "rotate-0" : "-rotate-90"
+                          }`}
+                        />
+                      </SidebarGroupLabel>
+                    </CollapsibleTrigger>
                   )}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              {isAdmin && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Admin">
-                    <NavLink
-                      to="/admin/users"
-                      className="transition-all duration-200 text-amber-600 dark:text-amber-400"
-                      activeClassName="bg-amber-500/10 font-medium"
-                    >
-                      <Shield className="h-4 w-4" />
-                      {!collapsed && <span>Admin</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  tooltip="Sign Out"
-                  onClick={handleSignOut}
-                  className="text-muted-foreground hover:text-destructive"
-                >
-                  <LogOut className="h-4 w-4" />
-                  {!collapsed && <span>Sign Out</span>}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>
+                      <SidebarMenu>{group.items.map(renderItem)}</SidebarMenu>
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </Collapsible>
+              </SidebarGroup>
+            );
+          })}
+        </SidebarContent>
 
-      <SidebarFooter />
-     </Sidebar>
+        <SidebarFooter />
+      </Sidebar>
       <BugReportModal
         open={bugReportOpen}
         onOpenChange={setBugReportOpen}
