@@ -2685,6 +2685,50 @@ export type Database = {
         }
         Relationships: []
       }
+      recommendation_overrides: {
+        Row: {
+          ad_id: string | null
+          brand_id: string
+          created_at: string
+          id: string
+          reason_quick: string | null
+          reason_text: string | null
+          recommendation_action: string | null
+          snooze_until: string | null
+          user_action: string | null
+        }
+        Insert: {
+          ad_id?: string | null
+          brand_id: string
+          created_at?: string
+          id?: string
+          reason_quick?: string | null
+          reason_text?: string | null
+          recommendation_action?: string | null
+          snooze_until?: string | null
+          user_action?: string | null
+        }
+        Update: {
+          ad_id?: string | null
+          brand_id?: string
+          created_at?: string
+          id?: string
+          reason_quick?: string | null
+          reason_text?: string | null
+          recommendation_action?: string | null
+          snooze_until?: string | null
+          user_action?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_overrides_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recommended_strategies: {
         Row: {
           business_model: string[]

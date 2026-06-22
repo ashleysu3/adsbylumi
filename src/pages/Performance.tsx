@@ -4,6 +4,16 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { CampaignSpine } from "@/components/CampaignSpine";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
@@ -19,6 +29,7 @@ import {
   BarChart2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
 
 // ============================================================================
 // /performance — leads with the engine's single highest-impact recommendation
@@ -61,6 +72,7 @@ interface AdEval {
 
 interface EngineResult {
   success?: boolean;
+  workspaceId?: string;
   meta: {
     primaryKpi: string;
     primaryKpiLabel: string;
@@ -73,6 +85,7 @@ interface EngineResult {
   ads: AdEval[];
   topRecommendation: AdEval | null;
 }
+
 
 const STATUS_STYLE: Record<Status, { label: string; cls: string }> = {
   scaling_ready: { label: "Scaling ready", cls: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" },
@@ -114,6 +127,8 @@ export default function Performance() {
   const [hasActive, setHasActive] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
   const [snoozedUntil, setSnoozedUntil] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pausing, setPausing] = useState(false);
 
   useEffect(() => {
     if (brandLoading || !activeBrand) return;
@@ -152,23 +167,35 @@ export default function Performance() {
           return;
         }
 
+        // Load un-expired snoozed ad_ids for this brand
+        const nowIso = new Date().toISOString();
+        const { data: overrides } = await supabase
+          .from("recommendation_overrides")
+          .select("ad_id, snooze_until")
+          .eq("brand_id", activeBrand.id)
+          .eq("user_action", "snoozed")
+          .gt("snooze_until", nowIso);
+        const snoozedIds = new Set((overrides || []).map((o: any) => o.ad_id).filter(Boolean));
+
         const settled = await Promise.allSettled(
           active.map((w: any) =>
-            supabase.functions.invoke("evaluate-campaign-status", {
-              body: {
-                brandId: activeBrand.id,
-                metaCampaignId: (w.meta_campaign_ids as any).campaignId,
-              },
-            }),
+            supabase.functions
+              .invoke("evaluate-campaign-status", {
+                body: {
+                  brandId: activeBrand.id,
+                  metaCampaignId: (w.meta_campaign_ids as any).campaignId,
+                },
+              })
+              .then((res) => ({ res, workspaceId: w.id as string })),
           ),
         );
         if (cancelled) return;
 
         const ok: EngineResult[] = [];
         settled.forEach((s) => {
-          if (s.status === "fulfilled" && s.value.data && !(s.value as any).error) {
-            const d = s.value.data as any;
-            if (d && d.campaign) ok.push(d as EngineResult);
+          if (s.status === "fulfilled" && s.value.res.data && !(s.value.res as any).error) {
+            const d = s.value.res.data as any;
+            if (d && d.campaign) ok.push({ ...d, workspaceId: s.value.workspaceId } as EngineResult);
           }
         });
         setResults(ok);
@@ -177,6 +204,7 @@ export default function Performance() {
         for (const r of ok) {
           const t = r.topRecommendation;
           if (!t) continue;
+          if (snoozedIds.has(t.id)) continue;
           const impact = t.recommendation?.impact ?? 0;
           if (!best || impact > (best.rec.recommendation?.impact ?? 0)) {
             best = { result: r, rec: t };
@@ -201,21 +229,91 @@ export default function Performance() {
     return `${verb} "${chosen.rec.name}"`;
   }, [chosen]);
 
-  function handleSnooze() {
+  async function handleSnooze() {
+    if (!chosen || !activeBrand) return;
     const until = new Date();
     until.setDate(until.getDate() + 5);
     setSnoozedUntil(until.toISOString());
     toast.success("Snoozed for 5 days", {
       description: "We'll resurface this on " + until.toLocaleDateString() + ".",
     });
-    // TODO: persist to recommendation_overrides once that table exists.
+    try {
+      await supabase.from("recommendation_overrides").insert({
+        brand_id: activeBrand.id,
+        ad_id: chosen.rec.id,
+        recommendation_action: chosen.rec.recommendation.action,
+        user_action: "snoozed",
+        snooze_until: until.toISOString(),
+      });
+    } catch (e) {
+      console.error("snooze persist error", e);
+    }
   }
 
   function handleDoIt() {
-    toast.success("Got it — opening campaign details.", {
-      description: chosen?.rec.recommendation.reasoning,
+    if (!chosen) return;
+    const action = chosen.rec.recommendation.action;
+    if (action === "turn_off") {
+      setConfirmOpen(true);
+      return;
+    }
+    const creativeActions = new Set(["refresh_creative", "add_similar_variants"]);
+    const dest = creativeActions.has(action) ? "/creative" : "/data";
+    toast.message("Here's how to do it", {
+      description: chosen.rec.recommendation.reasoning,
     });
-    navigate("/data");
+    navigate(dest);
+  }
+
+  async function confirmPause() {
+    if (!chosen || !activeBrand) return;
+    setPausing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("pause-meta-entity", {
+        body: {
+          workspaceId: chosen.result.workspaceId,
+          brandId: activeBrand.id,
+          entityId: chosen.rec.id,
+          entityLevel: chosen.rec.level,
+          reason: chosen.rec.recommendation.reasoning,
+        },
+      });
+      if (error) {
+        toast.error("Couldn't pause in Meta", { description: error.message });
+        return;
+      }
+      if (!data?.success) {
+        toast.error("Couldn't pause in Meta", { description: data?.error || "Unknown error" });
+        return;
+      }
+      toast.success("Paused in Meta");
+      try {
+        await supabase.from("recommendation_overrides").insert({
+          brand_id: activeBrand.id,
+          ad_id: chosen.rec.id,
+          recommendation_action: "turn_off",
+          user_action: "turned_off_anyway",
+        });
+      } catch (e) {
+        console.error("override log error", e);
+      }
+      const pausedId = chosen.rec.id;
+      let best: { result: EngineResult; rec: AdEval } | null = null;
+      for (const r of results) {
+        const t = r.topRecommendation;
+        if (!t || t.id === pausedId) continue;
+        const impact = t.recommendation?.impact ?? 0;
+        if (!best || impact > (best.rec.recommendation?.impact ?? 0)) {
+          best = { result: r, rec: t };
+        }
+      }
+      setChosen(best);
+      setConfirmOpen(false);
+    } catch (e: any) {
+      toast.error("Couldn't pause in Meta", { description: e?.message || "Unknown error" });
+    } finally {
+      setPausing(false);
+    }
   }
 
   const campaign = chosen?.result.campaign;
@@ -323,7 +421,7 @@ export default function Performance() {
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={handleDoIt} className="gap-2">
                     <CheckCircle2 className="h-4 w-4" />
-                    Do it
+                    {chosen.rec.recommendation.action === "turn_off" ? "Do it" : "Show me how"}
                   </Button>
                   <Button variant="outline" onClick={() => setWhyOpen((v) => !v)} className="gap-2">
                     <HelpCircle className="h-4 w-4" />
@@ -336,6 +434,38 @@ export default function Performance() {
                 </div>
               </CardContent>
             </Card>
+
+            <AlertDialog open={confirmOpen} onOpenChange={(o) => !pausing && setConfirmOpen(o)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Pause this {chosen.rec.level} "{chosen.rec.name}"?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    It will stop spending in Meta immediately. You can re-enable it any time in Meta or from See all metrics.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={pausing}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={(e) => {
+                      e.preventDefault();
+                      confirmPause();
+                    }}
+                    disabled={pausing}
+                  >
+                    {pausing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Pausing…
+                      </>
+                    ) : (
+                      "Pause it in Meta"
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             {/* KPI cards from the chosen campaign */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
