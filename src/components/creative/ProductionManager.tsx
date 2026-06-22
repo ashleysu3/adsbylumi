@@ -322,6 +322,7 @@ export function ProductionManager({
       file_url: fileUrl,
       file_type: rawAsset.file_type || rawAsset.type || "",
       storage_path: rawAsset.storage_path || rawAsset.storagePath,
+      source: rawAsset.source,
     };
   };
 
