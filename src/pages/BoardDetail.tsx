@@ -245,7 +245,7 @@ export default function BoardDetail() {
             <h1 className="text-2xl font-bold">{board?.name || "Board"}</h1>
             <p className="text-sm text-muted-foreground">{items.length} item{items.length !== 1 ? "s" : ""}</p>
           </div>
-          <div>
+          <div className="flex gap-2 flex-wrap">
             <input
               ref={fileInputRef}
               type="file"
@@ -254,9 +254,13 @@ export default function BoardDetail() {
               className="hidden"
               onChange={(e) => handleUpload(e.target.files)}
             />
-            <Button onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
               {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
               {uploading ? "Uploading…" : "Upload images"}
+            </Button>
+            <Button onClick={startGenerate} disabled={items.length === 0}>
+              <Sparkles className="h-4 w-4 mr-2" />
+              Generate ads from this board
             </Button>
           </div>
         </div>
