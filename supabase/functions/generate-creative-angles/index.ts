@@ -400,7 +400,14 @@ Each angle object must have:
 - id: unique string (lowercase, underscore-separated)
 - name: short display name (2-4 words)
 - description: one sentence for non-marketers
-- psychologyTrigger: (optional) if based on user insights, briefly note what insight it addresses`;
+- framework_type: one of EXACTLY these 8 values — "problem", "desire", "contrarian", "mechanism", "identity", "fomo", "social_proof", "enemy" — chosen per the KB doc "The 8 Angle Frameworks"
+- awareness_level: one of EXACTLY these 5 values — "unaware", "problem_aware", "solution_aware", "product_aware", "most_aware" — chosen per the KB doc "Schwartz 5 Levels of Market Awareness". Pick the awareness stage the angle is written FOR (the reader's stage when the hook lands).
+- psychologyTrigger: (optional) if based on user insights, briefly note what insight it addresses
+
+FRAMEWORK / AWARENESS RULES:
+- Both fields are REQUIRED on every angle. Never omit, never invent new values, never combine values.
+- Spread framework_type across the set — do not return 10 angles all tagged "problem".
+- Spread awareness_level too: include at least one early-stage (unaware / problem_aware) angle and at least one late-stage (product_aware / most_aware) angle unless the campaign intent above explicitly narrows this.`;
 
     const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
