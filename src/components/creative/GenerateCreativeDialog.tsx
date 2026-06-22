@@ -990,6 +990,7 @@ export function GenerateCreativeDialog() {
           logoOverlay,
           style: styleOverrides,
           placements: activeCustom?.placements ?? ["feed"],
+          ...(bgSelectedUrl ? { backgroundUrl: bgSelectedUrl } : {}),
         });
         const labelled = imgs.map((im, i) => ({ ...im, label: `Slide ${i + 1}` }));
         setImages(labelled);
