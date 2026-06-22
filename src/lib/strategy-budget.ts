@@ -169,13 +169,26 @@ const SUPPLEMENTAL_PCT = 0.15;
 const SUPPLEMENTAL_MIN_DAILY = 5;
 const SUPPLEMENTAL_MAX_PCT = 0.25;
 
-function supplementalDailyFor(mainDaily: number, stageIdeal: number) {
-  const target = Math.max(
-    SUPPLEMENTAL_MIN_DAILY,
-    Math.round(mainDaily * SUPPLEMENTAL_PCT),
-  );
-  const cap = Math.max(SUPPLEMENTAL_MIN_DAILY, Math.round(mainDaily * SUPPLEMENTAL_MAX_PCT));
-  return Math.min(stageIdeal, Math.min(cap, target));
+function allocateSupplementalBudgets<T extends { leanDaily: number; idealDaily: number }>(
+  mainDaily: number,
+  supplementalStages: T[],
+  targetKey: "leanDaily" | "idealDaily",
+) {
+  // Supplemental layers are useful, but the main campaign must always carry
+  // the majority of spend. This caps the entire supplemental layer, not each
+  // individual campaign, so multiple TOF/warm-up campaigns cannot add up to
+  // more than the main campaign.
+  let remainingSupplementalCap = Math.floor(mainDaily * SUPPLEMENTAL_MAX_PCT);
+  return supplementalStages.map((stage) => {
+    const target = Math.min(
+      stage[targetKey],
+      Math.max(SUPPLEMENTAL_MIN_DAILY, Math.round(mainDaily * SUPPLEMENTAL_PCT)),
+    );
+    const amount = Math.min(target, remainingSupplementalCap);
+    if (amount < SUPPLEMENTAL_MIN_DAILY) return 0;
+    remainingSupplementalCap -= amount;
+    return amount;
+  });
 }
 
 export function computeStrategyBudget(
@@ -221,8 +234,12 @@ export function computeStrategyBudget(
     return a.role.priority - b.role.priority || a._i - b._i;
   });
 
-  // The first main campaign is "the" main — the only required one.
-  const primaryMainIdx = ordered.findIndex((s) => s.role.tier === "main");
+  // The cold sales campaign is the main campaign when present. Otherwise the
+  // first main-stage campaign is required. Every other campaign becomes a
+  // supplemental layer, even if its objective can technically optimize.
+  const coldSalesIdx = ordered.findIndex((s) => s.role.roleLabel === "Cold conversion");
+  const firstMainIdx = ordered.findIndex((s) => s.role.tier === "main");
+  const primaryMainIdx = coldSalesIdx >= 0 ? coldSalesIdx : firstMainIdx >= 0 ? firstMainIdx : 0;
 
   let stages: StageBudget[] = ordered.map((s, idx) => ({
     name: s.name,
@@ -236,7 +253,7 @@ export function computeStrategyBudget(
     dailyBudget: s.idealDaily,
     roleLabel: s.role.roleLabel,
     roleDescription: s.role.roleDescription,
-    tier: s.role.tier,
+    tier: idx === primaryMainIdx ? "main" : "supplemental",
     required: idx === primaryMainIdx,
   }));
 
