@@ -246,6 +246,24 @@ export function GenerateCreativeDialog() {
   const [step, setStep] = useState<"style" | "image-copy">("style");
   const [imageSource, setImageSource] = useState<"uploads" | "brand">("uploads");
 
+  // Primary flow: board-inspiration via Recraft. Falls back to template flow.
+  const [mode, setMode] = useState<"board" | "template">("board");
+  type BoardRow = { id: string; name: string };
+  type BoardImg = { id: string; url: string; rawSrc: string };
+  const [boards, setBoards] = useState<BoardRow[]>([]);
+  const [boardsLoading, setBoardsLoading] = useState(false);
+  const [selectedBoardId, setSelectedBoardId] = useState<string>("");
+  const [boardImages, setBoardImages] = useState<BoardImg[]>([]);
+  const [boardImagesLoading, setBoardImagesLoading] = useState(false);
+  const [selectedBoardImageIds, setSelectedBoardImageIds] = useState<Set<string>>(new Set());
+  const [boardCopy, setBoardCopy] = useState<{ headline: string; subhead: string; cta: string }>({
+    headline: "", subhead: "", cta: "Learn more",
+  });
+  const [boardGenerating, setBoardGenerating] = useState(false);
+  const [boardResults, setBoardResults] = useState<Array<{ aspect: string; url: string; path: string }>>([]);
+  const [boardApprovingIdx, setBoardApprovingIdx] = useState<number | null>(null);
+  const [boardApprovedIdxs, setBoardApprovedIdxs] = useState<Set<number>>(new Set());
+
   // single-template state
   const [singleOptions, setSingleOptions] = useState<SingleOption[]>([]);
   const [selectedOptionIdx, setSelectedOptionIdx] = useState(0);
