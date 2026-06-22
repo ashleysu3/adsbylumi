@@ -26,16 +26,22 @@ interface GenInput {
 
 async function buildStyle(
   userAuthHeader: string,
-  boardId: string,
-  existingStyleId: string | null,
-  selectedImageUrls?: string[],
-  selectedItemIds?: string[],
-): Promise<string> {
-  // When the caller passes an explicit selection, ALWAYS build a fresh style
-  // from those exact images and don't cache it on the board.
+  opts: {
+    boardId?: string;
+    brandId?: string;
+    existingStyleId?: string | null;
+    selectedImageUrls?: string[];
+    selectedItemIds?: string[];
+  },
+): Promise<string | null> {
+  const { boardId, brandId, existingStyleId, selectedImageUrls, selectedItemIds } = opts;
   const hasSelection = (selectedImageUrls && selectedImageUrls.length > 0) ||
     (selectedItemIds && selectedItemIds.length > 0);
-  if (existingStyleId && !hasSelection) return existingStyleId;
+  // Reuse cached board style only when we have no explicit selection.
+  if (boardId && existingStyleId && !hasSelection) return existingStyleId;
+  // Brand-background mode with zero refs: skip style entirely; the generation
+  // will fall back to a neutral on-brand prompt.
+  if (!boardId && (!selectedImageUrls || selectedImageUrls.length === 0)) return null;
 
   const r = await fetch(
     `${Deno.env.get("SUPABASE_URL")}/functions/v1/recraft-style-from-board`,
@@ -47,9 +53,10 @@ async function buildStyle(
       },
       body: JSON.stringify({
         boardId,
+        brandId,
         selectedImageUrls,
         selectedItemIds,
-        cacheOnBoard: !hasSelection,
+        cacheOnBoard: !!boardId && !hasSelection,
       }),
     },
   );
