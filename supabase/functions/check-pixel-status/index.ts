@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     if (!brandId) {
       return new Response(
         JSON.stringify({ success: false, error: 'Brand ID is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
       console.error('Error fetching brand:', brandError);
       return new Response(
         JSON.stringify({ success: false, error: 'Brand not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
           error: 'Meta account not connected',
           needsConnection: true 
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
           error: 'Meta access token not found. Please reconnect your Meta account.',
           needsConnection: true 
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     const adAccountId = brand.meta_account_id.startsWith('act_') 
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
           success: false, 
           error: pixelsData.error.message || 'Failed to fetch pixels' 
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
