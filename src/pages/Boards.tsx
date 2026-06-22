@@ -267,6 +267,60 @@ export default function Boards() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={uploadOpen} onOpenChange={(o) => !uploading && setUploadOpen(o)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload reference images</DialogTitle>
+            <DialogDescription>
+              Add your own ad examples. They become reusable references for Recraft-powered creative generation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Add to board</Label>
+              <Select value={uploadTargetBoardId} onValueChange={setUploadTargetBoardId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__new__">+ Create a new board</SelectItem>
+                  {boards.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {uploadTargetBoardId === "__new__" && (
+              <div className="space-y-2">
+                <Label>New board name</Label>
+                <Input
+                  value={uploadNewBoardName}
+                  onChange={(e) => setUploadNewBoardName(e.target.value)}
+                  placeholder="e.g. Uploaded references"
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Images</Label>
+              <Input
+                ref={uploadInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => setUploadFiles(Array.from(e.target.files || []))}
+              />
+              {uploadFiles.length > 0 && (
+                <p className="text-xs text-muted-foreground">{uploadFiles.length} file{uploadFiles.length !== 1 ? "s" : ""} selected</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUploadOpen(false)} disabled={uploading}>Cancel</Button>
+            <Button onClick={handleUploadReferences} disabled={uploading || uploadFiles.length === 0}>
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Upload className="h-4 w-4 mr-2" />Upload</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
