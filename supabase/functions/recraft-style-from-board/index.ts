@@ -3,6 +3,7 @@
 // uses exactly those images instead of auto-picking the 5 most recent.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { decode as decodeImage, Image } from "https://deno.land/x/imagescript@1.2.17/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,14 +12,34 @@ const corsHeaders = {
 };
 
 const RECRAFT_BASE = "https://external.api.recraft.ai/v1";
+const MIN_DIM = 320; // Recraft requires >= 256; give margin.
 
 async function fetchAsPng(url: string): Promise<Blob | null> {
   try {
     const r = await fetch(url);
     if (!r.ok) return null;
-    const buf = await r.arrayBuffer();
-    return new Blob([buf], { type: "image/png" });
-  } catch {
+    const buf = new Uint8Array(await r.arrayBuffer());
+    let decoded: any;
+    try {
+      decoded = await decodeImage(buf);
+    } catch (e) {
+      console.warn("decode failed for", url, e);
+      return null;
+    }
+    // Animated GIFs return a Frame array — take the first frame.
+    const img: Image = Array.isArray(decoded) ? decoded[0] : decoded;
+    if (!img || !img.width || !img.height) return null;
+    let w = img.width, h = img.height;
+    if (w < MIN_DIM || h < MIN_DIM) {
+      const scale = MIN_DIM / Math.min(w, h);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+      img.resize(w, h);
+    }
+    const png = await img.encode();
+    return new Blob([png], { type: "image/png" });
+  } catch (e) {
+    console.warn("fetchAsPng error", url, e);
     return null;
   }
 }
@@ -107,9 +128,19 @@ serve(async (req) => {
 
     const form = new FormData();
     form.append("style", "digital_illustration");
+    let attached = 0;
     for (const u of urls) {
       const blob = await fetchAsPng(u);
-      if (blob) form.append("files", blob, `ref-${crypto.randomUUID()}.png`);
+      if (blob) {
+        form.append("files", blob, `ref-${crypto.randomUUID()}.png`);
+        attached++;
+      }
+    }
+    if (attached === 0) {
+      return new Response(
+        JSON.stringify({ success: false, error: "None of the selected references could be decoded as a valid image (>= 256px). Try larger, higher-quality images." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     const styleRes = await fetch(`${RECRAFT_BASE}/styles`, {
