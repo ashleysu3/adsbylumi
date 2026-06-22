@@ -15,11 +15,20 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useLumiAssistant } from "@/components/LumiAssistant";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { ArrowRight, X } from "lucide-react";
+import { ArrowRight, X, CheckSquare, Sparkles, Gift, Heart, CreditCard, Star, Briefcase, Shield, LogOut } from "lucide-react";
 import { SubscriptionBanner } from "@/components/SubscriptionGate";
 import { DashboardFooter } from "@/components/DashboardFooter";
 import { PartnerPortalBanner } from "@/components/PartnerPortalBanner";
 import { ReturnToWorkButton } from "@/components/ReturnToWorkButton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast as sonnerToast } from "sonner";
 
 
 
