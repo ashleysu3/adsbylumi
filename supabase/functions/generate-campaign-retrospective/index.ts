@@ -897,7 +897,9 @@ WRITING RULES (read these every time):
 
 6. **Confidence levels.** "high" = data clearly supports it. "medium" = default. "low" = thin pattern but worth flagging.
 
-Aim for 2-3 wins, 2-3 underperformers, 3-5 test_ideas when data supports them. Fewer when it doesn't. Never fill quotas with weak insights. Return ONLY the JSON.`;
+7. **Override patterns (§8.3).** If \`override_patterns\` is present in the campaign data, include ONE plain-English observation in \`pattern_notes\` as a "pattern worth noting" — e.g. "You've overridden LUMI's turn-off suggestion 4 times this quarter, usually because you trust the creative. Worth noticing — either your instinct is catching something the data misses, or these are worth a closer look." Frame it as an observation for the operator to weigh, NOT as advice to change anything automatically. Use the top_format / top_angle fields if they add color (e.g. "...mostly on UGC videos"). Omit \`pattern_notes\` entirely (empty array) if override_patterns is null.
+
+Aim for 2-3 wins, 2-3 underperformers, 3-5 test_ideas when data supports them. Fewer when it doesn't. Never fill quotas with weak insights. Return ONLY the JSON.\`;
 }
 
 function formatGoalValue(goal: GoalContext): string {
