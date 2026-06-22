@@ -113,12 +113,12 @@ import Creative from "./pages/Creative";
 import Launch from "./pages/Launch";
 import Performance from "./pages/Performance";
 import {
-  TasksPlaceholder,
   AudiencePlaceholder,
   GoalsPlaceholder,
   VoicePlaceholder,
   TroubleshootingPlaceholder,
 } from "./pages/Placeholder";
+import Tasks from "./pages/Tasks";
 
 
 const queryClient = new QueryClient();
