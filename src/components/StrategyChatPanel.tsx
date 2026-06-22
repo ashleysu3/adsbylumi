@@ -104,7 +104,10 @@ export function StrategyChatPanel() {
   if (!open) {
     return (
       <Card
-        className="p-5 border-lumi-pink-1/30 bg-gradient-to-br from-lumi-pink-1/5 to-lumi-purple-1/5 cursor-pointer hover:shadow-glow transition"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(true); } }}
+        className="group p-5 border-2 border-dashed border-lumi-pink-1/40 bg-background cursor-pointer hover:border-lumi-pink-1 hover:bg-lumi-pink-1/5 hover:shadow-glow transition"
         onClick={() => setOpen(true)}
       >
         <div className="flex items-start gap-3">
@@ -118,9 +121,10 @@ export function StrategyChatPanel() {
               else run. LUMI figures out the goal and builds the strategy.
             </p>
           </div>
-          <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+          <ArrowRight className="h-4 w-4 text-lumi-pink-1 flex-shrink-0 mt-1 transition-transform group-hover:translate-x-0.5" />
         </div>
       </Card>
+
     );
   }
 
