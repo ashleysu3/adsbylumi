@@ -236,7 +236,8 @@ serve(async (req) => {
         const imgRes = await fetch(g.recraftUrl);
         if (!imgRes.ok) continue;
         const bytes = new Uint8Array(await imgRes.arrayBuffer());
-        const path = `${user.id}/${boardId}/${crypto.randomUUID()}.png`;
+        const folder = boardId || `brand-${brandId}` || "misc";
+        const path = `${user.id}/${folder}/${crypto.randomUUID()}.png`;
         const { error: upErr } = await admin.storage
           .from("recraft-creatives")
           .upload(path, bytes, { contentType: "image/png", upsert: false });
