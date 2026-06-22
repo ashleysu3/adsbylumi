@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,13 +17,59 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+export type AwarenessLevel =
+  | "unaware"
+  | "problem_aware"
+  | "solution_aware"
+  | "product_aware"
+  | "most_aware";
+
+export type FrameworkType =
+  | "problem"
+  | "desire"
+  | "contrarian"
+  | "mechanism"
+  | "identity"
+  | "fomo"
+  | "social_proof"
+  | "enemy";
+
 export interface CreativeAngle {
   id: string;
   name: string;
   description: string;
   isDefault?: boolean;
   isCustom?: boolean;
+  framework_type?: FrameworkType;
+  awareness_level?: AwarenessLevel;
 }
+
+const AWARENESS_LABELS: Record<AwarenessLevel, string> = {
+  unaware: "Unaware",
+  problem_aware: "Problem-aware",
+  solution_aware: "Solution-aware",
+  product_aware: "Product-aware",
+  most_aware: "Most aware",
+};
+
+const FRAMEWORK_LABELS: Record<FrameworkType, string> = {
+  problem: "Problem",
+  desire: "Desire",
+  contrarian: "Contrarian",
+  mechanism: "Mechanism",
+  identity: "Identity",
+  fomo: "FOMO",
+  social_proof: "Social Proof",
+  enemy: "Enemy",
+};
+
+const AWARENESS_ORDER: AwarenessLevel[] = [
+  "unaware",
+  "problem_aware",
+  "solution_aware",
+  "product_aware",
+  "most_aware",
+];
 
 interface AngleSelectorProps {
   angles: CreativeAngle[];
@@ -36,6 +82,8 @@ interface AngleSelectorProps {
   regeneratingAngleId?: string | null;
   brandName?: string;
   offerData?: { name?: string; description?: string; price?: string };
+  /** If provided, the awareness filter defaults to this level. */
+  defaultAwarenessLevel?: AwarenessLevel;
 }
 
 export function AngleSelector({
@@ -48,7 +96,8 @@ export function AngleSelector({
   onRegenerateAngle,
   regeneratingAngleId,
   brandName,
-  offerData
+  offerData,
+  defaultAwarenessLevel,
 }: AngleSelectorProps) {
   const [showCustomDialog, setShowCustomDialog] = useState(false);
   const [customInput, setCustomInput] = useState("");
@@ -56,6 +105,27 @@ export function AngleSelector({
   const [clarificationQuestion, setClarificationQuestion] = useState<string | null>(null);
   const [clarificationAnswer, setClarificationAnswer] = useState("");
   const [originalInput, setOriginalInput] = useState("");
+  const [awarenessFilter, setAwarenessFilter] = useState<AwarenessLevel | "all">(
+    defaultAwarenessLevel || "all"
+  );
+
+  // Awareness levels actually present in the current angle set (excluding defaults).
+  const availableAwareness = useMemo(() => {
+    const present = new Set<AwarenessLevel>();
+    angles.forEach((a) => {
+      if (a.awareness_level && AWARENESS_ORDER.includes(a.awareness_level)) {
+        present.add(a.awareness_level);
+      }
+    });
+    return AWARENESS_ORDER.filter((lvl) => present.has(lvl));
+  }, [angles]);
+
+  const filteredAngles = useMemo(() => {
+    if (awarenessFilter === "all") return angles;
+    return angles.filter(
+      (a) => a.isDefault || a.isCustom || a.awareness_level === awarenessFilter
+    );
+  }, [angles, awarenessFilter]);
 
   const toggleAngle = (angleId: string) => {
     const angle = angles.find(a => a.id === angleId);
@@ -169,8 +239,46 @@ export function AngleSelector({
         </div>
       </div>
 
+      {availableAwareness.length > 0 && (
+        <div className="flex flex-wrap items-center justify-center gap-1.5">
+          <span className="text-xs text-muted-foreground mr-1">Awareness:</span>
+          <button
+            type="button"
+            onClick={() => setAwarenessFilter("all")}
+            className={cn(
+              "text-[11px] px-2 py-1 rounded-full border transition-colors",
+              awarenessFilter === "all"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:border-primary/50"
+            )}
+          >
+            All
+          </button>
+          {availableAwareness.map((lvl) => (
+            <button
+              key={lvl}
+              type="button"
+              onClick={() => setAwarenessFilter(lvl)}
+              className={cn(
+                "text-[11px] px-2 py-1 rounded-full border transition-colors",
+                awarenessFilter === lvl
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-primary/50"
+              )}
+            >
+              {AWARENESS_LABELS[lvl]}
+            </button>
+          ))}
+          {defaultAwarenessLevel && (
+            <span className="text-[10px] text-muted-foreground ml-1">
+              · default: {AWARENESS_LABELS[defaultAwarenessLevel]}
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-        {angles.map((angle) => {
+        {filteredAngles.map((angle) => {
           const isSelected = selectedAngles.includes(angle.id);
           const isDefault = angle.isDefault === true;
           const isDisabled = isDefault || (!isSelected && selectedAngles.length >= 5);
@@ -237,8 +345,28 @@ export function AngleSelector({
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
+              <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0 space-y-2">
                 <CardDescription className="text-xs sm:text-sm">{angle.description}</CardDescription>
+                {(angle.framework_type || angle.awareness_level) && (
+                  <div className="flex flex-wrap gap-1">
+                    {angle.framework_type && FRAMEWORK_LABELS[angle.framework_type] && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] px-1.5 py-0 h-5 font-normal bg-muted/40"
+                      >
+                        {FRAMEWORK_LABELS[angle.framework_type]}
+                      </Badge>
+                    )}
+                    {angle.awareness_level && AWARENESS_LABELS[angle.awareness_level] && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] px-1.5 py-0 h-5 font-normal border-primary/30 text-primary/80"
+                      >
+                        {AWARENESS_LABELS[angle.awareness_level]}
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
