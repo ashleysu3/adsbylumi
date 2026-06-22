@@ -289,18 +289,19 @@ export default function Strategy() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-5"
           >
-            <Card className="p-5 border-lumi-pink-1/30 bg-gradient-to-br from-lumi-pink-1/5 to-lumi-purple-1/5">
-              <div className="flex items-start gap-3">
-                <Sparkles className="h-5 w-5 text-lumi-pink-1 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h2 className="font-semibold mb-1">What are we promoting?</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Pick the specific offer you want ads to drive to — webinar,
-                    course, product, service. Your strategy is built around it.
-                  </p>
-                </div>
+            <div className="flex items-start gap-2.5 px-1">
+              <Sparkles className="h-4 w-4 text-lumi-pink-1 flex-shrink-0 mt-1" />
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  What are we promoting?
+                </h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Pick the specific offer you want ads to drive to — webinar,
+                  course, product, service. Your strategy is built around it.
+                </p>
               </div>
-            </Card>
+            </div>
+
 
             {offersLoading ? (
               <div className="text-center py-10">
