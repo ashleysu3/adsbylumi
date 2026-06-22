@@ -141,8 +141,10 @@ function classifyRole(
   };
 }
 
-const RESULTS_PER_WEEK_IDEAL = 50; // exits Meta's learning phase
-const RESULTS_PER_WEEK_LEAN = 30; // acceptable but slower-learning floor
+// Meta updated its learning-phase guidance: ~25 conversions/week per ad set
+// is enough to optimize. We size daily budgets to clear that bar.
+const RESULTS_PER_WEEK_IDEAL = 25; // exits Meta's learning phase
+const RESULTS_PER_WEEK_LEAN = 15; // acceptable but slower-learning floor
 
 export function computeStrategyBudget(
   input: StrategyBudgetInput,
@@ -156,9 +158,19 @@ export function computeStrategyBudget(
       c.name,
       price,
     );
-    const idealDaily = Math.max(1, Math.round((RESULTS_PER_WEEK_IDEAL * cost) / 7));
-    const leanDaily = Math.max(1, Math.round((RESULTS_PER_WEEK_LEAN * cost) / 7));
+    let idealDaily = Math.max(1, Math.round((RESULTS_PER_WEEK_IDEAL * cost) / 7));
+    let leanDaily = Math.max(1, Math.round((RESULTS_PER_WEEK_LEAN * cost) / 7));
     const role = classifyRole(c.objective, c.name);
+
+    // Cold sales rule: minimum daily budget must be at least half the
+    // offer price. Anything less and Meta can't reliably buy a sale,
+    // regardless of how generous the CPA benchmark looks.
+    if (role.roleLabel === "Cold conversion" && price) {
+      const floor = Math.ceil(price * 0.5);
+      leanDaily = Math.max(leanDaily, floor);
+      idealDaily = Math.max(idealDaily, floor);
+    }
+
     return {
       _i: i,
       name: c.name || role.roleLabel,
