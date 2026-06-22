@@ -686,8 +686,14 @@ export function GenerateCreativeDialog() {
         }, 30000);
       });
       setBoardApprovedIdxs((prev) => new Set(prev).add(idx));
+      window.dispatchEvent(
+        new CustomEvent("creative-render:focus-item", {
+          detail: { itemId, assetUrl: r.url },
+        }),
+      );
+      setOpen(false);
       toast.success("Approved and saved to your Production Checklist ✅", {
-        description: "Find it on this creative card under Asset — use the eye icon to preview it.",
+        description: "Opening the saved card now — look for “Generated design saved.”",
       });
     } catch (e: any) {
       toast.error(e?.message || "Could not approve");
