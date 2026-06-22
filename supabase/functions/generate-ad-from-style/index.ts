@@ -76,7 +76,9 @@ serve(async (req) => {
 
     const body = (await req.json()) as GenInput;
     const { boardId, brandId, copy, count, selectedImageUrls, selectedItemIds } = body;
-    if (!boardId) throw new Error("boardId required");
+    const mode = body.mode || (boardId ? "board" : "brand_background");
+    if (!boardId && !brandId) throw new Error("boardId or brandId required");
+    if (mode === "brand_background" && !brandId) throw new Error("brandId required in brand_background mode");
     const n = Math.min(Math.max(count ?? 4, 1), 6);
 
     const authHeader = req.headers.get("Authorization") || "";
@@ -93,31 +95,33 @@ serve(async (req) => {
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) throw new Error("Not authenticated");
 
-    const { data: board } = await admin
-      .from("boards")
-      .select("id, user_id, name, recraft_style_id")
-      .eq("id", boardId)
-      .maybeSingle();
-    if (!board || board.user_id !== user.id) throw new Error("Board not found");
+    let existingStyleId: string | null = null;
+    if (mode === "board") {
+      const { data: board } = await admin
+        .from("boards")
+        .select("id, user_id, name, recraft_style_id")
+        .eq("id", boardId!)
+        .maybeSingle();
+      if (!board || board.user_id !== user.id) throw new Error("Board not found");
+      existingStyleId = (board as any).recraft_style_id || null;
+    }
 
-    const styleId = await buildStyle(
-      authHeader,
-      boardId,
-      board.recraft_style_id,
-      selectedImageUrls,
-      selectedItemIds,
-    );
-
-    // Brand colors + name for the prompt.
+    // Brand colors + name (+ background/texture asset refs in brand mode).
     let brandName = "the brand";
     let colors: string[] = [];
+    let brandRefUrls: string[] = [];
     if (brandId) {
       const { data: brand } = await admin
         .from("brands")
-        .select("name")
+        .select("id, user_id, name")
         .eq("id", brandId)
         .maybeSingle();
+      if (!brand) throw new Error("Brand not found");
+      if (mode === "brand_background" && (brand as any).user_id !== user.id) {
+        throw new Error("Brand not found");
+      }
       if (brand?.name) brandName = brand.name;
+
       const { data: kit } = await admin
         .from("brand_kits")
         .select("colors")
@@ -135,17 +139,57 @@ serve(async (req) => {
           .filter(Boolean)
           .slice(0, 5);
       }
+
+      if (mode === "brand_background") {
+        const { data: assets } = await admin
+          .from("brand_assets")
+          .select("url, role, kept")
+          .eq("brand_id", brandId)
+          .eq("kept", true)
+          .in("role", ["background", "texture"]);
+        const rows = (assets || []) as Array<{ url: string; role: string }>;
+        for (const row of rows) {
+          if (!row?.url) continue;
+          // brand_assets url may be a storage path or a full URL; sign storage paths
+          const m = row.url.match(/\/storage\/v1\/object\/(?:public|sign)\/brand-assets\/([^?]+)/);
+          if (m) {
+            const { data: signed } = await admin.storage
+              .from("brand-assets")
+              .createSignedUrl(decodeURIComponent(m[1]), 60 * 10);
+            if (signed?.signedUrl) brandRefUrls.push(signed.signedUrl);
+          } else if (row.url.startsWith("http")) {
+            brandRefUrls.push(row.url);
+          }
+          if (brandRefUrls.length >= 5) break;
+        }
+      }
     }
+
+    const styleId = await buildStyle(authHeader, {
+      boardId,
+      brandId,
+      existingStyleId,
+      selectedImageUrls: mode === "brand_background" ? brandRefUrls : selectedImageUrls,
+      selectedItemIds: mode === "board" ? selectedItemIds : undefined,
+    });
 
     const palette = colors.length ? `Brand color palette: ${colors.join(", ")}.` : "";
     const offerHint = [copy?.headline, copy?.subhead].filter(Boolean).join(" — ");
+    const noPeople = `STRICTLY no people, no faces, no hands, no body parts, no portraits, no characters, no figures, no silhouettes of people.`;
+    const noText = `Do NOT bake in any words, letters, logos, headlines, captions, or CTAs — text will be overlaid separately.`;
+    const layoutSpace = `Composition must leave generous CLEAN, UNCLUTTERED negative space (especially the center and lower-third) for an overlaid text card and a circular headshot.`;
+    const sceneHint = mode === "brand_background"
+      ? `Clean BACKGROUND / texture / lifestyle SCENE only: soft surfaces, tabletop flatlays, abstract textures, gradients, paper, fabric, light leaks, or empty editorial environments. ${brandRefUrls.length === 0 ? "Use a neutral, premium on-brand look built from the brand color palette." : "Match the aesthetic, mood, and color world of the brand reference textures/backgrounds."}`
+      : `Match the aesthetic, mood, and color world of the reference style. Premium, scroll-stopping, creator-friendly editorial feel.`;
 
     const prompt = [
-      `An on-brand Meta ad VISUAL/background for ${brandName}.`,
+      `An on-brand Meta ad BACKGROUND for ${brandName}.`,
       offerHint ? `Offer context: ${offerHint}.` : "",
       palette,
-      `Composition must leave generous CLEAN, UNCLUTTERED space (top-third and bottom-third) for overlay text. Do NOT bake in any words, letters, logos, headlines, captions, or CTAs — text will be overlaid separately.`,
-      `Match the aesthetic, mood, and color world of the reference style. Premium, scroll-stopping, creator-friendly editorial feel.`,
+      sceneHint,
+      layoutSpace,
+      noText,
+      noPeople,
     ].filter(Boolean).join(" ");
 
     const sizes: Array<{ label: "1x1" | "4x5"; size: string }> = [
@@ -155,20 +199,21 @@ serve(async (req) => {
 
     const generated: Array<{ aspect: string; recraftUrl: string }> = [];
     for (const s of sizes) {
+      const genBody: Record<string, unknown> = {
+        prompt,
+        model: "recraftv3",
+        n,
+        size: s.size,
+        response_format: "url",
+      };
+      if (styleId) genBody.style_id = styleId;
       const res = await fetch(`${RECRAFT_BASE}/images/generations`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${RECRAFT_API_KEY}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          prompt,
-          style_id: styleId,
-          model: "recraftv3",
-          n,
-          size: s.size,
-          response_format: "url",
-        }),
+        body: JSON.stringify(genBody),
       });
       const text = await res.text();
       if (!res.ok) {
