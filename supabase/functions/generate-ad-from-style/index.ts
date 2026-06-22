@@ -64,7 +64,7 @@ serve(async (req) => {
     if (!RECRAFT_API_KEY) throw new Error("RECRAFT_API_KEY not configured");
 
     const body = (await req.json()) as GenInput;
-    const { boardId, brandId, copy, count } = body;
+    const { boardId, brandId, copy, count, selectedImageUrls, selectedItemIds } = body;
     if (!boardId) throw new Error("boardId required");
     const n = Math.min(Math.max(count ?? 4, 1), 6);
 
@@ -89,7 +89,13 @@ serve(async (req) => {
       .maybeSingle();
     if (!board || board.user_id !== user.id) throw new Error("Board not found");
 
-    const styleId = await ensureStyle(admin, authHeader, boardId, board.recraft_style_id);
+    const styleId = await buildStyle(
+      authHeader,
+      boardId,
+      board.recraft_style_id,
+      selectedImageUrls,
+      selectedItemIds,
+    );
 
     // Brand colors + name for the prompt.
     let brandName = "the brand";
