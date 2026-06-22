@@ -421,7 +421,7 @@ export default function Performance() {
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={handleDoIt} className="gap-2">
                     <CheckCircle2 className="h-4 w-4" />
-                    Do it
+                    {chosen.rec.recommendation.action === "turn_off" ? "Do it" : "Show me how"}
                   </Button>
                   <Button variant="outline" onClick={() => setWhyOpen((v) => !v)} className="gap-2">
                     <HelpCircle className="h-4 w-4" />
@@ -434,6 +434,38 @@ export default function Performance() {
                 </div>
               </CardContent>
             </Card>
+
+            <AlertDialog open={confirmOpen} onOpenChange={(o) => !pausing && setConfirmOpen(o)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Pause this {chosen.rec.level} "{chosen.rec.name}"?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    It will stop spending in Meta immediately. You can re-enable it any time in Meta or from See all metrics.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={pausing}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={(e) => {
+                      e.preventDefault();
+                      confirmPause();
+                    }}
+                    disabled={pausing}
+                  >
+                    {pausing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Pausing…
+                      </>
+                    ) : (
+                      "Pause it in Meta"
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             {/* KPI cards from the chosen campaign */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
