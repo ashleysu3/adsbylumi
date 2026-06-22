@@ -813,6 +813,7 @@ function buildPrompt(args: {
   dataQuality: { level: string; note?: string };
   strategy: any; creative: any; productionItems: any; performance: any; isImported: boolean;
   kpiFallback?: { from: string; from_label: string; to: string; to_label: string; note: string } | null;
+  overridePatterns?: OverridePatterns | null;
 
 }): string {
   const goalLine = args.goal
