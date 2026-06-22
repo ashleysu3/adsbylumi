@@ -156,6 +156,25 @@ export default function Strategy() {
   const [intro, setIntro] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
+  const [monthlyBudgetInput, setMonthlyBudgetInput] = useState<string>("");
+  const [goalCountInput, setGoalCountInput] = useState<string>("");
+
+  const selectedOffer = useMemo(
+    () => offers.find((o) => o.id === selectedOfferId) ?? null,
+    [offers, selectedOfferId],
+  );
+
+  const budget: StrategyBudgetResult | null = useMemo(() => {
+    if (!matched?.campaigns?.length) return null;
+    const monthly = Number(monthlyBudgetInput);
+    const goal = Number(goalCountInput);
+    return computeStrategyBudget({
+      campaigns: matched.campaigns,
+      pricePoint: selectedOffer?.price_point ?? null,
+      monthlyBudget: monthly > 0 ? monthly : null,
+      goalCount: goal > 0 ? goal : null,
+    });
+  }, [matched, selectedOffer, monthlyBudgetInput, goalCountInput]);
 
   useEffect(() => {
     if (!brandsLoading && !activeBrand) {
