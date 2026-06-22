@@ -17,6 +17,8 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { CampaignSpine } from "@/components/CampaignSpine";
 import { useBrand } from "@/contexts/BrandContext";
 import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
@@ -24,6 +26,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { clearStrategyPlan } from "./StrategyPlan";
 import { StrategyChatPanel } from "@/components/StrategyChatPanel";
+import { computeStrategyBudget, type StrategyBudgetResult } from "@/lib/strategy-budget";
+import { useMemo } from "react";
 
 type CampaignPlan = {
   name?: string;
