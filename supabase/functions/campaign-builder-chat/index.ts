@@ -127,6 +127,72 @@ function parseBudget(message: string): { amount: number | null; warning?: string
   return { amount: Math.round(amount) };
 }
 
+function parsePricePoint(price?: string | null): number | null {
+  if (!price) return null;
+  const match = String(price).replace(/,/g, '').match(/\d+(\.\d+)?/);
+  if (!match) return null;
+  const value = Number(match[0]);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function isColdSalesCampaign(template: any, strategyTemplate: any): boolean {
+  const text = [
+    template?.name,
+    template?.objective,
+    template?.campaign_type,
+    template?.audience_type,
+    strategyTemplate?.objective,
+    strategyTemplate?.campaign_type,
+    strategyTemplate?.goal,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  const isSales = /sales|sale|purchase|conversion|conversions|promote_offer|outcome_sales/.test(text);
+  const isWarm = /warm|retarget|remarket/.test(text);
+  return isSales && !isWarm;
+}
+
+function getBudgetRecommendation(template: any, strategyTemplate: any, offerPrice?: string | null) {
+  const price = parsePricePoint(offerPrice);
+  if (price && isColdSalesCampaign(template, strategyTemplate)) {
+    const floor = Math.ceil(price * 0.5);
+    const recommended = Math.max(floor, Math.ceil((25 * floor) / 7));
+    return {
+      suggestion: `$${floor}–$${recommended}/day`,
+      recommendations: [
+        { label: `$${floor}/day`, value: floor, reason: 'Minimum for this offer' },
+        { label: `$${recommended}/day`, value: recommended, reason: 'Recommended' },
+      ],
+    };
+  }
+
+  const suggestion = template?.budget_suggestion || '$20-30/day';
+  const budgetMatch = suggestion.match(/\$(\d+)-(\d+)/);
+  if (budgetMatch) {
+    const low = parseInt(budgetMatch[1]);
+    const high = parseInt(budgetMatch[2]);
+    const mid = Math.round((low + high) / 2);
+    return {
+      suggestion,
+      recommendations: [
+        { label: `$${low}/day`, value: low, reason: 'Starter budget' },
+        { label: `$${mid}/day`, value: mid, reason: 'Recommended' },
+        { label: `$${high}/day`, value: high, reason: 'For faster results' },
+      ],
+    };
+  }
+
+  return {
+    suggestion,
+    recommendations: [
+      { label: '$15/day', value: 15, reason: 'Starter budget' },
+      { label: '$20/day', value: 20, reason: 'Most popular' },
+      { label: '$30/day', value: 30, reason: 'For faster results' },
+    ],
+  };
+}
+
 // Date parsing helper
 function parseDate(message: string): string {
   const today = new Date();
