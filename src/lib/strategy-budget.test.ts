@@ -50,12 +50,12 @@ describe("computeStrategyBudget", () => {
     const result = computeStrategyBudget({
       campaigns: threeCampaignFunnel,
       pricePoint: "$97",
-      monthlyBudget: 30000, // huge — easily covers idealTotal
+      monthlyBudget: 30000, // ~$1000/day — easily covers idealTotal
     });
     expect(result.mode).toBe("monthly_budget");
     expect(result.stages.every((s) => s.included)).toBe(true);
     expect(result.stages.length).toBe(3);
-    // Front-end should come first regardless of input order.
+    // Front-end (priority 1) should come first regardless of input order.
     expect(result.stages[0].roleLabel.toLowerCase()).toContain("free training");
   });
 
