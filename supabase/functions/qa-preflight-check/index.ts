@@ -32,6 +32,7 @@ serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
     const { 
       brand,
       answers,
@@ -64,6 +65,8 @@ serve(async (req) => {
     results.push(await checkLandingPage(resolvedUrl, brand));
     results.push(checkEventTracking(brand, template));
     results.push(await checkSpellingGrammar(creativeJson, productionItems, selectedCopy));
+    results.push(await checkAdPolicy(selectedCopy, productionItems, brand, authHeader));
+
 
     const summary = {
       passed: results.filter(r => r.status === 'passed').length,
