@@ -25,7 +25,7 @@ describe("computeStrategyBudget", () => {
     const result = computeStrategyBudget({
       campaigns: threeCampaignFunnel,
       pricePoint: "$97",
-      monthlyBudget: 6000, // ~$200/day — covers webinar at lean, not the rest
+      monthlyBudget: 3000, // ~$100/day — covers webinar at lean, not the rest
     });
 
     expect(result.mode).toBe("monthly_budget");
