@@ -46,6 +46,63 @@ export default function BoardDetail() {
   const [noteItem, setNoteItem] = useState<BoardItem | null>(null);
   const [noteValue, setNoteValue] = useState("");
 
+  // Generate-from-board (Recraft) state
+  const { activeBrand } = useBrand();
+  const { addConcept } = useCampaignDraft();
+  const [genOpen, setGenOpen] = useState(false);
+  const [genCopy, setGenCopy] = useState({ headline: "", subhead: "", cta: "Learn more" });
+  const [generating, setGenerating] = useState(false);
+  const [genResults, setGenResults] = useState<Array<{ aspect: string; url: string; path: string }>>([]);
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+
+  const startGenerate = () => {
+    if (items.length === 0) {
+      toast.error("Add at least 1 ad to this board first.");
+      return;
+    }
+    setGenResults([]);
+    setGenOpen(true);
+  };
+
+  const runGenerate = async () => {
+    if (!boardId) return;
+    if (!genCopy.headline.trim()) {
+      toast.error("Add a headline so we can preview the ad.");
+      return;
+    }
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-ad-from-style", {
+        body: { boardId, brandId: activeBrand?.id, copy: genCopy, count: 4 },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Generation failed");
+      setGenResults(data.images || []);
+      if (!data.images?.length) toast.error("Recraft returned no images. Try again.");
+      else toast.success(`Generated ${data.images.length} visuals`);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Failed to generate ads");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const addResultToLaunch = (r: { aspect: string; url: string; path: string }) => {
+    const id = `recraft:${r.path}`;
+    addConcept({
+      id,
+      title: genCopy.headline || "Recraft visual",
+      angle: "Inspiration board",
+      styleHint: r.aspect,
+      assetUrl: r.url,
+      thumbnailUrl: r.url,
+      copy: { headline: genCopy.headline, primary_text: genCopy.subhead, cta: genCopy.cta },
+    });
+    setAddedIds((prev) => new Set(prev).add(id));
+    toast.success("Added to launch");
+  };
+
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
