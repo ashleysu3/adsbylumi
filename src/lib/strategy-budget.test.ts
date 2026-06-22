@@ -1,0 +1,84 @@
+import { describe, it, expect } from "vitest";
+import { computeStrategyBudget, parsePricePoint } from "./strategy-budget";
+
+const threeCampaignFunnel = [
+  // Front-end lead capture (CPL benchmark max = $40 for webinar → ideal ~$286/day)
+  { name: "Free training opt-in", objective: "OUTCOME_LEADS" },
+  // Cold conversion (Sales/ROAS → defaults to price * 0.5 clamped)
+  { name: "Cold sales", objective: "OUTCOME_SALES" },
+  // Warm retargeting (treated as conversion)
+  { name: "Warm retargeting", objective: "OUTCOME_SALES" },
+];
+
+describe("parsePricePoint", () => {
+  it("extracts the number from messy price strings", () => {
+    expect(parsePricePoint("$97")).toBe(97);
+    expect(parsePricePoint("$1,997 one-time")).toBe(1997);
+    expect(parsePricePoint(null)).toBeNull();
+    expect(parsePricePoint("free")).toBeNull();
+  });
+});
+
+describe("computeStrategyBudget", () => {
+  it("drops to a single included campaign when the monthly budget can't cover the full funnel", () => {
+    const result = computeStrategyBudget({
+      campaigns: threeCampaignFunnel,
+      pricePoint: "$97",
+      monthlyBudget: 600, // ~$20/day — well below the funnel's lean total
+    });
+
+    expect(result.mode).toBe("monthly_budget");
+    const includedCount = result.stages.filter((s) => s.included).length;
+    expect(includedCount).toBeLessThanOrEqual(1);
+    expect(result.totalDaily).toBeLessThanOrEqual(Math.ceil(600 / 30) + 1);
+    // We never recommend campaigns the budget can't support.
+    expect(includedCount).toBeLessThan(result.stages.length);
+  });
+
+  it("surfaces a warning when even the cheapest campaign exceeds the daily cap", () => {
+    const result = computeStrategyBudget({
+      campaigns: [
+        { name: "Discovery call booking", objective: "OUTCOME_LEADS" }, // CPL max ~$100 → lean ~$429/day
+      ],
+      pricePoint: "$2000",
+      monthlyBudget: 150, // ~$5/day
+    });
+    expect(result.warning).toBeTruthy();
+    expect(result.stages.every((s) => !s.included)).toBe(true);
+  });
+
+  it("funds the full funnel when the monthly budget is healthy", () => {
+    const result = computeStrategyBudget({
+      campaigns: threeCampaignFunnel,
+      pricePoint: "$97",
+      monthlyBudget: 30000, // huge — easily covers idealTotal
+    });
+    expect(result.mode).toBe("monthly_budget");
+    expect(result.stages.every((s) => s.included)).toBe(true);
+    expect(result.stages.length).toBe(3);
+    // Front-end should come first regardless of input order.
+    expect(result.stages[0].roleLabel.toLowerCase()).toContain("free training");
+  });
+
+  it("computes a required daily spend from a per-month goal", () => {
+    const result = computeStrategyBudget({
+      campaigns: threeCampaignFunnel,
+      pricePoint: "$97",
+      goalCount: 100, // 100 leads/month
+    });
+    expect(result.mode).toBe("goal");
+    expect(result.requiredDailyForGoal).toBeGreaterThan(0);
+    expect(result.rationale).toMatch(/hit ~100\/month/);
+  });
+
+  it("returns a realistic range when neither budget nor goal is provided", () => {
+    const result = computeStrategyBudget({
+      campaigns: threeCampaignFunnel,
+      pricePoint: "$97",
+    });
+    expect(result.mode).toBe("range");
+    expect(result.leanTotalDaily).toBeGreaterThan(0);
+    expect(result.idealTotalDaily).toBeGreaterThanOrEqual(result.leanTotalDaily);
+    expect(result.rationale).toMatch(/\$\d+–\$\d+\/day/);
+  });
+});
