@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { BarChart3, Building2, BookOpen, Settings, Shield, LogOut, Link2, Plus, CheckCircle2, AlertTriangle, Gift, Lock, Palette, LayoutGrid, Paintbrush, Activity, Lightbulb, Rocket } from "lucide-react";
+import { BarChart3, Building2, BookOpen, Settings, Shield, LogOut, Link2, Plus, CheckCircle2, AlertTriangle, Gift, Lock, Palette, LayoutGrid, Paintbrush, Activity, Lightbulb, Rocket, Images } from "lucide-react";
 import { LadybugIcon } from "@/components/LadybugIcon";
 import { useState as useReactState } from "react";
 import { BugReportModal } from "@/components/BugReportModal";
@@ -224,6 +224,29 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarSeparator />
+
+        {/* Library — reference material (inspiration boards, uploaded examples) */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Library</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Save and upload ad examples to inspire your creative.">
+                  <NavLink
+                    to="/boards"
+                    className="transition-all duration-200"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  >
+                    <Images className="h-4 w-4" />
+                    {!collapsed && <span>Inspiration</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

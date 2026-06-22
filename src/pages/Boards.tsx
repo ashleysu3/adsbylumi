@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Bookmark, Plus, Loader2, Image as ImageIcon } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Bookmark, Plus, Loader2, Image as ImageIcon, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 interface Board {
@@ -32,6 +34,88 @@ export default function Boards() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
+
+  // Upload references dialog
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadTargetBoardId, setUploadTargetBoardId] = useState<string>("__new__");
+  const [uploadNewBoardName, setUploadNewBoardName] = useState("");
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+
+  const openUploadDialog = () => {
+    setUploadFiles([]);
+    setUploadNewBoardName("");
+    setUploadTargetBoardId(boards.length > 0 ? boards[0].id : "__new__");
+    setUploadOpen(true);
+  };
+
+  const handleUploadReferences = async () => {
+    if (uploadFiles.length === 0) {
+      toast.error("Pick at least one image to upload.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not signed in");
+
+      // Resolve target board: create new if needed.
+      let boardId = uploadTargetBoardId;
+      if (boardId === "__new__") {
+        const name = uploadNewBoardName.trim() || "Uploaded references";
+        const { data: nb, error: nbErr } = await supabase
+          .from("boards")
+          .insert({ user_id: user.id, name })
+          .select()
+          .single();
+        if (nbErr) throw nbErr;
+        boardId = nb.id;
+      }
+
+      let ok = 0, failed = 0;
+      for (const file of uploadFiles) {
+        if (file.size > 250 * 1024 * 1024) {
+          toast.error(`${file.name} is over 250MB`);
+          failed++;
+          continue;
+        }
+        try {
+          const ext = file.name.split(".").pop() || "jpg";
+          const path = `${user.id}/boards/${crypto.randomUUID()}.${ext}`;
+          const { error: upErr } = await supabase.storage
+            .from("ad-photos")
+            .upload(path, file, { contentType: file.type, upsert: false });
+          if (upErr) throw upErr;
+          const { data: pub } = supabase.storage.from("ad-photos").getPublicUrl(path);
+          const { error: insErr } = await supabase
+            .from("board_items")
+            .insert({
+              board_id: boardId,
+              user_id: user.id,
+              uploaded_image_url: pub.publicUrl,
+              status: "pending",
+            });
+          if (insErr) throw insErr;
+          ok++;
+        } catch (err) {
+          console.error("Upload failed for", file.name, err);
+          failed++;
+        }
+      }
+      if (ok) toast.success(`Uploaded ${ok} image${ok !== 1 ? "s" : ""}`);
+      if (failed) toast.error(`${failed} upload${failed !== 1 ? "s" : ""} failed`);
+      setUploadOpen(false);
+      await fetchBoards();
+      if (ok > 0) navigate(`/boards/${boardId}`);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Upload failed");
+    } finally {
+      setUploading(false);
+      if (uploadInputRef.current) uploadInputRef.current.value = "";
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -115,11 +199,14 @@ export default function Boards() {
             <h1 className="text-2xl font-bold">My boards</h1>
             <p className="text-sm text-muted-foreground">Save ads from the inspiration library or upload your own references.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={openUploadDialog}>
+              <Upload className="h-4 w-4 mr-2" /> Upload references
+            </Button>
             <Button variant="outline" onClick={() => navigate("/inspiration")}>
               <Bookmark className="h-4 w-4 mr-2" /> Browse inspiration
             </Button>
-            <Button onClick={() => setCreateOpen(true)}>
+            <Button variant="outline" onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4 mr-2" /> New board
             </Button>
           </div>
@@ -176,6 +263,60 @@ export default function Boards() {
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
             <Button onClick={createBoard} disabled={creating || !newName.trim()}>
               {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={uploadOpen} onOpenChange={(o) => !uploading && setUploadOpen(o)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload reference images</DialogTitle>
+            <DialogDescription>
+              Add your own ad examples. They become reusable references for Recraft-powered creative generation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Add to board</Label>
+              <Select value={uploadTargetBoardId} onValueChange={setUploadTargetBoardId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__new__">+ Create a new board</SelectItem>
+                  {boards.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {uploadTargetBoardId === "__new__" && (
+              <div className="space-y-2">
+                <Label>New board name</Label>
+                <Input
+                  value={uploadNewBoardName}
+                  onChange={(e) => setUploadNewBoardName(e.target.value)}
+                  placeholder="e.g. Uploaded references"
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Images</Label>
+              <Input
+                ref={uploadInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => setUploadFiles(Array.from(e.target.files || []))}
+              />
+              {uploadFiles.length > 0 && (
+                <p className="text-xs text-muted-foreground">{uploadFiles.length} file{uploadFiles.length !== 1 ? "s" : ""} selected</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUploadOpen(false)} disabled={uploading}>Cancel</Button>
+            <Button onClick={handleUploadReferences} disabled={uploading || uploadFiles.length === 0}>
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Upload className="h-4 w-4 mr-2" />Upload</>}
             </Button>
           </DialogFooter>
         </DialogContent>
