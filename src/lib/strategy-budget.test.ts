@@ -14,6 +14,7 @@ describe("parsePricePoint", () => {
   it("extracts the number from messy price strings", () => {
     expect(parsePricePoint("$97")).toBe(97);
     expect(parsePricePoint("$1,997 one-time")).toBe(1997);
+    expect(parsePricePoint("$97/mo or $997 pay in full")).toBe(997);
     expect(parsePricePoint(null)).toBeNull();
     expect(parsePricePoint("free")).toBeNull();
   });
