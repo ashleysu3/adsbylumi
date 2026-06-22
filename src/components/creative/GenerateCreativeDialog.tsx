@@ -707,6 +707,41 @@ export function GenerateCreativeDialog() {
     }
   };
 
+  const runBrandBackground = async () => {
+    if (!activeBrand?.id) {
+      toast.error("Pick a brand first.");
+      return;
+    }
+    setBgGenerating(true);
+    setBgOptions([]);
+    setBgSelectedUrl("");
+    try {
+      const headline = isCarousel ? editedSlides[0]?.headline : editedSingle.headline;
+      const subhead = isCarousel ? editedSlides[0]?.sub : (editedSingle.sub || editedSingle.subhead);
+      const { data, error } = await supabase.functions.invoke("generate-ad-from-style", {
+        body: {
+          mode: "brand_background",
+          brandId: activeBrand.id,
+          copy: { headline, subhead },
+          count: 3,
+        },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Background generation failed");
+      const imgs = (data.images || []) as Array<{ aspect: string; url: string; path: string }>;
+      // Prefer 4x5 for vertical, but show all; we just need a URL the engine can fetch.
+      setBgOptions(imgs);
+      if (imgs[0]) setBgSelectedUrl(imgs[0].url);
+      if (!imgs.length) toast.error("Recraft returned no backgrounds.");
+      else toast.success(`Generated ${imgs.length} brand backgrounds`);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Could not generate background");
+    } finally {
+      setBgGenerating(false);
+    }
+  };
+
   const compose = useCallback(async (feedback?: CopyFeedback | null) => {
     const b = briefRef.current;
     if (!b) return;
