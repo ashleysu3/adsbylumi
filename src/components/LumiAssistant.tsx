@@ -210,6 +210,14 @@ function LumiAssistantUI({
   // Handle navigation action click
   const handleActionClick = (action: NavigationAction) => {
     if (action.type === 'navigate' && action.route) {
+      // If Lumi is pulling the user out of work-in-progress and dropping them
+      // somewhere else, remember where they were so we can offer a one-click
+      // return. Don't overwrite if they're already mid-detour.
+      const currentLabel = getWorkLabel(location.pathname);
+      const goingToWork = isWorkPath(action.route);
+      if (currentLabel && !goingToWork && action.route !== location.pathname) {
+        setInterruptedWork({ path: location.pathname + location.search, label: currentLabel });
+      }
       navigate(action.route);
       handleCloseChat();
     } else if (action.type === 'bug_report') {
