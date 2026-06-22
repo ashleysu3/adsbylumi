@@ -1323,8 +1323,12 @@ export function GenerateCreativeDialog() {
                   </div>
 
                   {(boardGenerating || boardResults.length > 0) && (
-                    <div className="pt-3 border-t space-y-3">
-                      <Label className="text-xs uppercase text-muted-foreground">Results</Label>
+                    <div ref={boardResultsRef} className="pt-3 border-t space-y-3 scroll-mt-4">
+                      <Label className="text-sm font-semibold text-foreground">
+                        {boardResults.length > 0
+                          ? `✨ ${boardResults.length} visuals ready — scroll to review & approve`
+                          : "Results"}
+                      </Label>
                       {boardGenerating && boardResults.length === 0 && (
                         <div className="rounded border border-dashed p-10 text-center text-sm text-muted-foreground">
                           <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
