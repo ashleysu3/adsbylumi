@@ -402,32 +402,11 @@ Deno.serve(async (req) => {
         }
       }
       
-      // Get budget suggestion from template
-      let budgetSuggestion = '$20-30/day';
-      if (template?.budget_suggestion) {
-        budgetSuggestion = template.budget_suggestion;
-      }
+      const budgetRecommendation = getBudgetRecommendation(template, strategyTemplate, workspace.offer_price);
+      const budgetSuggestion = budgetRecommendation.suggestion;
       
       responseMessage = `Hi! 👋 I'm excited to help you launch your Meta Ads campaign for "${workspace.offer_name || 'your offer'}."${templateSummary}Let's start with your daily budget. For this campaign type, I recommend **${budgetSuggestion}**.`;
-      
-      // Parse budget suggestion for recommendations
-      const budgetMatch = budgetSuggestion.match(/\$(\d+)-(\d+)/);
-      if (budgetMatch) {
-        const low = parseInt(budgetMatch[1]);
-        const high = parseInt(budgetMatch[2]);
-        const mid = Math.round((low + high) / 2);
-        recommendations = [
-          { label: `$${low}/day`, value: low, reason: "Starter budget" },
-          { label: `$${mid}/day`, value: mid, reason: "Recommended" },
-          { label: `$${high}/day`, value: high, reason: "For faster results" }
-        ];
-      } else {
-        recommendations = [
-          { label: "$15/day", value: 15, reason: "Starter budget" },
-          { label: "$20/day", value: 20, reason: "Most popular" },
-          { label: "$30/day", value: 30, reason: "For faster results" }
-        ];
-      }
+      recommendations = budgetRecommendation.recommendations;
     } else {
       // Parse user's message and update answers
       switch (nextQuestion) {
@@ -444,11 +423,7 @@ Deno.serve(async (req) => {
             ];
           } else {
             responseMessage = budgetResult.warning || "I need a budget amount. How much would you like to spend per day? (Minimum $5)";
-            recommendations = [
-              { label: "$15/day", value: 15, reason: "Starter" },
-              { label: "$20/day", value: 20, reason: "Recommended" },
-              { label: "$30/day", value: 30, reason: "Growth" }
-            ];
+            recommendations = getBudgetRecommendation(template, strategyTemplate, workspace.offer_price).recommendations;
           }
           break;
 
