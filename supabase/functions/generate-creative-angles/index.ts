@@ -621,12 +621,24 @@ Generate ${maxAngles === 1 ? 'exactly 1 creative angle as a replacement for "' +
     }
 
     // Dedupe by id, then hard-cap to requested count
+    const VALID_FRAMEWORKS = new Set(["problem","desire","contrarian","mechanism","identity","fomo","social_proof","enemy"]);
+    const VALID_AWARENESS = new Set(["unaware","problem_aware","solution_aware","product_aware","most_aware"]);
+    const normalizeAngle = (a: any) => {
+      const fw = String(a?.framework_type || a?.frameworkType || "").toLowerCase().replace(/[\s-]+/g, "_");
+      const aw = String(a?.awareness_level || a?.awarenessLevel || "").toLowerCase().replace(/[\s-]+/g, "_");
+      return {
+        ...a,
+        framework_type: VALID_FRAMEWORKS.has(fw) ? fw : "problem",
+        awareness_level: VALID_AWARENESS.has(aw) ? aw : "problem_aware",
+      };
+    };
+
     const seenIds = new Set<string>();
     const dedupedAngles: any[] = [];
     for (const a of angles) {
       if (a?.id && !seenIds.has(a.id)) {
         seenIds.add(a.id);
-        dedupedAngles.push(a);
+        dedupedAngles.push(normalizeAngle(a));
       }
     }
     const hardCap = maxAngles === 1 ? 1 : 10;
