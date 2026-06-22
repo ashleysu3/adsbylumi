@@ -65,14 +65,15 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const boardId: string | undefined = body?.boardId;
+    const brandId: string | undefined = body?.brandId;
     const selectedImageUrls: string[] | undefined = Array.isArray(body?.selectedImageUrls)
       ? body.selectedImageUrls.slice(0, 5)
       : undefined;
     const selectedItemIds: string[] | undefined = Array.isArray(body?.selectedItemIds)
       ? body.selectedItemIds.slice(0, 5)
       : undefined;
-    const cacheOnBoard: boolean = body?.cacheOnBoard !== false && !selectedImageUrls && !selectedItemIds;
-    if (!boardId) throw new Error("boardId required");
+    const cacheOnBoard: boolean = body?.cacheOnBoard !== false && !selectedImageUrls && !selectedItemIds && !!boardId;
+    if (!boardId && !brandId) throw new Error("boardId or brandId required");
 
     const authHeader = req.headers.get("Authorization") || "";
     const userClient = createClient(
@@ -88,13 +89,26 @@ serve(async (req) => {
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) throw new Error("Not authenticated");
 
-    const { data: board, error: bErr } = await admin
-      .from("boards")
-      .select("id, user_id")
-      .eq("id", boardId)
-      .maybeSingle();
-    if (bErr) throw bErr;
-    if (!board || board.user_id !== user.id) throw new Error("Board not found");
+    if (boardId) {
+      const { data: board, error: bErr } = await admin
+        .from("boards")
+        .select("id, user_id")
+        .eq("id", boardId)
+        .maybeSingle();
+      if (bErr) throw bErr;
+      if (!board || board.user_id !== user.id) throw new Error("Board not found");
+    } else if (brandId) {
+      const { data: brand, error: brErr } = await admin
+        .from("brands")
+        .select("id, user_id")
+        .eq("id", brandId)
+        .maybeSingle();
+      if (brErr) throw brErr;
+      if (!brand || brand.user_id !== user.id) throw new Error("Brand not found");
+      if (!selectedImageUrls || selectedImageUrls.length === 0) {
+        throw new Error("selectedImageUrls required when using brandId mode");
+      }
+    }
 
     // Resolve URLs to fetch.
     let urls: string[] = [];
