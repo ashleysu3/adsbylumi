@@ -1135,21 +1135,37 @@ export function GenerateCreativeDialog() {
           </div>
         </div>
 
-        {/* Step indicator */}
-        <div className="flex items-center gap-2 text-xs">
+        {/* Mode toggle + step indicator */}
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-1 rounded bg-primary text-primary-foreground">
+              {mode === "board" ? "Inspiration board" : (step === "style" ? "1. Style" : "2. Image & copy")}
+            </span>
+            {mode === "template" && (
+              <>
+                <span className="text-muted-foreground">→</span>
+                <span
+                  className={`px-2 py-1 rounded ${step === "image-copy" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+                >
+                  2. Image &amp; copy
+                </span>
+              </>
+            )}
+          </div>
           <button
             type="button"
-            className={`px-2 py-1 rounded ${step === "style" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
-            onClick={() => setStep("style")}
+            className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
+            onClick={() => {
+              if (mode === "board") {
+                setMode("template");
+                setStep("style");
+              } else {
+                setMode("board");
+              }
+            }}
           >
-            1. Style
+            {mode === "board" ? "Use a template instead" : "Use an inspiration board instead"}
           </button>
-          <span className="text-muted-foreground">→</span>
-          <span
-            className={`px-2 py-1 rounded ${step === "image-copy" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
-          >
-            2. Image &amp; copy
-          </span>
         </div>
 
         <div className="flex-1 overflow-y-auto -mx-6 px-6">
