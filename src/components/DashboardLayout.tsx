@@ -19,6 +19,7 @@ import { ArrowRight, X, CheckSquare, Sparkles, Gift, Heart, CreditCard, Star, Br
 import { SubscriptionBanner } from "@/components/SubscriptionGate";
 import { DashboardFooter } from "@/components/DashboardFooter";
 import { PartnerPortalBanner } from "@/components/PartnerPortalBanner";
+import { TasksTray } from "@/components/TasksTray";
 import { ReturnToWorkButton } from "@/components/ReturnToWorkButton";
 import {
   DropdownMenu,
