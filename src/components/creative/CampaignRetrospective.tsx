@@ -62,6 +62,7 @@ export interface CampaignRetrospectiveJSON {
   wins: Array<{ insight: string; supporting_data?: string; confidence: 'high' | 'medium' | 'low' }>;
   misses: Array<{ insight: string; supporting_data?: string; confidence: 'high' | 'medium' | 'low' }>;
   recommendations: Array<{ insight: string; supporting_data?: string; confidence: 'high' | 'medium' | 'low' }>;
+  pattern_notes?: string[];
   generated_at: string;
 }
 
@@ -330,6 +331,21 @@ export function CampaignRetrospective({
               accentClass="bg-primary/5 border-primary/30"
               showArrow
             />
+            {retro.pattern_notes && retro.pattern_notes.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                  <h4 className="font-semibold text-sm">Patterns worth noting</h4>
+                </div>
+                <Card className="rounded-2xl border-muted-foreground/20 bg-muted/20">
+                  <CardContent className="p-4 space-y-2">
+                    {retro.pattern_notes.map((note, i) => (
+                      <p key={i} className="text-sm leading-relaxed text-foreground">{note}</p>
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </>
         )}
       </div>

@@ -94,7 +94,104 @@ interface RetrospectiveJSON {
   misses: Array<{ insight: string; supporting_data?: string; confidence: 'high' | 'medium' | 'low' }>;
   /** Worth testing next — forward-looking action items. */
   recommendations: Array<{ insight: string; supporting_data?: string; confidence: 'high' | 'medium' | 'low' }>;
+  /** Optional plain-English observations about user override patterns (§8.3).
+   *  Surfaces only — never auto-adjusts thresholds. */
+  pattern_notes?: string[];
   generated_at: string;
+}
+
+interface OverridePatternRow {
+  recommendation_action: string;
+  override_count: number;
+  snooze_count: number;
+  top_reason_quick: string | null;
+  top_format?: string | null;
+  top_angle?: string | null;
+}
+interface OverridePatterns {
+  by_action: OverridePatternRow[];
+  total_overrides: number;
+}
+
+/** Parse a LUMI ad name: {YYYY-MM}_{Objective}_{AngleSlug}_{Format}_{Variant}. */
+function parseLumiAdName(name: string | undefined | null): { angle: string | null; format: string | null } {
+  if (!name || typeof name !== 'string') return { angle: null, format: null };
+  const parts = name.split('_');
+  if (parts.length < 5) return { angle: null, format: null };
+  if (!/^\d{4}-\d{2}$/.test(parts[0])) return { angle: null, format: null };
+  return { angle: parts[2] || null, format: parts[3] || null };
+}
+
+async function buildOverridePatterns(
+  sb: any, brandId: string, performance: any,
+): Promise<OverridePatterns | null> {
+  const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: rows, error } = await sb
+    .from('recommendation_overrides')
+    .select('recommendation_action, user_action, reason_quick, ad_id, created_at')
+    .eq('brand_id', brandId)
+    .gte('created_at', since);
+  if (error || !Array.isArray(rows) || rows.length === 0) return null;
+
+  // Build ad_id -> {angle, format} from performance ads (best-effort).
+  const adMeta = new Map<string, { angle: string | null; format: string | null }>();
+  if (Array.isArray(performance?.ads)) {
+    for (const a of performance.ads) {
+      if (a?.ad_id) adMeta.set(String(a.ad_id), parseLumiAdName(a.ad_name));
+    }
+  }
+
+  type Agg = {
+    override_count: number;
+    snooze_count: number;
+    reasons: Map<string, number>;
+    formats: Map<string, number>;
+    angles: Map<string, number>;
+  };
+  const byAction = new Map<string, Agg>();
+  for (const r of rows) {
+    const action = String(r.recommendation_action || 'unknown');
+    if (!byAction.has(action)) {
+      byAction.set(action, {
+        override_count: 0, snooze_count: 0,
+        reasons: new Map(), formats: new Map(), angles: new Map(),
+      });
+    }
+    const agg = byAction.get(action)!;
+    const ua = String(r.user_action || '');
+    if (ua === 'snoozed') agg.snooze_count++;
+    else agg.override_count++;
+    if (r.reason_quick) {
+      const k = String(r.reason_quick);
+      agg.reasons.set(k, (agg.reasons.get(k) || 0) + 1);
+    }
+    const meta = r.ad_id ? adMeta.get(String(r.ad_id)) : null;
+    if (meta?.format) agg.formats.set(meta.format, (agg.formats.get(meta.format) || 0) + 1);
+    if (meta?.angle) agg.angles.set(meta.angle, (agg.angles.get(meta.angle) || 0) + 1);
+  }
+
+  const top = (m: Map<string, number>): string | null => {
+    let bestK: string | null = null; let bestV = 0;
+    for (const [k, v] of m) if (v > bestV) { bestV = v; bestK = k; }
+    return bestK;
+  };
+
+  const by_action: OverridePatternRow[] = [];
+  for (const [action, agg] of byAction) {
+    const total = agg.override_count + agg.snooze_count;
+    if (total < 3) continue; // noise threshold
+    by_action.push({
+      recommendation_action: action,
+      override_count: agg.override_count,
+      snooze_count: agg.snooze_count,
+      top_reason_quick: top(agg.reasons),
+      top_format: top(agg.formats),
+      top_angle: top(agg.angles),
+    });
+  }
+  if (by_action.length === 0) return null;
+  by_action.sort((a, b) => (b.override_count + b.snooze_count) - (a.override_count + a.snooze_count));
+  return { by_action, total_overrides: rows.length };
 }
 
 
@@ -336,6 +433,12 @@ Deno.serve(async req => {
       durationDays, goal,
     });
 
+    // Override-pattern surfacing (§8.3) — read-only, never adjusts thresholds.
+    // Skipped when data_quality is insufficient (no point pattern-matching on noise).
+    const overridePatterns = dq.level === 'insufficient'
+      ? null
+      : await buildOverridePatterns(sb, brand.id, performance);
+
     const prompt = buildPrompt({
       brandName: brand.name,
       offerName: workspace.offer_name || workspace.name || 'Unnamed campaign',
@@ -349,6 +452,7 @@ Deno.serve(async req => {
       performance,
       isImported: !workspace.creative_json,
       kpiFallback,
+      overridePatterns,
     });
 
 
@@ -425,6 +529,12 @@ Deno.serve(async req => {
       wins: normalizeBullets(parsed.wins),
       misses: normalizeBullets(parsed.underperformers || parsed.misses),
       recommendations: normalizeBullets(parsed.test_ideas || parsed.recommendations),
+      pattern_notes: Array.isArray(parsed.pattern_notes)
+        ? parsed.pattern_notes
+            .filter((x: any) => typeof x === 'string' && x.trim().length > 0)
+            .slice(0, 4)
+            .map((x: string) => x.slice(0, 500))
+        : [],
       generated_at: new Date().toISOString(),
     };
 
@@ -703,6 +813,7 @@ function buildPrompt(args: {
   dataQuality: { level: string; note?: string };
   strategy: any; creative: any; productionItems: any; performance: any; isImported: boolean;
   kpiFallback?: { from: string; from_label: string; to: string; to_label: string; note: string } | null;
+  overridePatterns?: OverridePatterns | null;
 
 }): string {
   const goalLine = args.goal
@@ -737,6 +848,7 @@ function buildPrompt(args: {
       results: a._kpi?.results ?? 0, kpi_value: a._kpi ? extractKpiValue(a._kpi, args.primaryKpi) : null,
       ctr: a._kpi?.ctr ?? Number(a.ctr || 0),
     })),
+    override_patterns: args.overridePatterns || null,
   };
 
   return `Debrief this Meta ads campaign for the person who ran it.
@@ -765,6 +877,9 @@ Return a JSON object with this EXACT shape (no prose, no code fences):
   ],
   "test_ideas": [
     { "insight": "Specific thing to test in the next round of creative or audiences.", "supporting_data": "What in this campaign's data points to this idea.", "confidence": "..." }
+  ],
+  "pattern_notes": [
+    "Optional. Plain-English observation(s) about override_patterns when present. Omit (empty array) when override_patterns is null."
   ]
 }
 
@@ -781,6 +896,8 @@ WRITING RULES (read these every time):
 5. **Cite the numbers.** Reference specific ad names, adset names, spend, KPI values. Generic advice is worthless.
 
 6. **Confidence levels.** "high" = data clearly supports it. "medium" = default. "low" = thin pattern but worth flagging.
+
+7. **Override patterns (§8.3).** If \`override_patterns\` is present in the campaign data, include ONE plain-English observation in \`pattern_notes\` as a "pattern worth noting" — e.g. "You've overridden LUMI's turn-off suggestion 4 times this quarter, usually because you trust the creative. Worth noticing — either your instinct is catching something the data misses, or these are worth a closer look." Frame it as an observation for the operator to weigh, NOT as advice to change anything automatically. Use the top_format / top_angle fields if they add color (e.g. "...mostly on UGC videos"). Omit \`pattern_notes\` entirely (empty array) if override_patterns is null.
 
 Aim for 2-3 wins, 2-3 underperformers, 3-5 test_ideas when data supports them. Fewer when it doesn't. Never fill quotas with weak insights. Return ONLY the JSON.`;
 }
