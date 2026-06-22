@@ -141,8 +141,10 @@ function classifyRole(
   };
 }
 
-const RESULTS_PER_WEEK_IDEAL = 50; // exits Meta's learning phase
-const RESULTS_PER_WEEK_LEAN = 30; // acceptable but slower-learning floor
+// Meta updated its learning-phase guidance: ~25 conversions/week per ad set
+// is enough to optimize. We size daily budgets to clear that bar.
+const RESULTS_PER_WEEK_IDEAL = 25; // exits Meta's learning phase
+const RESULTS_PER_WEEK_LEAN = 15; // acceptable but slower-learning floor
 
 export function computeStrategyBudget(
   input: StrategyBudgetInput,
@@ -156,9 +158,19 @@ export function computeStrategyBudget(
       c.name,
       price,
     );
-    const idealDaily = Math.max(1, Math.round((RESULTS_PER_WEEK_IDEAL * cost) / 7));
-    const leanDaily = Math.max(1, Math.round((RESULTS_PER_WEEK_LEAN * cost) / 7));
+    let idealDaily = Math.max(1, Math.round((RESULTS_PER_WEEK_IDEAL * cost) / 7));
+    let leanDaily = Math.max(1, Math.round((RESULTS_PER_WEEK_LEAN * cost) / 7));
     const role = classifyRole(c.objective, c.name);
+
+    // Cold sales rule: minimum daily budget must be at least half the
+    // offer price. Anything less and Meta can't reliably buy a sale,
+    // regardless of how generous the CPA benchmark looks.
+    if (role.roleLabel === "Cold conversion" && price) {
+      const floor = Math.ceil(price * 0.5);
+      leanDaily = Math.max(leanDaily, floor);
+      idealDaily = Math.max(idealDaily, floor);
+    }
+
     return {
       _i: i,
       name: c.name || role.roleLabel,
@@ -223,14 +235,26 @@ export function computeStrategyBudget(
     }
 
     const included = stages.filter((s) => s.included);
+    const excludedColdSales = stages.find(
+      (s) => !s.included && s.roleLabel === "Cold conversion",
+    );
     if (included.length === 0) {
       const first = stages[0];
       warning = `This objective needs at least $${first.leanDaily}/day to give Meta enough data — at $${Math.round(dailyCap)}/day it'll struggle to optimize.`;
-      rationale = `Your budget can't yet support this objective at Meta's learning-phase floor (~50 results/week).`;
+      rationale = `Your budget can't yet support this objective at Meta's learning-phase floor (~25 results/week).`;
     } else if (included.length < stages.length) {
       rationale = `Your $${input.monthlyBudget}/mo (~$${Math.round(dailyCap)}/day) supports ${included.length} of ${stages.length} campaigns — start with the ${included[0].roleLabel.toLowerCase()} campaign and add the rest once it's working.`;
     } else {
       rationale = `Your $${input.monthlyBudget}/mo (~$${Math.round(dailyCap)}/day) supports the full ${stages.length}-campaign funnel.`;
+    }
+
+    // Cold sales has a hard floor (price ÷ 2). If we couldn't fit it,
+    // the honest recommendation is a different entry mechanism — not a
+    // smaller cold-sales budget.
+    if (excludedColdSales && price) {
+      const floor = Math.ceil(price * 0.5);
+      const note = `Selling a $${price} offer cold needs at least $${floor}/day so Meta can actually buy a sale. If that's too much, lead with a free training, lead magnet, or challenge instead of selling cold — it's the right move at this budget, not a workaround.`;
+      warning = warning ? `${warning} ${note}` : note;
     }
   } else if (input.goalCount && input.goalCount > 0 && stages.length > 0) {
     mode = "goal";
