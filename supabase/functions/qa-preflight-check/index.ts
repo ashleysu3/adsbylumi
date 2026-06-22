@@ -525,3 +525,4 @@ Return ONLY the JSON array, no other text.`;
     return { id: 'spelling', name: 'Spelling & Grammar', status: 'passed', message: 'Check completed', details: 'Some items could not be verified' };
   }
 }
+
