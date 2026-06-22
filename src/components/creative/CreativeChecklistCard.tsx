@@ -187,6 +187,8 @@ export function CreativeChecklistCard({
   const formatLabel = formatLabels[item.format as keyof typeof formatLabels] || item.format;
   
   const hasAsset = !!uploadedAsset;
+  const assetSource = (uploadedAsset as any)?.source;
+  const isGeneratedAsset = assetSource === "generated" || uploadedAsset?.file_name?.startsWith("recraft-");
   const isRanked = typeof rank === 'number';
   const isTalkingHead = item.format === "talking_head";
   const hasScriptDetails = isTalkingHead && (item.script_lines?.length || item.verbal_hook || item.written_hook || item.visual_hook);
@@ -1289,9 +1291,15 @@ export function CreativeChecklistCard({
                     <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
                       <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{uploadedAsset!.file_name}</p>
+                        <p className="text-sm font-medium truncate">
+                          {isGeneratedAsset ? "Generated design saved" : uploadedAsset!.file_name}
+                        </p>
                         <p className="text-xs text-muted-foreground">
-                          {uploadedAsset!.file_type?.startsWith('video/') ? 'Video uploaded (9:16 — Stories & Reels ready ✓)' : 'Square / Feed version (1:1)'}
+                          {uploadedAsset!.file_type?.startsWith('video/')
+                            ? 'Video uploaded (9:16 — Stories & Reels ready ✓)'
+                            : isGeneratedAsset
+                              ? 'Attached here from Generate this creative — tap the eye to review'
+                              : 'Square / Feed version (1:1)'}
                         </p>
                       </div>
                       <div className="flex gap-1">
