@@ -32,6 +32,7 @@ serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
     const { 
       brand,
       answers,
@@ -64,6 +65,8 @@ serve(async (req) => {
     results.push(await checkLandingPage(resolvedUrl, brand));
     results.push(checkEventTracking(brand, template));
     results.push(await checkSpellingGrammar(creativeJson, productionItems, selectedCopy));
+    results.push(await checkAdPolicy(selectedCopy, productionItems, brand, authHeader));
+
 
     const summary = {
       passed: results.filter(r => r.status === 'passed').length,
@@ -522,3 +525,154 @@ Return ONLY the JSON array, no other text.`;
     return { id: 'spelling', name: 'Spelling & Grammar', status: 'passed', message: 'Check completed', details: 'Some items could not be verified' };
   }
 }
+
+function extractRepresentativeCopy(
+  selectedCopy: any,
+  productionItems: any[],
+): { headline: string; primary_text: string; description: string } | null {
+  // 1. shared_variations on selectedCopy (advanced builder)
+  const sv = selectedCopy?.shared_variations;
+  if (Array.isArray(sv) && sv.length) {
+    const v = sv[0];
+    const headline = v?.headline || '';
+    const primary_text = v?.primary_text || v?.primaryText || '';
+    const description = v?.description || '';
+    if (headline || primary_text || description) {
+      return { headline, primary_text, description };
+    }
+  }
+
+  // 2. finalCopy on production items
+  if (Array.isArray(productionItems)) {
+    for (const item of productionItems) {
+      const fc = item?.finalCopy || item?.final_copy;
+      if (fc) {
+        const headline = fc.headline || '';
+        const primary_text = fc.primaryText || fc.primary_text || '';
+        const description = fc.description || '';
+        if (headline || primary_text || description) {
+          return { headline, primary_text, description };
+        }
+      }
+    }
+  }
+
+  // 3. top-level selectedCopy fields
+  if (selectedCopy && typeof selectedCopy === 'object') {
+    const headline = selectedCopy.headline || '';
+    const primary_text = selectedCopy.primary_text || selectedCopy.primaryText || '';
+    const description = selectedCopy.description || '';
+    if (headline || primary_text || description) {
+      return { headline, primary_text, description };
+    }
+  }
+
+  return null;
+}
+
+async function checkAdPolicy(
+  selectedCopy: any,
+  productionItems: any[],
+  brand: any,
+  authHeader: string,
+): Promise<CheckResult> {
+  const copy = extractRepresentativeCopy(selectedCopy, productionItems);
+  if (!copy) {
+    return {
+      id: 'ad_policy',
+      name: 'Ad Policy',
+      status: 'warning',
+      message: 'No copy to review',
+      details: 'Finalize ad copy before publishing so we can check it against Meta & Google ad policy.',
+    };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  if (!supabaseUrl) {
+    return {
+      id: 'ad_policy', name: 'Ad Policy', status: 'passed',
+      message: 'Policy check unavailable', details: 'Manual review recommended before publishing.',
+    };
+  }
+
+  const niche = brand?.niche || brand?.industry || brand?.industry_category || '';
+
+  try {
+    const resp = await fetch(`${supabaseUrl}/functions/v1/check-ad-compliance`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        apikey: Deno.env.get('SUPABASE_ANON_KEY') || '',
+      },
+      body: JSON.stringify({ copy, niche, platforms: ['meta'] }),
+    });
+
+    if (!resp.ok) {
+      console.warn('check-ad-compliance returned', resp.status);
+      return {
+        id: 'ad_policy', name: 'Ad Policy', status: 'passed',
+        message: 'Policy check skipped', details: 'We couldn\'t reach the policy reviewer right now. Review your copy manually before launching.',
+      };
+    }
+
+    const data = await resp.json();
+    const findings = Array.isArray(data?.findings) ? data.findings : [];
+
+    const issues: Issue[] = findings.map((f: any) => ({
+      field: f.category || 'policy',
+      text: f.phrase || '',
+      suggestion: f.rewrite || '',
+      reason: f.category || 'policy',
+      location: data?.niche_flag ? `Niche: ${data.niche_flag}` : 'Ad copy',
+    }));
+
+    const likelyRejection = findings.filter((f: any) => f.severity === 'likely_rejection');
+    const possibleFlag = findings.filter((f: any) => f.severity === 'possible_flag');
+
+    if (data?.overall === 'needs_review' || likelyRejection.length > 0) {
+      const rejectionIssues: Issue[] = likelyRejection.map((f: any) => ({
+        field: f.category || 'policy',
+        text: f.phrase || '',
+        suggestion: f.rewrite || '',
+        reason: f.category || 'policy',
+        location: data?.niche_flag ? `Niche: ${data.niche_flag}` : 'Ad copy',
+      }));
+      return {
+        id: 'ad_policy', name: 'Ad Policy', status: 'failed',
+        message: `${likelyRejection.length} likely policy violation${likelyRejection.length === 1 ? '' : 's'}`,
+        issues: rejectionIssues.length ? rejectionIssues : issues,
+        details: data?.niche_flag
+          ? `Restricted niche: ${data.niche_flag}. Apply the suggested rewrites before launching.`
+          : 'Meta or Google will likely reject this copy. Apply the suggested rewrites before launching.',
+      };
+    }
+
+    if (possibleFlag.length > 0) {
+      return {
+        id: 'ad_policy', name: 'Ad Policy', status: 'warning',
+        message: `${possibleFlag.length} phrase${possibleFlag.length === 1 ? '' : 's'} may get flagged`,
+        issues,
+        details: data?.niche_flag
+          ? `Restricted niche: ${data.niche_flag}. Consider softening flagged phrases.`
+          : 'Gray-area phrasing. Consider the suggested rewrites to reduce rejection risk.',
+      };
+    }
+
+    return {
+      id: 'ad_policy', name: 'Ad Policy', status: 'passed',
+      message: 'Copy looks policy-safe',
+      details: data?.niche_flag
+        ? `Niche noted: ${data.niche_flag}. No likely violations found.`
+        : 'No likely policy violations found in headline, primary text, or description.',
+    };
+  } catch (error) {
+    console.error('Ad policy check error:', error);
+    return {
+      id: 'ad_policy', name: 'Ad Policy', status: 'passed',
+      message: 'Policy check skipped', details: 'We couldn\'t complete the policy review. Review your copy manually before launching.',
+    };
+  }
+}
+
+
