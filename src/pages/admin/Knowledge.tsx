@@ -71,6 +71,25 @@ export default function Knowledge() {
   const [formSubcategory, setFormSubcategory] = useState("");
   const [formSourceUrl, setFormSourceUrl] = useState("");
 
+  const fetchDocuments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("knowledge_documents")
+        .select("*")
+        .order("priority", { ascending: false })
+        .order("category", { ascending: true })
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setDocuments(data || []);
+    } catch (error: any) {
+      toast.error("Failed to load knowledge documents");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     // Server-backed admin guard: redirect non-admins away from this page
     (async () => {
@@ -93,6 +112,7 @@ export default function Knowledge() {
       fetchDocuments();
     })();
   }, [navigate]);
+
 
   if (!authChecked) {
     return (
