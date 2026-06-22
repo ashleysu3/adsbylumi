@@ -196,6 +196,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   ? (agencyName || profile?.full_name || 'Agency')
                   : isAgencyUser && activeBrand ? activeBrand.name : (profile?.full_name || user?.email)}
               </span>
+              <TasksTray />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring">
