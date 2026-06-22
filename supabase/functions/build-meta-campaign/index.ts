@@ -289,6 +289,7 @@ Deno.serve(async (req) => {
       success: false,
       adSetIds: [],
       adIds: [],
+      warmAdIds: [],
       failedAds: [],
       warnings: []
     };
