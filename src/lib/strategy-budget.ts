@@ -228,18 +228,28 @@ export function computeStrategyBudget(
     };
   });
 
-  // Order: main first (by priority), supplemental after.
+  // Pick the required main before ordering: cold sales wins when present;
+  // otherwise use the first main-stage campaign.
+  const coldSalesSourceIdx = enriched.findIndex((s) => s.role.roleLabel === "Cold conversion");
+  const firstMainSourceIdx = enriched.findIndex((s) => s.role.tier === "main");
+  const primarySourceIdx =
+    coldSalesSourceIdx >= 0
+      ? coldSalesSourceIdx
+      : firstMainSourceIdx >= 0
+        ? firstMainSourceIdx
+        : 0;
+
+  // Order: required main first, then optional layers.
   const ordered = [...enriched].sort((a, b) => {
+    if (a._i === primarySourceIdx) return -1;
+    if (b._i === primarySourceIdx) return 1;
     if (a.role.tier !== b.role.tier) return a.role.tier === "main" ? -1 : 1;
     return a.role.priority - b.role.priority || a._i - b._i;
   });
 
-  // The cold sales campaign is the main campaign when present. Otherwise the
-  // first main-stage campaign is required. Every other campaign becomes a
-  // supplemental layer, even if its objective can technically optimize.
-  const coldSalesIdx = ordered.findIndex((s) => s.role.roleLabel === "Cold conversion");
-  const firstMainIdx = ordered.findIndex((s) => s.role.tier === "main");
-  const primaryMainIdx = coldSalesIdx >= 0 ? coldSalesIdx : firstMainIdx >= 0 ? firstMainIdx : 0;
+  // Every non-primary campaign becomes supplemental, even if its objective can
+  // technically optimize.
+  const primaryMainIdx = 0;
 
   let stages: StageBudget[] = ordered.map((s, idx) => ({
     name: s.name,
