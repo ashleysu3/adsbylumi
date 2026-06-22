@@ -19,6 +19,7 @@ import { ArrowRight, X, CheckSquare, Sparkles, Gift, Heart, CreditCard, Star, Br
 import { SubscriptionBanner } from "@/components/SubscriptionGate";
 import { DashboardFooter } from "@/components/DashboardFooter";
 import { PartnerPortalBanner } from "@/components/PartnerPortalBanner";
+import { TasksTray } from "@/components/TasksTray";
 import { ReturnToWorkButton } from "@/components/ReturnToWorkButton";
 import {
   DropdownMenu,
@@ -195,6 +196,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   ? (agencyName || profile?.full_name || 'Agency')
                   : isAgencyUser && activeBrand ? activeBrand.name : (profile?.full_name || user?.email)}
               </span>
+              <TasksTray />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring">

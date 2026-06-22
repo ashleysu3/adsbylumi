@@ -113,12 +113,12 @@ import Creative from "./pages/Creative";
 import Launch from "./pages/Launch";
 import Performance from "./pages/Performance";
 import {
-  TasksPlaceholder,
   AudiencePlaceholder,
   GoalsPlaceholder,
   VoicePlaceholder,
   TroubleshootingPlaceholder,
 } from "./pages/Placeholder";
+import Tasks from "./pages/Tasks";
 
 
 const queryClient = new QueryClient();
@@ -250,7 +250,7 @@ const App = () => {
                  <Route path="/admin/updates" element={<AdminUpdates />} />
                  <Route path="/admin/updates/:campaignId" element={<AdminUpdatesResults />} />
                  <Route path="/admin/features" element={<AdminFeatures />} />
-                  <Route path="/tasks" element={<TasksPlaceholder />} />
+                  <Route path="/tasks" element={<Tasks />} />
                   <Route path="/audience" element={<AudiencePlaceholder />} />
                   <Route path="/goals" element={<GoalsPlaceholder />} />
                   <Route path="/voice" element={<VoicePlaceholder />} />

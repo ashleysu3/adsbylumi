@@ -3088,6 +3088,54 @@ export type Database = {
         }
         Relationships: []
       }
+      tasks: {
+        Row: {
+          action_payload: Json | null
+          action_type: string | null
+          brand_id: string | null
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          id: string
+          link_to: string | null
+          source: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_payload?: Json | null
+          action_type?: string | null
+          brand_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          link_to?: string | null
+          source?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_payload?: Json | null
+          action_type?: string | null
+          brand_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          link_to?: string | null
+          source?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       template_requests: {
         Row: {
           attempts: number
