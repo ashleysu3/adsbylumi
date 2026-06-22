@@ -19,12 +19,20 @@ export interface Message {
   actions?: NavigationAction[];
 }
 
+export interface InterruptedWork {
+  path: string;
+  label: string;
+}
+
 interface LumiContextType {
   messages: Message[];
   addMessage: (message: Message) => void;
   clearMessages: () => void;
   brandId: string | null;
   setBrandId: (id: string | null) => void;
+  interruptedWork: InterruptedWork | null;
+  setInterruptedWork: (work: InterruptedWork | null) => void;
+  clearInterruptedWork: () => void;
 }
 
 const LumiContext = createContext<LumiContextType | undefined>(undefined);
@@ -32,6 +40,7 @@ const LumiContext = createContext<LumiContextType | undefined>(undefined);
 export function LumiProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [brandId, setBrandIdState] = useState<string | null>(null);
+  const [interruptedWork, setInterruptedWorkState] = useState<InterruptedWork | null>(null);
 
   const setBrandId = useCallback((id: string | null) => {
     setBrandIdState(prev => {
@@ -51,8 +60,25 @@ export function LumiProvider({ children }: { children: ReactNode }) {
     setMessages([]);
   }, []);
 
+  const setInterruptedWork = useCallback((work: InterruptedWork | null) => {
+    setInterruptedWorkState(work);
+  }, []);
+
+  const clearInterruptedWork = useCallback(() => {
+    setInterruptedWorkState(null);
+  }, []);
+
   return (
-    <LumiContext.Provider value={{ messages, addMessage, clearMessages, brandId, setBrandId }}>
+    <LumiContext.Provider value={{
+      messages,
+      addMessage,
+      clearMessages,
+      brandId,
+      setBrandId,
+      interruptedWork,
+      setInterruptedWork,
+      clearInterruptedWork,
+    }}>
       {children}
     </LumiContext.Provider>
   );
