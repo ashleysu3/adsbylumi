@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import { computeStrategyBudget, parsePricePoint } from "./strategy-budget";
 
 const threeCampaignFunnel = [
-  // Front-end lead capture — webinar CPL max ~$40 → lean ~$86/day, ideal ~$143/day
+  // Front-end lead capture — webinar (main)
   { name: "Webinar registration", objective: "webinar" },
-  // Cold conversion — Sales/ROAS, $97 offer → lean floor ~$49/day
+  // Cold conversion — sales, $97 offer (secondary main)
   { name: "Cold sales", objective: "Sales" },
-  // Warm retargeting — same target cost as cold sales
+  // Warm retargeting (supplemental)
   { name: "Warm retargeting", objective: "Sales" },
 ];
 
@@ -21,24 +21,25 @@ describe("parsePricePoint", () => {
 });
 
 describe("computeStrategyBudget", () => {
-  it("drops to a single included campaign when the monthly budget can't cover the full funnel", () => {
+  it("only requires the main campaign when budget can't cover the full funnel", () => {
     const result = computeStrategyBudget({
       campaigns: threeCampaignFunnel,
       pricePoint: "$97",
-      monthlyBudget: 3000, // ~$100/day — covers webinar at lean, not the rest
+      monthlyBudget: 3000, // ~$100/day
     });
 
     expect(result.mode).toBe("monthly_budget");
-    const included = result.stages.filter((s) => s.included);
-    expect(included.length).toBe(1);
-    expect(included[0].roleLabel.toLowerCase()).toContain("free training");
-    expect(included.length).toBeLessThan(result.stages.length);
+    const required = result.stages.filter((s) => s.required);
+    expect(required.length).toBe(1);
+    expect(required[0].tier).toBe("main");
+    const includedMain = result.stages.find((s) => s.included && s.required);
+    expect(includedMain).toBeTruthy();
   });
 
-  it("surfaces a warning when even the cheapest campaign exceeds the daily cap", () => {
+  it("surfaces a warning when the required main campaign can't be funded", () => {
     const result = computeStrategyBudget({
       campaigns: [
-        { name: "Discovery call booking", objective: "OUTCOME_LEADS" }, // CPL max ~$100 → lean ~$429/day
+        { name: "Discovery call booking", objective: "OUTCOME_LEADS" },
       ],
       pricePoint: "$2000",
       monthlyBudget: 150, // ~$5/day
@@ -47,31 +48,34 @@ describe("computeStrategyBudget", () => {
     expect(result.stages.every((s) => !s.included)).toBe(true);
   });
 
-  it("funds the full funnel when the monthly budget is healthy", () => {
+  it("funds the full funnel with supplemental at a small fraction when budget is healthy", () => {
     const result = computeStrategyBudget({
       campaigns: threeCampaignFunnel,
       pricePoint: "$97",
-      monthlyBudget: 30000, // ~$1000/day — easily covers idealTotal
+      monthlyBudget: 30000,
     });
     expect(result.mode).toBe("monthly_budget");
     expect(result.stages.every((s) => s.included)).toBe(true);
-    expect(result.stages.length).toBe(3);
-    // Front-end (priority 1) should come first regardless of input order.
-    expect(result.stages[0].roleLabel.toLowerCase()).toContain("free training");
+    expect(result.stages[0].tier).toBe("main");
+    // Supplemental spend is far smaller than main spend.
+    expect(result.supplementalDaily).toBeLessThan(result.mainDaily);
+    expect(result.supplementalDaily).toBeGreaterThan(0);
   });
 
-  it("computes a required daily spend from a per-month goal", () => {
+  it("only funds the main campaign when sized to a per-month goal", () => {
     const result = computeStrategyBudget({
       campaigns: threeCampaignFunnel,
       pricePoint: "$97",
-      goalCount: 100, // 100 leads/month
+      goalCount: 100,
     });
     expect(result.mode).toBe("goal");
     expect(result.requiredDailyForGoal).toBeGreaterThan(0);
-    expect(result.rationale).toMatch(/hit ~100\/month/);
+    const included = result.stages.filter((s) => s.included);
+    expect(included.length).toBe(1);
+    expect(included[0].tier).toBe("main");
   });
 
-  it("returns a realistic range when neither budget nor goal is provided", () => {
+  it("returns a range with main + optional supplemental when no budget or goal is given", () => {
     const result = computeStrategyBudget({
       campaigns: threeCampaignFunnel,
       pricePoint: "$97",
@@ -79,7 +83,7 @@ describe("computeStrategyBudget", () => {
     expect(result.mode).toBe("range");
     expect(result.leanTotalDaily).toBeGreaterThan(0);
     expect(result.idealTotalDaily).toBeGreaterThanOrEqual(result.leanTotalDaily);
-    expect(result.rationale).toMatch(/\$\d+–\$\d+\/day/);
+    expect(result.rationale.toLowerCase()).toContain("supplemental");
   });
 
   it("uses half the offer price as the cold-sales starter floor", () => {
@@ -88,6 +92,7 @@ describe("computeStrategyBudget", () => {
       pricePoint: "$497",
     });
     expect(result.stages[0].leanDaily).toBe(249);
-    expect(result.leanTotalDaily).toBe(249);
+    expect(result.stages[0].tier).toBe("main");
+    expect(result.stages[0].required).toBe(true);
   });
 });
