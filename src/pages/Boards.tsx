@@ -199,11 +199,14 @@ export default function Boards() {
             <h1 className="text-2xl font-bold">My boards</h1>
             <p className="text-sm text-muted-foreground">Save ads from the inspiration library or upload your own references.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={openUploadDialog}>
+              <Upload className="h-4 w-4 mr-2" /> Upload references
+            </Button>
             <Button variant="outline" onClick={() => navigate("/inspiration")}>
               <Bookmark className="h-4 w-4 mr-2" /> Browse inspiration
             </Button>
-            <Button onClick={() => setCreateOpen(true)}>
+            <Button variant="outline" onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4 mr-2" /> New board
             </Button>
           </div>
