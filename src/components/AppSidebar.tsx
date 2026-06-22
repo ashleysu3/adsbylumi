@@ -294,7 +294,7 @@ export function AppSidebar({ isAdmin: _isAdmin, brandId: _brandId }: AppSidebarP
                 >
                   {!collapsed && (
                     <CollapsibleTrigger asChild>
-                      <SidebarGroupLabel className="flex items-center gap-2 cursor-pointer hover:text-foreground transition-colors">
+                      <SidebarGroupLabel className="flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5 my-1 h-auto bg-gradient-to-r from-lumi-orange-1/15 via-lumi-pink-1/15 to-lumi-purple-1/15 hover:from-lumi-orange-1/25 hover:via-lumi-pink-1/25 hover:to-lumi-purple-1/25 transition-colors font-display text-[13px] uppercase tracking-wide text-foreground">
                         <GroupIcon className="h-4 w-4" />
                         <span className="flex-1 text-left">{group.label}</span>
                         <ChevronDown
