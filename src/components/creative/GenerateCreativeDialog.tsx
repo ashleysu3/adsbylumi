@@ -310,6 +310,16 @@ export function GenerateCreativeDialog() {
       setTemplate(mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
       setCustomTemplateId("");
       setStep("style");
+      setMode("board");
+      setSelectedBoardImageIds(new Set());
+      setBoardResults([]);
+      setBoardApprovedIdxs(new Set());
+      setBoardApprovingIdx(null);
+      setBoardCopy({
+        headline: detail.brief.keyMessage || detail.brief.concept || "",
+        subhead: detail.brief.offer || "",
+        cta: detail.brief.cta || "Learn more",
+      });
       setOpen(true);
       setSingleOptions([]);
       setCarouselOptions([]);
