@@ -12,7 +12,7 @@ const corsHeaders = {
 };
 
 const RECRAFT_BASE = "https://external.api.recraft.ai/v1";
-const MIN_DIM = 512; // Recraft requires >= 256; keep generous margin.
+const RECRAFT_CANVAS = 512; // Recraft requires >= 256px; send exact safe square PNGs.
 
 async function fetchAsPng(url: string): Promise<Blob | null> {
   try {
@@ -34,20 +34,21 @@ async function fetchAsPng(url: string): Promise<Blob | null> {
       console.warn("no dims after decode", url);
       return null;
     }
-    let w = img.width, h = img.height;
-    console.log("ref decoded", url.slice(0, 80), `${w}x${h}`);
-    if (w < MIN_DIM || h < MIN_DIM) {
-      const scale = MIN_DIM / Math.min(w, h);
-      w = Math.max(MIN_DIM, Math.round(w * scale));
-      h = Math.max(MIN_DIM, Math.round(h * scale));
-      img.resize(w, h);
-      console.log("ref resized to", `${img.width}x${img.height}`);
-    }
-    if (img.width < 256 || img.height < 256) {
-      console.warn("ref still under 256 after resize", img.width, img.height);
-      return null;
-    }
-    const png = await img.encode();
+    console.log("ref decoded", url.slice(0, 80), `${img.width}x${img.height}`);
+
+    // Normalize every reference to a real 512x512 PNG. Upscaling alone can still
+    // leave one axis below Recraft's validator for very wide/tall creatives, so
+    // fit the image inside a safe square canvas and pad the remainder.
+    img.fit(RECRAFT_CANVAS, RECRAFT_CANVAS);
+    const canvas = new Image(RECRAFT_CANVAS, RECRAFT_CANVAS).fill(0xffffffff);
+    canvas.composite(
+      img,
+      Math.floor((RECRAFT_CANVAS - img.width) / 2),
+      Math.floor((RECRAFT_CANVAS - img.height) / 2),
+    );
+    console.log("ref normalized", `${canvas.width}x${canvas.height}`);
+
+    const png = await canvas.encode();
     return new Blob([png], { type: "image/png" });
   } catch (e) {
     console.warn("fetchAsPng error", url, String(e));
