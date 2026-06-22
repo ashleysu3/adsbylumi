@@ -1322,6 +1322,7 @@ Deno.serve(async (req) => {
         adSetId: primaryAdSetId,
         warmAdSetId,
         adIds: result.adIds,
+        warmAdIds: result.warmAdIds,
         totalAdsCreated: result.adIds.length,
         totalAdsFailed: result.failedAds.length,
         failedAds: result.failedAds,
