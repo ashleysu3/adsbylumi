@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
 
     const campaignId = metaCampaignIds.campaignId;
     const accessToken = brand.meta_access_token;
-    const budgetCents = Math.round(newBudget * 100).toString(); // Meta uses cents
+    const budgetCents = preview ? "0" : Math.round(newBudget * 100).toString(); // Meta uses cents
 
     // ------------------------------------------------------------
     // Step 0: Detect current budget level (CBO vs ABO) from Meta.
