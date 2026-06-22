@@ -166,6 +166,7 @@ export function CreativeChecklistCard({
   brand,
 }: CreativeChecklistCardProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [justFocused, setJustFocused] = useState(false);
   const [showRationale, setShowRationale] = useState(false);
   const [selectedBrollClipId, setSelectedBrollClipId] = useState<string | null>(null);
   const [brollSource, setBrollSource] = useState<"lumi" | "upload">("lumi");
@@ -192,6 +193,12 @@ export function CreativeChecklistCard({
   const isRanked = typeof rank === 'number';
   const isTalkingHead = item.format === "talking_head";
   const hasScriptDetails = isTalkingHead && (item.script_lines?.length || item.verbal_hook || item.written_hook || item.visual_hook);
+
+  const focusSavedDesign = () => {
+    setIsOpen(true);
+    setJustFocused(true);
+    setTimeout(() => setJustFocused(false), 3500);
+  };
 
   const copyScriptToClipboard = () => {
     if (!item.script_lines || item.script_lines.length === 0) {
