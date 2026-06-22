@@ -9,6 +9,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { HookScoreBadge, type HookScore } from "@/components/creative/HookScoreBadge";
 
 interface Variation {
   variation_name: string;
@@ -19,6 +20,8 @@ interface Variation {
   framework_used: string;
   why_this_angle: string;
   best_for: string;
+  score?: HookScore;
+  headline_score?: HookScore;
 }
 
 interface CopyVariationsProps {
