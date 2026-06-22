@@ -211,6 +211,7 @@ export function CopyVariations({ variations, onSelect, onCancel, currentCopy }: 
                       <Badge variant="outline" className="text-xs">
                         {variation.framework_used}
                       </Badge>
+                      {variation.score && <HookScoreBadge score={variation.score} />}
                     </div>
                     <p className="text-xs text-muted-foreground truncate">
                       {variation.headline}
