@@ -35,6 +35,88 @@ export default function Boards() {
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
 
+  // Upload references dialog
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadTargetBoardId, setUploadTargetBoardId] = useState<string>("__new__");
+  const [uploadNewBoardName, setUploadNewBoardName] = useState("");
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+
+  const openUploadDialog = () => {
+    setUploadFiles([]);
+    setUploadNewBoardName("");
+    setUploadTargetBoardId(boards.length > 0 ? boards[0].id : "__new__");
+    setUploadOpen(true);
+  };
+
+  const handleUploadReferences = async () => {
+    if (uploadFiles.length === 0) {
+      toast.error("Pick at least one image to upload.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not signed in");
+
+      // Resolve target board: create new if needed.
+      let boardId = uploadTargetBoardId;
+      if (boardId === "__new__") {
+        const name = uploadNewBoardName.trim() || "Uploaded references";
+        const { data: nb, error: nbErr } = await supabase
+          .from("boards")
+          .insert({ user_id: user.id, name })
+          .select()
+          .single();
+        if (nbErr) throw nbErr;
+        boardId = nb.id;
+      }
+
+      let ok = 0, failed = 0;
+      for (const file of uploadFiles) {
+        if (file.size > 250 * 1024 * 1024) {
+          toast.error(`${file.name} is over 250MB`);
+          failed++;
+          continue;
+        }
+        try {
+          const ext = file.name.split(".").pop() || "jpg";
+          const path = `${user.id}/boards/${crypto.randomUUID()}.${ext}`;
+          const { error: upErr } = await supabase.storage
+            .from("ad-photos")
+            .upload(path, file, { contentType: file.type, upsert: false });
+          if (upErr) throw upErr;
+          const { data: pub } = supabase.storage.from("ad-photos").getPublicUrl(path);
+          const { error: insErr } = await supabase
+            .from("board_items")
+            .insert({
+              board_id: boardId,
+              user_id: user.id,
+              uploaded_image_url: pub.publicUrl,
+              status: "pending",
+            });
+          if (insErr) throw insErr;
+          ok++;
+        } catch (err) {
+          console.error("Upload failed for", file.name, err);
+          failed++;
+        }
+      }
+      if (ok) toast.success(`Uploaded ${ok} image${ok !== 1 ? "s" : ""}`);
+      if (failed) toast.error(`${failed} upload${failed !== 1 ? "s" : ""} failed`);
+      setUploadOpen(false);
+      await fetchBoards();
+      if (ok > 0) navigate(`/boards/${boardId}`);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Upload failed");
+    } finally {
+      setUploading(false);
+      if (uploadInputRef.current) uploadInputRef.current.value = "";
+    }
+  };
+
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
