@@ -17,6 +17,8 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { CampaignSpine } from "@/components/CampaignSpine";
 import { useBrand } from "@/contexts/BrandContext";
 import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
@@ -24,6 +26,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { clearStrategyPlan } from "./StrategyPlan";
 import { StrategyChatPanel } from "@/components/StrategyChatPanel";
+import { computeStrategyBudget, type StrategyBudgetResult } from "@/lib/strategy-budget";
+import { useMemo } from "react";
 
 type CampaignPlan = {
   name?: string;
@@ -107,16 +111,35 @@ function summarizeAudience(campaigns: CampaignPlan[]): string {
   return unique.join(" → ");
 }
 
-function summarizeCampaignType(matched: MatchedStrategy): string {
-  const count = matched.campaigns?.length ?? 0;
-  if (count <= 1) {
-    const c = matched.campaigns?.[0];
-    return c?.name || matched.name;
+// Plain-English role label per campaign (used in the Campaign-type block).
+function campaignRoleLine(c: CampaignPlan): string {
+  const o = (c.objective || "").toUpperCase();
+  const n = (c.name || "").toLowerCase();
+  if (n.includes("warm") || n.includes("retarget")) {
+    return "Warm retargeting — closes people you already touched";
   }
-  return `${matched.name} · ${count}-campaign funnel`;
+  if (o.includes("LEAD") || n.includes("lead") || n.includes("training") || n.includes("webinar") || n.includes("opt-in") || n.includes("opt in")) {
+    return "Free training / lead capture — cold → builds belief and gets opt-ins";
+  }
+  if (o.includes("SALES") || o.includes("CONVERSION") || n.includes("sale") || n.includes("purchase") || n.includes("conversion")) {
+    return "Cold conversion — sells to people who self-identify as ready";
+  }
+  if (o.includes("AWARENESS") || o.includes("REACH") || n.includes("aware") || n.includes("grow")) {
+    return "Awareness — gets your brand in front of new people";
+  }
+  if (o.includes("TRAFFIC") || o.includes("LINK_CLICKS") || n.includes("traffic")) {
+    return "Traffic — sends people to your site or profile";
+  }
+  if (o.includes("ENGAGEMENT") || n.includes("engagement")) {
+    return "Engagement — warms cold audiences for retargeting";
+  }
+  return c.name || "Campaign";
 }
 
-const STARTING_BUDGET_DEFAULT = "$20/day to start";
+function prettyObjective(o?: string): string {
+  if (!o) return "";
+  return o.replace(/^OUTCOME_/, "").replace(/_/g, " ").toLowerCase();
+}
 
 export default function Strategy() {
   const navigate = useNavigate();
@@ -133,6 +156,25 @@ export default function Strategy() {
   const [intro, setIntro] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
+  const [monthlyBudgetInput, setMonthlyBudgetInput] = useState<string>("");
+  const [goalCountInput, setGoalCountInput] = useState<string>("");
+
+  const selectedOffer = useMemo(
+    () => offers.find((o) => o.id === selectedOfferId) ?? null,
+    [offers, selectedOfferId],
+  );
+
+  const budget: StrategyBudgetResult | null = useMemo(() => {
+    if (!matched?.campaigns?.length) return null;
+    const monthly = Number(monthlyBudgetInput);
+    const goal = Number(goalCountInput);
+    return computeStrategyBudget({
+      campaigns: matched.campaigns,
+      pricePoint: selectedOffer?.price_point ?? null,
+      monthlyBudget: monthly > 0 ? monthly : null,
+      goalCount: goal > 0 ? goal : null,
+    });
+  }, [matched, selectedOffer, monthlyBudgetInput, goalCountInput]);
 
   useEffect(() => {
     if (!brandsLoading && !activeBrand) {
@@ -484,32 +526,140 @@ export default function Strategy() {
                 {matched.name}
               </h2>
 
-              <div className="grid sm:grid-cols-3 gap-3 mb-5">
+              <div className="grid gap-3 mb-5">
+                {/* Campaign-type block — one row per stage */}
                 <div className="rounded-lg bg-background/60 border border-border/60 p-3">
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-2">
                     <Target className="h-3.5 w-3.5" /> Campaign type
                   </div>
-                  <p className="text-sm font-medium">
-                    {summarizeCampaignType(matched)}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-background/60 border border-border/60 p-3">
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-1">
-                    <Users className="h-3.5 w-3.5" /> Audience
+                  <div className="space-y-2">
+                    {(matched.campaigns?.length ? matched.campaigns : [{ name: matched.name }]).map((c, i) => (
+                      <div key={i} className="text-sm">
+                        <p className="font-medium">
+                          {i + 1}. {c.name || `Campaign ${i + 1}`}
+                          {c.objective && (
+                            <span className="ml-2 text-xs font-normal text-muted-foreground">
+                              · {prettyObjective(c.objective)}
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {campaignRoleLine(c)}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-sm font-medium">
-                    {summarizeAudience(matched.campaigns ?? [])}
-                  </p>
                 </div>
-                <div className="rounded-lg bg-background/60 border border-border/60 p-3">
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-1">
-                    <Wallet className="h-3.5 w-3.5" /> Starting budget
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-background/60 border border-border/60 p-3">
+                    <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                      <Users className="h-3.5 w-3.5" /> Audience
+                    </div>
+                    <p className="text-sm font-medium">
+                      {summarizeAudience(matched.campaigns ?? [])}
+                    </p>
                   </div>
-                  <p className="text-sm font-medium">
-                    {STARTING_BUDGET_DEFAULT}
-                  </p>
+
+                  <div className="rounded-lg bg-background/60 border border-border/60 p-3">
+                    <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                      <Wallet className="h-3.5 w-3.5" /> Starting budget
+                    </div>
+                    {budget ? (
+                      <p className="text-sm font-medium">
+                        {budget.mode === "range"
+                          ? `~$${budget.leanTotalDaily}–$${budget.idealTotalDaily}/day`
+                          : budget.totalDaily > 0
+                            ? `$${budget.totalDaily}/day · ~$${budget.totalMonthly}/mo`
+                            : "—"}
+                      </p>
+                    ) : (
+                      <p className="text-sm font-medium text-muted-foreground">—</p>
+                    )}
+                  </div>
                 </div>
+
+                {/* Budget breakdown + inputs */}
+                {budget && (
+                  <div className="rounded-lg bg-background/60 border border-border/60 p-4 space-y-3">
+                    <div className="space-y-1.5">
+                      {budget.stages.map((s, i) => (
+                        <div
+                          key={i}
+                          className={`flex items-center justify-between text-sm ${
+                            s.included ? "" : "opacity-50"
+                          }`}
+                        >
+                          <span>
+                            {s.name}
+                            {!s.included && (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                (skipped — budget too low)
+                              </span>
+                            )}
+                          </span>
+                          <span className="font-medium tabular-nums">
+                            {s.included ? `$${s.dailyBudget}/day` : "—"}
+                          </span>
+                        </div>
+                      ))}
+                      {budget.totalDaily > 0 && (
+                        <div className="flex items-center justify-between text-sm pt-1.5 mt-1 border-t border-border/60 font-semibold">
+                          <span>Total</span>
+                          <span className="tabular-nums">
+                            ${budget.totalDaily}/day · ~${budget.totalMonthly}/mo
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {budget.warning && (
+                      <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-500/10 rounded-md p-2">
+                        ⚠️ {budget.warning}
+                      </p>
+                    )}
+
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      <span className="font-medium text-foreground">Why this budget: </span>
+                      Meta needs ~50 results a week per campaign to stop guessing. {budget.rationale}
+                    </p>
+
+                    <div className="grid sm:grid-cols-2 gap-2 pt-1">
+                      <div>
+                        <Label htmlFor="monthly-budget" className="text-xs text-muted-foreground">
+                          Monthly budget ($)
+                        </Label>
+                        <Input
+                          id="monthly-budget"
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          placeholder="e.g. 1500"
+                          value={monthlyBudgetInput}
+                          onChange={(e) => setMonthlyBudgetInput(e.target.value)}
+                          className="h-9 mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="goal-count" className="text-xs text-muted-foreground">
+                          Goal (results / month)
+                        </Label>
+                        <Input
+                          id="goal-count"
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          placeholder="e.g. 40 leads"
+                          value={goalCountInput}
+                          onChange={(e) => setGoalCountInput(e.target.value)}
+                          className="h-9 mt-1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
+
 
               {(matched.why_it_works || intro) && (
                 <div className="text-sm text-foreground/90 leading-relaxed">
