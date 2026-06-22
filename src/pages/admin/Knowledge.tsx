@@ -46,6 +46,7 @@ const categories = [
   { value: "hooks", label: "Hooks Library" },
   { value: "ad_planner", label: "Ad Planner" },
   { value: "creative_department", label: "Creative Department" },
+  { value: "creative_angles", label: "Creative Angles" },
 ];
 
 export default function Knowledge() {
