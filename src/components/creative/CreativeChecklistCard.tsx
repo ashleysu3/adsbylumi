@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -199,6 +199,15 @@ export function CreativeChecklistCard({
     setJustFocused(true);
     setTimeout(() => setJustFocused(false), 3500);
   };
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { itemId?: string };
+      if (detail?.itemId === item.id) focusSavedDesign();
+    };
+    window.addEventListener("creative-render:focus-item", handler as EventListener);
+    return () => window.removeEventListener("creative-render:focus-item", handler as EventListener);
+  }, [item.id]);
 
   const copyScriptToClipboard = () => {
     if (!item.script_lines || item.script_lines.length === 0) {
