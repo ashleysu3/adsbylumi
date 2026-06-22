@@ -235,6 +235,11 @@ export function GenerateCreativeDialog() {
   const [photosLoading, setPhotosLoading] = useState(false);
   const [selectedPhotoId, setSelectedPhotoId] = useState<string>("");
   const [removeBackground, setRemoveBackground] = useState(true);
+  // Beta: AI-generated brand background composited behind the layout.
+  const [bgBetaOpen, setBgBetaOpen] = useState(false);
+  const [bgGenerating, setBgGenerating] = useState(false);
+  const [bgOptions, setBgOptions] = useState<Array<{ aspect: string; url: string; path: string }>>([]);
+  const [bgSelectedUrl, setBgSelectedUrl] = useState<string>("");
   const [textCase, setTextCase] = useState<"original" | "upper" | "lower" | "title">("original");
   const [headlineScale, setHeadlineScale] = useState<number>(1);
   const [bodyScale, setBodyScale] = useState<number>(1);
@@ -420,13 +425,15 @@ export function GenerateCreativeDialog() {
       try {
         const { data, error } = await supabase
           .from("user_assets" as any)
-          .select("id, original_url")
+          .select("id, original_url, cutout_url")
           .eq("kind", "photo")
           .eq("brand_id", activeBrand.id)
           .order("created_at", { ascending: false });
         if (error) throw error;
-        const rows = (data || []) as unknown as Array<{ id: string; original_url: string }>;
-        const paths = rows.map((r) => r.original_url as string);
+        const rows = (data || []) as unknown as Array<{ id: string; original_url: string; cutout_url: string | null }>;
+        // Prefer the background-removed cutout when available so headshots
+        // composite cleanly inside the template's avatar/circle slot.
+        const paths = rows.map((r) => r.cutout_url || r.original_url);
         let signed: { signedUrl: string }[] = [];
         if (paths.length) {
           const { data: s } = await supabase.storage
@@ -437,7 +444,7 @@ export function GenerateCreativeDialog() {
         if (cancelled) return;
         const next: Photo[] = rows.map((r, i) => ({
           id: r.id as string,
-          path: r.original_url as string,
+          path: r.cutout_url || r.original_url,
           url: signed[i]?.signedUrl || "",
         }));
         setPhotos(next);
@@ -699,6 +706,41 @@ export function GenerateCreativeDialog() {
       toast.error(e?.message || "Could not approve");
     } finally {
       setBoardApprovingIdx(null);
+    }
+  };
+
+  const runBrandBackground = async () => {
+    if (!activeBrand?.id) {
+      toast.error("Pick a brand first.");
+      return;
+    }
+    setBgGenerating(true);
+    setBgOptions([]);
+    setBgSelectedUrl("");
+    try {
+      const headline = isCarousel ? editedSlides[0]?.headline : editedSingle.headline;
+      const subhead = isCarousel ? editedSlides[0]?.sub : (editedSingle.sub || editedSingle.subhead);
+      const { data, error } = await supabase.functions.invoke("generate-ad-from-style", {
+        body: {
+          mode: "brand_background",
+          brandId: activeBrand.id,
+          copy: { headline, subhead },
+          count: 3,
+        },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Background generation failed");
+      const imgs = (data.images || []) as Array<{ aspect: string; url: string; path: string }>;
+      // Prefer 4x5 for vertical, but show all; we just need a URL the engine can fetch.
+      setBgOptions(imgs);
+      if (imgs[0]) setBgSelectedUrl(imgs[0].url);
+      if (!imgs.length) toast.error("Recraft returned no backgrounds.");
+      else toast.success(`Generated ${imgs.length} brand backgrounds`);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Could not generate background");
+    } finally {
+      setBgGenerating(false);
     }
   };
 
@@ -985,6 +1027,7 @@ export function GenerateCreativeDialog() {
           logoOverlay,
           style: styleOverrides,
           placements: activeCustom?.placements ?? ["feed"],
+          ...(bgSelectedUrl ? { backgroundUrl: bgSelectedUrl } : {}),
         });
         const labelled = imgs.map((im, i) => ({ ...im, label: `Slide ${i + 1}` }));
         setImages(labelled);
@@ -1001,6 +1044,7 @@ export function GenerateCreativeDialog() {
           logoOverlay,
           style: styleOverrides,
           placements: activeCustom?.placements ?? ["feed", "story"],
+          ...(bgSelectedUrl ? { backgroundUrl: bgSelectedUrl } : {}),
         });
         setImages(imgs);
         setProgress("");
@@ -1470,6 +1514,62 @@ export function GenerateCreativeDialog() {
 
               <div className="grid grid-cols-1 lg:grid-cols-[1fr,1.1fr] gap-6">
                 <div className="space-y-5">
+                  {/* Brand background generator (beta) */}
+                  <div className="rounded border border-primary/30 bg-primary/5 p-3 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <Label className="text-xs uppercase text-primary flex items-center gap-1">
+                          <Sparkles className="h-3 w-3" /> Brand background (beta)
+                        </Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          Generate a clean on-brand background — no faces. Your headshot, copy &amp; logo layer on top.
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={bgOptions.length ? "outline" : "default"}
+                        onClick={runBrandBackground}
+                        disabled={bgGenerating}
+                      >
+                        {bgGenerating ? (
+                          <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Generating…</>
+                        ) : bgOptions.length ? (
+                          <><RefreshCw className="h-3 w-3 mr-1" /> Regenerate</>
+                        ) : (
+                          <>Generate</>
+                        )}
+                      </Button>
+                    </div>
+                    {brandBackgroundAssets.length === 0 && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Tip: add background or texture examples in <b>Brand Assets</b> for more on-brand results.
+                      </p>
+                    )}
+                    {bgOptions.length > 0 && (
+                      <div className="grid grid-cols-4 gap-2 pt-1">
+                        {bgOptions.map((o) => (
+                          <button
+                            key={o.path}
+                            type="button"
+                            onClick={() => setBgSelectedUrl(o.url === bgSelectedUrl ? "" : o.url)}
+                            className={`relative aspect-square rounded border-2 overflow-hidden transition ${
+                              bgSelectedUrl === o.url ? "border-primary" : "border-border hover:border-muted-foreground"
+                            }`}
+                            title={`Background ${o.aspect}`}
+                          >
+                            <img src={o.url} alt="" className="w-full h-full object-cover" />
+                            <span className="absolute bottom-0 left-0 right-0 text-[9px] uppercase text-white bg-black/55 py-0.5 text-center leading-none">
+                              {o.aspect}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {bgSelectedUrl && (
+                      <p className="text-[11px] text-primary">✓ Will be sent as <code>backgroundUrl</code> to the renderer.</p>
+                    )}
+                  </div>
+
                   {/* Image source */}
                   {needsPhoto && (
                     <div className="space-y-2">
