@@ -19,6 +19,7 @@ import { ArrowRight, X } from "lucide-react";
 import { SubscriptionBanner } from "@/components/SubscriptionGate";
 import { DashboardFooter } from "@/components/DashboardFooter";
 import { PartnerPortalBanner } from "@/components/PartnerPortalBanner";
+import { ReturnToWorkButton } from "@/components/ReturnToWorkButton";
 
 
 
@@ -162,6 +163,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <MobileOnboardingTour onComplete={completeTour} onSkip={completeTour} />
         )}
         <CreateAdModal open={createAdModalOpen} onOpenChange={setCreateAdModalOpen} />
+        <ReturnToWorkButton />
       </div>
     );
   }
@@ -224,6 +226,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         />
       )}
       <CreateAdModal open={createAdModalOpen} onOpenChange={setCreateAdModalOpen} />
+      <ReturnToWorkButton />
     </SidebarProvider>
   );
 }

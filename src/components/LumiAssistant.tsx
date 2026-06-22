@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useLumi, Message, NavigationAction } from "@/contexts/LumiContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { BugReportModal } from "./BugReportModal";
+import { getWorkLabel, isWorkPath } from "@/lib/work-routes";
 
 export interface LumiRecommendation {
   id: string;
@@ -154,7 +155,7 @@ function LumiAssistantUI({
 }: LumiAssistantUIProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { messages, addMessage, setBrandId, brandId } = useLumi();
+  const { messages, addMessage, setBrandId, brandId, setInterruptedWork } = useLumi();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [currentRecommendationId, setCurrentRecommendationId] = useState<string | null>(null);
@@ -209,6 +210,14 @@ function LumiAssistantUI({
   // Handle navigation action click
   const handleActionClick = (action: NavigationAction) => {
     if (action.type === 'navigate' && action.route) {
+      // If Lumi is pulling the user out of work-in-progress and dropping them
+      // somewhere else, remember where they were so we can offer a one-click
+      // return. Don't overwrite if they're already mid-detour.
+      const currentLabel = getWorkLabel(location.pathname);
+      const goingToWork = isWorkPath(action.route);
+      if (currentLabel && !goingToWork && action.route !== location.pathname) {
+        setInterruptedWork({ path: location.pathname + location.search, label: currentLabel });
+      }
       navigate(action.route);
       handleCloseChat();
     } else if (action.type === 'bug_report') {
