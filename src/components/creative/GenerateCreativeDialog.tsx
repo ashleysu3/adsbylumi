@@ -1405,6 +1405,13 @@ export function GenerateCreativeDialog() {
                 </p>
               </div>
 
+              {brandBackgroundAssets.length === 0 && (
+                <div className="rounded-md border border-dashed bg-muted/30 p-2.5 text-[11px] text-muted-foreground">
+                  ✨ Tip: add background or texture examples in <b>Brand Assets</b> for more on-brand AI backgrounds.
+                </div>
+              )}
+
+
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {styleCards.map((card) => {
                   const active = card.key === activeStyleKey;
