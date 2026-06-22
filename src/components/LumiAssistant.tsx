@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useLumi, Message, NavigationAction } from "@/contexts/LumiContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { BugReportModal } from "./BugReportModal";
+import { getWorkLabel, isWorkPath } from "@/lib/work-routes";
 
 export interface LumiRecommendation {
   id: string;
