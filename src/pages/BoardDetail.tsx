@@ -6,9 +6,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Upload, Trash2, MessageSquare, Loader2, Image as ImageIcon, Info } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { ArrowLeft, Upload, Trash2, MessageSquare, Loader2, Image as ImageIcon, Info, Sparkles, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { AdPreview } from "@/components/AdPreview";
+import { useBrand } from "@/contexts/BrandContext";
+import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
 
 interface BoardItem {
   id: string;
