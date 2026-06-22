@@ -1184,7 +1184,194 @@ export function GenerateCreativeDialog() {
             </div>
           )}
 
-          {step === "style" ? (
+          {mode === "board" ? (
+            /* ---------- BOARD INSPIRATION FLOW (default) ---------- */
+            <div className="space-y-4 py-2">
+              <div>
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <ImagePlus className="h-4 w-4 text-primary" />
+                  Choose your inspiration
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Pick a board, then choose 3–5 saved ads you want this creative to look like.
+                </p>
+              </div>
+
+              {boardsLoading ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Loading your boards…
+                </div>
+              ) : boards.length === 0 ? (
+                <div className="rounded border border-dashed p-6 text-sm text-muted-foreground space-y-2">
+                  <p>You don't have any inspiration boards yet.</p>
+                  <Button size="sm" variant="outline" onClick={() => { setOpen(false); navigate("/boards"); }}>
+                    Go to Inspiration
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs uppercase text-muted-foreground">Board</Label>
+                    <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
+                      <SelectTrigger className="h-8 text-sm w-72">
+                        <SelectValue placeholder="Choose a board" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {boards.map((b) => (
+                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <span className="text-[11px] text-muted-foreground">
+                      Pick 3–5 you like ({selectedBoardImageIds.size}/5)
+                    </span>
+                  </div>
+
+                  {boardImagesLoading ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Loading images…
+                    </div>
+                  ) : boardImages.length === 0 ? (
+                    <div className="rounded border border-dashed p-6 text-sm text-muted-foreground space-y-2">
+                      <p>This board has no images yet. Add at least 1 ad to this board first.</p>
+                      <Button size="sm" variant="outline" onClick={() => { setOpen(false); navigate(`/boards/${selectedBoardId}`); }}>
+                        Open board
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                      {boardImages.map((img) => {
+                        const active = selectedBoardImageIds.has(img.id);
+                        return (
+                          <button
+                            key={img.id}
+                            type="button"
+                            onClick={() => toggleBoardImage(img.id)}
+                            className={`relative aspect-square rounded border-2 overflow-hidden transition ${
+                              active ? "border-primary ring-2 ring-primary/30" : "border-border hover:border-muted-foreground"
+                            }`}
+                          >
+                            <img src={img.url} alt="" className="w-full h-full object-cover" />
+                            {active && (
+                              <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-semibold rounded-full h-5 w-5 flex items-center justify-center">
+                                ✓
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs uppercase text-muted-foreground">Headline</Label>
+                      <Input
+                        value={boardCopy.headline}
+                        onChange={(e) => setBoardCopy({ ...boardCopy, headline: e.target.value })}
+                        placeholder="Your hook"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs uppercase text-muted-foreground">CTA</Label>
+                      <Input
+                        value={boardCopy.cta}
+                        onChange={(e) => setBoardCopy({ ...boardCopy, cta: e.target.value })}
+                        placeholder="Learn more"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <Label className="text-xs uppercase text-muted-foreground">Subhead (optional)</Label>
+                      <Textarea
+                        value={boardCopy.subhead}
+                        onChange={(e) => setBoardCopy({ ...boardCopy, subhead: e.target.value })}
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end pt-2">
+                    <Button
+                      size="lg"
+                      onClick={runBoardGenerate}
+                      disabled={
+                        boardGenerating ||
+                        selectedBoardImageIds.size < 3 ||
+                        !boardCopy.headline.trim()
+                      }
+                    >
+                      {boardGenerating ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating 4 visuals…</>
+                      ) : (
+                        <><Sparkles className="h-4 w-4 mr-2" /> Generate 4 on-brand visuals</>
+                      )}
+                    </Button>
+                  </div>
+
+                  {(boardGenerating || boardResults.length > 0) && (
+                    <div className="pt-3 border-t space-y-3">
+                      <Label className="text-xs uppercase text-muted-foreground">Results</Label>
+                      {boardGenerating && boardResults.length === 0 && (
+                        <div className="rounded border border-dashed p-10 text-center text-sm text-muted-foreground">
+                          <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                          Painting in your inspiration style…
+                        </div>
+                      )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {boardResults.map((r, i) => {
+                          const isApproved = boardApprovedIdxs.has(i);
+                          const isApproving = boardApprovingIdx === i;
+                          return (
+                            <div key={`${r.path}-${i}`} className="rounded border overflow-hidden bg-muted/20">
+                              <AdPreview
+                                concept={{
+                                  title: boardCopy.headline,
+                                  linkedAsset: { url: r.url, type: "image/png" },
+                                  final_copy: {
+                                    headline: boardCopy.headline,
+                                    primary_text: boardCopy.subhead,
+                                    cta: boardCopy.cta,
+                                  },
+                                }}
+                                brandName={activeBrand?.name || "Your Brand"}
+                              />
+                              <div className="flex items-center justify-between gap-2 p-2 text-xs border-t">
+                                <span className="text-muted-foreground">Recraft · {r.aspect}</span>
+                                <div className="flex items-center gap-2">
+                                  <a
+                                    href={r.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-muted-foreground hover:text-foreground inline-flex items-center"
+                                  >
+                                    <Download className="h-3 w-3 mr-1" /> Open
+                                  </a>
+                                  {itemId && (
+                                    <Button
+                                      size="sm"
+                                      variant={isApproved ? "secondary" : "default"}
+                                      disabled={isApproving || isApproved}
+                                      onClick={() => approveBoardResult(r, i)}
+                                    >
+                                      {isApproving ? (
+                                        <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Saving…</>
+                                      ) : isApproved ? "Approved ✓" : "Approve & save"}
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ) : step === "style" ? (
             /* ---------- SCREEN 1: Choose a style ---------- */
             <div className="space-y-4 py-2">
               <div>
