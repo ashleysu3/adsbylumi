@@ -94,7 +94,104 @@ interface RetrospectiveJSON {
   misses: Array<{ insight: string; supporting_data?: string; confidence: 'high' | 'medium' | 'low' }>;
   /** Worth testing next — forward-looking action items. */
   recommendations: Array<{ insight: string; supporting_data?: string; confidence: 'high' | 'medium' | 'low' }>;
+  /** Optional plain-English observations about user override patterns (§8.3).
+   *  Surfaces only — never auto-adjusts thresholds. */
+  pattern_notes?: string[];
   generated_at: string;
+}
+
+interface OverridePatternRow {
+  recommendation_action: string;
+  override_count: number;
+  snooze_count: number;
+  top_reason_quick: string | null;
+  top_format?: string | null;
+  top_angle?: string | null;
+}
+interface OverridePatterns {
+  by_action: OverridePatternRow[];
+  total_overrides: number;
+}
+
+/** Parse a LUMI ad name: {YYYY-MM}_{Objective}_{AngleSlug}_{Format}_{Variant}. */
+function parseLumiAdName(name: string | undefined | null): { angle: string | null; format: string | null } {
+  if (!name || typeof name !== 'string') return { angle: null, format: null };
+  const parts = name.split('_');
+  if (parts.length < 5) return { angle: null, format: null };
+  if (!/^\d{4}-\d{2}$/.test(parts[0])) return { angle: null, format: null };
+  return { angle: parts[2] || null, format: parts[3] || null };
+}
+
+async function buildOverridePatterns(
+  sb: any, brandId: string, performance: any,
+): Promise<OverridePatterns | null> {
+  const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: rows, error } = await sb
+    .from('recommendation_overrides')
+    .select('recommendation_action, user_action, reason_quick, ad_id, created_at')
+    .eq('brand_id', brandId)
+    .gte('created_at', since);
+  if (error || !Array.isArray(rows) || rows.length === 0) return null;
+
+  // Build ad_id -> {angle, format} from performance ads (best-effort).
+  const adMeta = new Map<string, { angle: string | null; format: string | null }>();
+  if (Array.isArray(performance?.ads)) {
+    for (const a of performance.ads) {
+      if (a?.ad_id) adMeta.set(String(a.ad_id), parseLumiAdName(a.ad_name));
+    }
+  }
+
+  type Agg = {
+    override_count: number;
+    snooze_count: number;
+    reasons: Map<string, number>;
+    formats: Map<string, number>;
+    angles: Map<string, number>;
+  };
+  const byAction = new Map<string, Agg>();
+  for (const r of rows) {
+    const action = String(r.recommendation_action || 'unknown');
+    if (!byAction.has(action)) {
+      byAction.set(action, {
+        override_count: 0, snooze_count: 0,
+        reasons: new Map(), formats: new Map(), angles: new Map(),
+      });
+    }
+    const agg = byAction.get(action)!;
+    const ua = String(r.user_action || '');
+    if (ua === 'snoozed') agg.snooze_count++;
+    else agg.override_count++;
+    if (r.reason_quick) {
+      const k = String(r.reason_quick);
+      agg.reasons.set(k, (agg.reasons.get(k) || 0) + 1);
+    }
+    const meta = r.ad_id ? adMeta.get(String(r.ad_id)) : null;
+    if (meta?.format) agg.formats.set(meta.format, (agg.formats.get(meta.format) || 0) + 1);
+    if (meta?.angle) agg.angles.set(meta.angle, (agg.angles.get(meta.angle) || 0) + 1);
+  }
+
+  const top = (m: Map<string, number>): string | null => {
+    let bestK: string | null = null; let bestV = 0;
+    for (const [k, v] of m) if (v > bestV) { bestV = v; bestK = k; }
+    return bestK;
+  };
+
+  const by_action: OverridePatternRow[] = [];
+  for (const [action, agg] of byAction) {
+    const total = agg.override_count + agg.snooze_count;
+    if (total < 3) continue; // noise threshold
+    by_action.push({
+      recommendation_action: action,
+      override_count: agg.override_count,
+      snooze_count: agg.snooze_count,
+      top_reason_quick: top(agg.reasons),
+      top_format: top(agg.formats),
+      top_angle: top(agg.angles),
+    });
+  }
+  if (by_action.length === 0) return null;
+  by_action.sort((a, b) => (b.override_count + b.snooze_count) - (a.override_count + a.snooze_count));
+  return { by_action, total_overrides: rows.length };
 }
 
 
