@@ -20,6 +20,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AdPreview } from "./AdPreview";
 import { PreBuildCopySummary } from "./PreBuildCopySummary";
 import { PixelPreflightCheck } from "./PixelPreflightCheck";
+import { PolicyCheckBadge } from "./PolicyCheckBadge";
 import { useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
