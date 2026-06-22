@@ -1085,6 +1085,42 @@ Deno.serve(async (req) => {
 
         result.adIds.push(adData.id);
         console.log(`Ad created: ${adData.id}`);
+
+        // Mirror the ad into the warm retargeting ad set, reusing the same creative
+        if (warmAdSetId) {
+          try {
+            const warmAdParams: Record<string, string> = {
+              adset_id: warmAdSetId,
+              name: `${adName} - Warm`,
+              creative: JSON.stringify({ creative_id: creativeId }),
+              status: launchStatus,
+              multi_advertiser_ads: JSON.stringify({ use_multi_advertiser_ads: false }),
+              access_token: metaAccessToken,
+            };
+            if (trackingSpecs) {
+              warmAdParams.tracking_specs = JSON.stringify(trackingSpecs);
+            }
+            const warmAdResp = await fetch(
+              `https://graph.facebook.com/v25.0/act_${accountId}/ads`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams(warmAdParams),
+              }
+            );
+            const warmAdData = await warmAdResp.json();
+            if (warmAdData.error) {
+              console.error(`Warm ad creation failed for ${adName}:`, warmAdData.error);
+              result.warnings.push(`Warm retargeting ad failed for "${adName}": ${getMetaErrorMessage(warmAdData.error)}`);
+            } else {
+              result.warmAdIds.push(warmAdData.id);
+              console.log(`Warm ad created: ${warmAdData.id}`);
+            }
+          } catch (warmErr: any) {
+            console.error(`Warm ad error for ${adName}:`, warmErr);
+            result.warnings.push(`Warm retargeting ad error for "${adName}": ${warmErr.message}`);
+          }
+        }
       } catch (adError: any) {
         console.error(`Error creating ad for ${adName}:`, adError);
         result.failedAds.push({
