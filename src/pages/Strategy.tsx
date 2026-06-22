@@ -621,7 +621,7 @@ export default function Strategy() {
 
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       <span className="font-medium text-foreground">Why this budget: </span>
-                      Meta needs ~50 results a week per campaign to stop guessing. {budget.rationale}
+                      Meta needs ~25 results a week per campaign to stop guessing. {budget.rationale}
                     </p>
 
                     <div className="grid sm:grid-cols-2 gap-2 pt-1">
