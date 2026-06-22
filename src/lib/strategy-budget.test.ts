@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { computeStrategyBudget, parsePricePoint } from "./strategy-budget";
 
 const threeCampaignFunnel = [
-  // Front-end lead capture — webinar CPL max ~$40 → lean ~$171/day, ideal ~$286/day
+  // Front-end lead capture — webinar CPL max ~$40 → lean ~$86/day, ideal ~$143/day
   { name: "Webinar registration", objective: "webinar" },
-  // Cold conversion — Sales/ROAS, $97 offer → target ~$48.50, lean ~$208/day
+  // Cold conversion — Sales/ROAS, $97 offer → lean floor ~$49/day
   { name: "Cold sales", objective: "Sales" },
   // Warm retargeting — same target cost as cold sales
   { name: "Warm retargeting", objective: "Sales" },
@@ -14,6 +14,7 @@ describe("parsePricePoint", () => {
   it("extracts the number from messy price strings", () => {
     expect(parsePricePoint("$97")).toBe(97);
     expect(parsePricePoint("$1,997 one-time")).toBe(1997);
+    expect(parsePricePoint("$97/mo or $997 pay in full")).toBe(997);
     expect(parsePricePoint(null)).toBeNull();
     expect(parsePricePoint("free")).toBeNull();
   });
@@ -24,7 +25,7 @@ describe("computeStrategyBudget", () => {
     const result = computeStrategyBudget({
       campaigns: threeCampaignFunnel,
       pricePoint: "$97",
-      monthlyBudget: 6000, // ~$200/day — covers webinar at lean, not the rest
+      monthlyBudget: 3000, // ~$100/day — covers webinar at lean, not the rest
     });
 
     expect(result.mode).toBe("monthly_budget");
@@ -79,5 +80,14 @@ describe("computeStrategyBudget", () => {
     expect(result.leanTotalDaily).toBeGreaterThan(0);
     expect(result.idealTotalDaily).toBeGreaterThanOrEqual(result.leanTotalDaily);
     expect(result.rationale).toMatch(/\$\d+–\$\d+\/day/);
+  });
+
+  it("uses half the offer price as the cold-sales starter floor", () => {
+    const result = computeStrategyBudget({
+      campaigns: [{ name: "Cold conversion", objective: "OUTCOME_SALES" }],
+      pricePoint: "$497",
+    });
+    expect(result.stages[0].leanDaily).toBe(249);
+    expect(result.leanTotalDaily).toBe(249);
   });
 });

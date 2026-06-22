@@ -1,5 +1,5 @@
 // Strategy budget math — sizes a 1- to N-campaign funnel based on the
-// learning-phase rule of thumb (Meta needs ~50 results/week per campaign to
+// learning-phase rule of thumb (Meta needs ~25 results/week per campaign to
 // exit learning). Pure functions, no side effects, easy to test.
 
 import { getLumiKPIConfig } from "./lumi-kpi-config";
@@ -46,9 +46,9 @@ export type StrategyBudgetInput = {
 
 export function parsePricePoint(price?: string | null): number | null {
   if (!price) return null;
-  const m = String(price).replace(/,/g, "").match(/\d+(\.\d+)?/);
-  if (!m) return null;
-  const n = Number(m[0]);
+  const matches = String(price).replace(/,/g, "").match(/\d+(\.\d+)?/g);
+  if (!matches?.length) return null;
+  const n = Math.max(...matches.map(Number).filter((value) => isFinite(value)));
   return isFinite(n) && n > 0 ? n : null;
 }
 
@@ -162,12 +162,12 @@ export function computeStrategyBudget(
     let leanDaily = Math.max(1, Math.round((RESULTS_PER_WEEK_LEAN * cost) / 7));
     const role = classifyRole(c.objective, c.name);
 
-    // Cold sales rule: minimum daily budget must be at least half the
-    // offer price. Anything less and Meta can't reliably buy a sale,
-    // regardless of how generous the CPA benchmark looks.
+    // Cold sales rule: minimum daily budget is the offer price ÷ 2.
+    // The ideal budget still sizes toward Meta's ~25 conversions/week,
+    // but the starter recommendation should not inflate above that floor.
     if (role.roleLabel === "Cold conversion" && price) {
       const floor = Math.ceil(price * 0.5);
-      leanDaily = Math.max(leanDaily, floor);
+      leanDaily = floor;
       idealDaily = Math.max(idealDaily, floor);
     }
 
@@ -260,7 +260,7 @@ export function computeStrategyBudget(
     mode = "goal";
     const primary = stages[0];
     requiredDailyForGoal = Math.max(
-      1,
+      primary.leanDaily,
       Math.round((input.goalCount * primary.targetCostPerResult) / 30),
     );
     stages = stages.map((s, i) => ({
