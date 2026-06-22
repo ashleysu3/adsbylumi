@@ -107,16 +107,35 @@ function summarizeAudience(campaigns: CampaignPlan[]): string {
   return unique.join(" → ");
 }
 
-function summarizeCampaignType(matched: MatchedStrategy): string {
-  const count = matched.campaigns?.length ?? 0;
-  if (count <= 1) {
-    const c = matched.campaigns?.[0];
-    return c?.name || matched.name;
+// Plain-English role label per campaign (used in the Campaign-type block).
+function campaignRoleLine(c: CampaignPlan): string {
+  const o = (c.objective || "").toUpperCase();
+  const n = (c.name || "").toLowerCase();
+  if (n.includes("warm") || n.includes("retarget")) {
+    return "Warm retargeting — closes people you already touched";
   }
-  return `${matched.name} · ${count}-campaign funnel`;
+  if (o.includes("LEAD") || n.includes("lead") || n.includes("training") || n.includes("webinar") || n.includes("opt-in") || n.includes("opt in")) {
+    return "Free training / lead capture — cold → builds belief and gets opt-ins";
+  }
+  if (o.includes("SALES") || o.includes("CONVERSION") || n.includes("sale") || n.includes("purchase") || n.includes("conversion")) {
+    return "Cold conversion — sells to people who self-identify as ready";
+  }
+  if (o.includes("AWARENESS") || o.includes("REACH") || n.includes("aware") || n.includes("grow")) {
+    return "Awareness — gets your brand in front of new people";
+  }
+  if (o.includes("TRAFFIC") || o.includes("LINK_CLICKS") || n.includes("traffic")) {
+    return "Traffic — sends people to your site or profile";
+  }
+  if (o.includes("ENGAGEMENT") || n.includes("engagement")) {
+    return "Engagement — warms cold audiences for retargeting";
+  }
+  return c.name || "Campaign";
 }
 
-const STARTING_BUDGET_DEFAULT = "$20/day to start";
+function prettyObjective(o?: string): string {
+  if (!o) return "";
+  return o.replace(/^OUTCOME_/, "").replace(/_/g, " ").toLowerCase();
+}
 
 export default function Strategy() {
   const navigate = useNavigate();
