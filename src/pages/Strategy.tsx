@@ -587,14 +587,25 @@ export default function Strategy() {
                         <div
                           key={i}
                           className={`flex items-center justify-between text-sm ${
-                            s.included ? "" : "opacity-50"
+                            s.included ? "" : "opacity-60"
                           }`}
                         >
                           <span>
                             {s.name}
+                            <span
+                              className={`ml-2 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                                s.required
+                                  ? "bg-primary/15 text-primary"
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {s.required ? "Required" : "Optional"}
+                            </span>
                             {!s.included && (
                               <span className="ml-2 text-xs text-muted-foreground">
-                                (skipped — budget too low)
+                                {s.tier === "supplemental"
+                                  ? "(add later — not required to launch)"
+                                  : "(budget too low)"}
                               </span>
                             )}
                           </span>
