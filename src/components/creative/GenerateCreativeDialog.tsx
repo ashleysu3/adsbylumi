@@ -263,6 +263,17 @@ export function GenerateCreativeDialog() {
   const [boardResults, setBoardResults] = useState<Array<{ aspect: string; url: string; path: string }>>([]);
   const [boardApprovingIdx, setBoardApprovingIdx] = useState<number | null>(null);
   const [boardApprovedIdxs, setBoardApprovedIdxs] = useState<Set<number>>(new Set());
+  const boardResultsRef = useRef<HTMLDivElement | null>(null);
+
+  // When new results arrive, scroll them into view inside the dialog so the
+  // user actually sees what was generated (previously they landed below the fold).
+  useEffect(() => {
+    if (boardResults.length > 0) {
+      requestAnimationFrame(() => {
+        boardResultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, [boardResults]);
 
   // single-template state
   const [singleOptions, setSingleOptions] = useState<SingleOption[]>([]);
