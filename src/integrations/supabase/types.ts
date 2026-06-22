@@ -406,18 +406,24 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          recraft_style_id: string | null
+          recraft_style_updated_at: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          recraft_style_id?: string | null
+          recraft_style_updated_at?: string | null
           user_id?: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          recraft_style_id?: string | null
+          recraft_style_updated_at?: string | null
           user_id?: string
         }
         Relationships: []
