@@ -25,17 +25,24 @@ import { seedDeferredTask, seedFirstCampaignTasks } from "@/lib/onboarding-tasks
 
 const STEPS = [
   "Your website",
-  "Brand basics",
-  "Audience",
-  "Design guide & images",
-  "Social proof",
+  "Here's what we found",
   "Your offer",
   "Connect Meta",
   "Strategy & launch",
 ];
 const TOTAL = STEPS.length;
-// Old → new step mapping for resume (old 6-step flow → new 8-step flow)
-const RESUME_REMAP: Record<number, number> = { 1: 1, 2: 2, 3: 6, 4: 4, 5: 7, 6: 8 };
+// Remap any historical onboarding_step value into the new 5-step flow.
+// Old 8-step flow (1=site, 2=basics, 3=audience, 4=design, 5=proof, 6=offer, 7=meta, 8=strategy)
+// Old 6-step flow (1=site, 2=basics, 3=offer, 4=design, 5=meta, 6=strategy)
+// We can't distinguish 6-step values 3/5/6 from 8-step — prefer the 8-step interpretation
+// since the 6-step variant is older and rarely in-progress now.
+const RESUME_REMAP: Record<number, number> = {
+  1: 1,
+  2: 2, 3: 2, 4: 2, 5: 2,
+  6: 3,
+  7: 4,
+  8: 5,
+};
 
 type AssetRow = { id: string; url: string; role: string | null; kept: boolean; source_url?: string | null; signedUrl?: string };
 
@@ -64,10 +71,14 @@ export default function GuidedOnboarding() {
   // Step 1
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [step1Busy, setStep1Busy] = useState(false);
-  // 'idle' | 'running' | 'done' — when running we show a full-screen Lumi loader
-  // and hide everything else until every extractor settles.
+  // Per-section streaming flags. Each one flips false the moment its extractor settles,
+  // so the reveal page can show inline shimmers and swap to real content as data arrives.
   const [extractionPhase, setExtractionPhase] = useState<'idle' | 'running' | 'done'>('idle');
-  const [loaderMsg, setLoaderMsg] = useState<string>("");
+  const [loadingBrandBasics, setLoadingBrandBasics] = useState(false);
+  const [loadingVoice, setLoadingVoice] = useState(false);
+  const [loadingAudience, setLoadingAudience] = useState(false);
+  const [loadingProof, setLoadingProof] = useState(false);
+  const [loadingAssets, setLoadingAssetsHarvest] = useState(false);
   const step1Fired = useRef(false);
 
   // Step 2 — review (uses brand state)
@@ -77,9 +88,9 @@ export default function GuidedOnboarding() {
   const [offerUrl, setOfferUrl] = useState("");
   const [offers, setOffers] = useState<any[]>([]);
   const [offerBusy, setOfferBusy] = useState(false);
-  const [globalLoaderMsg, setGlobalLoaderMsg] = useState<string | null>(null);
+  const [offerStatusMsg, setOfferStatusMsg] = useState<string | null>(null);
 
-  // Step 4 — assets
+  // Reveal — assets
   const [assets, setAssets] = useState<AssetRow[]>([]);
   const [headshotUrl, setHeadshotUrl] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -88,7 +99,7 @@ export default function GuidedOnboarding() {
   const [brollIdeas, setBrollIdeas] = useState<any[] | null>(null);
   const assetsInitRef = useRef(false);
 
-  // Step 6 — strategy
+  // Strategy
   const [strategy, setStrategy] = useState<any>(null);
   const [strategyLoading, setStrategyLoading] = useState(false);
 
@@ -173,25 +184,18 @@ export default function GuidedOnboarding() {
       const websiteForCall = normalized;
       const brandIdLocal = id!;
 
-      // Flip to full-screen loader — hide everything else.
-      const wittyLines = [
-        "🔍 Snooping through your website (politely)…",
-        "🎨 Stealing your color palette — for science…",
-        "✍️ Learning how you actually talk…",
-        "🧠 Profiling your dream client (in a kind way)…",
-        "📸 Hunting for logos and pretty photos…",
-        "💬 Reading every testimonial out loud…",
-        "✨ Doing our homework so you don't have to…",
-      ];
-      setLoaderMsg(wittyLines[0]);
+      // Mark all sections as loading and immediately move the user to the reveal page.
+      // They watch each section populate as its extractor resolves — no blocking screen.
+      setLoadingBrandBasics(true);
+      setLoadingVoice(true);
+      setLoadingAudience(true);
+      setLoadingProof(true);
+      setLoadingAssetsHarvest(true);
       setExtractionPhase('running');
-      let lineIdx = 0;
-      const rotator = setInterval(() => {
-        lineIdx = (lineIdx + 1) % wittyLines.length;
-        setLoaderMsg(wittyLines[lineIdx]);
-      }, 2800);
+      setStep(2);
+      if (brandIdLocal) persistStep(brandIdLocal, 2);
 
-      // extract-brand → colors/logo/fonts/description
+      // extract-brand → colors/logo/fonts/description (the first thing to render)
       const pBrand = supabase.functions.invoke("extract-brand", { body: { url: websiteForCall } }).then(async (r) => {
         const d: any = r.data;
         if (!d || r.error) return;
@@ -224,7 +228,7 @@ export default function GuidedOnboarding() {
             },
           }));
         }
-      }).catch(() => {});
+      }).catch(() => {}).finally(() => setLoadingBrandBasics(false));
 
       const pVoice = pBrand.then(() =>
         supabase.functions.invoke("analyze-brand-voice", { body: { brandId: brandIdLocal } })
@@ -234,7 +238,7 @@ export default function GuidedOnboarding() {
               setBrand((prev: any) => ({ ...(prev || {}), brand_voice: (refreshed as any).brand_voice }));
             }
           })
-      ).catch(() => {});
+      ).catch(() => {}).finally(() => setLoadingVoice(false));
 
       const pAud = pBrand.then(() =>
         supabase.functions.invoke("generate-audience-psychology", { body: { brandId: brandIdLocal } })
@@ -244,9 +248,8 @@ export default function GuidedOnboarding() {
               setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: (refreshed as any).audience_psychology }));
             }
           })
-      ).catch(() => {});
+      ).catch(() => {}).finally(() => setLoadingAudience(false));
 
-      // Social proof — runs in parallel with the rest so the user lands on a fully-populated review.
       const pProof = pBrand.then(() =>
         supabase.functions.invoke("extract-social-proof", { body: { brandId: brandIdLocal, url: websiteForCall } })
           .then(async () => {
@@ -255,25 +258,22 @@ export default function GuidedOnboarding() {
               setBrand((prev: any) => ({ ...(prev || {}), social_proof: (refreshed as any).social_proof }));
             }
           })
-      ).catch(() => {});
+      ).catch(() => {}).finally(() => setLoadingProof(false));
 
       const pAssets = supabase.functions.invoke("harvest-brand-assets", { body: { url: websiteForCall, brandId: brandIdLocal } })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => setLoadingAssetsHarvest(false));
 
-      // When everything settles, dismiss the loader and auto-advance to the review.
+      // When everything settles, flag the phase as done so the resume logic stops trying.
       Promise.allSettled([pBrand, pVoice, pAud, pProof, pAssets]).then(async () => {
-        clearInterval(rotator);
-        // Refresh brand once more so the review screens see latest server state.
         try {
           const [{ data: b }, { data: k }] = await Promise.all([
             supabase.from("brands").select("*").eq("id", brandIdLocal).maybeSingle(),
             supabase.from("brand_kits" as any).select("colors, fonts, logo_url").eq("brand_id", brandIdLocal).maybeSingle(),
           ]);
-          if (b) setBrand({ ...(b as any), _kit: k || null });
+          if (b) setBrand((prev: any) => ({ ...(b as any), _kit: k || (prev?._kit ?? null) }));
         } catch { /* ignore */ }
         setExtractionPhase('done');
-        setStep(2);
-        if (brandIdLocal) await persistStep(brandIdLocal, 2);
       });
 
       await refreshBrands();
@@ -282,21 +282,26 @@ export default function GuidedOnboarding() {
       toast.error(e.message || "Could not save");
       step1Fired.current = false;
       setExtractionPhase('idle');
+      setLoadingBrandBasics(false);
+      setLoadingVoice(false);
+      setLoadingAudience(false);
+      setLoadingProof(false);
+      setLoadingAssetsHarvest(false);
     } finally {
       setStep1Busy(false);
     }
   };
 
-  // =================== STEP review — keep brand_kit in sync ===================
+  // =================== Reveal page — keep brand_kit in sync ===================
   useEffect(() => {
-    if (step < 2 || step > 5 || !brandId) return;
+    if (step !== 2 || !brandId) return;
     let cancelled = false;
     (async () => {
       const [{ data: b }, { data: k }] = await Promise.all([
         supabase.from("brands").select("*").eq("id", brandId).maybeSingle(),
         supabase.from("brand_kits" as any).select("colors, fonts, logo_url").eq("brand_id", brandId).maybeSingle(),
       ]);
-      if (!cancelled && b) setBrand({ ...(b as any), _kit: k || null });
+      if (!cancelled && b) setBrand((prev: any) => ({ ...(b as any), _kit: k || prev?._kit || null }));
     })();
     return () => { cancelled = true; };
   }, [step, brandId]);
@@ -311,9 +316,9 @@ export default function GuidedOnboarding() {
     }
   };
 
-  // =================== STEP 6 — offer ===================
+  // =================== STEP 3 — offer ===================
   useEffect(() => {
-    if (step !== 6 || !brandId) return;
+    if (step !== 3 || !brandId) return;
     (async () => {
       const { data } = await supabase.from("offers").select("*").eq("brand_id", brandId);
       setOffers(data || []);
@@ -325,7 +330,7 @@ export default function GuidedOnboarding() {
     const normalized = normalizeWebsiteUrl(offerUrl);
     if (!normalized) { toast.error("Add your offer's sales page URL"); return; }
     setOfferBusy(true);
-    setGlobalLoaderMsg("LUMI is reading your offer page…");
+    setOfferStatusMsg("LUMI is reading your offer page…");
     try {
       const { data: existing } = await supabase
         .from("offers").select("id").eq("brand_id", brandId).eq("url", normalized).maybeSingle();
@@ -377,7 +382,7 @@ export default function GuidedOnboarding() {
       toast.error(e.message || "Couldn't pull the offer");
     } finally {
       setOfferBusy(false);
-      setGlobalLoaderMsg(null);
+      setOfferStatusMsg(null);
     }
   };
 
@@ -424,7 +429,7 @@ export default function GuidedOnboarding() {
   }, [brandId]);
 
   useEffect(() => {
-    if (step !== 4 || !brandId) return;
+    if (step !== 2 || !brandId) return;
     if (assetsInitRef.current) { loadAssets(); return; }
     assetsInitRef.current = true;
     (async () => {
@@ -449,6 +454,15 @@ export default function GuidedOnboarding() {
       } catch { /* ignore */ }
     })();
   }, [step, brandId, loadAssets]);
+
+  // Re-load the library once the harvest extractor finishes streaming in new images.
+  useEffect(() => {
+    if (step !== 2 || !brandId) return;
+    if (loadingAssets) return;
+    if (!assetsInitRef.current) return;
+    loadAssets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingAssets]);
 
   const grouped = useMemo(() => {
     const map: Record<string, AssetRow[]> = {
@@ -537,9 +551,9 @@ export default function GuidedOnboarding() {
     toast.success("Shot list saved to your tasks");
   };
 
-  // =================== STEP 8 — strategy ===================
+  // =================== STEP 5 — strategy ===================
   useEffect(() => {
-    if (step !== 8 || !brandId || strategy || strategyLoading) return;
+    if (step !== 5 || !brandId || strategy || strategyLoading) return;
     (async () => {
       setStrategyLoading(true);
       try {
@@ -611,7 +625,7 @@ export default function GuidedOnboarding() {
     navigate("/create?onboarding=1");
   };
 
-  // ---------- helpers used by the review steps ----------
+  // ---------- helpers used by the reveal page ----------
   const hasProofVal = (v: any): boolean => {
     if (!v) return false;
     if (Array.isArray(v)) return v.length > 0;
@@ -620,36 +634,12 @@ export default function GuidedOnboarding() {
   };
   const hasProof = hasProofVal((brand as any)?.social_proof);
 
-  // Auto-skip social proof step (5) when nothing was found, in whichever direction
-  // the user is travelling. We compare to the previous step to figure out direction.
-  const prevStepRef = useRef(step);
-  useEffect(() => {
-    if (step === 5 && !hasProof && extractionPhase !== 'running') {
-      const goingForward = step >= prevStepRef.current;
-      const target = goingForward ? 6 : 4;
-      setStep(target);
-      if (brandId) persistStep(brandId, target);
-      prevStepRef.current = target;
-      return;
-    }
-    prevStepRef.current = step;
-  }, [step, hasProof, extractionPhase, brandId, persistStep]);
-
   if (checkingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
-  }
-
-  // ============ FULL-SCREEN EXTRACTION LOADER ============
-  // While LUMI is reading the site, hide the entire onboarding UI and show the loader only.
-  if (extractionPhase === 'running') {
-    return <LumiPageLoader message={loaderMsg || "LUMI is reading your site…"} />;
-  }
-  if (globalLoaderMsg) {
-    return <LumiPageLoader message={globalLoaderMsg} />;
   }
 
   return (
@@ -691,52 +681,43 @@ export default function GuidedOnboarding() {
           </Card>
         )}
 
-        {/* ============== Shared review-step intro banner ============== */}
-        {step >= 2 && step <= 5 && (
-          <Card className="border-primary/20 bg-primary/5 mb-4">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="h-4 w-4 text-primary" /> Here's what we gathered ✨
-              </CardTitle>
-              <CardDescription>
-                Pulled straight from your website{brand?.website_url ? ` (${brand.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "")})` : ""}. Edit anything that's off — rebrand, outdated copy, new audience — and we'll use the updated version everywhere.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        )}
-
-        {/* ============== STEP 2 — Brand basics ============== */}
+        {/* ============== STEP 2 — Reveal page (streams in live) ============== */}
         {step === 2 && (
           <div className="space-y-4">
-            <BrandBasicsCard brand={brand} onSave={updateBrand} />
-            <div className="flex justify-between pt-2">
-              <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => finishLater("Review your brand basics", "/brand")}>Finish later</Button>
-                <Button onClick={advance}>Looks good <ArrowRight className="h-4 w-4 ml-1" /></Button>
-              </div>
-            </div>
-          </div>
-        )}
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Sparkles className="h-4 w-4 text-primary" /> Here's what we found ✨
+                </CardTitle>
+                <CardDescription>
+                  Pulled straight from your website{brand?.website_url ? ` (${brand.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "")})` : ""}. Edit anything that's off — rebrand, outdated copy, new audience — and we'll use the updated version everywhere.
+                </CardDescription>
+              </CardHeader>
+            </Card>
 
-        {/* ============== STEP 3 — Audience ============== */}
-        {step === 3 && (
-          <div className="space-y-4">
-            <ReviewAudienceCard brand={brand} onSave={updateBrand} />
-            <div className="flex justify-between pt-2">
-              <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => finishLater("Review your audience", "/brand")}>Finish later</Button>
-                <Button onClick={advance}>Looks good <ArrowRight className="h-4 w-4 ml-1" /></Button>
-              </div>
-            </div>
-          </div>
-        )}
+            {/* Brand basics — first to populate */}
+            <SectionShell
+              loading={loadingBrandBasics}
+              loadingMsg="🔍 Snooping through your website (politely)…"
+            >
+              <BrandBasicsCard brand={brand} onSave={updateBrand} />
+            </SectionShell>
 
-        {/* ============== STEP 4 — Design guide & images ============== */}
-        {step === 4 && (
-          <div className="space-y-4">
-            <ReviewDesignCard brand={brand} onSave={updateBrand} />
+            {/* Audience */}
+            <SectionShell
+              loading={loadingAudience}
+              loadingMsg="🧠 Profiling your dream client (in a kind way)…"
+            >
+              <ReviewAudienceCard brand={brand} onSave={updateBrand} />
+            </SectionShell>
+
+            {/* Design guide & images */}
+            <SectionShell
+              loading={loadingBrandBasics}
+              loadingMsg="🎨 Stealing your color palette — for science…"
+            >
+              <ReviewDesignCard brand={brand} onSave={updateBrand} />
+            </SectionShell>
 
             <Card>
               <CardHeader>
@@ -744,9 +725,10 @@ export default function GuidedOnboarding() {
                 <CardDescription>Keep what looks like your brand. Toss what doesn't. Add the missing pieces.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
-                {classifying && (
+                {(loadingAssets || classifying) && (
                   <div className="text-xs text-muted-foreground flex items-center gap-2">
-                    <Loader2 className="h-3 w-3 animate-spin" /> LUMI is sorting your images by type…
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    {loadingAssets ? "📸 Hunting for logos and pretty photos…" : "LUMI is sorting your images by type…"}
                   </div>
                 )}
 
@@ -881,32 +863,28 @@ export default function GuidedOnboarding() {
               </CardContent>
             </Card>
 
-            <div className="flex justify-between pt-2">
-              <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => finishLater("Finish your design guide", "/brand")}>Finish later</Button>
-                <Button onClick={advance}>Continue <ArrowRight className="h-4 w-4 ml-1" /></Button>
-              </div>
-            </div>
-          </div>
-        )}
+            {/* Social proof — only renders when something was actually found (or still loading) */}
+            {(loadingProof || hasProof) && (
+              <SectionShell
+                loading={loadingProof && !hasProof}
+                loadingMsg="💬 Reading every testimonial out loud…"
+              >
+                <ReviewProofCard brand={brand} onSave={updateBrand} loading={proofExtracting} />
+              </SectionShell>
+            )}
 
-        {/* ============== STEP 5 — Social proof (auto-skips when empty) ============== */}
-        {step === 5 && (
-          <div className="space-y-4">
-            <ReviewProofCard brand={brand} onSave={updateBrand} loading={proofExtracting} />
             <div className="flex justify-between pt-2">
               <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => finishLater("Review your social proof", "/brand")}>Finish later</Button>
+                <Button variant="outline" onClick={() => finishLater("Finish your brand review", "/brand")}>Finish later</Button>
                 <Button onClick={advance}>Looks good <ArrowRight className="h-4 w-4 ml-1" /></Button>
               </div>
             </div>
           </div>
         )}
 
-        {/* ============== STEP 6 — Offer sales page ============== */}
-        {step === 6 && (
+        {/* ============== STEP 3 — Offer sales page ============== */}
+        {step === 3 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5" /> Your offer</CardTitle>
@@ -920,6 +898,7 @@ export default function GuidedOnboarding() {
                     value={offerUrl} onChange={(e) => setOfferUrl(e.target.value)}
                     placeholder="https://yourbrand.com/program"
                     onKeyDown={(e) => { if (e.key === "Enter") submitOfferUrl(); }}
+                    disabled={offerBusy}
                   />
                   <Button onClick={submitOfferUrl} disabled={offerBusy}>
                     {offerBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Pull offer"}
@@ -927,7 +906,13 @@ export default function GuidedOnboarding() {
                 </div>
               </div>
 
-              {offers.length === 0 ? (
+              {offerBusy && offerStatusMsg && (
+                <div className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> {offerStatusMsg}
+                </div>
+              )}
+
+              {offers.length === 0 && !offerBusy ? (
                 <SetupPrompt
                   title="No offer yet"
                   description="Add at least one sales page so LUMI can write campaigns that actually convert."
@@ -937,7 +922,7 @@ export default function GuidedOnboarding() {
               ) : (
                 <div className="space-y-3">
                   {offers.map((o) => (
-                    <OfferRowEditor key={o.id} offer={o} brand={brand} onSave={(p) => updateOffer(o.id, p)} setGlobalLoader={setGlobalLoaderMsg} /> 
+                    <OfferRowEditor key={o.id} offer={o} brand={brand} onSave={(p) => updateOffer(o.id, p)} />
                   ))}
                 </div>
               )}
@@ -953,8 +938,8 @@ export default function GuidedOnboarding() {
           </Card>
         )}
 
-        {/* ============== STEP 7 — Connect Meta ============== */}
-        {step === 7 && (
+        {/* ============== STEP 4 — Connect Meta ============== */}
+        {step === 4 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" /> Connect Meta</CardTitle>
@@ -992,7 +977,7 @@ export default function GuidedOnboarding() {
         )}
 
         {/* ============== STEP 8 — Strategy + first campaign ============== */}
-        {step === 8 && (
+        {step === 5 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-600" /> Your suggested strategy</CardTitle>
@@ -1046,6 +1031,30 @@ export default function GuidedOnboarding() {
 }
 
 // ───────────────── small UI helpers ─────────────────
+
+function SectionShell({
+  loading,
+  loadingMsg,
+  children,
+}: {
+  loading: boolean;
+  loadingMsg: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative">
+      {loading && (
+        <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          <span className="animate-pulse">{loadingMsg}</span>
+        </div>
+      )}
+      <div className={loading ? "opacity-60 transition-opacity" : "transition-opacity"}>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function RevealRow({ label, value }: { label: string; value: any }) {
   return (
@@ -1344,7 +1353,7 @@ function BrandBasicsCard({ brand, onSave }: { brand: any; onSave: (p: any) => Pr
   );
 }
 
-function OfferRowEditor({ offer, brand, onSave, setGlobalLoader }: { offer: any; brand?: any; onSave: (p: any) => Promise<void>; setGlobalLoader?: (m: string | null) => void }) {
+function OfferRowEditor({ offer, brand, onSave }: { offer: any; brand?: any; onSave: (p: any) => Promise<void> }) {
   const [name, setName] = useState(offer.name || "");
   const [description, setDescription] = useState(offer.description || "");
   const [price, setPrice] = useState(offer.price_point || "");
@@ -1355,6 +1364,7 @@ function OfferRowEditor({ offer, brand, onSave, setGlobalLoader }: { offer: any;
   const [colors, setColors] = useState<string>((so.colors || []).join(", "));
   const [fonts, setFonts] = useState<string>((so.fonts || []).join(", "));
   const [designPulled, setDesignPulled] = useState(false);
+  const [pullingDesign, setPullingDesign] = useState(false);
 
   const oap = offer.offer_audience_psychology || {};
   const [pains, setPains] = useState<string>((oap.pain_points || []).join("\n"));
@@ -1388,7 +1398,7 @@ function OfferRowEditor({ offer, brand, onSave, setGlobalLoader }: { offer: any;
 
   const pullOfferDesign = async () => {
     if (!offer.url) { toast.error("This offer has no URL to pull from"); return; }
-    setGlobalLoader?.("LUMI is pulling this offer's design guide…");
+    setPullingDesign(true);
     try {
       const { data, error } = await supabase.functions.invoke("extract-brand", { body: { url: offer.url } });
       if (error) throw error;
@@ -1406,7 +1416,7 @@ function OfferRowEditor({ offer, brand, onSave, setGlobalLoader }: { offer: any;
     } catch (e: any) {
       toast.error(e?.message || "Couldn't pull design from this page");
     } finally {
-      setGlobalLoader?.(null);
+      setPullingDesign(false);
     }
   };
 
@@ -1512,8 +1522,9 @@ function OfferRowEditor({ offer, brand, onSave, setGlobalLoader }: { offer: any;
                 <Input value={fonts} onChange={(e) => setFonts(e.target.value)} placeholder="Inter, Playfair Display" />
               </div>
               {offer.url && (
-                <Button type="button" size="sm" variant="outline" onClick={pullOfferDesign}>
-                  <Palette className="h-3 w-3 mr-1" /> Re-pull design from this page
+                <Button type="button" size="sm" variant="outline" onClick={pullOfferDesign} disabled={pullingDesign}>
+                  {pullingDesign ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Palette className="h-3 w-3 mr-1" />}
+                  {pullingDesign ? "Pulling design…" : "Re-pull design from this page"}
                 </Button>
               )}
             </div>
