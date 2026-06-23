@@ -1791,7 +1791,7 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
           </TabsContent>
 
           <TabsContent value="saved">
-            <ContentLibrary embedded />
+            <MyCreativeLibrary />
           </TabsContent>
         </Tabs>
       </div>
