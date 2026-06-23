@@ -251,6 +251,14 @@ export function computeStrategyBudget(
       idealDaily = Math.max(idealDaily, floor);
     }
 
+    // Template-driven floor: a strategy template's budget_suggestion overrides
+    // the generic KPI-derived default so the recommended range wins.
+    const tpl = parseBudgetSuggestion(c.budgetSuggestion);
+    if (tpl) {
+      leanDaily = Math.max(leanDaily, tpl.min);
+      idealDaily = Math.max(idealDaily, tpl.max);
+    }
+
     return {
       _i: i,
       name: c.name || role.roleLabel,
