@@ -507,7 +507,7 @@ export default function GuidedOnboarding() {
             {extracting && (
               <Card>
                 <CardContent className="py-10">
-                  <LumiThinkingInline label="LUMI is reading your site…" />
+                  <LumiThinkingInline isOpen={true} customCopy={["LUMI is reading your site…", "Pulling colors, fonts, and voice…", "Mapping your audience psychology…", "Decoding each offer…"]} />
                   <p className="text-center text-sm text-muted-foreground mt-4">
                     Pulling colors, fonts, voice, audience + offer psychology. Takes about a minute.
                   </p>
