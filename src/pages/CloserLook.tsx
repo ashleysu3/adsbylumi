@@ -182,6 +182,7 @@ export default function CloserLook() {
   const [activeTask, setActiveTask] = useState<ExecutableTaskShape | null>(null);
 
   const [bugOpen, setBugOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (brandLoading || !activeBrand || !campaignId) return;
@@ -244,7 +245,7 @@ export default function CloserLook() {
     return () => {
       cancelled = true;
     };
-  }, [activeBrand, brandLoading, campaignId]);
+  }, [activeBrand, brandLoading, campaignId, reloadKey]);
 
   const top = result?.topRecommendation || null;
   const fatigue = useMemo(
@@ -511,38 +512,57 @@ export default function CloserLook() {
             className="absolute inset-0 rounded-lg p-[1.5px] bg-gradient-to-br from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 [mask:linear-gradient(#000,#000)_content-box,linear-gradient(#000,#000)] [mask-composite:exclude]"
           />
           <CardContent className="p-3">
-            {top ? (
-              <div className="flex items-start gap-3">
-                <Sparkles className="h-4 w-4 text-lumi-pink-1 flex-shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0 space-y-1.5">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">LUMI recommends</span>
-                    <span className="text-sm font-semibold">
-                      {ACTION_VERB[top.recommendation.action] || top.recommendation.action} "{top.name}"
-                    </span>
-                    <Badge variant="outline" className="text-[10px]">
-                      {top.recommendation.confidence} confidence
-                    </Badge>
+            {(() => {
+              const primaryIsNull = result.campaign.primary?.value == null;
+              if (primaryIsNull) {
+                return (
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="h-4 w-4 text-lumi-pink-1 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">LUMI recommends</span>
+                      <p className="text-sm">
+                        {(result.meta.primaryKpiLabel || (result.meta.primaryKpi || "Primary KPI").toUpperCase())} has no value yet — can't judge performance.
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Likely either too early, or conversion tracking isn't set up for this goal.
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{top.recommendation.reasoning}</p>
-                  {top.recommendation.diagnosis?.needsConversionTracking && (
-                    <p className="text-[11px] text-amber-700 dark:text-amber-300 italic">
-                      Conversion tracking isn't reporting — set it up for a sharper read.
-                    </p>
-                  )}
+                );
+              }
+              return top ? (
+                <div className="flex items-start gap-3">
+                  <Sparkles className="h-4 w-4 text-lumi-pink-1 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">LUMI recommends</span>
+                      <span className="text-sm font-semibold">
+                        {ACTION_VERB[top.recommendation.action] || top.recommendation.action} "{top.name}"
+                      </span>
+                      <Badge variant="outline" className="text-[10px]">
+                        {top.recommendation.confidence} confidence
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{top.recommendation.reasoning}</p>
+                    {top.recommendation.diagnosis?.needsConversionTracking && (
+                      <p className="text-[11px] text-amber-700 dark:text-amber-300 italic">
+                        Conversion tracking isn't reporting — set it up for a sharper read.
+                      </p>
+                    )}
+                  </div>
+                  <Button size="sm" onClick={() => openExecuteFor(top)} className="gap-1.5 flex-shrink-0">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Approve
+                  </Button>
                 </div>
-                <Button size="sm" onClick={() => openExecuteFor(top)} className="gap-1.5 flex-shrink-0">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Approve
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-lumi-pink-1" />
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">LUMI recommends</span>
-                <span className="text-sm text-muted-foreground">Holding steady — no changes needed right now.</span>
-              </div>
-            )}
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-lumi-pink-1" />
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">LUMI recommends</span>
+                  <span className="text-sm text-muted-foreground">Holding steady — no changes needed right now.</span>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
 
@@ -922,7 +942,7 @@ export default function CloserLook() {
             name: workspaceName || result.campaign.name,
             brandId: activeBrand?.id,
           }] : []}
-          onGoalsSaved={() => { setGoalModalOpen(false); window.location.reload(); }}
+          onGoalsSaved={() => { setGoalModalOpen(false); setReloadKey((n) => n + 1); }}
         />
       </div>
     </DashboardLayout>
