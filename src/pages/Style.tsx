@@ -190,7 +190,7 @@ export default function Style() {
               Style
             </h1>
             <p className="text-sm md:text-base text-muted-foreground mt-1">
-              How your ads sound and look — voice, emojis, b-roll, and text overlays.
+              How your ads look — colors, fonts, b-roll, and text overlays.
             </p>
           </div>
         </div>
