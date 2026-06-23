@@ -183,26 +183,41 @@ export function IntentBar({
               : "rounded-[10px] px-2.5 py-1.5",
           )}
         >
-          <Sparkles
-            className={cn(
-              "text-lumi-pink-1 flex-shrink-0",
-              isLg ? "h-5 w-5" : "h-3.5 w-3.5",
-            )}
-          />
+          {submitting ? (
+            <Loader2
+              className={cn(
+                "text-lumi-pink-1 flex-shrink-0 animate-spin",
+                isLg ? "h-5 w-5" : "h-3.5 w-3.5",
+              )}
+            />
+          ) : (
+            <Sparkles
+              className={cn(
+                "text-lumi-pink-1 flex-shrink-0",
+                isLg ? "h-5 w-5" : "h-3.5 w-3.5",
+              )}
+            />
+          )}
           <input
             ref={inputRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
+            disabled={submitting}
             placeholder={animatedPlaceholder}
             className={cn(
-              "flex-1 bg-transparent outline-none placeholder:text-muted-foreground/70",
+              "flex-1 bg-transparent outline-none placeholder:text-muted-foreground/70 disabled:opacity-70",
               isLg ? "text-base sm:text-lg" : "text-sm",
             )}
           />
         </div>
       </div>
+      <IntentConversation
+        open={convoOpen}
+        onOpenChange={setConvoOpen}
+        initial={convoSeed}
+      />
     </form>
   );
 }
