@@ -773,6 +773,10 @@ export default function CloserLook() {
                 return suggestions[0]?.id;
               })();
 
+              // Float LUMI's pick to the top.
+              suggestions.sort((a, b) => (a.id === lumiPickId ? -1 : b.id === lumiPickId ? 1 : 0));
+
+
               const toneCls: Record<Suggestion["tone"], string> = {
                 primary: "border-primary/30",
                 secondary: "border-border",
