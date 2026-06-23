@@ -234,25 +234,40 @@ Deno.serve(async req => {
     const asOfDate = asOf ? new Date(asOf) : new Date();
     const windows = computeWindows(asOfDate);
 
+    // Optional display window — only changes what metrics are SHOWN in the UI;
+    // never feeds into the 3/7/30-day judgment rules below. When the caller
+    // doesn't provide one, default to the medium (7-day) window so behavior
+    // matches the prior implementation.
+    const displayWindow: DateWindow = buildDisplayWindow(displayRange, asOfDate) || windows.medium;
+    const displayMatchesMedium =
+      displayWindow.since === windows.medium.since && displayWindow.until === windows.medium.until;
+
     // Pull insights at all three levels for the three primary windows + the fatigue ref.
-    const [c3, c7, c30, cFatigueRef] = await Promise.all([
+    const [c3, c7, c30, cFatigueRef, cDisp] = await Promise.all([
       fetchInsights(metaCampaignId, accessToken, windows.short, 'campaign'),
       fetchInsights(metaCampaignId, accessToken, windows.medium, 'campaign'),
       fetchInsights(metaCampaignId, accessToken, windows.long, 'campaign'),
       fetchInsights(metaCampaignId, accessToken, windows.fatigueRef, 'campaign'),
+      displayMatchesMedium ? Promise.resolve(null) : fetchInsights(metaCampaignId, accessToken, displayWindow, 'campaign'),
     ]);
-    const [s3, s7, s30, sFatigueRef] = await Promise.all([
+    const [s3, s7, s30, sFatigueRef, sDisp] = await Promise.all([
       fetchInsights(metaCampaignId, accessToken, windows.short, 'adset'),
       fetchInsights(metaCampaignId, accessToken, windows.medium, 'adset'),
       fetchInsights(metaCampaignId, accessToken, windows.long, 'adset'),
       fetchInsights(metaCampaignId, accessToken, windows.fatigueRef, 'adset'),
+      displayMatchesMedium ? Promise.resolve(null) : fetchInsights(metaCampaignId, accessToken, displayWindow, 'adset'),
     ]);
-    const [a3, a7, a30, aFatigueRef] = await Promise.all([
+    const [a3, a7, a30, aFatigueRef, aDisp] = await Promise.all([
       fetchInsights(metaCampaignId, accessToken, windows.short, 'ad'),
       fetchInsights(metaCampaignId, accessToken, windows.medium, 'ad'),
       fetchInsights(metaCampaignId, accessToken, windows.long, 'ad'),
       fetchInsights(metaCampaignId, accessToken, windows.fatigueRef, 'ad'),
+      displayMatchesMedium ? Promise.resolve(null) : fetchInsights(metaCampaignId, accessToken, displayWindow, 'ad'),
     ]);
+    const cDisplay = displayMatchesMedium ? c7 : (cDisp as any[] | null);
+    const sDisplay = displayMatchesMedium ? s7 : (sDisp as any[] | null);
+    const aDisplay = displayMatchesMedium ? a7 : (aDisp as any[] | null);
+
 
     // Pull adset metadata so we can detect testing/scaling type, audience temp, daily budget.
     const adsetMeta = await fetchAdsetMeta(metaCampaignId, accessToken);
