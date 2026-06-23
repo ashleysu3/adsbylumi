@@ -19,7 +19,7 @@ export default function Auth() {
   const hasPaid = searchParams.get('paid') === 'true';
   const returnToParam = searchParams.get('returnTo');
   const inviteToken = searchParams.get('invite');
-  const =
+  const safeReturnTo =
     returnToParam && returnToParam.startsWith('/') && !returnToParam.startsWith('//')
       ? returnToParam
       : null;
