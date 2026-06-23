@@ -27,6 +27,11 @@ import {
   PenLine,
   Sparkles,
   Heart,
+  CheckSquare,
+  Gift,
+  CreditCard,
+  Crown,
+  Shield,
 } from "lucide-react";
 import { LadybugIcon } from "@/components/LadybugIcon";
 import { IntentBar } from "@/components/IntentBar";
