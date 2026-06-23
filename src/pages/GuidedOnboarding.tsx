@@ -700,35 +700,42 @@ export default function GuidedOnboarding() {
     toast.success("Shot list saved to your tasks");
   };
 
-  // =================== STEP 5 — strategy ===================
-  useEffect(() => {
-    if (step !== 5 || !brandId || strategy || strategyLoading) return;
-    (async () => {
-      setStrategyLoading(true);
-      try {
-        const { data: offerRows } = await supabase
-          .from("offers").select("id").eq("brand_id", brandId).limit(1);
-        const offerId = offerRows?.[0]?.id;
-        const { data, error } = await supabase.functions.invoke("recommend-strategy", {
-          body: { brand_id: brandId, offer_id: offerId, user_goal: "leads" },
+  // =================== STEP 5 — strategy choice ===================
+  type StrategyChoice = null | "offer" | "goal";
+  const [strategyChoice, setStrategyChoice] = useState<StrategyChoice>(null);
+  const [chosenGoal, setChosenGoal] = useState<string | null>(null);
+  const [pickingGoal, setPickingGoal] = useState(false);
+  const [chosenOfferId, setChosenOfferId] = useState<string | null>(null);
+
+  const runRecommendStrategy = async (opts: { offer_id?: string | null; user_goal: string }) => {
+    if (!brandId) return;
+    setStrategy(null);
+    setStrategyLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("recommend-strategy", {
+        body: { brand_id: brandId, offer_id: opts.offer_id || null, user_goal: opts.user_goal },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      if ((data as any)?.pending) {
+        setStrategy({
+          pending: true,
+          name: "Custom strategy in the works",
+          description:
+            "Your setup is unique enough that LUMI flagged it for a human review. We'll have a tailored plan ready for you shortly — you can keep going in the meantime.",
         });
-        if (error) throw error;
-        if ((data as any)?.error) throw new Error((data as any).error);
-        if ((data as any)?.pending) {
-          setStrategy({ pending: true, name: "Custom strategy in the works",
-            description: "Your setup is unique enough that LUMI flagged it for a human review. We'll have a tailored plan ready for you shortly — you can keep going in the meantime." });
-        } else {
-          const s = (data as any)?.strategy ?? data;
-          setStrategy({ ...s, personalized_intro: (data as any)?.personalized_intro });
-        }
-      } catch (e: any) {
-        console.error(e);
-        toast.error("Couldn't generate a strategy — you can do this later");
-      } finally {
-        setStrategyLoading(false);
+      } else {
+        const s = (data as any)?.strategy ?? data;
+        setStrategy({ ...s, personalized_intro: (data as any)?.personalized_intro });
       }
-    })();
-  }, [step, brandId, strategy, strategyLoading]);
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Couldn't generate a strategy — you can do this later");
+    } finally {
+      setStrategyLoading(false);
+    }
+  };
+
 
   const seedStrategyTasks = async () => {
     const items: { title: string; description?: string }[] = [];
