@@ -162,6 +162,13 @@ export const ARCHETYPES: Record<ArchetypeSlug, Archetype> = {
       "Repeat purchase rate is the real margin lever, not first-sale ROAS.",
     ],
     templateSlugs: ["paid-challenge-cold", "low-ticket-offer"],
+    cadence: {
+      rotationPace: "High rotation",
+      anglesPerTest: { min: 8, max: 12 },
+      refreshEveryDays: { min: 5, max: 10 },
+      fatigueFrequencyThreshold: { cold: 2.5, warm: 4 },
+      tip: "Ship 8–12 variations weekly. Impulse buyers burn through hooks fast — rotate before frequency hits 3.",
+    },
   },
 
   high_ticket_consult: {
