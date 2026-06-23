@@ -142,7 +142,34 @@ interface AdEvaluation {
     impact: number;
     impactReasoning: string;
     priorityTier: 1 | 2 | 3 | 4 | 5; // 1 = spend_starved, 2 = underperformer, 3 = fatigue, 4 = scaling_ready, 5 = no-priority (learning/performing/promising)
+    diagnosis?: Diagnosis;
   };
+}
+
+export type RootCause =
+  | 'delivery'
+  | 'creative_ctr'
+  | 'message_mismatch'
+  | 'fatigue'
+  | 'offer_economics'
+  | 'auction'
+  | 'unknown';
+
+export interface Diagnosis {
+  rootCause: RootCause;
+  why: string;
+  signals: string[];
+  primaryAction:
+    | 'test_new_creative'
+    | 'rotate_bench'
+    | 'broaden_audience'
+    | 'raise_budget'
+    | 'fix_landing_page'
+    | 'fix_offer_economics'
+    | 'consolidate_adsets'
+    | 'wait';
+  confidence: 'high' | 'medium' | 'low';
+  needsConversionTracking?: boolean;
 }
 
 interface WindowSnapshot {
@@ -929,20 +956,62 @@ function applyRules(r: RuleArgs): { status: Status; recommendation: AdEvaluation
     }
   }
 
+  // Helper to attach a root-cause diagnosis to any failing recommendation.
+  // Runs the diagnostic tree against the medium-window row so the WHY is
+  // grounded in the same data the rules use.
+  const buildDiagnosis = (): Diagnosis => diagnoseRootCause({
+    primaryKpi: args.primaryKpi,
+    meta7: args.meta7,
+    meta3: args.meta3,
+    metaFatigueRef: args.metaFatigueRef,
+    reach,
+    frequency,
+    audienceTemp: args.audienceTemp,
+    w7KpiValue: w7.kpiValue,
+    wFatigueRefKpiValue: wFatigueRef.kpiValue,
+    primaryDirection: args.primaryDirection,
+  });
+
+  // Map a diagnostic primaryAction to an existing engine Action verb.
+  const actionFromDiagnosis = (d: Diagnosis): Action => {
+    switch (d.primaryAction) {
+      case 'test_new_creative':
+      case 'rotate_bench':
+        return 'refresh_creative';
+      case 'broaden_audience':
+        return 'broaden_audience';
+      case 'raise_budget':
+        return 'increase_budget';
+      case 'consolidate_adsets':
+        return 'broaden_audience';
+      case 'fix_landing_page':
+      case 'fix_offer_economics':
+        return 'hold'; // creative-side action isn't the fix — surface diagnosis instead
+      case 'wait':
+        return 'wait';
+      default:
+        return 'refresh_creative';
+    }
+  };
+
+
   // No-results guard — past learning phase with meaningful spend but the primary
   // KPI has zero recorded results (e.g. ROAS/CPP with no purchases). Without this
   // the default "performing" branch falsely greenlights a campaign that hasn't
   // produced the outcome it was built for.
   if (w7.kpiValue == null && w7.spend > 0 && w7.results === 0) {
+    const dx = buildDiagnosis();
+    const noBaseReason = `No ${args.primaryKpi.toUpperCase()} results recorded in the last 7 days despite $${w7.spend.toFixed(0)} in spend.`;
     return {
       status: 'underperforming',
       recommendation: {
         action: 'turn_off',
-        reasoning: `No ${args.primaryKpi.toUpperCase()} results recorded in the last 7 days despite $${w7.spend.toFixed(0)} in spend. Pause and replace — something upstream (offer, creative, or tracking) isn't converting.`,
+        reasoning: `${noBaseReason} ${dx.why}`,
         confidence: w7.spend >= (args.primaryGoal || 0) ? 'high' : 'medium',
         impact: estimateImpact('turn_off', { weeklySpend: w7.spend }),
         impactReasoning: `~$${w7.spend.toFixed(0)} per week spent with zero results`,
         priorityTier: 2,
+        diagnosis: dx,
       },
     };
   }
@@ -958,15 +1027,17 @@ function applyRules(r: RuleArgs): { status: Status; recommendation: AdEvaluation
     args.primaryDirection === 'less_than' ? args.primaryGoal * m : args.primaryGoal / m;
 
   if (isWorseThan(w3.kpiValue, goalMultiplier(1.5)) && isWorseThan(w7.kpiValue, goalMultiplier(1.5))) {
+    const dx = buildDiagnosis();
     return {
       status: 'underperforming',
       recommendation: {
         action: 'turn_off',
-        reasoning: `Cost is consistently above your target across both 3-day and 7-day windows (${formatKpiValue(w7.kpiValue, args.primaryKpi)} vs target ${formatKpiValue(args.primaryGoal, args.primaryKpi)}). Worth turning off and replacing.`,
+        reasoning: `Cost is consistently well above target (${formatKpiValue(w7.kpiValue, args.primaryKpi)} vs ${formatKpiValue(args.primaryGoal, args.primaryKpi)}). ${dx.why}`,
         confidence: w7.results >= 30 && w3.results >= 30 ? 'high' : 'medium',
         impact: estimateImpact('turn_off', { weeklySpend: w7.spend }),
         impactReasoning: `~$${(w7.spend).toFixed(0)} per week saved if you turn this off`,
         priorityTier: 2,
+        diagnosis: dx,
       },
     };
   }
@@ -977,19 +1048,45 @@ function applyRules(r: RuleArgs): { status: Status; recommendation: AdEvaluation
     const fatiguePct = ((w7.kpiValue - wFatigueRef.kpiValue) / wFatigueRef.kpiValue) * 100;
     const isFatigueDir = args.primaryDirection === 'less_than' ? fatiguePct >= 30 : fatiguePct <= -30;
     if (isFatigueDir && frequency > freqThreshold) {
+      const dx = buildDiagnosis();
       return {
         status: 'fatigued',
         recommendation: {
           action: 'refresh_creative',
-          reasoning: `${args.primaryKpi.toUpperCase()} has crept up ${Math.abs(fatiguePct).toFixed(0)}% over the last week vs. the week before. Frequency is ${frequency.toFixed(1)}, meaning the same people are seeing this ad repeatedly. Time for fresh creative.`,
+          reasoning: dx.why,
           confidence: 'high',
           impact: estimateImpact('refresh', { weeklySpend: w7.spend }),
           impactReasoning: `${Math.abs(fatiguePct).toFixed(0)}% efficiency drop and rising frequency — replace before it gets worse`,
           priorityTier: 3,
+          diagnosis: dx,
         },
       };
     }
   }
+
+  // Mild underperformer — failing goal across 2-of-3 windows (3d + 7d), but
+  // not catastrophically (under the 1.5x threshold). Past reach floor by
+  // construction (learning guard above). Run deep diagnosis to surface WHY
+  // and recommend a creative/audience/page action instead of a blunt turn-off.
+  if (
+    isWorseThan(w3.kpiValue, args.primaryGoal) &&
+    isWorseThan(w7.kpiValue, args.primaryGoal)
+  ) {
+    const dx = buildDiagnosis();
+    return {
+      status: 'underperforming',
+      recommendation: {
+        action: actionFromDiagnosis(dx),
+        reasoning: `${args.primaryKpi.toUpperCase()} is below target on both 3-day and 7-day (${formatKpiValue(w7.kpiValue, args.primaryKpi)} vs ${formatKpiValue(args.primaryGoal, args.primaryKpi)}). ${dx.why}`,
+        confidence: dx.confidence,
+        impact: estimateImpact('refresh', { weeklySpend: w7.spend }),
+        impactReasoning: `Fixing the root cause is worth more than blanket pausing — ~$${(w7.spend).toFixed(0)}/wk currently in motion`,
+        priorityTier: 2,
+        diagnosis: dx,
+      },
+    };
+  }
+
 
   // §6.2 — Scaling-ready (testing adset only).
   const isBetterOrEq = (val: number | null, threshold: number) => {
@@ -1109,8 +1206,178 @@ function formatKpiValue(v: number | null, kpi: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Top recommendation — playbook §7 tiered priority.
+// Root-cause diagnosis — playbook upgrade. Only call this when an entity is
+// failing across 2-of-3 windows AND past the reach/conversion floors. Walks
+// the diagnostic tree in priority order; first match wins.
 // ---------------------------------------------------------------------------
+
+const CTR_BENCHMARK = 1.0;     // % — Meta-wide baseline; matches KPI_DEFAULT_GOAL.ctr
+const CTR_LOW = 0.8;           // % — clearly under-performing scroll-stop
+const CPC_HIGH = 2.0;          // $ — high CPC despite healthy CTR = auction pressure
+const REACH_THIN_7D = 3000;    // 7-day reach below this with spend = delivery problem
+const CLICKS_MIN_FOR_CVR = 40; // minimum clicks before we can read "no conversions" as message mismatch
+
+function rowMetric(row: any, key: 'ctr' | 'cpc' | 'cpm' | 'clicks' | 'impressions' | 'reach' | 'spend' | 'frequency'): number {
+  return Number(row?.[key] || 0);
+}
+
+function rowPurchases(row: any): number {
+  return sumActions(Array.isArray(row?.actions) ? row.actions : [], PURCHASE_ACTION_TYPES);
+}
+function rowLeads(row: any): number {
+  return sumActions(Array.isArray(row?.actions) ? row.actions : [], LEAD_ACTION_TYPES);
+}
+
+export function diagnoseRootCause(args: {
+  primaryKpi: string;
+  meta7: any;
+  meta3: any;
+  metaFatigueRef: any;
+  reach: number;
+  frequency: number;
+  audienceTemp: 'cold' | 'warm' | 'unknown';
+  w7KpiValue: number | null;
+  wFatigueRefKpiValue: number | null;
+  primaryDirection: 'less_than' | 'greater_than';
+}): Diagnosis {
+  const { meta7, meta3, primaryKpi, reach, frequency, audienceTemp, w7KpiValue, wFatigueRefKpiValue, primaryDirection } = args;
+  const ctr = rowMetric(meta7, 'ctr');
+  const cpc = rowMetric(meta7, 'cpc');
+  const cpm = rowMetric(meta7, 'cpm');
+  const clicks = rowMetric(meta7, 'clicks');
+  const spend7 = rowMetric(meta7, 'spend');
+  const purchases = rowPurchases(meta7);
+  const leads = rowLeads(meta7);
+  const conversionsRecorded = purchases + leads;
+  const conversionGoalKpi = primaryKpi === 'cpp' || primaryKpi === 'cpl' || primaryKpi === 'roas';
+
+  const freqThreshold = audienceTemp === 'warm' ? 5 : 3;
+
+  // 4. FATIGUE — frequency over threshold AND KPI decaying vs prior window.
+  if (
+    frequency > freqThreshold &&
+    w7KpiValue != null && wFatigueRefKpiValue != null && wFatigueRefKpiValue > 0
+  ) {
+    const pct = ((w7KpiValue - wFatigueRefKpiValue) / wFatigueRefKpiValue) * 100;
+    const decaying = primaryDirection === 'less_than' ? pct >= 15 : pct <= -15;
+    if (decaying) {
+      return {
+        rootCause: 'fatigue',
+        why: `The same people are seeing this ad too often (frequency ${frequency.toFixed(1)}) and results are sliding. Audience is burned out — they need to see something new.`,
+        signals: [
+          `Frequency ${frequency.toFixed(1)} (over ${freqThreshold})`,
+          `${primaryKpi.toUpperCase()} ${Math.abs(pct).toFixed(0)}% worse than the prior 14 days`,
+        ],
+        primaryAction: 'rotate_bench',
+        confidence: 'high',
+      };
+    }
+  }
+
+  // 1. DELIVERY — narrow audience / under-budget / low impressions.
+  if (spend7 > 0 && reach < REACH_THIN_7D) {
+    return {
+      rootCause: 'delivery',
+      why: `Meta is barely reaching anyone — only ${reach.toLocaleString()} people in the last 7 days. Either the audience is too narrow or the budget is too small for Meta to find your buyers.`,
+      signals: [
+        `7-day reach: ${reach.toLocaleString()}`,
+        cpm > 0 ? `CPM $${cpm.toFixed(2)}` : null,
+        `7-day spend $${spend7.toFixed(0)}`,
+      ].filter(Boolean) as string[],
+      primaryAction: 'broaden_audience',
+      confidence: 'medium',
+    };
+  }
+
+  // 2. CTR LOW — creative isn't stopping the scroll. The common one.
+  if (ctr > 0 && ctr < CTR_LOW) {
+    return {
+      rootCause: 'creative_ctr',
+      why: `The creative isn't stopping the scroll — only ${ctr.toFixed(2)}% of people who saw this clicked, vs. a ${CTR_BENCHMARK}% baseline. This is a creative problem, not a budget or audience one. Test a new hook or angle.`,
+      signals: [
+        `CTR ${ctr.toFixed(2)}% (benchmark ${CTR_BENCHMARK}%)`,
+        `${clicks.toLocaleString()} clicks on ${rowMetric(meta7, 'impressions').toLocaleString()} impressions`,
+      ],
+      primaryAction: 'test_new_creative',
+      confidence: 'high',
+    };
+  }
+
+  // 3. MESSAGE / LANDING-PAGE MISMATCH — clicks happening, conversions aren't.
+  // Only meaningful if the primary KPI is a conversion KPI AND we have enough clicks.
+  if (conversionGoalKpi && clicks >= CLICKS_MIN_FOR_CVR) {
+    if (conversionsRecorded === 0) {
+      // Could be a tracking gap OR a real message mismatch — we can't tell.
+      // Fall back to honesty.
+      return {
+        rootCause: 'message_mismatch',
+        why: `People are clicking (${clicks.toLocaleString()} clicks last 7 days) but we can't see any conversions coming back. Either your sales page isn't converting them, or your Meta pixel isn't reporting purchases — we can't tell which without conversion tracking set up.`,
+        signals: [
+          `${clicks.toLocaleString()} clicks, 0 conversions reported`,
+          `CTR ${ctr.toFixed(2)}% — creative is working`,
+        ],
+        primaryAction: 'fix_landing_page',
+        confidence: 'low',
+        needsConversionTracking: true,
+      };
+    }
+    // Conversions exist but few — message mismatch with confidence.
+    const cvr = (conversionsRecorded / clicks) * 100;
+    if (cvr < 1.0) {
+      return {
+        rootCause: 'message_mismatch',
+        why: `You're getting clicks but losing them at the page — ${clicks.toLocaleString()} clicked, only ${conversionsRecorded} converted (${cvr.toFixed(2)}%). This isn't a creative problem; the ad is doing its job. Fix the sales page or the offer message.`,
+        signals: [
+          `On-site conversion rate ${cvr.toFixed(2)}%`,
+          `CTR ${ctr.toFixed(2)}% — creative is working`,
+        ],
+        primaryAction: 'fix_landing_page',
+        confidence: 'medium',
+      };
+    }
+    // 5. OFFER ECONOMICS — converting but ROAS/CPA still off.
+    return {
+      rootCause: 'offer_economics',
+      why: `The ad is converting (${conversionsRecorded} on ${clicks.toLocaleString()} clicks) but the numbers don't pencil out at your target — you're paying more per result than the offer can support. The fix is the offer (price, AOV, bumps), not the ad.`,
+      signals: [
+        `${conversionsRecorded} conversions on $${spend7.toFixed(0)} spend`,
+        `CTR ${ctr.toFixed(2)}% — creative is working`,
+      ],
+      primaryAction: 'fix_offer_economics',
+      confidence: 'medium',
+    };
+  }
+
+  // 6. AUCTION — high CPC with adequate CTR.
+  if (ctr >= CTR_BENCHMARK && cpc > CPC_HIGH) {
+    return {
+      rootCause: 'auction',
+      why: `Creative is fine (CTR ${ctr.toFixed(2)}%) but each click is expensive ($${cpc.toFixed(2)}). Usually means you're bidding against yourself across overlapping ad sets, or the audience is just expensive.`,
+      signals: [
+        `CPC $${cpc.toFixed(2)} (high)`,
+        `CTR ${ctr.toFixed(2)}% — healthy`,
+      ],
+      primaryAction: 'consolidate_adsets',
+      confidence: 'medium',
+    };
+  }
+
+  // No clean signal — be honest.
+  return {
+    rootCause: 'unknown',
+    why: `Numbers are off but no single metric points to a clear cause. Most likely it's a soft creative issue — try a new angle and see if the CTR moves.`,
+    signals: [
+      ctr > 0 ? `CTR ${ctr.toFixed(2)}%` : 'No CTR data',
+      `Reach ${reach.toLocaleString()}`,
+      `Frequency ${frequency.toFixed(1)}`,
+    ],
+    primaryAction: 'test_new_creative',
+    confidence: 'low',
+    needsConversionTracking: conversionGoalKpi && conversionsRecorded === 0 && clicks < CLICKS_MIN_FOR_CVR,
+  };
+}
+
+
 
 function pickTopRecommendation(all: AdEvaluation[]): AdEvaluation | null {
   // Tier 1 = highest priority (spend-starved). Lower is more urgent.
