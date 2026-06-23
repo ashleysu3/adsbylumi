@@ -72,11 +72,9 @@ Deno.serve(async (req) => {
       try {
         const result = await refreshBrandToken(supabase, brand.id, META_APP_ID, META_APP_SECRET);
         
-        let emailSent = false;
-        // If refresh failed, send notification email
-        if (!result.success && RESEND_API_KEY) {
-          emailSent = await sendTokenExpirationEmail(supabase, brand.id, result.error || 'Unknown error', RESEND_API_KEY);
-        }
+        const emailSent = false;
+        // Email notifications disabled — users are notified in-app on next login
+        // via the user_alerts banner. Do not send reconnect emails.
         
         results.push({
           brandId: brand.id,
