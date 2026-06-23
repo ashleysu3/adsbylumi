@@ -14,7 +14,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CampaignSpine } from "@/components/CampaignSpine";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
@@ -24,11 +23,14 @@ import {
   HelpCircle,
   Clock,
   History,
-  Target,
   Loader2,
   BarChart2,
   DollarSign,
   RefreshCw,
+  ChevronRight,
+  TrendingUp,
+  TrendingDown,
+  Minus,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,18 +38,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 import { upsertRecommendationTasks, closeMatchingTasks, RecForTask } from "@/lib/task-executors";
 
-
-
 // ============================================================================
-// /performance — leads with the engine's single highest-impact recommendation
-// across all active campaigns for the active brand.
+// /ad-performance — Live Ads "Big Picture"
 //
-// Data flow:
-//  1. Load campaign_workspaces for active brand where meta_campaign_ids is set
-//     and status != 'draft' (same shape as Data.tsx).
-//  2. For each, invoke `evaluate-campaign-status` with { brandId, metaCampaignId }.
-//  3. Collect topRecommendation from every result; pick the one with the
-//     highest `recommendation.impact`. Render hero card from it.
+// Top: up to 3 highest-impact recommendations across all active campaigns,
+//      each with Approve (wired to the existing task/execute confirm path).
+// Below: one card per active campaign with purpose, measure of success,
+//      KPI summary, and the campaign's top recommendation in plain English.
+//      Card click → /live-ads/:workspaceId (Closer Look, built next).
 // ============================================================================
 
 type Status =
@@ -80,6 +78,7 @@ interface AdEval {
 interface EngineResult {
   success?: boolean;
   workspaceId?: string;
+  workspaceName?: string;
   meta: {
     primaryKpi: string;
     primaryKpiLabel: string;
@@ -92,7 +91,6 @@ interface EngineResult {
   ads: AdEval[];
   topRecommendation: AdEval | null;
 }
-
 
 const STATUS_STYLE: Record<Status, { label: string; cls: string }> = {
   scaling_ready: { label: "Scaling ready", cls: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" },
@@ -117,11 +115,43 @@ const ACTION_VERB: Record<string, string> = {
   reduce_budget: "Reduce budget on",
 };
 
+const CAMPAIGN_TYPE_LABELS: Record<string, string> = {
+  cold_acquisition: "Cold acquisition — reach brand-new buyers",
+  warm_retargeting: "Warm retargeting — convert people who already engaged",
+  retention: "Retention — bring back existing audience",
+  awareness: "Awareness — get in front of new people",
+  lead_gen: "Lead generation — collect new leads",
+  sales: "Sales — drive purchases",
+};
+
+function purposeLine(t?: string): string {
+  if (!t) return "Drive results from this campaign";
+  return CAMPAIGN_TYPE_LABELS[t] || t.replace(/_/g, " ");
+}
+
 function formatKpi(kpi: string, value: number | null): string {
   if (value == null || Number.isNaN(value)) return "—";
   if (kpi === "roas") return `${value.toFixed(2)}×`;
   if (kpi === "ctr") return `${value.toFixed(2)}%`;
+  if (kpi === "frequency") return value.toFixed(2);
   return `$${value.toFixed(2)}`;
+}
+
+function TrendArrow({ kpi, vsGoalPct, direction }: { kpi: string; vsGoalPct: number | null; direction?: string }) {
+  // direction (if provided) is "up"/"down"/"flat" from the engine.
+  // Higher-is-better KPIs: roas, ctr. Lower-is-better: cost-based, frequency.
+  const higherIsBetter = kpi === "roas" || kpi === "ctr";
+  let arrow: "up" | "down" | "flat" | null = null;
+  if (direction === "up" || direction === "down" || direction === "flat") {
+    arrow = direction as any;
+  } else if (vsGoalPct != null) {
+    arrow = vsGoalPct > 5 ? "up" : vsGoalPct < -5 ? "down" : "flat";
+  }
+  if (!arrow) return null;
+  const good = arrow === "flat" ? true : higherIsBetter ? arrow === "up" : arrow === "down";
+  const color = arrow === "flat" ? "text-muted-foreground" : good ? "text-emerald-600" : "text-amber-600";
+  const Icon = arrow === "up" ? TrendingUp : arrow === "down" ? TrendingDown : Minus;
+  return <Icon className={cn("h-3.5 w-3.5", color)} />;
 }
 
 export default function Performance() {
@@ -132,8 +162,8 @@ export default function Performance() {
   const [chosen, setChosen] = useState<{ result: EngineResult; rec: AdEval } | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasActive, setHasActive] = useState(false);
-  const [whyOpen, setWhyOpen] = useState(false);
-  const [snoozedUntil, setSnoozedUntil] = useState<string | null>(null);
+  const [whyOpenId, setWhyOpenId] = useState<string | null>(null);
+  const [snoozedIds, setSnoozedIds] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pausing, setPausing] = useState(false);
 
@@ -155,8 +185,6 @@ export default function Performance() {
   const [refreshSubmitting, setRefreshSubmitting] = useState(false);
   const [benchCandidates, setBenchCandidates] = useState<Array<{ id: string; meta_ad_id: string; production_item_id: string | null }>>([]);
   const [selectedBenchId, setSelectedBenchId] = useState<string>("");
-
-
 
   useEffect(() => {
     if (brandLoading || !activeBrand) return;
@@ -195,7 +223,6 @@ export default function Performance() {
           return;
         }
 
-        // Load un-expired snoozed ad_ids for this brand
         const nowIso = new Date().toISOString();
         const { data: overrides } = await supabase
           .from("recommendation_overrides")
@@ -203,7 +230,8 @@ export default function Performance() {
           .eq("brand_id", activeBrand.id)
           .eq("user_action", "snoozed")
           .gt("snooze_until", nowIso);
-        const snoozedIds = new Set((overrides || []).map((o: any) => o.ad_id).filter(Boolean));
+        const snoozed = new Set((overrides || []).map((o: any) => o.ad_id).filter(Boolean));
+        setSnoozedIds(snoozed);
 
         const settled = await Promise.allSettled(
           active.map((w: any) =>
@@ -214,7 +242,7 @@ export default function Performance() {
                   metaCampaignId: (w.meta_campaign_ids as any).campaignId,
                 },
               })
-              .then((res) => ({ res, workspaceId: w.id as string })),
+              .then((res) => ({ res, workspaceId: w.id as string, workspaceName: w.name as string })),
           ),
         );
         if (cancelled) return;
@@ -223,19 +251,24 @@ export default function Performance() {
         settled.forEach((s) => {
           if (s.status === "fulfilled" && s.value.res.data && !(s.value.res as any).error) {
             const d = s.value.res.data as any;
-            if (d && d.campaign) ok.push({ ...d, workspaceId: s.value.workspaceId } as EngineResult);
+            if (d && d.campaign) {
+              ok.push({
+                ...d,
+                workspaceId: s.value.workspaceId,
+                workspaceName: s.value.workspaceName,
+              } as EngineResult);
+            }
           }
         });
         setResults(ok);
 
-        // Mirror actionable topRecommendations into the task system so the
-        // tray surfaces them. Dedupe is handled inside upsertRecommendationTasks.
+        // Mirror actionable topRecommendations into the task system.
         try {
           const recsForTasks: RecForTask[] = [];
           for (const r of ok) {
             const t = r.topRecommendation;
             if (!t) continue;
-            if (snoozedIds.has(t.id)) continue;
+            if (snoozed.has(t.id)) continue;
             const action = t.recommendation?.action;
             if (!action) continue;
             let hasBench = false;
@@ -262,22 +295,10 @@ export default function Performance() {
           }
           await upsertRecommendationTasks(recsForTasks);
         } catch (e) {
-          console.warn("[performance] task upsert failed", e);
+          console.warn("[live-ads] task upsert failed", e);
         }
-
-        let best: { result: EngineResult; rec: AdEval } | null = null;
-        for (const r of ok) {
-          const t = r.topRecommendation;
-          if (!t) continue;
-          if (snoozedIds.has(t.id)) continue;
-          const impact = t.recommendation?.impact ?? 0;
-          if (!best || impact > (best.rec.recommendation?.impact ?? 0)) {
-            best = { result: r, rec: t };
-          }
-        }
-        setChosen(best);
       } catch (e: any) {
-        console.error("[performance] load error", e);
+        console.error("[live-ads] load error", e);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -288,25 +309,37 @@ export default function Performance() {
     };
   }, [activeBrand, brandLoading]);
 
-  const heroTitle = useMemo(() => {
-    if (!chosen) return "";
-    const verb = ACTION_VERB[chosen.rec.recommendation.action] || chosen.rec.recommendation.action;
-    return `${verb} "${chosen.rec.name}"`;
-  }, [chosen]);
+  // Top 3 across all campaigns, sorted by impact, excluding snoozed.
+  const topThree = useMemo(() => {
+    const items: Array<{ result: EngineResult; rec: AdEval }> = [];
+    for (const r of results) {
+      const t = r.topRecommendation;
+      if (!t) continue;
+      if (snoozedIds.has(t.id)) continue;
+      items.push({ result: r, rec: t });
+    }
+    items.sort((a, b) => (b.rec.recommendation?.impact ?? 0) - (a.rec.recommendation?.impact ?? 0));
+    return items.slice(0, 3);
+  }, [results, snoozedIds]);
 
-  async function handleSnooze() {
-    if (!chosen || !activeBrand) return;
+  function recTitle(rec: AdEval) {
+    const verb = ACTION_VERB[rec.recommendation.action] || rec.recommendation.action;
+    return `${verb} "${rec.name}"`;
+  }
+
+  async function handleSnooze(ctx: { result: EngineResult; rec: AdEval }) {
+    if (!activeBrand) return;
     const until = new Date();
     until.setDate(until.getDate() + 5);
-    setSnoozedUntil(until.toISOString());
+    setSnoozedIds((prev) => new Set([...prev, ctx.rec.id]));
     toast.success("Snoozed for 5 days", {
       description: "We'll resurface this on " + until.toLocaleDateString() + ".",
     });
     try {
       await supabase.from("recommendation_overrides").insert({
         brand_id: activeBrand.id,
-        ad_id: chosen.rec.id,
-        recommendation_action: chosen.rec.recommendation.action,
+        ad_id: ctx.rec.id,
+        recommendation_action: ctx.rec.recommendation.action,
         user_action: "snoozed",
         snooze_until: until.toISOString(),
       });
@@ -315,57 +348,42 @@ export default function Performance() {
     }
   }
 
-  async function handleDoIt() {
-    if (!chosen) return;
-    const action = chosen.rec.recommendation.action;
+  async function handleApprove(ctx: { result: EngineResult; rec: AdEval }) {
+    setChosen(ctx);
+    const action = ctx.rec.recommendation.action;
     if (action === "turn_off") {
       setConfirmOpen(true);
       return;
     }
     if (action === "increase_budget" || action === "reduce_budget") {
-      await openBudgetDialog(action);
+      await openBudgetDialog(action, ctx);
       return;
     }
     if (action === "refresh_creative") {
-      await openRefreshDialog();
+      await openRefreshDialog(ctx);
       return;
     }
     if (action === "promote_to_scaling") {
-      toast.message("Set up scaling", {
-        description: chosen.rec.recommendation.reasoning,
-      });
-      navigate("/launch", { state: { recommendation: chosen.rec, workspaceId: chosen.result.workspaceId } });
+      toast.message("Set up scaling", { description: ctx.rec.recommendation.reasoning });
+      navigate("/launch", { state: { recommendation: ctx.rec, workspaceId: ctx.result.workspaceId } });
       return;
     }
     const creativeActions = new Set(["add_similar_variants"]);
     const dest = creativeActions.has(action) ? "/creative" : "/data";
-    toast.message("Here's how to do it", {
-      description: chosen.rec.recommendation.reasoning,
-    });
+    toast.message("Here's how to do it", { description: ctx.rec.recommendation.reasoning });
     navigate(dest);
   }
 
-  function removeChosenFromQueue() {
-    if (!chosen) return;
-    const id = chosen.rec.id;
-    let best: { result: EngineResult; rec: AdEval } | null = null;
-    for (const r of results) {
-      const t = r.topRecommendation;
-      if (!t || t.id === id) continue;
-      const impact = t.recommendation?.impact ?? 0;
-      if (!best || impact > (best.rec.recommendation?.impact ?? 0)) {
-        best = { result: r, rec: t };
-      }
-    }
-    setChosen(best);
+  function removeFromQueue(id: string) {
+    setSnoozedIds((prev) => new Set([...prev, id]));
   }
 
-  async function logOverride(action: string, user_action: string) {
-    if (!activeBrand || !chosen) return;
+  async function logOverride(action: string, user_action: string, adId: string) {
+    if (!activeBrand) return;
     try {
       await supabase.from("recommendation_overrides").insert({
         brand_id: activeBrand.id,
-        ad_id: chosen.rec.id,
+        ad_id: adId,
         recommendation_action: action,
         user_action,
       });
@@ -374,24 +392,20 @@ export default function Performance() {
     }
   }
 
-  // -----------------------------------------------------------------
-  // Budget update flow (increase_budget / reduce_budget)
-  // -----------------------------------------------------------------
-  async function openBudgetDialog(kind: "increase_budget" | "reduce_budget") {
-    if (!chosen || !activeBrand) return;
+  async function openBudgetDialog(
+    kind: "increase_budget" | "reduce_budget",
+    ctx: { result: EngineResult; rec: AdEval },
+  ) {
+    if (!activeBrand) return;
     setBudgetActionKind(kind);
     setBudgetPreview(null);
     setNewBudgetInput("");
     setBudgetOpen(true);
     setBudgetLoadingPreview(true);
     try {
-      const adSetId = chosen.rec.level === "adset" ? chosen.rec.id : undefined;
+      const adSetId = ctx.rec.level === "adset" ? ctx.rec.id : undefined;
       const { data, error } = await supabase.functions.invoke("update-meta-budget", {
-        body: {
-          workspaceId: chosen.result.workspaceId,
-          adSetId,
-          preview: true,
-        },
+        body: { workspaceId: ctx.result.workspaceId, adSetId, preview: true },
       });
       if (error || !data?.success) {
         const msg = error?.message || data?.error || "Couldn't read current budget";
@@ -432,24 +446,16 @@ export default function Performance() {
         : chosen.rec.level === "adset"
           ? chosen.rec.id
           : undefined;
-
       const callUpdate = async (adSetId?: string) =>
         supabase.functions.invoke("update-meta-budget", {
-          body: {
-            workspaceId: chosen.result.workspaceId,
-            newBudget,
-            adSetId,
-          },
+          body: { workspaceId: chosen.result.workspaceId, newBudget, adSetId },
         });
-
       let { data, error } = await callUpdate(adSetIdInitial);
-      // CBO refusal: retry without adSetId
       const cboRefusal =
         data?.error && typeof data.error === "string" && /Campaign Budget Optimization \(CBO\)/i.test(data.error);
       if (cboRefusal && adSetIdInitial) {
         ({ data, error } = await callUpdate(undefined));
       }
-
       if (error) {
         toast.error("Couldn't update budget in Meta", { description: error.message });
         return;
@@ -460,8 +466,8 @@ export default function Performance() {
       }
       toast.success(`Budget updated to $${newBudget}/day in Meta`);
       await closeMatchingTasks({ actionType: "budget", entityId: chosen.rec.id });
-      await logOverride(budgetActionKind, "modified");
-      removeChosenFromQueue();
+      await logOverride(budgetActionKind, "modified", chosen.rec.id);
+      removeFromQueue(chosen.rec.id);
       setBudgetOpen(false);
     } catch (e: any) {
       toast.error("Couldn't update budget in Meta", { description: e?.message || "Unknown error" });
@@ -470,30 +476,24 @@ export default function Performance() {
     }
   }
 
-  // -----------------------------------------------------------------
-  // Refresh creative flow
-  // -----------------------------------------------------------------
-  async function openRefreshDialog() {
-    if (!chosen || !activeBrand) return;
+  async function openRefreshDialog(ctx: { result: EngineResult; rec: AdEval }) {
+    if (!activeBrand) return;
     try {
       const nowIso = new Date().toISOString();
       const { data, error } = await supabase
         .from("creative_bench")
         .select("id, meta_ad_id, production_item_id, retest_eligible_at, status")
         .eq("brand_id", activeBrand.id)
-        .eq("workspace_id", chosen.result.workspaceId)
+        .eq("workspace_id", ctx.result.workspaceId)
         .in("status", ["bench", "paused", "retesting"])
         .not("meta_ad_id", "is", null);
       if (error) throw error;
       const candidates = (data || [])
         .filter((r: any) => !r.retest_eligible_at || r.retest_eligible_at <= nowIso)
         .map((r: any) => ({ id: r.id, meta_ad_id: r.meta_ad_id, production_item_id: r.production_item_id }));
-
       if (candidates.length === 0) {
         toast.message("No fresh creative is ready to swap in — let's make one.");
-        navigate("/creative", {
-          state: { recommendation: chosen.rec, workspaceId: chosen.result.workspaceId },
-        });
+        navigate("/creative", { state: { recommendation: ctx.rec, workspaceId: ctx.result.workspaceId } });
         return;
       }
       setBenchCandidates(candidates);
@@ -533,8 +533,8 @@ export default function Performance() {
       }
       toast.success("Creative swapped in Meta");
       await closeMatchingTasks({ actionType: "rotate", entityId: chosen.rec.id });
-      await logOverride("refresh_creative", "modified");
-      removeChosenFromQueue();
+      await logOverride("refresh_creative", "modified", chosen.rec.id);
+      removeFromQueue(chosen.rec.id);
       setRefreshOpen(false);
     } catch (e: any) {
       toast.error("Couldn't rotate creative in Meta", { description: e?.message || "Unknown error" });
@@ -542,8 +542,6 @@ export default function Performance() {
       setRefreshSubmitting(false);
     }
   }
-
-
 
   async function confirmPause() {
     if (!chosen || !activeBrand) return;
@@ -578,17 +576,7 @@ export default function Performance() {
       } catch (e) {
         console.error("override log error", e);
       }
-      const pausedId = chosen.rec.id;
-      let best: { result: EngineResult; rec: AdEval } | null = null;
-      for (const r of results) {
-        const t = r.topRecommendation;
-        if (!t || t.id === pausedId) continue;
-        const impact = t.recommendation?.impact ?? 0;
-        if (!best || impact > (best.rec.recommendation?.impact ?? 0)) {
-          best = { result: r, rec: t };
-        }
-      }
-      setChosen(best);
+      removeFromQueue(chosen.rec.id);
       setConfirmOpen(false);
     } catch (e: any) {
       toast.error("Couldn't pause in Meta", { description: e?.message || "Unknown error" });
@@ -597,20 +585,14 @@ export default function Performance() {
     }
   }
 
-  const campaign = chosen?.result.campaign;
-  const meta = chosen?.result.meta;
-  const ads = chosen?.result.ads ?? [];
-
   return (
     <DashboardLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-        <CampaignSpine currentStep={4} />
-
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold">{campaign?.name || "Performance"}</h1>
+            <h1 className="text-2xl font-bold">Live Ads</h1>
             <p className="text-sm text-muted-foreground">
-              Your daily look at what's working and what to do next.
+              The big picture across every active campaign — and the next moves worth making.
             </p>
           </div>
           <Button variant="outline" onClick={() => navigate("/retrospectives")} className="gap-2">
@@ -628,26 +610,20 @@ export default function Performance() {
           </Card>
         )}
 
-        {!loading && (!hasActive || !chosen) && (
+        {!loading && !hasActive && (
           <Card>
             <CardContent className="py-10 text-center space-y-2">
               <Sparkles className="h-6 w-6 text-lumi-pink-1 mx-auto" />
               <p className="text-sm text-muted-foreground">
-                Once your ads have run a few days, LUMI's recommendation shows up here. ✨
+                Once a campaign is running and has spent a few days collecting data, this is where LUMI tells you what to do next. ✨
               </p>
-              {hasActive && (
-                <Button variant="link" onClick={() => navigate("/data")} className="gap-2">
-                  <BarChart2 className="h-4 w-4" />
-                  See all metrics
-                </Button>
-              )}
             </CardContent>
           </Card>
         )}
 
-        {!loading && chosen && (
+        {!loading && hasActive && (
           <>
-            {/* Hero: the one thing this week */}
+            {/* THE ONE LIST — up to top 3 highest-impact recommendations */}
             <Card className="relative overflow-hidden border-transparent">
               <div
                 aria-hidden
@@ -656,289 +632,71 @@ export default function Performance() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Sparkles className="h-4 w-4 text-lumi-pink-1" />
-                  The one thing this week
+                  {topThree.length > 1 ? "The next few moves worth making" : "The one thing this week"}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">
-                    {chosen.rec.level === "campaign" ? "Campaign" : chosen.rec.level === "adset" ? "Ad set" : "Ad"}
-                  </div>
-                  <div className="text-lg font-semibold">{heroTitle}</div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {chosen.rec.recommendation.reasoning}
+                {topThree.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Nothing urgent right now. Everything's running — check the campaigns below for detail.
                   </p>
-                  {chosen.rec.recommendation.impactReasoning && (
-                    <p className="text-xs text-muted-foreground mt-2 italic">
-                      {chosen.rec.recommendation.impactReasoning}
-                    </p>
-                  )}
-                </div>
-
-                {whyOpen && (
-                  <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
-                    <div>
-                      <strong className="text-foreground">Confidence:</strong>{" "}
-                      {chosen.rec.recommendation.confidence}
-                    </div>
-                    <div>
-                      <strong className="text-foreground">Status:</strong>{" "}
-                      {STATUS_STYLE[chosen.rec.status]?.label || chosen.rec.status}
-                    </div>
-                    {chosen.rec.daysLive != null && (
-                      <div>
-                        <strong className="text-foreground">Days live:</strong> {chosen.rec.daysLive}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {snoozedUntil && (
-                  <div className="text-xs text-muted-foreground italic">
-                    Snoozed until {new Date(snoozedUntil).toLocaleDateString()}.
-                  </div>
-                )}
-
-                <div className="flex flex-wrap gap-2">
-                  <Button onClick={handleDoIt} className="gap-2">
-                    <CheckCircle2 className="h-4 w-4" />
-                    {(() => {
-                      const a = chosen.rec.recommendation.action;
-                      if (a === "turn_off") return "Do it";
-                      if (a === "increase_budget" || a === "reduce_budget") return "Update budget";
-                      if (a === "refresh_creative") return "Swap creative";
-                      if (a === "promote_to_scaling") return "Set up scaling";
-                      return "Show me how";
-                    })()}
-                  </Button>
-                  <Button variant="outline" onClick={() => setWhyOpen((v) => !v)} className="gap-2">
-                    <HelpCircle className="h-4 w-4" />
-                    Why?
-                  </Button>
-                  <Button variant="ghost" onClick={handleSnooze} className="gap-2">
-                    <Clock className="h-4 w-4" />
-                    Snooze 5 days
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <AlertDialog open={confirmOpen} onOpenChange={(o) => !pausing && setConfirmOpen(o)}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Pause this {chosen.rec.level} "{chosen.rec.name}"?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    It will stop spending in Meta immediately. You can re-enable it any time in Meta or from See all metrics.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={pausing}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={(e) => {
-                      e.preventDefault();
-                      confirmPause();
-                    }}
-                    disabled={pausing}
-                  >
-                    {pausing ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Pausing…
-                      </>
-                    ) : (
-                      "Pause it in Meta"
-                    )}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Budget update dialog */}
-            <AlertDialog
-              open={budgetOpen}
-              onOpenChange={(o) => !budgetSubmitting && !budgetLoadingPreview && setBudgetOpen(o)}
-            >
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
-                    {budgetActionKind === "increase_budget" ? "Increase budget" : "Reduce budget"} on "{chosen.rec.name}"?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription asChild>
-                    <div className="space-y-3 pt-2">
-                      {budgetLoadingPreview && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Reading current budget from Meta…
-                        </div>
-                      )}
-                      {!budgetLoadingPreview && budgetPreview && (
-                        <>
-                          <div className="text-sm">
-                            <span className="font-medium text-foreground">
-                              Current: ${budgetPreview.current?.toFixed(2) ?? "—"}/day
-                            </span>{" "}
-                            <span className="text-muted-foreground">
-                              on {budgetPreview.isCBO ? "the campaign (CBO)" : budgetPreview.level === "adset" || budgetPreview.level === "adset_single" ? "this ad set" : "the campaign"}
-                            </span>
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label htmlFor="new-budget" className="text-foreground">New daily budget (USD)</Label>
-                            <Input
-                              id="new-budget"
-                              type="number"
-                              min={1}
-                              step="1"
-                              value={newBudgetInput}
-                              onChange={(e) => setNewBudgetInput(e.target.value)}
-                              disabled={budgetSubmitting}
-                            />
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            This will change spend in Meta immediately. Meta's learning may reset after large changes.
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={budgetSubmitting}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={(e) => {
-                      e.preventDefault();
-                      confirmBudget();
-                    }}
-                    disabled={budgetSubmitting || budgetLoadingPreview || !budgetPreview}
-                  >
-                    {budgetSubmitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Updating…
-                      </>
-                    ) : (
-                      "Update budget in Meta"
-                    )}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Refresh creative dialog */}
-            <AlertDialog
-              open={refreshOpen}
-              onOpenChange={(o) => !refreshSubmitting && setRefreshOpen(o)}
-            >
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="flex items-center gap-2">
-                    <RefreshCw className="h-4 w-4" />
-                    Swap to a fresh creative?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription asChild>
-                    <div className="space-y-3 pt-2">
-                      <div className="text-sm">
-                        This pauses <span className="font-medium text-foreground">"{chosen.rec.name}"</span> and activates the selected bench creative in Meta.
-                      </div>
-                      {benchCandidates.length > 1 ? (
-                        <RadioGroup value={selectedBenchId} onValueChange={setSelectedBenchId} className="space-y-2">
-                          {benchCandidates.map((c) => (
-                            <div key={c.id} className="flex items-center gap-2 rounded-md border p-2">
-                              <RadioGroupItem value={c.id} id={`bench-${c.id}`} />
-                              <Label htmlFor={`bench-${c.id}`} className="text-sm font-normal cursor-pointer">
-                                <span className="font-medium text-foreground">Ad {c.meta_ad_id}</span>
-                                {c.production_item_id ? ` · ${c.production_item_id}` : ""}
-                              </Label>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      ) : (
-                        benchCandidates[0] && (
-                          <div className="rounded-md border p-2 text-sm">
-                            <span className="font-medium text-foreground">Ad {benchCandidates[0].meta_ad_id}</span>
-                            {benchCandidates[0].production_item_id ? ` · ${benchCandidates[0].production_item_id}` : ""}
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={refreshSubmitting}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={(e) => {
-                      e.preventDefault();
-                      confirmRefresh();
-                    }}
-                    disabled={refreshSubmitting || !selectedBenchId}
-                  >
-                    {refreshSubmitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Swapping…
-                      </>
-                    ) : (
-                      "Swap in Meta"
-                    )}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-
-            {/* KPI cards from the chosen campaign */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-              <KpiCard
-                icon={<Target className="h-4 w-4" />}
-                label={meta?.primaryKpiLabel || "Primary KPI"}
-                value={formatKpi(meta?.primaryKpi || "", campaign?.primary.value ?? null)}
-                hint={
-                  meta?.primaryGoal != null
-                    ? `Goal ${formatKpi(meta.primaryKpi, meta.primaryGoal)}`
-                    : undefined
-                }
-              />
-              {campaign?.secondary && (
-                <KpiCard
-                  icon={<Target className="h-4 w-4" />}
-                  label={campaign.secondary.label}
-                  value={formatKpi(meta?.secondaryKpi || "", campaign.secondary.value)}
-                />
-              )}
-              <KpiCard
-                icon={<Target className="h-4 w-4" />}
-                label="Status"
-                value={STATUS_STYLE[campaign!.status]?.label || campaign!.status}
-              />
-            </div>
-
-            {/* Your ads right now */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Your ads right now</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {ads.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No ads in this window.</p>
                 ) : (
-                  <ul className="divide-y">
-                    {ads.map((ad) => {
-                      const s = STATUS_STYLE[ad.status] ?? STATUS_STYLE.learning;
+                  <ul className="space-y-3">
+                    {topThree.map((item) => {
+                      const a = item.rec.recommendation.action;
+                      const approveLabel =
+                        a === "turn_off" ? "Approve · Pause it" :
+                        a === "increase_budget" || a === "reduce_budget" ? "Approve · Update budget" :
+                        a === "refresh_creative" ? "Approve · Swap creative" :
+                        a === "promote_to_scaling" ? "Approve · Set up scaling" :
+                        "Approve · Show me how";
+                      const whyOpen = whyOpenId === item.rec.id;
                       return (
-                        <li key={ad.id} className="py-3 flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium truncate">{ad.name}</div>
-                            <div className="text-xs text-muted-foreground truncate">
-                              {formatKpi(meta?.primaryKpi || "", ad.primary.value)}
-                              {ad.daysLive != null && ` · ${ad.daysLive}d live`}
-                              {ad.reach != null && ` · ${ad.reach.toLocaleString()} reach`}
-                            </div>
+                        <li
+                          key={`${item.result.workspaceId}-${item.rec.id}`}
+                          className="rounded-lg border bg-card/50 p-3 space-y-2"
+                        >
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="capitalize">{item.rec.level === "adset" ? "ad set" : item.rec.level}</span>
+                            <span>·</span>
+                            <span className="truncate">{item.result.workspaceName || item.result.campaign.name}</span>
                           </div>
-                          <Badge variant="outline" className={cn("flex-shrink-0", s.cls)}>
-                            {s.label}
-                          </Badge>
+                          <div className="text-base font-semibold">{recTitle(item.rec)}</div>
+                          <p className="text-sm text-muted-foreground">
+                            {item.rec.recommendation.reasoning}
+                          </p>
+                          {whyOpen && (
+                            <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground space-y-0.5">
+                              <div>
+                                <strong className="text-foreground">Confidence:</strong> {item.rec.recommendation.confidence}
+                              </div>
+                              <div>
+                                <strong className="text-foreground">Status:</strong> {STATUS_STYLE[item.rec.status]?.label || item.rec.status}
+                              </div>
+                              {item.rec.recommendation.impactReasoning && (
+                                <div className="italic">{item.rec.recommendation.impactReasoning}</div>
+                              )}
+                            </div>
+                          )}
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            <Button size="sm" onClick={() => handleApprove(item)} className="gap-2">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              {approveLabel}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setWhyOpenId((id) => (id === item.rec.id ? null : item.rec.id))}
+                              className="gap-2"
+                            >
+                              <HelpCircle className="h-3.5 w-3.5" />
+                              Why?
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleSnooze(item)} className="gap-2">
+                              <Clock className="h-3.5 w-3.5" />
+                              Snooze 5 days
+                            </Button>
+                          </div>
                         </li>
                       );
                     })}
@@ -947,12 +705,246 @@ export default function Performance() {
               </CardContent>
             </Card>
 
+            {/* CAMPAIGN CARDS — one per active campaign */}
+            <div className="space-y-3">
+              <h2 className="text-lg font-semibold">Your live campaigns</h2>
+              {results.length === 0 ? (
+                <Card>
+                  <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                    Once your ads have run a few days, each campaign shows up here. ✨
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {results.map((r) => {
+                    const s = STATUS_STYLE[r.campaign.status] ?? STATUS_STYLE.learning;
+                    const primaryVal = formatKpi(r.meta.primaryKpi, r.campaign.primary.value);
+                    const goalStr = r.meta.primaryGoal != null
+                      ? `goal ${formatKpi(r.meta.primaryKpi, r.meta.primaryGoal)}`
+                      : null;
+                    const secondaryStr =
+                      r.campaign.secondary && r.meta.secondaryKpi
+                        ? `${r.campaign.secondary.label}: ${formatKpi(r.meta.secondaryKpi, r.campaign.secondary.value)}`
+                        : null;
+                    const top = r.topRecommendation;
+                    const topLine = top
+                      ? `${recTitle(top)} — ${top.recommendation.reasoning}`
+                      : "Holding steady — no changes needed right now.";
+                    return (
+                      <Card
+                        key={r.workspaceId}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => navigate(`/live-ads/${r.workspaceId}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            navigate(`/live-ads/${r.workspaceId}`);
+                          }
+                        }}
+                        className="cursor-pointer hover:border-lumi-pink-1/40 hover:shadow-sm transition group"
+                      >
+                        <CardHeader className="pb-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <CardTitle className="text-base truncate">
+                                  {r.workspaceName || r.campaign.name}
+                                </CardTitle>
+                                <Badge variant="outline" className={cn("flex-shrink-0", s.cls)}>
+                                  {s.label}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                <span className="font-medium text-foreground">Purpose:</span> {purposeLine(r.meta.campaignType)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                <span className="font-medium text-foreground">Measure of success:</span>{" "}
+                                {r.meta.primaryKpiLabel}
+                                {r.meta.primaryGoal != null && ` (${goalStr})`}
+                              </p>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 group-hover:translate-x-0.5 transition" />
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          {/* KPI summary row */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                            <KpiPill label="Reach" value={r.campaign.reach != null ? r.campaign.reach.toLocaleString() : "—"} />
+                            <KpiPill label="Frequency" value={formatKpi("frequency", r.adsets[0]?.primary?.value && r.meta.primaryKpi === "frequency" ? r.adsets[0].primary.value : (r as any).campaign?.frequency ?? null)} fallback={(r.campaign as any).frequency != null ? (r.campaign as any).frequency.toFixed(2) : undefined} />
+                            <KpiPill
+                              label={r.meta.primaryKpiLabel}
+                              value={primaryVal}
+                              hint={goalStr || undefined}
+                              trend={
+                                <TrendArrow
+                                  kpi={r.meta.primaryKpi}
+                                  vsGoalPct={r.campaign.primary.vsGoalPct}
+                                  direction={r.campaign.primary.trendDirection}
+                                />
+                              }
+                            />
+                            <KpiPill
+                              label={r.campaign.secondary?.label || "—"}
+                              value={
+                                r.campaign.secondary && r.meta.secondaryKpi
+                                  ? formatKpi(r.meta.secondaryKpi, r.campaign.secondary.value)
+                                  : "—"
+                              }
+                            />
+                          </div>
+                          <p className="text-sm">
+                            <span className="text-muted-foreground">Next: </span>
+                            <span className="text-foreground">{topLine}</span>
+                          </p>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             <div className="text-center">
               <Button variant="link" onClick={() => navigate("/data")} className="gap-2">
                 <BarChart2 className="h-4 w-4" />
                 See all metrics
               </Button>
             </div>
+
+            {/* DIALOGS */}
+            {chosen && (
+              <>
+                <AlertDialog open={confirmOpen} onOpenChange={(o) => !pausing && setConfirmOpen(o)}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Pause this {chosen.rec.level} "{chosen.rec.name}"?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        It will stop spending in Meta immediately. You can re-enable it any time in Meta or from See all metrics.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={pausing}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={(e) => { e.preventDefault(); confirmPause(); }}
+                        disabled={pausing}
+                      >
+                        {pausing ? (<><Loader2 className="h-4 w-4 animate-spin mr-2" />Pausing…</>) : "Pause it in Meta"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                <AlertDialog
+                  open={budgetOpen}
+                  onOpenChange={(o) => !budgetSubmitting && !budgetLoadingPreview && setBudgetOpen(o)}
+                >
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4" />
+                        {budgetActionKind === "increase_budget" ? "Increase budget" : "Reduce budget"} on "{chosen.rec.name}"?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription asChild>
+                        <div className="space-y-3 pt-2">
+                          {budgetLoadingPreview && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Reading current budget from Meta…
+                            </div>
+                          )}
+                          {!budgetLoadingPreview && budgetPreview && (
+                            <>
+                              <div className="text-sm">
+                                <span className="font-medium text-foreground">
+                                  Current: ${budgetPreview.current?.toFixed(2) ?? "—"}/day
+                                </span>{" "}
+                                <span className="text-muted-foreground">
+                                  on {budgetPreview.isCBO ? "the campaign (CBO)" : budgetPreview.level === "adset" || budgetPreview.level === "adset_single" ? "this ad set" : "the campaign"}
+                                </span>
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label htmlFor="new-budget" className="text-foreground">New daily budget (USD)</Label>
+                                <Input
+                                  id="new-budget"
+                                  type="number"
+                                  min={1}
+                                  step="1"
+                                  value={newBudgetInput}
+                                  onChange={(e) => setNewBudgetInput(e.target.value)}
+                                  disabled={budgetSubmitting}
+                                />
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                This will change spend in Meta immediately. Meta's learning may reset after large changes.
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={budgetSubmitting}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={(e) => { e.preventDefault(); confirmBudget(); }}
+                        disabled={budgetSubmitting || budgetLoadingPreview || !budgetPreview}
+                      >
+                        {budgetSubmitting ? (<><Loader2 className="h-4 w-4 animate-spin mr-2" />Updating…</>) : "Update budget in Meta"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                <AlertDialog open={refreshOpen} onOpenChange={(o) => !refreshSubmitting && setRefreshOpen(o)}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2">
+                        <RefreshCw className="h-4 w-4" />
+                        Swap to a fresh creative?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription asChild>
+                        <div className="space-y-3 pt-2">
+                          <div className="text-sm">
+                            This pauses <span className="font-medium text-foreground">"{chosen.rec.name}"</span> and activates the selected bench creative in Meta.
+                          </div>
+                          {benchCandidates.length > 1 ? (
+                            <RadioGroup value={selectedBenchId} onValueChange={setSelectedBenchId} className="space-y-2">
+                              {benchCandidates.map((c) => (
+                                <div key={c.id} className="flex items-center gap-2 rounded-md border p-2">
+                                  <RadioGroupItem value={c.id} id={`bench-${c.id}`} />
+                                  <Label htmlFor={`bench-${c.id}`} className="text-sm font-normal cursor-pointer">
+                                    <span className="font-medium text-foreground">Ad {c.meta_ad_id}</span>
+                                    {c.production_item_id ? ` · ${c.production_item_id}` : ""}
+                                  </Label>
+                                </div>
+                              ))}
+                            </RadioGroup>
+                          ) : (
+                            benchCandidates[0] && (
+                              <div className="rounded-md border p-2 text-sm">
+                                <span className="font-medium text-foreground">Ad {benchCandidates[0].meta_ad_id}</span>
+                                {benchCandidates[0].production_item_id ? ` · ${benchCandidates[0].production_item_id}` : ""}
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={refreshSubmitting}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={(e) => { e.preventDefault(); confirmRefresh(); }}
+                        disabled={refreshSubmitting || !selectedBenchId}
+                      >
+                        {refreshSubmitting ? (<><Loader2 className="h-4 w-4 animate-spin mr-2" />Swapping…</>) : "Swap in Meta"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            )}
           </>
         )}
       </div>
@@ -960,27 +952,28 @@ export default function Performance() {
   );
 }
 
-function KpiCard({
-  icon,
+function KpiPill({
   label,
   value,
   hint,
+  trend,
+  fallback,
 }: {
-  icon: React.ReactNode;
   label: string;
   value: string;
   hint?: string;
+  trend?: React.ReactNode;
+  fallback?: string;
 }) {
+  const display = value === "—" && fallback ? fallback : value;
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-          {icon}
-          <span className="truncate">{label}</span>
-        </div>
-        <div className="text-xl font-semibold">{value}</div>
-        {hint && <div className="text-xs text-muted-foreground mt-1">{hint}</div>}
-      </CardContent>
-    </Card>
+    <div className="rounded-md border bg-background/60 px-2 py-1.5">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground truncate">{label}</div>
+      <div className="text-sm font-semibold tabular-nums flex items-center gap-1">
+        <span className="truncate">{display}</span>
+        {trend}
+      </div>
+      {hint && <div className="text-[10px] text-muted-foreground truncate">{hint}</div>}
+    </div>
   );
 }

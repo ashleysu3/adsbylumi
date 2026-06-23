@@ -28,3 +28,6 @@ export const VoicePlaceholder = () => (
 export const TroubleshootingPlaceholder = () => (
   <Stub title="Troubleshooting" body="Common issues, fixes, and diagnostics." />
 );
+export const CloserLookPlaceholder = () => (
+  <Stub title="Closer Look" body="Per-campaign deep dive — ads, KPIs over time, and recommendations." />
+);

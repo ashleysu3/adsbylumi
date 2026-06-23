@@ -117,6 +117,7 @@ import {
   GoalsPlaceholder,
   VoicePlaceholder,
   TroubleshootingPlaceholder,
+  CloserLookPlaceholder,
 } from "./pages/Placeholder";
 import Tasks from "./pages/Tasks";
 
@@ -175,10 +176,12 @@ const App = () => {
                   <Route path="/strategy" element={<Strategy />} />
                   <Route path="/creative" element={<Creative />} />
                   <Route path="/launch" element={<Launch />} />
-                  <Route path="/ad-performance" element={<AdPerformance />} />
-                  <Route path="/data" element={<Navigate to="/ad-performance" replace />} />
+                  <Route path="/ad-performance" element={<Performance />} />
+                  <Route path="/live-ads" element={<Navigate to="/ad-performance" replace />} />
+                  <Route path="/live-ads/:campaignId" element={<CloserLookPlaceholder />} />
+                  <Route path="/data" element={<AdPerformance />} />
                   <Route path="/performance" element={<Navigate to="/ad-performance" replace />} />
-                  <Route path="/performance-summary" element={<Performance />} />
+                  <Route path="/performance-summary" element={<Navigate to="/ad-performance" replace />} />
                   <Route path="/performance-history" element={<Navigate to="/ad-performance" replace />} />
                   <Route path="/past-reports" element={<Navigate to="/ad-performance" replace />} />
                   <Route path="/production" element={<Navigate to="/campaigns" replace />} />
