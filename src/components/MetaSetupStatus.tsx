@@ -209,6 +209,41 @@ export function MetaSetupStatus({ brandId, onReconnectRequested, onPixelSetupReq
           </div>
         </div>
 
+        {/* #1 hangup: IG connected to Page but not to ad account */}
+        {igMismatch && (
+          <div className="space-y-2">
+            <SetupPrompt
+              icon={Instagram}
+              tone="warning"
+              title="Connect Instagram to your ad account"
+              description={
+                igMismatch.pageIgUsername
+                  ? `@${igMismatch.pageIgUsername} is linked to your Page but not your ad account — that's the usual reason ads won't run.`
+                  : "Your IG is linked to your Page but not your ad account — that's the usual reason ads won't run."
+              }
+              ctaLabel={igFixing ? 'Connecting…' : 'Connect it for me'}
+              onCta={runIgFix}
+            />
+            <Collapsible open={igManualOpen} onOpenChange={setIgManualOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-auto py-1 px-0 text-xs gap-1 text-muted-foreground hover:text-foreground">
+                  <Wrench className="h-3 w-3" />
+                  {igManualOpen ? 'Hide manual steps' : 'Do it manually'}
+                  {igManualOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside rounded-md border bg-background/50 p-3">
+                  <li>Go to <a href="https://business.facebook.com/settings" target="_blank" rel="noopener noreferrer" className="underline">business.facebook.com/settings</a> → Accounts → Instagram accounts.</li>
+                  <li>Click <strong>Add</strong> and log into your Instagram.</li>
+                  <li>Open the Instagram account, click <strong>Assign assets / Connect</strong>, and assign it to this ad account.</li>
+                  <li>Come back and click <strong>Re-check</strong>.</li>
+                </ol>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        )}
+
         {/* Collapsible details */}
         <button
           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full text-left"
