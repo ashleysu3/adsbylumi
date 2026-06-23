@@ -118,6 +118,7 @@ interface EngineResult {
     goals?: { kpi: string; label: string; goal: number; direction: string; isDefault: boolean }[];
     hasUserGoals?: boolean;
     campaignType?: string;
+    objective?: string | null;
   };
   campaign: AdEval;
   adsets: AdEval[];
