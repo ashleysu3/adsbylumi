@@ -930,7 +930,7 @@ export default function GuidedOnboarding() {
               ) : (
                 <div className="space-y-3">
                   {offers.map((o) => (
-                    <OfferRowEditor key={o.id} offer={o} brand={brand} onSave={(p) => updateOffer(o.id, p)} />
+                    <OfferRowEditor key={o.id} offer={o} brand={brand} onSave={(p) => updateOffer(o.id, p)} setGlobalLoader={setGlobalLoaderMsg} /> 
                   ))}
                 </div>
               )}
