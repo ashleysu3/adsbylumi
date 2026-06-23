@@ -236,6 +236,7 @@ export default function GuidedOnboarding() {
       let row = brand;
       if (!id) {
         const placeholder = domainName(normalized);
+        placeholderNameRef.current = placeholder;
         const { data, error } = await supabase.from("brands").insert({
           user_id: user.id, name: placeholder, website_url: normalized, onboarding_step: 1,
         }).select().single();
@@ -245,6 +246,7 @@ export default function GuidedOnboarding() {
       } else if (row?.website_url !== normalized) {
         // Website changed → reset brand identity so old name/colors/etc don't bleed through.
         const placeholder = domainName(normalized);
+        placeholderNameRef.current = placeholder;
         await supabase.from("brands").update({
           website_url: normalized,
           name: placeholder,
@@ -258,6 +260,8 @@ export default function GuidedOnboarding() {
         }).eq("id", id);
         row = { ...row, website_url: normalized, name: placeholder };
         setBrand(row);
+      } else {
+        placeholderNameRef.current = domainName(normalized);
       }
 
       const websiteForCall = normalized;
@@ -270,6 +274,9 @@ export default function GuidedOnboarding() {
       setLoadingAudience(true);
       setLoadingProof(true);
       setLoadingAssetsHarvest(true);
+      setRevealed({ basics: false, design: false, audience: false, proof: false, images: false });
+      setRevealStartedAt(Date.now());
+      setNarrationIdx(0);
       setExtractionPhase('running');
       setStep(2);
       if (brandIdLocal) persistStep(brandIdLocal, 2);
