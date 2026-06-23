@@ -1374,7 +1374,7 @@ function OfferRowEditor({ offer, brand, onSave }: { offer: any; brand?: any; onS
 
   const pullOfferDesign = async () => {
     if (!offer.url) { toast.error("This offer has no URL to pull from"); return; }
-    setGlobalLoader?.("LUMI is pulling this offer's design guide…");
+    setPullingDesign(true);
     try {
       const { data, error } = await supabase.functions.invoke("extract-brand", { body: { url: offer.url } });
       if (error) throw error;
