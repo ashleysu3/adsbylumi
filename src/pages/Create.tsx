@@ -36,7 +36,9 @@ import {
   MessageCircle,
   Play,
   Globe,
-  MapPin } from
+  MapPin,
+  Ticket,
+  Loader2 } from
 "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
