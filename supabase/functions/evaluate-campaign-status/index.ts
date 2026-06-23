@@ -719,6 +719,8 @@ interface ClassifyArgs {
   goalsConfig: GoalConfig[];
   secondaryKpi: string | null;
   meta3: any; meta7: any; meta30: any; metaFatigueRef: any;
+  metaDisplay?: any;
+
   adsetType: 'testing' | 'scaling' | 'unknown';
   audienceTemp: 'cold' | 'warm' | 'unknown';
   adsetDailyBudget: number;
