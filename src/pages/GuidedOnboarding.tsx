@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   Loader2, ArrowRight, ChevronLeft, CheckCircle2, Sparkles,
-  Upload, Image as ImageIcon, User, Palette, MessageSquare, Brain, Target, Quote, ListChecks, Trash2, Check
+  Upload, Image as ImageIcon, Palette, MessageSquare, Brain, Target, Quote, ListChecks, Trash2, Check, Film
 } from "lucide-react";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { SetupPrompt } from "@/components/SetupPrompt";
@@ -20,16 +21,28 @@ import { useBrand } from "@/contexts/BrandContext";
 import { seedDeferredTask, seedFirstCampaignTasks } from "@/lib/onboarding-tasks";
 
 const STEPS = [
-  "Business basics",
+  "Your website",
   "Brand intelligence",
+  "Your offer",
   "Assets",
-  "Suggested strategy",
-  "First campaign",
+  "Connect Meta",
+  "Strategy & launch",
 ];
+const TOTAL = STEPS.length;
 
-type BrandRow = any;
-type OfferRow = any;
-type AssetRow = { id: string; url: string; role: string; kept: boolean; source_url?: string | null };
+type AssetRow = { id: string; url: string; role: string | null; kept: boolean; source_url?: string | null; signedUrl?: string };
+
+function pathFromUrl(url: string): string | null {
+  const m = url.match(/\/storage\/v1\/object\/(?:public|sign)\/brand-assets\/([^?]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+function domainName(url: string): string {
+  try {
+    const h = new URL(url).hostname.replace(/^www\./, "");
+    return h.split(".")[0].replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) || "My brand";
+  } catch { return "My brand"; }
+}
 
 export default function GuidedOnboarding() {
   const navigate = useNavigate();
@@ -37,25 +50,34 @@ export default function GuidedOnboarding() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [step, setStep] = useState(1);
   const [brandId, setBrandId] = useState<string | null>(null);
-  const [brand, setBrand] = useState<BrandRow | null>(null);
+  const [brand, setBrand] = useState<any>(null);
 
   // Step 1
-  const [brandName, setBrandName] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
-  const [offerUrlsText, setOfferUrlsText] = useState("");
-  const [savingBasics, setSavingBasics] = useState(false);
+  const [step1Busy, setStep1Busy] = useState(false);
+  const [step1Reveal, setStep1Reveal] = useState<{
+    brandName?: string; description?: string; colors?: string[]; voice?: string; audience?: string;
+  }>({});
+  const step1Fired = useRef(false);
 
-  // Step 2 — extraction
-  const [extracting, setExtracting] = useState(false);
-  const [extractDone, setExtractDone] = useState(false);
-  const [offers, setOffers] = useState<OfferRow[]>([]);
+  // Step 2 — review (uses brand state)
+  const [proofExtracting, setProofExtracting] = useState(false);
 
-  // Step 3 — assets
+  // Step 3 — offer
+  const [offerUrl, setOfferUrl] = useState("");
+  const [offers, setOffers] = useState<any[]>([]);
+  const [offerBusy, setOfferBusy] = useState(false);
+
+  // Step 4 — assets
   const [assets, setAssets] = useState<AssetRow[]>([]);
   const [headshotUrl, setHeadshotUrl] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [assetsLoading, setAssetsLoading] = useState(false);
+  const [classifying, setClassifying] = useState(false);
+  const [brollIdeas, setBrollIdeas] = useState<any[] | null>(null);
+  const assetsInitRef = useRef(false);
 
-  // Step 4 — strategy
+  // Step 6 — strategy
   const [strategy, setStrategy] = useState<any>(null);
   const [strategyLoading, setStrategyLoading] = useState(false);
 
@@ -63,229 +85,277 @@ export default function GuidedOnboarding() {
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate("/auth");
-        return;
-      }
-      // Resume: find latest brand without onboarding completed
+      if (!user) { navigate("/auth"); return; }
       const { data: existing } = await supabase
-        .from("brands")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1);
+        .from("brands").select("*").eq("user_id", user.id)
+        .order("created_at", { ascending: false }).limit(1);
       const latest = existing?.[0];
       if (latest && !latest.onboarding_completed_at) {
         setBrandId(latest.id);
         setBrand(latest);
-        setBrandName(latest.name || "");
         setWebsiteUrl(latest.website_url || "");
-        const resumeStep = Math.max(1, Math.min(5, latest.onboarding_step || 1));
+        const resumeStep = Math.max(1, Math.min(TOTAL, latest.onboarding_step || 1));
         setStep(resumeStep);
-        if (resumeStep >= 2) setExtractDone(true);
       }
       setCheckingAuth(false);
     })();
   }, [navigate]);
 
-  // ---------- persistence helper ----------
   const persistStep = useCallback(async (id: string, n: number) => {
     await supabase.from("brands").update({ onboarding_step: n }).eq("id", id);
   }, []);
 
-  // ---------- STEP 1 ----------
-  const handleStep1 = async () => {
-    if (!brandName.trim() || !websiteUrl.trim()) {
-      toast.error("Business name and website are required");
+  const advance = async () => {
+    const next = Math.min(TOTAL, step + 1);
+    setStep(next);
+    if (brandId) await persistStep(brandId, next);
+  };
+  const back = () => setStep((s) => Math.max(1, s - 1));
+
+  // =================== STEP 1 ===================
+  const startStep1 = async () => {
+    const normalized = normalizeWebsiteUrl(websiteUrl);
+    if (!normalized || !normalized.includes(".")) {
+      toast.error("Add your website URL");
       return;
     }
-    setSavingBasics(true);
+    if (step1Fired.current) return;
+    step1Fired.current = true;
+    setStep1Busy(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
-      const normalized = normalizeWebsiteUrl(websiteUrl);
-
+      // Create brand row if not yet
       let id = brandId;
+      let row = brand;
       if (!id) {
-        const { data, error } = await supabase
-          .from("brands")
-          .insert({
-            user_id: user.id,
-            name: brandName.trim(),
-            website_url: normalized,
-            onboarding_step: 2,
-          })
-          .select()
-          .single();
+        const placeholder = domainName(normalized);
+        const { data, error } = await supabase.from("brands").insert({
+          user_id: user.id, name: placeholder, website_url: normalized, onboarding_step: 1,
+        }).select().single();
         if (error) throw error;
-        id = data.id;
-        setBrand(data);
-      } else {
-        const { data, error } = await supabase
-          .from("brands")
-          .update({ name: brandName.trim(), website_url: normalized, onboarding_step: 2 })
-          .eq("id", id)
-          .select()
-          .single();
-        if (error) throw error;
-        setBrand(data);
+        id = data.id; row = data;
+        setBrandId(id!); setBrand(row);
+      } else if (row?.website_url !== normalized) {
+        await supabase.from("brands").update({ website_url: normalized }).eq("id", id);
+        row = { ...row, website_url: normalized };
+        setBrand(row);
       }
+      setStep1Reveal({ brandName: row?.name });
 
-      // Offer URLs → offer rows (skip dupes by url)
-      const offerUrls = offerUrlsText
-        .split(/[\n,]/)
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .map(normalizeWebsiteUrl);
-      if (offerUrls.length) {
-        const { data: existing } = await supabase
-          .from("offers")
-          .select("id,url")
-          .eq("brand_id", id);
-        const have = new Set((existing || []).map((o: any) => o.url));
-        const toInsert = offerUrls
-          .filter((u) => !have.has(u))
-          .map((u) => ({ brand_id: id!, url: u, name: brandName.trim() }));
-        if (toInsert.length) {
-          await supabase.from("offers").insert(toInsert);
+      // Kick off parallel extractors and stream reveal
+      const websiteForCall = normalized;
+      const brandIdLocal = id!;
+
+      // extract-brand → colors/logo/fonts/description
+      supabase.functions.invoke("extract-brand", { body: { url: websiteForCall } }).then(async (r) => {
+        const d: any = r.data;
+        if (!d || r.error) return;
+        const kitPatch: any = {
+          user_id: user.id, brand_id: brandIdLocal, source_url: websiteForCall, status: "extracted",
+        };
+        if (d.colors?.length) kitPatch.colors = d.colors;
+        if (d.fonts?.length) kitPatch.fonts = d.fonts;
+        if (d.logoUrl) kitPatch.logo_url = d.logoUrl;
+        await supabase.from("brand_kits" as any).upsert(kitPatch, { onConflict: "brand_id" });
+        // Mirror to brands so review cards see it
+        const brandPatch: any = {};
+        if (d.colors?.length) brandPatch.brand_colors = d.colors;
+        if (d.fonts?.length) brandPatch.brand_fonts = d.fonts;
+        if (d.name && (!row?.name || row.name === domainName(websiteForCall))) brandPatch.name = d.name;
+        if (d.description) brandPatch.value_proposition = d.description;
+        if (Object.keys(brandPatch).length) {
+          await supabase.from("brands").update(brandPatch).eq("id", brandIdLocal);
         }
-      }
+        setStep1Reveal((p) => ({
+          ...p,
+          brandName: brandPatch.name || p.brandName,
+          description: d.description || p.description,
+          colors: d.colors || p.colors,
+        }));
+      }).catch(() => {});
 
-      setBrandId(id!);
+      // analyze-brand-voice → brand_voice
+      supabase.functions.invoke("analyze-brand-voice", { body: { brandId: brandIdLocal } })
+        .then(async () => {
+          const { data: refreshed } = await supabase.from("brands").select("brand_voice").eq("id", brandIdLocal).maybeSingle();
+          if (refreshed?.brand_voice) {
+            setStep1Reveal((p) => ({ ...p, voice: (refreshed as any).brand_voice.slice(0, 220) }));
+          }
+        }).catch(() => {});
+
+      // generate-audience-psychology → audience snapshot
+      supabase.functions.invoke("generate-audience-psychology", { body: { brandId: brandIdLocal } })
+        .then(async () => {
+          const { data: refreshed } = await supabase.from("brands").select("audience_psychology").eq("id", brandIdLocal).maybeSingle();
+          const ap: any = refreshed?.audience_psychology;
+          const snap = ap?.summary || ap?.pain_points?.[0] || ap?.desires?.[0];
+          if (snap) setStep1Reveal((p) => ({ ...p, audience: String(snap).slice(0, 220) }));
+        }).catch(() => {});
+
+      // harvest assets in the background (used in step 4)
+      supabase.functions.invoke("harvest-brand-assets", { body: { url: websiteForCall, brandId: brandIdLocal } })
+        .catch(() => {});
+
       await refreshBrands();
-      setStep(2);
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || "Could not save");
+      step1Fired.current = false;
     } finally {
-      setSavingBasics(false);
+      setStep1Busy(false);
     }
   };
 
-  // ---------- STEP 2 — extraction ----------
+  // =================== STEP 2 — auto-extract social proof ===================
   useEffect(() => {
-    if (step !== 2 || !brandId || extractDone || extracting) return;
-    runExtraction();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (step !== 2 || !brandId) return;
+    (async () => {
+      // refresh brand
+      const { data } = await supabase.from("brands").select("*").eq("id", brandId).maybeSingle();
+      if (data) setBrand(data);
+      // Auto-pull social proof if missing
+      const sp = (data as any)?.social_proof;
+      const hasProof = Array.isArray(sp) ? sp.length > 0 : !!sp;
+      if (!hasProof && (data as any)?.website_url) {
+        setProofExtracting(true);
+        try {
+          await supabase.functions.invoke("extract-social-proof", {
+            body: { brandId, url: (data as any).website_url },
+          });
+          const { data: refreshed } = await supabase.from("brands").select("*").eq("id", brandId).maybeSingle();
+          if (refreshed) setBrand(refreshed);
+        } catch (e) { console.warn("social proof failed", e); }
+        finally { setProofExtracting(false); }
+      }
+    })();
   }, [step, brandId]);
 
-  const runExtraction = async () => {
-    if (!brandId) return;
-    setExtracting(true);
-    try {
-      const websiteForCall = brand?.website_url || normalizeWebsiteUrl(websiteUrl);
-
-      // Fetch offers
-      const { data: offerRows } = await supabase
-        .from("offers")
-        .select("*")
-        .eq("brand_id", brandId);
-      setOffers(offerRows || []);
-
-      // Fire extractors in parallel — each one writes to brand/offer rows itself.
-      const calls: Promise<any>[] = [];
-      calls.push(
-        supabase.functions.invoke("extract-brand", { body: { url: websiteForCall } })
-          .then(async (r) => {
-            const d = r.data;
-            if (d && !r.error) {
-              const { data: { user } } = await supabase.auth.getUser();
-              if (!user) return;
-              const kitPatch: any = {
-                user_id: user.id,
-                brand_id: brandId,
-                source_url: websiteForCall,
-                status: "extracted",
-              };
-              if (d.colors?.length) kitPatch.colors = d.colors;
-              if (d.fonts?.length) kitPatch.fonts = d.fonts;
-              if (d.logoUrl) kitPatch.logo_url = d.logoUrl;
-              await supabase.from("brand_kits" as any).upsert(kitPatch, { onConflict: "brand_id" });
-            }
-          }).catch((e) => console.warn("extract-brand failed", e))
-      );
-      calls.push(
-        supabase.functions.invoke("harvest-brand-assets", { body: { url: websiteForCall, brandId } })
-          .catch((e) => console.warn("harvest-brand-assets failed", e))
-      );
-      calls.push(
-        supabase.functions.invoke("analyze-brand-voice", { body: { brandId } })
-          .catch((e) => console.warn("analyze-brand-voice failed", e))
-      );
-      calls.push(
-        supabase.functions.invoke("generate-audience-psychology", { body: { brandId } })
-          .catch((e) => console.warn("audience psych failed", e))
-      );
-      for (const o of offerRows || []) {
-        calls.push(
-          supabase.functions.invoke("extract-offer-info", { body: { offerUrl: o.url, offerName: o.name } })
-            .then(async (r) => {
-              if (r.data && !r.error) {
-                await supabase.from("offers").update({
-                  ...(r.data.summary ? { auto_summary: r.data.summary } : {}),
-                  ...(r.data.price ? { price: r.data.price } : {}),
-                  ...(r.data.name ? { name: r.data.name } : {}),
-                }).eq("id", o.id);
-              }
-            }).catch((e) => console.warn("extract-offer-info failed", e))
-        );
-        calls.push(
-          supabase.functions.invoke("generate-product-psychology", { body: { offerId: o.id, brandId } })
-            .catch((e) => console.warn("product psych failed", e))
-        );
-      }
-
-      await Promise.allSettled(calls);
-
-      // Refetch the brand & offers
-      const { data: refreshed } = await supabase.from("brands").select("*").eq("id", brandId).maybeSingle();
-      if (refreshed) setBrand(refreshed);
-      const { data: offerRows2 } = await supabase.from("offers").select("*").eq("brand_id", brandId);
-      setOffers(offerRows2 || []);
-      setExtractDone(true);
-    } finally {
-      setExtracting(false);
-    }
-  };
-
-  // ---------- STEP 2 — review save helpers ----------
   const updateBrand = async (patch: Record<string, any>) => {
     if (!brandId) return;
     setBrand((prev: any) => ({ ...(prev || {}), ...patch }));
     await supabase.from("brands").update(patch).eq("id", brandId);
   };
+
+  // =================== STEP 3 — offer ===================
+  useEffect(() => {
+    if (step !== 3 || !brandId) return;
+    (async () => {
+      const { data } = await supabase.from("offers").select("*").eq("brand_id", brandId);
+      setOffers(data || []);
+    })();
+  }, [step, brandId]);
+
+  const submitOfferUrl = async () => {
+    if (!brandId) return;
+    const normalized = normalizeWebsiteUrl(offerUrl);
+    if (!normalized) { toast.error("Add your offer's sales page URL"); return; }
+    setOfferBusy(true);
+    try {
+      const { data: existing } = await supabase
+        .from("offers").select("id").eq("brand_id", brandId).eq("url", normalized).maybeSingle();
+      let offerId = (existing as any)?.id;
+      if (!offerId) {
+        const { data, error } = await supabase.from("offers").insert({
+          brand_id: brandId, url: normalized, name: "New offer",
+        }).select().single();
+        if (error) throw error;
+        offerId = data.id;
+      }
+      const { data: ex } = await supabase.functions.invoke("extract-offer-info", {
+        body: { offerUrl: normalized, offerName: "" },
+      });
+      if (ex) {
+        const patch: any = {};
+        if ((ex as any).summary) patch.auto_summary = (ex as any).summary;
+        if ((ex as any).price) patch.price = (ex as any).price;
+        if ((ex as any).name) patch.name = (ex as any).name;
+        if (Object.keys(patch).length) await supabase.from("offers").update(patch).eq("id", offerId);
+      }
+      const { data: refreshed } = await supabase.from("offers").select("*").eq("brand_id", brandId);
+      setOffers(refreshed || []);
+      setOfferUrl("");
+      toast.success("Offer pulled");
+    } catch (e: any) {
+      toast.error(e.message || "Couldn't pull the offer");
+    } finally {
+      setOfferBusy(false);
+    }
+  };
+
   const updateOffer = async (offerId: string, patch: Record<string, any>) => {
     setOffers((prev) => prev.map((o) => (o.id === offerId ? { ...o, ...patch } : o)));
     await supabase.from("offers").update(patch).eq("id", offerId);
   };
 
-  // ---------- STEP 3 — assets ----------
-  useEffect(() => {
-    if (step !== 3 || !brandId) return;
-    (async () => {
-      const { data } = await supabase
-        .from("brand_assets" as any)
-        .select("*")
-        .order("created_at", { ascending: false });
-      setAssets((data as any) || []);
+  // =================== STEP 4 — assets w/ signed URLs + classify ===================
+  const loadAssets = useCallback(async () => {
+    if (!brandId) return;
+    setAssetsLoading(true);
+    try {
+      const { data: rows } = await supabase
+        .from("brand_assets" as any).select("*")
+        .eq("brand_id", brandId).order("created_at", { ascending: false });
+      const list = (rows || []) as AssetRow[];
+      const paths = list.map((r) => pathFromUrl(r.url));
+      const validPaths = paths.filter(Boolean) as string[];
+      const signedMap = new Map<string, string>();
+      if (validPaths.length) {
+        const { data: s } = await supabase.storage.from("brand-assets").createSignedUrls(validPaths, 60 * 60);
+        (s || []).forEach((entry: any, i) => {
+          if (entry?.signedUrl) signedMap.set(validPaths[i], entry.signedUrl);
+        });
+      }
+      const withSigned = list.map((r) => {
+        const p = pathFromUrl(r.url);
+        return { ...r, signedUrl: (p && signedMap.get(p)) || r.url };
+      });
+      setAssets(withSigned);
+
       const { data: uaRaw } = await supabase
-        .from("user_assets" as any)
-        .select("*")
-        .eq("brand_id", brandId);
+        .from("user_assets" as any).select("*").eq("brand_id", brandId);
       const ua = (uaRaw as any[]) || [];
-      const headshot = ua.find((a: any) => a.kind === "headshot");
-      setHeadshotUrl(headshot?.original_url || headshot?.cutout_url || null);
-      const { data: kit } = await supabase
-        .from("brand_kits" as any)
-        .select("logo_url")
-        .eq("brand_id", brandId)
-        .maybeSingle();
+      const headshotRow = ua.find((a: any) => a.kind === "headshot");
+      setHeadshotUrl(headshotRow?.original_url || headshotRow?.cutout_url || null);
+      const { data: kit } = await supabase.from("brand_kits" as any)
+        .select("logo_url").eq("brand_id", brandId).maybeSingle();
       setLogoUrl((kit as any)?.logo_url || null);
+    } finally {
+      setAssetsLoading(false);
+    }
+  }, [brandId]);
+
+  useEffect(() => {
+    if (step !== 4 || !brandId) return;
+    if (assetsInitRef.current) { loadAssets(); return; }
+    assetsInitRef.current = true;
+    (async () => {
+      await loadAssets();
+      // Classify any assets without a role
+      const { data: needs } = await supabase
+        .from("brand_assets" as any).select("id,role").eq("brand_id", brandId);
+      const ids = ((needs as any[]) || []).filter((a) => !a.role).map((a) => a.id);
+      if (ids.length) {
+        setClassifying(true);
+        try {
+          await supabase.functions.invoke("classify-brand-asset", { body: { brandId, assetIds: ids } });
+          await loadAssets();
+        } catch { /* ignore */ }
+        finally { setClassifying(false); }
+      }
+      // B-roll ideas
+      try {
+        const { data } = await supabase.functions.invoke("generate-broll-ideas", { body: { brandId } });
+        const ideas = (data as any)?.ideas || (data as any) || null;
+        if (Array.isArray(ideas)) setBrollIdeas(ideas.slice(0, 10));
+      } catch { /* ignore */ }
     })();
-  }, [step, brandId]);
+  }, [step, brandId, loadAssets]);
 
   const grouped = useMemo(() => {
-    const map: Record<string, AssetRow[]> = { logo: [], background: [], texture: [], graphic: [], lifestyle: [], other: [] };
+    const map: Record<string, AssetRow[]> = {
+      logo: [], headshot: [], background: [], texture: [], graphic: [], product: [], other: [],
+    };
     for (const a of assets) {
       const k = (a.role || "other").toLowerCase();
       (map[k] || map.other).push(a);
@@ -301,49 +371,75 @@ export default function GuidedOnboarding() {
     setAssets((prev) => prev.filter((a) => a.id !== id));
     await supabase.from("brand_assets" as any).delete().eq("id", id);
   };
+  const setRole = async (id: string, role: string) => {
+    setAssets((prev) => prev.map((a) => (a.id === id ? { ...a, role } : a)));
+    await supabase.from("brand_assets" as any).update({ role }).eq("id", id);
+  };
 
   const uploadFile = async (
     file: File,
-    role: "logo" | "background" | "headshot" | "graphic" | "lifestyle"
+    role: "logo" | "background" | "headshot" | "graphic" | "product" | "texture"
   ) => {
     if (!brandId) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const ext = file.name.split(".").pop() || "png";
     const path = `${user.id}/${brandId}/${role}-${Date.now()}.${ext}`;
-    const bucket = role === "headshot" ? "ad-photos" : "brand-assets";
-    const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true });
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    const { data: pub } = supabase.storage.from(bucket).getPublicUrl(path);
-    const url = pub.publicUrl;
     if (role === "headshot") {
+      const { error } = await supabase.storage.from("ad-photos").upload(path, file, { upsert: true });
+      if (error) { toast.error(error.message); return; }
+      const { data: pub } = supabase.storage.from("ad-photos").getPublicUrl(path);
       await supabase.from("user_assets" as any).insert({
-        user_id: user.id, brand_id: brandId, kind: "headshot", original_url: url,
+        user_id: user.id, brand_id: brandId, kind: "headshot", original_url: pub.publicUrl,
       });
-      setHeadshotUrl(url);
-    } else if (role === "logo") {
-      await supabase.from("brand_kits" as any).upsert(
-        { user_id: user.id, brand_id: brandId, logo_url: url, status: "approved" },
-        { onConflict: "brand_id" }
-      );
-      setLogoUrl(url);
-      await supabase.from("brand_assets" as any).insert({ user_id: user.id, url, role: "logo", kept: true });
-      const { data } = await supabase.from("brand_assets" as any).select("*").order("created_at", { ascending: false });
-      setAssets((data as any) || []);
+      setHeadshotUrl(pub.publicUrl);
     } else {
-      await supabase.from("brand_assets" as any).insert({ user_id: user.id, url, role, kept: true });
-      const { data } = await supabase.from("brand_assets" as any).select("*").order("created_at", { ascending: false });
-      setAssets((data as any) || []);
+      const { error } = await supabase.storage.from("brand-assets").upload(path, file, { upsert: true });
+      if (error) { toast.error(error.message); return; }
+      const { data: pub } = supabase.storage.from("brand-assets").getPublicUrl(path);
+      await supabase.from("brand_assets" as any).insert({
+        user_id: user.id, brand_id: brandId, url: pub.publicUrl, role, kept: true,
+      });
+      if (role === "logo") {
+        await supabase.from("brand_kits" as any).upsert(
+          { user_id: user.id, brand_id: brandId, logo_url: pub.publicUrl, status: "approved" },
+          { onConflict: "brand_id" }
+        );
+        setLogoUrl(pub.publicUrl);
+      }
+      await loadAssets();
     }
     toast.success("Uploaded");
   };
 
-  // ---------- STEP 4 — strategy ----------
+  const uploadBroll = async (file: File) => {
+    if (!brandId) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const ext = file.name.split(".").pop() || "mp4";
+    const path = `${user.id}/${brandId}/broll-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("broll-library").upload(path, file, { upsert: true });
+    if (error) { toast.error(error.message); return; }
+    toast.success("B-roll uploaded");
+  };
+
+  const saveShotList = async () => {
+    if (!brollIdeas?.length) return;
+    const list = brollIdeas.map((i: any, idx: number) =>
+      `${idx + 1}. ${i.title || i.description || JSON.stringify(i)}`
+    ).join("\n");
+    await seedDeferredTask({
+      title: "Film your suggested b-roll shot list",
+      description: list.slice(0, 1500),
+      link_to: "/creative-studio",
+      brand_id: brandId,
+    });
+    toast.success("Shot list saved to your tasks");
+  };
+
+  // =================== STEP 6 — strategy ===================
   useEffect(() => {
-    if (step !== 4 || !brandId || strategy || strategyLoading) return;
+    if (step !== 6 || !brandId || strategy || strategyLoading) return;
     (async () => {
       setStrategyLoading(true);
       try {
@@ -371,15 +467,8 @@ export default function GuidedOnboarding() {
       for (const it of next.slice(0, 6)) {
         items.push({ title: typeof it === "string" ? it : (it.title || it.label || "Strategy step") });
       }
-    } else {
-      items.push(
-        { title: "Review your suggested strategy" },
-        { title: "Pick your starting angle" },
-        { title: "Approve your first campaign" },
-      );
     }
     await Promise.all(items.map((it) => seedDeferredTask({ ...it, link_to: "/strategy", brand_id: brandId })));
-    toast.success("Added to your tasks");
   };
 
   // ---------- finish helpers ----------
@@ -389,18 +478,10 @@ export default function GuidedOnboarding() {
     advance();
   };
 
-  const advance = async () => {
-    const next = Math.min(5, step + 1);
-    setStep(next);
-    if (brandId) await persistStep(brandId, next);
-  };
-  const back = () => setStep((s) => Math.max(1, s - 1));
-
   const completeAndGoHome = async () => {
     if (brandId) {
-      await supabase
-        .from("brands")
-        .update({ onboarding_step: 5, onboarding_completed_at: new Date().toISOString() })
+      await supabase.from("brands")
+        .update({ onboarding_step: TOTAL, onboarding_completed_at: new Date().toISOString() })
         .eq("id", brandId);
       const { data } = await supabase.from("brands").select("*").eq("id", brandId).maybeSingle();
       if (data) setActiveBrand(data);
@@ -408,7 +489,7 @@ export default function GuidedOnboarding() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from("profiles")
-        .update({ guided_onboarding_step: 5, guided_onboarding_completed_at: new Date().toISOString() })
+        .update({ guided_onboarding_step: TOTAL, guided_onboarding_completed_at: new Date().toISOString() })
         .eq("id", user.id);
     }
     await refreshBrands();
@@ -418,6 +499,7 @@ export default function GuidedOnboarding() {
 
   const startFirstCampaign = async () => {
     await seedFirstCampaignTasks(brandId);
+    await seedStrategyTasks();
     await completeAndGoHome();
     navigate("/create?onboarding=1");
   };
@@ -430,116 +512,151 @@ export default function GuidedOnboarding() {
     );
   }
 
+  const revealCount = Object.values(step1Reveal).filter(Boolean).length;
+  const canStep1Continue = !!brandId && revealCount >= 1;
+
   return (
     <div className="min-h-screen bg-background py-10 px-4">
       <div className="max-w-3xl mx-auto">
         <div className="mb-8">
           <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-            <span>Step {step} of 5 — {STEPS[step - 1]}</span>
-            <span>{Math.round((step / 5) * 100)}%</span>
+            <span>Step {step} of {TOTAL} — {STEPS[step - 1]}</span>
+            <span>{Math.round((step / TOTAL) * 100)}%</span>
           </div>
-          <Progress value={(step / 5) * 100} />
+          <Progress value={(step / TOTAL) * 100} />
         </div>
 
+        {/* ============== STEP 1 — Website only ============== */}
         {step === 1 && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-lumi-pink-1" /> Let's get the basics</CardTitle>
-              <CardDescription>Short and sweet. We'll do the heavy lifting in a second.</CardDescription>
+              <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-lumi-pink-1" /> Drop your website</CardTitle>
+              <CardDescription>One field. LUMI reads it instantly and pulls your brand.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="space-y-2">
-                <Label>Business name *</Label>
-                <Input value={brandName} onChange={(e) => setBrandName(e.target.value)} placeholder="Your business" />
-              </div>
-              <div className="space-y-2">
                 <Label>Website URL *</Label>
-                <Input value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} placeholder="https://yourbrand.com" />
-              </div>
-              <div className="space-y-2">
-                <Label>Offer URL(s) <span className="text-xs text-muted-foreground">(one per line, or comma-separated)</span></Label>
-                <Textarea
-                  value={offerUrlsText}
-                  onChange={(e) => setOfferUrlsText(e.target.value)}
-                  placeholder="https://yourbrand.com/offer-1"
-                  rows={3}
-                />
-              </div>
-              <div className="pt-2 border-t">
-                <Label className="mb-2 block">Connect Meta</Label>
-                {brandId ? (
-                  <MetaAccountConnect
-                    brandId={brandId}
-                    currentAccountId={brand?.meta_account_id}
-                    currentPageId={brand?.meta_page_id}
-                    currentPageName={brand?.meta_page_name}
-                    currentInstagramId={brand?.instagram_account_id}
-                    currentInstagramName={brand?.instagram_account_name}
-                    onUpdate={async () => {
-                      const { data } = await supabase.from("brands").select("*").eq("id", brandId).maybeSingle();
-                      if (data) setBrand(data);
-                    }}
+                <div className="flex gap-2">
+                  <Input
+                    value={websiteUrl}
+                    onChange={(e) => setWebsiteUrl(e.target.value)}
+                    placeholder="https://yourbrand.com"
+                    onKeyDown={(e) => { if (e.key === "Enter") startStep1(); }}
+                    disabled={step1Fired.current}
                   />
-                ) : (
-                  <SetupPrompt
-                    title="Save your basics first"
-                    description="Click Continue to create your brand — then connect Meta right here."
-                    ctaLabel="Continue"
-                    onCta={handleStep1}
-                  />
-                )}
-                {brandId && !brand?.meta_account_id && (
-                  <p className="text-xs text-muted-foreground mt-2">Meta is required to launch ads — you can finish this in a second.</p>
-                )}
+                  <Button onClick={startStep1} disabled={step1Busy || step1Fired.current}>
+                    {step1Busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Read my site"}
+                  </Button>
+                </div>
               </div>
-              <div className="flex justify-end gap-2 pt-3">
-                <Button onClick={handleStep1} disabled={savingBasics}>
-                  {savingBasics ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  {brandId ? "Continue" : "Save & continue"} <ArrowRight className="h-4 w-4 ml-1" />
+
+              {step1Fired.current && (
+                <div className="space-y-3">
+                  <RevealRow label="Brand name" value={step1Reveal.brandName} />
+                  <RevealRow label="What you do" value={step1Reveal.description} />
+                  <RevealRow
+                    label="Brand colors"
+                    value={step1Reveal.colors?.length ? (
+                      <div className="flex gap-1.5">
+                        {step1Reveal.colors.slice(0, 8).map((c, i) => (
+                          <div key={i} className="h-6 w-6 rounded border" style={{ background: c }} title={c} />
+                        ))}
+                      </div>
+                    ) : undefined}
+                  />
+                  <RevealRow label="Brand voice" value={step1Reveal.voice} />
+                  <RevealRow label="Audience snapshot" value={step1Reveal.audience} />
+                </div>
+              )}
+
+              <div className="flex justify-end pt-3">
+                <Button onClick={advance} disabled={!canStep1Continue}>
+                  Continue <ArrowRight className="h-4 w-4 ml-1" />
                 </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
+        {/* ============== STEP 2 — Confirm brand intelligence ============== */}
         {step === 2 && (
           <div className="space-y-4">
-            {extracting && (
-              <Card>
-                <CardContent className="py-10">
-                  <LumiThinkingInline isOpen={true} customCopy={["LUMI is reading your site…", "Pulling colors, fonts, and voice…", "Mapping your audience psychology…", "Decoding each offer…"]} />
-                  <p className="text-center text-sm text-muted-foreground mt-4">
-                    Pulling colors, fonts, voice, audience + offer psychology. Takes about a minute.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-            {!extracting && (
-              <>
-                <ReviewDesignCard brand={brand} onSave={updateBrand} />
-                <ReviewVoiceCard brand={brand} onSave={updateBrand} />
-                <ReviewAudienceCard brand={brand} onSave={updateBrand} />
-                <ReviewOffersCard offers={offers} onSave={updateOffer} />
-                <ReviewProofCard brand={brand} onSave={updateBrand} />
-                <div className="flex justify-between pt-2">
-                  <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => finishLater("Review your brand intelligence", "/brand")}>Finish later</Button>
-                    <Button onClick={advance}>Looks good <ArrowRight className="h-4 w-4 ml-1" /></Button>
-                  </div>
-                </div>
-              </>
-            )}
+            <ReviewDesignCard brand={brand} onSave={updateBrand} />
+            <ReviewVoiceCard brand={brand} onSave={updateBrand} />
+            <ReviewAudienceCard brand={brand} onSave={updateBrand} />
+            <ReviewProofCard brand={brand} onSave={updateBrand} loading={proofExtracting} />
+            <div className="flex justify-between pt-2">
+              <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => finishLater("Review your brand intelligence", "/brand")}>Finish later</Button>
+                <Button onClick={advance}>Looks good <ArrowRight className="h-4 w-4 ml-1" /></Button>
+              </div>
+            </div>
           </div>
         )}
 
+        {/* ============== STEP 3 — Offer sales page ============== */}
         {step === 3 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5" /> Your offer</CardTitle>
+              <CardDescription>Drop your sales page URL — we'll pull the offer for you. No paragraph to write.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Sales page URL</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={offerUrl} onChange={(e) => setOfferUrl(e.target.value)}
+                    placeholder="https://yourbrand.com/program"
+                    onKeyDown={(e) => { if (e.key === "Enter") submitOfferUrl(); }}
+                  />
+                  <Button onClick={submitOfferUrl} disabled={offerBusy}>
+                    {offerBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Pull offer"}
+                  </Button>
+                </div>
+              </div>
+
+              {offers.length === 0 ? (
+                <SetupPrompt
+                  title="No offer yet"
+                  description="Add at least one sales page so LUMI can write campaigns that actually convert."
+                  ctaLabel="Skip for now"
+                  onCta={() => finishLater("Add your offer's sales page", "/brand")}
+                />
+              ) : (
+                <div className="space-y-3">
+                  {offers.map((o) => (
+                    <OfferRowEditor key={o.id} offer={o} onSave={(p) => updateOffer(o.id, p)} />
+                  ))}
+                </div>
+              )}
+
+              <div className="flex justify-between pt-2">
+                <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => finishLater("Finish your offer setup", "/brand")}>Finish later</Button>
+                  <Button onClick={advance}>Continue <ArrowRight className="h-4 w-4 ml-1" /></Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ============== STEP 4 — Assets ============== */}
+        {step === 4 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><ImageIcon className="h-5 w-5" /> Approve your assets</CardTitle>
               <CardDescription>Keep what looks like your brand. Toss what doesn't. Add the missing pieces.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
+              {classifying && (
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" /> LUMI is sorting your images by type…
+                </div>
+              )}
+
               {!logoUrl && (
                 <SetupPrompt
                   title="Add a logo"
@@ -549,7 +666,7 @@ export default function GuidedOnboarding() {
                   autoTask={{ title: "Add a brand logo", link_to: "/brand" }}
                 />
               )}
-              {!headshotUrl && (
+              {!headshotUrl && grouped.headshot.length === 0 && (
                 <SetupPrompt
                   title="Add a headshot"
                   description="A founder/face photo lifts ad performance a lot. Plain backdrop works best."
@@ -567,7 +684,14 @@ export default function GuidedOnboarding() {
                   autoTask={{ title: "Upload a background image", link_to: "/brand" }}
                 />
               )}
-              {(["logo","background","texture","graphic","lifestyle","other"] as const).map((role) => {
+
+              {assetsLoading && (
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading your library…
+                </div>
+              )}
+
+              {(["logo","headshot","background","texture","graphic","product","other"] as const).map((role) => {
                 const list = grouped[role];
                 if (!list || list.length === 0) return null;
                 return (
@@ -576,14 +700,28 @@ export default function GuidedOnboarding() {
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                       {list.map((a) => (
                         <div key={a.id} className={`group relative rounded-md overflow-hidden border ${a.kept ? "ring-2 ring-lumi-pink-1" : "opacity-60"}`}>
-                          <img src={a.url} alt="" className="aspect-square object-cover w-full" />
+                          {a.signedUrl ? (
+                            <img src={a.signedUrl} alt="" className="aspect-square object-cover w-full" loading="lazy" />
+                          ) : (
+                            <div className="aspect-square bg-muted" />
+                          )}
                           <div className="absolute top-1 right-1 flex gap-1">
                             <button onClick={() => toggleKept(a.id, !a.kept)} className="bg-background/90 rounded-full p-1" title={a.kept ? "Remove from set" : "Keep"}>
-                              {a.kept ? <Check className="h-3 w-3" /> : <Check className="h-3 w-3 text-muted-foreground" />}
+                              <Check className={`h-3 w-3 ${a.kept ? "" : "text-muted-foreground"}`} />
                             </button>
                             <button onClick={() => removeAsset(a.id)} className="bg-background/90 rounded-full p-1" title="Delete">
                               <Trash2 className="h-3 w-3" />
                             </button>
+                          </div>
+                          <div className="p-1">
+                            <Select value={a.role || "other"} onValueChange={(v) => setRole(a.id, v)}>
+                              <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {["logo","headshot","background","texture","graphic","product","other"].map((r) => (
+                                  <SelectItem key={r} value={r} className="text-xs capitalize">{r}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                         </div>
                       ))}
@@ -596,18 +734,31 @@ export default function GuidedOnboarding() {
                 <UploadBtn id="upload-logo" label="Logo" onFile={(f) => uploadFile(f, "logo")} />
                 <UploadBtn id="upload-headshot" label="Headshot" onFile={(f) => uploadFile(f, "headshot")} />
                 <UploadBtn id="upload-bg" label="Background" onFile={(f) => uploadFile(f, "background")} />
-                <UploadBtn id="upload-lifestyle" label="Lifestyle" onFile={(f) => uploadFile(f, "lifestyle")} />
+                <UploadBtn id="upload-product" label="Product" onFile={(f) => uploadFile(f, "product")} />
               </div>
 
-              <SetupPrompt
-                title="Plan a quick recording"
-                description="A 30s talking-head and a few b-roll clips give LUMI a lot to work with."
-                ctaLabel="Add to my tasks"
-                onCta={() => {
-                  seedDeferredTask({ title: "Record a 30s talking-head + b-roll", link_to: "/creative-studio", brand_id: brandId });
-                  toast.success("Added");
-                }}
-              />
+              {/* B-roll */}
+              <div className="pt-4 border-t space-y-3">
+                <h3 className="text-sm font-semibold flex items-center gap-2"><Film className="h-4 w-4" /> B-roll</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <UploadBtn id="upload-broll" label="Upload b-roll (mp4)" accept="video/*" onFile={uploadBroll} />
+                  <Button variant="outline" size="sm" onClick={saveShotList} disabled={!brollIdeas?.length}>
+                    <ListChecks className="h-3 w-3 mr-1" /> Save suggested shot list
+                  </Button>
+                </div>
+                {brollIdeas?.length ? (
+                  <div className="rounded-md border bg-muted/30 p-3 space-y-1 max-h-44 overflow-auto">
+                    <p className="text-xs font-medium mb-1">Suggested shots</p>
+                    {brollIdeas.slice(0, 8).map((i: any, idx: number) => (
+                      <p key={idx} className="text-xs text-muted-foreground">
+                        • {i.title || i.description || JSON.stringify(i)}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">LUMI is brewing custom b-roll ideas for you…</p>
+                )}
+              </div>
 
               <div className="flex justify-between pt-2">
                 <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
@@ -620,14 +771,53 @@ export default function GuidedOnboarding() {
           </Card>
         )}
 
-        {step === 4 && (
+        {/* ============== STEP 5 — Connect Meta ============== */}
+        {step === 5 && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" /> Suggested starting strategy</CardTitle>
-              <CardDescription>A simple plan matched to your offer. We'll drop the steps into your task tray.</CardDescription>
+              <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" /> Connect Meta</CardTitle>
+              <CardDescription>Last setup step. We'll check your Page + Instagram + ad account so launching is one click.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {strategyLoading && <LumiThinkingInline isOpen={true} customCopy={["Thinking through the right play…", "Matching it to your offer…"]} />}
+              {brandId && (
+                <MetaAccountConnect
+                  brandId={brandId}
+                  currentAccountId={brand?.meta_account_id}
+                  currentPageId={brand?.meta_page_id}
+                  currentPageName={brand?.meta_page_name}
+                  currentInstagramId={brand?.instagram_account_id}
+                  currentInstagramName={brand?.instagram_account_name}
+                  onUpdate={async () => {
+                    const { data } = await supabase.from("brands").select("*").eq("id", brandId).maybeSingle();
+                    if (data) setBrand(data);
+                  }}
+                />
+              )}
+              <p className="text-xs text-muted-foreground">
+                If your Instagram is connected to your Page but not added to your ad account, LUMI will detect it and offer a one-click fix.
+              </p>
+              <div className="flex justify-between pt-2">
+                <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => finishLater("Connect Meta to launch ads", "/brand")}>Finish later</Button>
+                  <Button onClick={advance} disabled={!brand?.meta_account_id}>
+                    Continue <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ============== STEP 6 — Strategy + first campaign ============== */}
+        {step === 6 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-600" /> Your suggested strategy</CardTitle>
+              <CardDescription>A starting plan + the exact steps to launch your first campaign.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {strategyLoading && <LumiThinkingInline isOpen={true} customCopy={["Matching the right play to your offer…"]} />}
               {!strategyLoading && strategy && (
                 <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
                   <h3 className="font-semibold">{strategy.name || strategy.title || "Your starting strategy"}</h3>
@@ -644,47 +834,22 @@ export default function GuidedOnboarding() {
                   )}
                 </div>
               )}
-              {!strategyLoading && !strategy && (
-                <SetupPrompt
-                  title="We'll suggest one in a moment"
-                  description="If this is taking too long, you can finish later — your tasks will still guide you."
-                  ctaLabel="Try again"
-                  onCta={() => { setStrategy(null); }}
-                />
-              )}
 
-              <div className="flex justify-between pt-2">
-                <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={async () => { await seedStrategyTasks(); advance(); }}>
-                    <ListChecks className="h-4 w-4 mr-1" /> Add to tasks & continue
-                  </Button>
-                  <Button onClick={advance}>Continue <ArrowRight className="h-4 w-4 ml-1" /></Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {step === 5 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-600" /> Ready to build your first campaign</CardTitle>
-              <CardDescription>You'll be guided step by step — angle, copy, creative, launch — through your task tray.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
               <ul className="text-sm space-y-2">
                 <li className="flex items-start gap-2"><Check className="h-4 w-4 text-green-600 mt-0.5" /> Pick a campaign angle</li>
                 <li className="flex items-start gap-2"><Check className="h-4 w-4 text-green-600 mt-0.5" /> Approve your ad copy</li>
                 <li className="flex items-start gap-2"><Check className="h-4 w-4 text-green-600 mt-0.5" /> Approve your first creative</li>
                 <li className="flex items-start gap-2"><Check className="h-4 w-4 text-green-600 mt-0.5" /> Launch your first campaign</li>
               </ul>
+
               <div className="flex justify-between pt-2">
                 <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={async () => { await seedFirstCampaignTasks(brandId); await completeAndGoHome(); }}>
-                    I'll do it later
-                  </Button>
+                  <Button variant="outline" onClick={async () => {
+                    await seedFirstCampaignTasks(brandId);
+                    await seedStrategyTasks();
+                    await completeAndGoHome();
+                  }}>I'll do it later</Button>
                   <Button onClick={startFirstCampaign}>
                     Start my first campaign <ArrowRight className="h-4 w-4 ml-1" />
                   </Button>
@@ -698,7 +863,20 @@ export default function GuidedOnboarding() {
   );
 }
 
-// ───────────────── Review cards ─────────────────
+// ───────────────── small UI helpers ─────────────────
+
+function RevealRow({ label, value }: { label: string; value: any }) {
+  return (
+    <div className="rounded-md border p-3 bg-card">
+      <div className="text-xs text-muted-foreground mb-1">{label}</div>
+      {value ? (
+        <div className="text-sm">{value}</div>
+      ) : (
+        <div className="h-4 w-3/4 rounded bg-muted animate-pulse" />
+      )}
+    </div>
+  );
+}
 
 function ReviewDesignCard({ brand, onSave }: { brand: any; onSave: (p: any) => Promise<void> }) {
   const [colors, setColors] = useState<string>((brand?.brand_colors || []).join(", "));
@@ -707,14 +885,10 @@ function ReviewDesignCard({ brand, onSave }: { brand: any; onSave: (p: any) => P
     setColors((brand?.brand_colors || []).join(", "));
     setFonts((brand?.brand_fonts || []).join(", "));
   }, [brand?.brand_colors, brand?.brand_fonts]);
-  const empty = !brand?.brand_colors?.length && !brand?.brand_fonts?.length;
   return (
     <Card>
       <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Palette className="h-4 w-4" /> Design guide</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        {empty && (
-          <p className="text-xs text-muted-foreground">We couldn't read your design system — add what you know and we'll use it.</p>
-        )}
         <div>
           <Label className="text-xs">Brand colors (comma-separated hex)</Label>
           <Input value={colors} onChange={(e) => setColors(e.target.value)} placeholder="#000000, #FFFFFF" />
@@ -745,7 +919,7 @@ function ReviewVoiceCard({ brand, onSave }: { brand: any; onSave: (p: any) => Pr
       <CardHeader><CardTitle className="flex items-center gap-2 text-base"><MessageSquare className="h-4 w-4" /> Brand voice</CardTitle></CardHeader>
       <CardContent className="space-y-3">
         {!brand?.brand_voice && (
-          <p className="text-xs text-muted-foreground">Tell us in one paragraph how you sound — warm? punchy? quietly confident?</p>
+          <p className="text-xs text-muted-foreground">Edit the auto-pulled voice if it's slightly off.</p>
         )}
         <Textarea rows={5} value={voice} onChange={(e) => setVoice(e.target.value)} placeholder="Warm, witty, never salesy…" />
         <Button size="sm" variant="outline" onClick={() => onSave({ brand_voice: voice })}>Save</Button>
@@ -769,9 +943,6 @@ function ReviewAudienceCard({ brand, onSave }: { brand: any; onSave: (p: any) =>
     <Card>
       <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Brain className="h-4 w-4" /> Audience psychology</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        {(!p.pain_points || !p.pain_points.length) && (
-          <p className="text-xs text-muted-foreground">Even a couple of bullets here makes ads dramatically better.</p>
-        )}
         <div>
           <Label className="text-xs">Pain points (one per line)</Label>
           <Textarea rows={3} value={pains} onChange={(e) => setPains(e.target.value)} />
@@ -797,50 +968,30 @@ function ReviewAudienceCard({ brand, onSave }: { brand: any; onSave: (p: any) =>
   );
 }
 
-function ReviewOffersCard({ offers, onSave }: { offers: any[]; onSave: (id: string, p: any) => Promise<void> }) {
-  if (!offers.length) {
-    return (
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4" /> Offer psychology</CardTitle></CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground">No offers yet. Add one from the Brand page later — we'll keep going.</p>
-        </CardContent>
-      </Card>
-    );
-  }
-  return (
-    <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4" /> Offer psychology</CardTitle></CardHeader>
-      <CardContent className="space-y-4">
-        {offers.map((o) => (
-          <OfferRowEditor key={o.id} offer={o} onSave={(p) => onSave(o.id, p)} />
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
 function OfferRowEditor({ offer, onSave }: { offer: any; onSave: (p: any) => Promise<void> }) {
   const [name, setName] = useState(offer.name || "");
   const [summary, setSummary] = useState(offer.auto_summary || "");
+  const [price, setPrice] = useState(offer.price?.toString() || "");
   useEffect(() => {
     setName(offer.name || "");
     setSummary(offer.auto_summary || "");
-  }, [offer.id, offer.name, offer.auto_summary]);
+    setPrice(offer.price?.toString() || "");
+  }, [offer.id, offer.name, offer.auto_summary, offer.price]);
   return (
-    <div className="space-y-2 border-l-2 pl-3">
+    <div className="space-y-2 border rounded-md p-3">
       <div className="text-xs text-muted-foreground truncate">{offer.url}</div>
       <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Offer name" />
-      <Textarea rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="What is this offer? (one paragraph)" />
-      <Button size="sm" variant="outline" onClick={() => onSave({ name, auto_summary: summary })}>Save</Button>
+      <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price" />
+      <Textarea rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="What is this offer?" />
+      <Button size="sm" variant="outline" onClick={() => onSave({
+        name, auto_summary: summary, price: price ? Number(price) || price : null,
+      })}>Save</Button>
     </div>
   );
 }
 
-function ReviewProofCard({ brand, onSave }: { brand: any; onSave: (p: any) => Promise<void> }) {
-  const initial = Array.isArray(brand?.social_proof)
-    ? brand.social_proof.join("\n")
-    : (brand?.social_proof || "");
+function ReviewProofCard({ brand, onSave, loading }: { brand: any; onSave: (p: any) => Promise<void>; loading?: boolean }) {
+  const initial = Array.isArray(brand?.social_proof) ? brand.social_proof.join("\n") : (brand?.social_proof || "");
   const [proof, setProof] = useState<string>(initial);
   useEffect(() => {
     const next = Array.isArray(brand?.social_proof) ? brand.social_proof.join("\n") : (brand?.social_proof || "");
@@ -850,24 +1001,26 @@ function ReviewProofCard({ brand, onSave }: { brand: any; onSave: (p: any) => Pr
     <Card>
       <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Quote className="h-4 w-4" /> Social proof</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        {!proof && (
-          <p className="text-xs text-muted-foreground">Even one short testimonial helps. Paste a few — one per line.</p>
+        {loading && (
+          <div className="text-xs text-muted-foreground flex items-center gap-2">
+            <Loader2 className="h-3 w-3 animate-spin" /> Pulling testimonials, press and stats from your site…
+          </div>
         )}
-        <Textarea rows={4} value={proof} onChange={(e) => setProof(e.target.value)} placeholder="“This program changed everything.” — Sarah" />
+        {!loading && !proof && (
+          <p className="text-xs text-muted-foreground">We didn't find any on your site — paste a few yourself. One per line.</p>
+        )}
+        <Textarea rows={5} value={proof} onChange={(e) => setProof(e.target.value)} placeholder="“This program changed everything.” — Sarah" />
         <Button size="sm" variant="outline" onClick={() => onSave({ social_proof: proof.split("\n").map((s) => s.trim()).filter(Boolean) })}>Save</Button>
       </CardContent>
     </Card>
   );
 }
 
-function UploadBtn({ id, label, onFile }: { id: string; label: string; onFile: (f: File) => void }) {
+function UploadBtn({ id, label, onFile, accept = "image/*" }: { id: string; label: string; onFile: (f: File) => void; accept?: string }) {
   return (
     <label htmlFor={id} className="cursor-pointer">
       <input
-        id={id}
-        type="file"
-        accept="image/*"
-        className="hidden"
+        id={id} type="file" accept={accept} className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) onFile(f);
