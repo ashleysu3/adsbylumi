@@ -567,6 +567,7 @@ export default function Performance() {
         return;
       }
       toast.success("Paused in Meta");
+      await closeMatchingTasks({ actionType: "pause", entityId: chosen.rec.id });
       try {
         await supabase.from("recommendation_overrides").insert({
           brand_id: activeBrand.id,
