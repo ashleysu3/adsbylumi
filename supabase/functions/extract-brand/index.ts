@@ -276,7 +276,8 @@ async function fetchSiteMeta(url: string): Promise<{ name?: string; description?
 
   return {};
 }
-}
+
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
