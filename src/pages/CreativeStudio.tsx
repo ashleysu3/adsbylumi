@@ -189,7 +189,10 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
   const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>("");
   const [workspace, setWorkspace] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<WorkflowTab>("angles");
+  const [activeTab, setActiveTab] = useState<WorkflowTab>(() => {
+    const t = searchParams.get("tab");
+    return (t === "saved" || t === "concepts" || t === "copy" || t === "build" || t === "angles") ? t : "angles";
+  });
   const [contentIdeas, setContentIdeas] = useState<any[]>([]);
   const [brandId, setBrandId] = useState<string>("");
   
@@ -1255,17 +1258,6 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
           className="min-h-[calc(100vh-120px)]"
         >
           <div className="max-w-6xl mx-auto w-full py-6">
-            <div className="mb-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setActiveTab("angles")}
-                className="gap-2 -ml-2"
-              >
-                <ArrowRight className="h-4 w-4 rotate-180" />
-                Back to Creative Studio
-              </Button>
-            </div>
             <MyCreativeLibrary />
           </div>
         </motion.div>

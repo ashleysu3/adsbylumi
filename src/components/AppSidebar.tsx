@@ -97,7 +97,7 @@ const groups: NavGroup[] = [
     emoji: "🎨",
     items: [
       { label: "Inspiration", to: "/boards", icon: Lightbulb },
-      { label: "My Creative", to: "/creative-studio", icon: Images },
+      { label: "My Creative", to: "/creative-studio?tab=saved", icon: Images },
       { label: "Tools & Resources", to: "/creative-toolkit", icon: Wrench },
     ],
   },
