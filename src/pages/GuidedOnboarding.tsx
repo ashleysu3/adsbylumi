@@ -977,7 +977,7 @@ export default function GuidedOnboarding() {
         )}
 
         {/* ============== STEP 8 — Strategy + first campaign ============== */}
-        {step === 8 && (
+        {step === 5 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-600" /> Your suggested strategy</CardTitle>
