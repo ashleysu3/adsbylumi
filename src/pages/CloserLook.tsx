@@ -492,65 +492,48 @@ export default function CloserLook() {
           </DropdownMenu>
         </div>
 
-        {/* LUMI recommends */}
+        {/* LUMI recommends — compact */}
         <Card className="relative overflow-hidden border-transparent">
           <div
             aria-hidden
             className="absolute inset-0 rounded-lg p-[1.5px] bg-gradient-to-br from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 [mask:linear-gradient(#000,#000)_content-box,linear-gradient(#000,#000)] [mask-composite:exclude]"
           />
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Sparkles className="h-4 w-4 text-lumi-pink-1" /> LUMI recommends
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="p-3">
             {top ? (
-              <>
-                <div className="text-sm font-semibold">
-                  {ACTION_VERB[top.recommendation.action] || top.recommendation.action} "{top.name}"
-                </div>
-                <p className="text-sm text-muted-foreground">{top.recommendation.reasoning}</p>
-                {top.recommendation.diagnosis && (
-                  <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-xs space-y-1">
-                    <div className="font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wide text-[10px]">
-                      Root cause: {top.recommendation.diagnosis.rootCause.replace(/_/g, ' ')}
-                    </div>
-                    {top.recommendation.diagnosis.signals?.length > 0 && (
-                      <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-                        {top.recommendation.diagnosis.signals.map((s, i) => (
-                          <li key={i}>{s}</li>
-                        ))}
-                      </ul>
-                    )}
-                    {top.recommendation.diagnosis.needsConversionTracking && (
-                      <div className="text-amber-700 dark:text-amber-300 italic">
-                        Conversion tracking isn't reporting — set it up for a sharper read.
-                      </div>
-                    )}
-                  </div>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" onClick={() => openExecuteFor(top)} className="gap-2">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Approve
-                  </Button>
-                  <Badge variant="outline" className="text-xs">
-                    Confidence: {top.recommendation.confidence}
-                  </Badge>
-                  {top.recommendation.impactReasoning && (
-                    <span className="text-xs text-muted-foreground italic self-center">
-                      {top.recommendation.impactReasoning}
+              <div className="flex items-start gap-3">
+                <Sparkles className="h-4 w-4 text-lumi-pink-1 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">LUMI recommends</span>
+                    <span className="text-sm font-semibold">
+                      {ACTION_VERB[top.recommendation.action] || top.recommendation.action} "{top.name}"
                     </span>
+                    <Badge variant="outline" className="text-[10px]">
+                      {top.recommendation.confidence} confidence
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{top.recommendation.reasoning}</p>
+                  {top.recommendation.diagnosis?.needsConversionTracking && (
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300 italic">
+                      Conversion tracking isn't reporting — set it up for a sharper read.
+                    </p>
                   )}
                 </div>
-              </>
+                <Button size="sm" onClick={() => openExecuteFor(top)} className="gap-1.5 flex-shrink-0">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Approve
+                </Button>
+              </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                Holding steady — no changes needed right now.
-              </p>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-lumi-pink-1" />
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">LUMI recommends</span>
+                <span className="text-sm text-muted-foreground">Holding steady — no changes needed right now.</span>
+              </div>
             )}
           </CardContent>
         </Card>
+
 
         {/* Fatigue */}
         {fatigue.shouldSurface && (
