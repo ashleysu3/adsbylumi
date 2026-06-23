@@ -286,11 +286,20 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
 
           {/* "How can LUMI help today?" intent input */}
           {!collapsed && (
-            <div className="mt-3">
+            <div className="mt-3 space-y-2">
               <IntentBar size="sm" innerBgClassName="bg-sidebar" />
+              <button
+                type="button"
+                onClick={() => navigate("/tasks")}
+                className="group relative w-full overflow-hidden rounded-lg bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-sm transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-ring px-3 py-2 flex items-center gap-2"
+              >
+                <span className="text-base leading-none">✅</span>
+                <span className="text-sm font-medium tracking-tight">My Tasks</span>
+              </button>
             </div>
           )}
         </SidebarHeader>
+
 
         <SidebarSeparator />
 
