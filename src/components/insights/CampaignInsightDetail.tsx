@@ -831,7 +831,7 @@ export function CampaignInsightDetail({
                         onClick={() => {
                           if (action.kind === 'add_posts') openPostPicker();
                           else if (action.kind === 'navigate') navigate(action.url);
-                          else if (action.kind === 'execute') executeRecommendation(rec);
+                          else if (action.kind === 'execute') requestExecute(rec);
                           // kind === 'budget' is handled by the wrapping Popover
                         }}
                       >
