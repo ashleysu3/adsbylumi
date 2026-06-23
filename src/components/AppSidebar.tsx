@@ -169,6 +169,9 @@ export function AppSidebar({ isAdmin: _isAdmin, brandId: _brandId }: AppSidebarP
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.email) setUserEmail(user.email);
     });
+    const handler = () => setBugReportOpen(true);
+    window.addEventListener("open-bug-report", handler);
+    return () => window.removeEventListener("open-bug-report", handler);
   }, []);
 
   const allGroups: NavGroup[] = [
