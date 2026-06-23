@@ -893,6 +893,7 @@ export default function GuidedOnboarding() {
 
 
             <RevealGate revealed={revealed.images} kind="images">
+              {failed.images && <TimeoutNotice label="your brand images" />}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base"><ImageIcon className="h-4 w-4" /> Brand images</CardTitle>
