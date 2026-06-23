@@ -1032,6 +1032,30 @@ export default function GuidedOnboarding() {
 
 // ───────────────── small UI helpers ─────────────────
 
+function SectionShell({
+  loading,
+  loadingMsg,
+  children,
+}: {
+  loading: boolean;
+  loadingMsg: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative">
+      {loading && (
+        <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          <span className="animate-pulse">{loadingMsg}</span>
+        </div>
+      )}
+      <div className={loading ? "opacity-60 transition-opacity" : "transition-opacity"}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function RevealRow({ label, value }: { label: string; value: any }) {
   return (
     <div className="rounded-md border p-3 bg-card">
