@@ -261,6 +261,7 @@ Reminder: ground every claim in the source. Be specific. Skip the clichés.`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
+        response_format: { type: 'json_object' },
       }),
     });
 
@@ -291,17 +292,31 @@ Reminder: ground every claim in the source. Be specific. Skip the clichés.`;
 
     console.log('Raw AI content:', content);
 
-    // Extract JSON robustly
+    // Extract JSON robustly — model sometimes returns prose like "I need more info..."
     const extractJsonObject = (text: string) => {
       const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
       const raw = (codeBlock?.[1] ?? text).trim();
       const firstBrace = raw.indexOf('{');
       const lastBrace = raw.lastIndexOf('}');
-      const candidate = firstBrace !== -1 && lastBrace !== -1 ? raw.slice(firstBrace, lastBrace + 1) : raw;
-      return JSON.parse(candidate);
+      if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+        throw new Error('AI did not return JSON. Raw start: ' + raw.slice(0, 120));
+      }
+      let candidate = raw.slice(firstBrace, lastBrace + 1);
+      try {
+        return JSON.parse(candidate);
+      } catch {
+        candidate = candidate.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']').replace(/[\x00-\x1F\x7F]/g, ' ');
+        return JSON.parse(candidate);
+      }
     };
 
-    const psychology = extractJsonObject(content);
+    let psychology;
+    try {
+      psychology = extractJsonObject(content);
+    } catch (parseErr: any) {
+      console.error('JSON parse failed:', parseErr?.message, 'content:', content.slice(0, 500));
+      throw new Error('AI returned non-JSON response. Try again or add more brand details.');
+    }
 
     // Update brand with psychology data
     const { error: updateError } = await supabase
