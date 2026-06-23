@@ -339,7 +339,25 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
           })}
         </SidebarContent>
 
-        <SidebarFooter className="p-2">
+        <SidebarFooter className="p-2 space-y-2">
+          {!collapsed && (
+            <div className="flex items-center justify-between gap-2 px-1 text-[11px] text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => navigate("/refer")}
+                className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+              >
+                <Gift className="h-3 w-3" /> refer & earn
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/settings")}
+                className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+              >
+                <CreditCard className="h-3 w-3" /> billing & plan
+              </button>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => navigate("/review")}
@@ -358,6 +376,7 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
             <span className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/3 -skew-x-12 bg-white/20 blur-md opacity-0 group-hover:opacity-100 group-hover:translate-x-[300%] transition-all duration-700" />
           </button>
         </SidebarFooter>
+
 
       </Sidebar>
       <BugReportModal
