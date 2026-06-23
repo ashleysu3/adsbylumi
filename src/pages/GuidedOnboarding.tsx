@@ -723,8 +723,13 @@ export default function GuidedOnboarding() {
             <ReviewAudienceCard brand={brand} onSave={updateBrand} />
             {(() => {
               const sp = (brand as any)?.social_proof;
-              const hasProof = Array.isArray(sp) ? sp.length > 0 : !!sp;
-              // Only show the card if we actually found something, OR extraction is still running.
+              const hasProofVal = (v: any): boolean => {
+                if (!v) return false;
+                if (Array.isArray(v)) return v.length > 0;
+                if (typeof v === "object") return Object.values(v).some((x) => hasProofVal(x));
+                return String(v).trim().length > 0;
+              };
+              const hasProof = hasProofVal(sp);
               return (hasProof || proofExtracting) ? (
                 <ReviewProofCard brand={brand} onSave={updateBrand} loading={proofExtracting} />
               ) : null;
