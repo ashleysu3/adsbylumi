@@ -314,6 +314,7 @@ export default function Performance() {
             supabase.functions
               .invoke("evaluate-campaign-status", {
                 body: {
+                  workspaceId: w.id,
                   brandId: activeBrand.id,
                   metaCampaignId: (w.meta_campaign_ids as any).campaignId,
                   displayRange: activeRange.body,
