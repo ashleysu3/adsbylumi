@@ -1155,8 +1155,10 @@ export default function GuidedOnboarding() {
         {step === 4 && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" /> Connect Meta</CardTitle>
-              <CardDescription>Last setup step. We'll check your Page + Instagram + ad account so launching is one click.</CardDescription>
+              <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" /> Connect Meta <span className="text-xs font-normal text-muted-foreground ml-1">· optional</span></CardTitle>
+              <CardDescription>
+                Connect now, or later when you launch your first campaign — totally up to you. If you connect now, LUMI will check your Page, Instagram, and ad account so launching is one click.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {brandId && (
@@ -1176,12 +1178,17 @@ export default function GuidedOnboarding() {
               <p className="text-xs text-muted-foreground">
                 If your Instagram is connected to your Page but not added to your ad account, LUMI will detect it and offer a one-click fix.
               </p>
-              <div className="flex justify-between pt-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
                 <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => finishLater("Connect Meta to launch ads", "/brand")}>Finish later</Button>
-                  <Button onClick={advance} disabled={!brand?.meta_account_id}>
-                    Continue <ArrowRight className="h-4 w-4 ml-1" />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => finishLater("Connect Meta when you're ready to launch", "/brand")}
+                  >
+                    Skip for now
+                  </Button>
+                  <Button onClick={advance}>
+                    {brand?.meta_account_id ? "Continue" : "Continue without connecting"} <ArrowRight className="h-4 w-4 ml-1" />
                   </Button>
                 </div>
               </div>
