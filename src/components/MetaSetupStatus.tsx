@@ -4,11 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   CheckCircle2, XCircle, AlertTriangle, Loader2, RefreshCw,
-  ChevronDown, ChevronUp, Circle, MinusCircle,
+  ChevronDown, ChevronUp, Circle, MinusCircle, Instagram, Wrench,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { SetupPrompt } from '@/components/SetupPrompt';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 // ============================================================================
 // MetaSetupStatus (Patch #30 — single source of truth for connection health)
