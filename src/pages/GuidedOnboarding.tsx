@@ -189,13 +189,18 @@ export default function GuidedOnboarding() {
           .then(async (r) => {
             const d = r.data;
             if (d && !r.error) {
-              const patch: any = {};
-              if (d.colors?.length) patch.brand_colors = d.colors;
-              if (d.fonts?.length) patch.brand_fonts = d.fonts;
-              if (d.logoUrl) patch.logo_url = d.logoUrl;
-              if (Object.keys(patch).length) {
-                await supabase.from("brands").update(patch).eq("id", brandId);
-              }
+              const { data: { user } } = await supabase.auth.getUser();
+              if (!user) return;
+              const kitPatch: any = {
+                user_id: user.id,
+                brand_id: brandId,
+                source_url: websiteForCall,
+                status: "extracted",
+              };
+              if (d.colors?.length) kitPatch.colors = d.colors;
+              if (d.fonts?.length) kitPatch.fonts = d.fonts;
+              if (d.logoUrl) kitPatch.logo_url = d.logoUrl;
+              await supabase.from("brand_kits" as any).upsert(kitPatch, { onConflict: "brand_id" });
             }
           }).catch((e) => console.warn("extract-brand failed", e))
       );
