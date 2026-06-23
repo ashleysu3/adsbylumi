@@ -639,6 +639,9 @@ export default function GuidedOnboarding() {
   if (extractionPhase === 'running') {
     return <LumiPageLoader message={loaderMsg || "LUMI is reading your site…"} />;
   }
+  if (globalLoaderMsg) {
+    return <LumiPageLoader message={globalLoaderMsg} />;
+  }
 
   return (
     <div className="min-h-screen bg-background py-10 px-4">
