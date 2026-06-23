@@ -8,19 +8,15 @@ import { Input } from "@/components/ui/input";
 import {
   Film,
   Image as ImageIcon,
-  Lightbulb,
   Sparkles,
-  FileText,
-  Video,
   Search,
   Loader2,
   ExternalLink,
-  Camera,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-type CreativeKind = "idea" | "broll" | "graphic" | "photo";
+type CreativeKind = "broll" | "graphic";
 
 type CreativeItem = {
   id: string;
@@ -35,19 +31,9 @@ type CreativeItem = {
 
 const KIND_FILTERS: { value: CreativeKind | "all"; label: string; icon: any }[] = [
   { value: "all", label: "All", icon: Sparkles },
-  { value: "idea", label: "Ideas & Scripts", icon: Lightbulb },
   { value: "broll", label: "B-Roll", icon: Film },
   { value: "graphic", label: "Graphics", icon: ImageIcon },
-  { value: "photo", label: "Photos", icon: Camera },
 ];
-
-const IDEA_TYPE_ICON: Record<string, any> = {
-  hook: Sparkles,
-  script: FileText,
-  visual: ImageIcon,
-  video: Video,
-  idea: Lightbulb,
-};
 
 function pathFromBrandAssetUrl(url: string): string | null {
   const m = url.match(/\/storage\/v1\/object\/(?:public|sign)\/brand-assets\/([^?]+)/);
