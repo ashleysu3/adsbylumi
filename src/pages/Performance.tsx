@@ -65,6 +65,7 @@ interface AdEval {
   primary: { value: number | null; vsGoalPct: number | null; trendDirection?: string };
   secondary: { value: number | null; label: string } | null;
   reach?: number;
+  frequency?: number;
   daysLive?: number;
   recommendation: {
     action: string;
