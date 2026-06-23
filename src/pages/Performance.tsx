@@ -963,7 +963,7 @@ export default function Performance() {
                             />
                           )}
                           <p className="text-sm">
-                            <span className="text-muted-foreground">Next: </span>
+                            <span className="text-muted-foreground">LUMI recommends: </span>
                             <span className="text-foreground">{topLine}</span>
                           </p>
 
