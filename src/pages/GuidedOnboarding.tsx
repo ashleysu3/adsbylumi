@@ -1548,40 +1548,170 @@ function ReviewAudienceCard({ brand, onSave }: { brand: any; onSave: (p: any) =>
     }
   };
 
+  const [editing, setEditing] = useState(false);
+  const painList = pains.split("\n").map((s) => s.trim()).filter(Boolean);
+  const desireList = desires.split("\n").map((s) => s.trim()).filter(Boolean);
+  const objectionList = objections.split("\n").map((s) => s.trim()).filter(Boolean);
+
+  const cancel = () => {
+    const q = brand?.audience_psychology || {};
+    setPains((q.pain_points || []).join("\n"));
+    setDesires((q.desires || []).join("\n"));
+    setObjections((q.objections || []).join("\n"));
+    setDemographics(
+      typeof q.demographics === "string"
+        ? q.demographics
+        : (q.demographics ? JSON.stringify(q.demographics, null, 2) : "")
+    );
+    setEditing(false);
+  };
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base"><Brain className="h-4 w-4" /> Audience</CardTitle>
-        <CardDescription className="text-xs">Psychology + demographics. Edit anything that's off — these power every ad LUMI writes.</CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between space-y-0">
+        <div>
+          <CardTitle className="flex items-center gap-2 text-base"><Brain className="h-4 w-4" /> Audience</CardTitle>
+          <CardDescription className="text-xs">Psychology + demographics. Edit anything that's off — these power every ad LUMI writes.</CardDescription>
+        </div>
+        {!editing && (
+          <Button size="sm" variant="ghost" onClick={() => setEditing(true)} className="h-7">
+            <Pencil className="h-3 w-3 mr-1" /> Edit
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         <PersonaSummary
           demographics={demographics}
-          topDesire={desires.split("\n").map((s) => s.trim()).filter(Boolean)[0]}
-          topPain={pains.split("\n").map((s) => s.trim()).filter(Boolean)[0]}
+          topDesire={desireList[0]}
+          topPain={painList[0]}
         />
-        <div>
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Demographics</Label>
-          <Textarea rows={3} value={demographics} onChange={(e) => setDemographics(e.target.value)} placeholder="Women, 30–45, US/Canada, mid-career, $80k+ household income, lives in a metro area…" />
-        </div>
-        <div>
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Pain points (one per line)</Label>
-          <Textarea rows={4} value={pains} onChange={(e) => setPains(e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Desires</Label>
-          <Textarea rows={4} value={desires} onChange={(e) => setDesires(e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Objections</Label>
-          <Textarea rows={4} value={objections} onChange={(e) => setObjections(e.target.value)} />
-        </div>
-        <Button size="sm" variant="lumi" onClick={save} disabled={saving}>
-          {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-          Save
-        </Button>
+
+        {editing ? (
+          <>
+            <div>
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Demographics</Label>
+              <Textarea rows={3} value={demographics} onChange={(e) => setDemographics(e.target.value)} placeholder="Women, 30–45, US/Canada, mid-career, $80k+ household income, lives in a metro area…" />
+            </div>
+            <div>
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Pain points (one per line)</Label>
+              <Textarea rows={4} value={pains} onChange={(e) => setPains(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Desires</Label>
+              <Textarea rows={4} value={desires} onChange={(e) => setDesires(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Objections</Label>
+              <Textarea rows={4} value={objections} onChange={(e) => setObjections(e.target.value)} />
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="lumi" onClick={async () => { await save(); setEditing(false); }} disabled={saving}>
+                {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                Save
+              </Button>
+              <Button size="sm" variant="ghost" onClick={cancel}>Cancel</Button>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-3">
+            <AudienceSection icon={Users} label="Demographics" emptyHint="Add who they are — age, location, lifestyle." onEdit={() => setEditing(true)}>
+              {demographics ? (
+                <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap">{demographics}</p>
+              ) : null}
+            </AudienceSection>
+
+            <AudienceSection icon={Target} label="Pain points" count={painList.length} emptyHint="What keeps them stuck or up at night?" onEdit={() => setEditing(true)}>
+              {painList.length > 0 && (
+                <ul className="space-y-1.5">
+                  {painList.map((item, i) => (
+                    <li key={i} className="flex gap-2 text-sm leading-snug text-foreground/85">
+                      <span className="mt-2 h-1 w-1 rounded-full shrink-0" style={{ backgroundColor: "var(--brand-accent)" }} />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </AudienceSection>
+
+            <AudienceSection icon={Sparkles} label="Desires" count={desireList.length} emptyHint="What outcome would feel like a win?" onEdit={() => setEditing(true)}>
+              {desireList.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {desireList.map((item, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center rounded-full border bg-background px-2.5 py-1 text-xs text-foreground/85"
+                      style={{ borderColor: "var(--brand-accent)" }}
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </AudienceSection>
+
+            <AudienceSection icon={MessageSquare} label="Objections" count={objectionList.length} emptyHint="Why might they hesitate to buy?" onEdit={() => setEditing(true)}>
+              {objectionList.length > 0 && (
+                <ul className="space-y-1.5">
+                  {objectionList.map((item, i) => (
+                    <li key={i} className="flex gap-2 text-sm leading-snug text-foreground/85">
+                      <span className="text-muted-foreground shrink-0">·</span>
+                      <span className="italic">"{item}"</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </AudienceSection>
+          </div>
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+function AudienceSection({
+  icon: Icon,
+  label,
+  count,
+  emptyHint,
+  onEdit,
+  children,
+}: {
+  icon: any;
+  label: string;
+  count?: number;
+  emptyHint?: string;
+  onEdit?: () => void;
+  children?: React.ReactNode;
+}) {
+  const hasContent = !!children && (Array.isArray(children) ? children.some(Boolean) : true);
+  return (
+    <div
+      className="rounded-lg border bg-muted/30 p-4 space-y-2"
+      style={{ borderLeftWidth: 4, borderLeftColor: "var(--brand-accent)" }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+          <Icon className="h-3 w-3" /> {label}
+          {typeof count === "number" && count > 0 && (
+            <span className="text-muted-foreground/60">· {count}</span>
+          )}
+        </div>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="text-[10px] uppercase tracking-wider text-muted-foreground/70 hover:text-foreground transition-colors"
+          >
+            Edit
+          </button>
+        )}
+      </div>
+      {hasContent ? (
+        children
+      ) : (
+        <p className="text-xs italic text-muted-foreground">{emptyHint || "Nothing yet."}</p>
+      )}
+    </div>
   );
 }
 
