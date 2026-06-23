@@ -447,6 +447,15 @@ export default function Performance() {
     return `${verb} "${rec.name}"`;
   }
 
+  function budgetTargetAdSetId(kind: "increase_budget" | "reduce_budget", ctx: { result: EngineResult; rec: AdEval }) {
+    if (ctx.rec.level === "adset") return ctx.rec.id;
+    if (ctx.result.meta?.campaignType !== "ABO") return undefined;
+    const matching = ctx.result.adsets.find((adset) => adset.recommendation?.action === kind);
+    if (matching) return matching.id;
+    return [...ctx.result.adsets]
+      .sort((a, b) => (b.windows?.medium?.spend ?? 0) - (a.windows?.medium?.spend ?? 0))[0]?.id;
+  }
+
   async function handleSnooze(ctx: { result: EngineResult; rec: AdEval }) {
     if (!activeBrand) return;
     const until = new Date();
@@ -523,7 +532,7 @@ export default function Performance() {
     setBudgetOpen(true);
     setBudgetLoadingPreview(true);
     try {
-      const adSetId = ctx.rec.level === "adset" ? ctx.rec.id : undefined;
+      const adSetId = budgetTargetAdSetId(kind, ctx);
       const { data, error } = await supabase.functions.invoke("update-meta-budget", {
         body: { workspaceId: ctx.result.workspaceId, adSetId, preview: true },
       });
@@ -563,9 +572,7 @@ export default function Performance() {
     try {
       const adSetIdInitial = budgetPreview.isCBO
         ? undefined
-        : chosen.rec.level === "adset"
-          ? chosen.rec.id
-          : undefined;
+        : budgetPreview.adSetId ?? (chosen.rec.level === "adset" ? chosen.rec.id : undefined);
       const callUpdate = async (adSetId?: string) =>
         supabase.functions.invoke("update-meta-budget", {
           body: { workspaceId: chosen.result.workspaceId, newBudget, adSetId },
