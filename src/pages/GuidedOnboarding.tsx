@@ -1224,27 +1224,190 @@ function ReviewAudienceCard({ brand, onSave }: { brand: any; onSave: (p: any) =>
   );
 }
 
-function OfferRowEditor({ offer, onSave }: { offer: any; onSave: (p: any) => Promise<void> }) {
+function OfferRowEditor({ offer, brand, onSave }: { offer: any; brand?: any; onSave: (p: any) => Promise<void> }) {
   const [name, setName] = useState(offer.name || "");
-  const [summary, setSummary] = useState(offer.auto_summary || "");
-  const [price, setPrice] = useState(offer.price?.toString() || "");
+  const [description, setDescription] = useState(offer.description || "");
+  const [price, setPrice] = useState(offer.price_point || "");
+  const [outcome, setOutcome] = useState(offer.target_outcome || "");
+  const useBrandStyle = offer.use_brand_style_defaults !== false;
+  const [styleOverride, setStyleOverride] = useState(!useBrandStyle);
+  const so = offer.style_overrides || {};
+  const [colors, setColors] = useState<string>((so.colors || []).join(", "));
+  const [fonts, setFonts] = useState<string>((so.fonts || []).join(", "));
+
+  const oap = offer.offer_audience_psychology || {};
+  const [pains, setPains] = useState<string>((oap.pain_points || []).join("\n"));
+  const [desires, setDesires] = useState<string>((oap.desires || []).join("\n"));
+  const [objections, setObjections] = useState<string>((oap.objections || []).join("\n"));
+
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     setName(offer.name || "");
-    setSummary(offer.auto_summary || "");
-    setPrice(offer.price?.toString() || "");
-  }, [offer.id, offer.name, offer.auto_summary, offer.price]);
+    setDescription(offer.description || "");
+    setPrice(offer.price_point || "");
+    setOutcome(offer.target_outcome || "");
+    setStyleOverride(offer.use_brand_style_defaults === false);
+    setColors(((offer.style_overrides || {}).colors || []).join(", "));
+    setFonts(((offer.style_overrides || {}).fonts || []).join(", "));
+    const q = offer.offer_audience_psychology || {};
+    setPains((q.pain_points || []).join("\n"));
+    setDesires((q.desires || []).join("\n"));
+    setObjections((q.objections || []).join("\n"));
+  }, [offer.id]);
+
+  const brandColors: string[] = brand?._kit?.colors || [];
+  const brandFonts: string[] = brand?._kit?.fonts || [];
+  const brandPains: string[] = brand?.audience_psychology?.pain_points || [];
+  const brandDesires: string[] = brand?.audience_psychology?.desires || [];
+  const brandObjections: string[] = brand?.audience_psychology?.objections || [];
+
+  const parsedColors = colors.split(",").map((s) => s.trim()).filter(Boolean);
+  const parsedFonts = fonts.split(",").map((s) => s.trim()).filter(Boolean);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await onSave({
+        name,
+        description,
+        price_point: price,
+        target_outcome: outcome,
+        use_brand_style_defaults: !styleOverride,
+        style_overrides: styleOverride ? { colors: parsedColors, fonts: parsedFonts } : {},
+        offer_audience_psychology: {
+          ...oap,
+          pain_points: pains.split("\n").map((s) => s.trim()).filter(Boolean),
+          desires: desires.split("\n").map((s) => s.trim()).filter(Boolean),
+          objections: objections.split("\n").map((s) => s.trim()).filter(Boolean),
+        },
+      });
+      toast.success("Offer saved");
+    } catch (e: any) {
+      toast.error(e?.message || "Couldn't save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className="space-y-2 border rounded-md p-3">
-      <div className="text-xs text-muted-foreground truncate">{offer.url}</div>
-      <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Offer name" />
-      <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price" />
-      <Textarea rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="What is this offer?" />
-      <Button size="sm" variant="outline" onClick={() => onSave({
-        name, auto_summary: summary, price: price ? Number(price) || price : null,
-      })}>Save</Button>
-    </div>
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="text-xs text-muted-foreground truncate">{offer.url}</div>
+        <CardTitle className="text-base">{name || "Untitled offer"}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {/* Core offer info */}
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs">Offer name</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Offer name" />
+          </div>
+          <div>
+            <Label className="text-xs">Price</Label>
+            <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="$297 or $97/mo" />
+          </div>
+        </div>
+        <div>
+          <Label className="text-xs">What this offer is</Label>
+          <Textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What is this offer?" />
+        </div>
+        <div>
+          <Label className="text-xs">Target outcome (before → after)</Label>
+          <Textarea rows={2} value={outcome} onChange={(e) => setOutcome(e.target.value)} placeholder="Before: … After: …" />
+        </div>
+
+        {/* Design guide */}
+        <div className="rounded-md border bg-muted/20 p-3 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-medium"><Palette className="h-4 w-4" /> Design guide</div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {styleOverride ? "Custom colors & fonts for this offer." : "Using your brand's default design guide."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Label htmlFor={`style-${offer.id}`} className="text-xs">Custom</Label>
+              <Switch id={`style-${offer.id}`} checked={styleOverride} onCheckedChange={setStyleOverride} />
+            </div>
+          </div>
+
+          {!styleOverride ? (
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-1.5">
+                {brandColors.slice(0, 8).map((c, i) => (
+                  <div key={i} className="h-6 w-6 rounded border" style={{ background: c }} title={c} />
+                ))}
+                {brandColors.length === 0 && <span className="text-xs text-muted-foreground italic">No brand colors set yet.</span>}
+              </div>
+              {brandFonts.length > 0 && (
+                <div className="text-xs text-muted-foreground">Fonts: <span className="font-medium text-foreground">{brandFonts.join(", ")}</span></div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs">Offer colors (comma-separated hex)</Label>
+                <Input value={colors} onChange={(e) => setColors(e.target.value)} placeholder="#000000, #FFFFFF" />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {parsedColors.slice(0, 12).map((c, i) => (
+                    <div key={i} className="h-7 w-7 rounded border" style={{ background: c }} title={c} />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Offer fonts</Label>
+                <Input value={fonts} onChange={(e) => setFonts(e.target.value)} placeholder="Inter, Playfair Display" />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Offer-specific audience psychology */}
+        <div className="rounded-md border bg-muted/20 p-3 space-y-3">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-medium"><Brain className="h-4 w-4" /> Audience psychology for this offer</div>
+            <p className="text-xs text-muted-foreground mt-0.5">Layers on top of your brand-level audience. Add what's specific to <span className="italic">this</span> offer.</p>
+          </div>
+
+          {(brandPains.length > 0 || brandDesires.length > 0 || brandObjections.length > 0) && (
+            <details className="text-xs">
+              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">View brand-level psychology (inherited)</summary>
+              <div className="mt-2 grid sm:grid-cols-3 gap-2">
+                <div><div className="font-medium mb-1">Pains</div><ul className="space-y-0.5 text-muted-foreground">{brandPains.slice(0,4).map((p,i)=>(<li key={i}>• {p}</li>))}</ul></div>
+                <div><div className="font-medium mb-1">Desires</div><ul className="space-y-0.5 text-muted-foreground">{brandDesires.slice(0,4).map((p,i)=>(<li key={i}>• {p}</li>))}</ul></div>
+                <div><div className="font-medium mb-1">Objections</div><ul className="space-y-0.5 text-muted-foreground">{brandObjections.slice(0,4).map((p,i)=>(<li key={i}>• {p}</li>))}</ul></div>
+              </div>
+            </details>
+          )}
+
+          <div className="grid sm:grid-cols-3 gap-3">
+            <div>
+              <Label className="text-xs">Pain points (one per line)</Label>
+              <Textarea rows={4} value={pains} onChange={(e) => setPains(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">Desires / benefits</Label>
+              <Textarea rows={4} value={desires} onChange={(e) => setDesires(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">Objections</Label>
+              <Textarea rows={4} value={objections} onChange={(e) => setObjections(e.target.value)} />
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <Button size="sm" variant="lumi" onClick={save} disabled={saving}>
+            {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+            Save offer
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
+
 
 function ReviewProofCard({ brand, onSave, loading }: { brand: any; onSave: (p: any) => Promise<void>; loading?: boolean }) {
   const sp = brand?.social_proof;
