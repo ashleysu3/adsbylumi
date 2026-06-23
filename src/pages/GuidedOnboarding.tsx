@@ -1174,25 +1174,51 @@ function OfferRowEditor({ offer, onSave }: { offer: any; onSave: (p: any) => Pro
 }
 
 function ReviewProofCard({ brand, onSave, loading }: { brand: any; onSave: (p: any) => Promise<void>; loading?: boolean }) {
-  const initial = Array.isArray(brand?.social_proof) ? brand.social_proof.join("\n") : (brand?.social_proof || "");
-  const [proof, setProof] = useState<string>(initial);
+  // social_proof can be: string, string[], or an object like {testimonials, stats, awards, credentials, press_features, case_studies, notable_clients}
+  const flattenProof = (sp: any): string => {
+    if (!sp) return "";
+    if (typeof sp === "string") return sp;
+    if (Array.isArray(sp)) return sp.filter(Boolean).map((x) => typeof x === "string" ? x : (x?.quote || x?.title || JSON.stringify(x))).join("\n");
+    if (typeof sp === "object") {
+      const lines: string[] = [];
+      const push = (label: string, items: any[]) => {
+        items.filter(Boolean).forEach((it) => {
+          if (typeof it === "string") lines.push(`${label}: ${it}`);
+          else if (it?.quote) lines.push(`${label}: "${it.quote}"${it.attribution ? ` — ${it.attribution}` : ""}${it.result ? ` (${it.result})` : ""}`);
+          else if (it?.outlet) lines.push(`${label}: ${it.outlet}${it.context ? ` — ${it.context}` : ""}`);
+          else if (it?.title) lines.push(`${label}: ${it.title}`);
+        });
+      };
+      if (Array.isArray(sp.testimonials)) push("Testimonial", sp.testimonials);
+      if (Array.isArray(sp.case_studies)) push("Case study", sp.case_studies);
+      if (Array.isArray(sp.stats)) push("Stat", sp.stats);
+      if (Array.isArray(sp.awards)) push("Award", sp.awards);
+      if (Array.isArray(sp.press_features)) push("Press", sp.press_features);
+      if (Array.isArray(sp.credentials)) push("Credential", sp.credentials);
+      if (Array.isArray(sp.notable_clients)) push("Client", sp.notable_clients);
+      return lines.join("\n");
+    }
+    return "";
+  };
+
+  const [proof, setProof] = useState<string>(flattenProof(brand?.social_proof));
   useEffect(() => {
-    const next = Array.isArray(brand?.social_proof) ? brand.social_proof.join("\n") : (brand?.social_proof || "");
-    setProof(next);
+    setProof(flattenProof(brand?.social_proof));
   }, [brand?.social_proof]);
+
   return (
     <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Quote className="h-4 w-4" /> Social proof</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base"><Quote className="h-4 w-4" /> Social proof</CardTitle>
+        <CardDescription className="text-xs">Pulled from your website — testimonials, press, stats and awards we could find.</CardDescription>
+      </CardHeader>
       <CardContent className="space-y-3">
         {loading && (
           <div className="text-xs text-muted-foreground flex items-center gap-2">
             <Loader2 className="h-3 w-3 animate-spin" /> Pulling testimonials, press and stats from your site…
           </div>
         )}
-        {!loading && !proof && (
-          <p className="text-xs text-muted-foreground">We didn't find any on your site — paste a few yourself. One per line.</p>
-        )}
-        <Textarea rows={5} value={proof} onChange={(e) => setProof(e.target.value)} placeholder="“This program changed everything.” — Sarah" />
+        <Textarea rows={Math.min(12, Math.max(5, proof.split("\n").length + 1))} value={proof} onChange={(e) => setProof(e.target.value)} placeholder="“This program changed everything.” — Sarah" />
         <Button size="sm" variant="outline" onClick={() => onSave({ social_proof: proof.split("\n").map((s) => s.trim()).filter(Boolean) })}>Save</Button>
       </CardContent>
     </Card>
