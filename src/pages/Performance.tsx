@@ -94,6 +94,7 @@ interface AdEval {
     confidence: "high" | "medium" | "low";
     impact: number;
     impactReasoning: string;
+    priorityTier?: number;
     diagnosis?: {
       rootCause: string;
       why: string;
