@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import {
   Loader2, ArrowRight, ChevronLeft, CheckCircle2, Sparkles,
-  Upload, Image as ImageIcon, Palette, MessageSquare, Brain, Target, Quote, ListChecks, Trash2, Check, Film
+  Upload, Image as ImageIcon, Palette, MessageSquare, Brain, Target, Quote, ListChecks, Trash2, Check, Film,
+  Pencil, Type, Award, BarChart3, Newspaper, GraduationCap, Users, Briefcase
 } from "lucide-react";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { SetupPrompt } from "@/components/SetupPrompt";
