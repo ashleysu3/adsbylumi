@@ -13,7 +13,7 @@ const cors = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const ROLES = ["logo", "headshot", "background", "texture", "graphic", "product"] as const;
+const ROLES = ["logo", "headshot", "lifestyle", "full_body", "product", "texture", "graphic", "background", "other"] as const;
 
 function pathFromUrl(url: string): string | null {
   const m = url.match(/\/storage\/v1\/object\/(?:public|sign)\/brand-assets\/([^?]+)/);
