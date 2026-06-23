@@ -552,7 +552,7 @@ export default function AdStrategy() {
                   title="No campaigns to set goals on yet"
                   description="Once you launch a campaign, set a business goal here and LUMI will reality-check it against your budget."
                   ctaLabel="Create campaign"
-                  onCta={() => navigate("/create")}
+                  onCta={() => navigate("/create?from=strategy")}
                 />
               ) : (
                 <div className="space-y-2">
