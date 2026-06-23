@@ -131,6 +131,8 @@ export interface RecForTask {
   hasBench?: boolean;
   /** Current budget (when budget action). */
   currentBudget?: number | null;
+  /** Specific ad set to update when a campaign-level ABO budget rec needs a safe target. */
+  adSetId?: string | null;
 }
 
 export interface UpsertedTask {
@@ -227,6 +229,7 @@ export async function upsertRecommendationTasks(recs: RecForTask[]) {
     if (actionType === "budget") {
       payload.kind = rec.action; // increase_budget | reduce_budget
       payload.currentBudget = rec.currentBudget ?? null;
+      payload.adSetId = rec.adSetId ?? null;
     }
     if (actionType === "rotate") {
       payload.fatigueAdId = rec.entityId;

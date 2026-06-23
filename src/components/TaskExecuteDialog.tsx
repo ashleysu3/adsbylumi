@@ -65,7 +65,7 @@ export function TaskExecuteDialog({ task, open, onOpenChange, onDone }: Props) {
       (async () => {
         setLoadingPreview(true);
         try {
-          const adSetId = task.action_payload?.entityLevel === "adset" ? task.action_payload?.entityId : undefined;
+          const adSetId = task.action_payload?.adSetId || (task.action_payload?.entityLevel === "adset" ? task.action_payload?.entityId : undefined);
           const res = await previewBudget({ workspaceId: task.action_payload.workspaceId, adSetId });
           if (!res.ok) {
             toast.error("Couldn't read current budget", { description: res.error });
@@ -143,7 +143,7 @@ export function TaskExecuteDialog({ task, open, onOpenChange, onDone }: Props) {
           setSubmitting(false);
           return;
         }
-        const adSetId = preview?.isCBO ? undefined : (task.action_payload?.entityLevel === "adset" ? task.action_payload?.entityId : undefined);
+        const adSetId = preview?.isCBO ? undefined : (preview?.adSetId || task.action_payload?.adSetId || (task.action_payload?.entityLevel === "adset" ? task.action_payload?.entityId : undefined));
         res = await executeBudget({ workspaceId: task.action_payload.workspaceId, newBudget, adSetId });
         if (res.ok) toast.success(`Budget updated to $${newBudget}/day in Meta`);
       } else if (task.action_type === "rotate") {

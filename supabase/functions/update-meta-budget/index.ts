@@ -135,6 +135,8 @@ Deno.serve(async (req) => {
         if (!json.error) return json;
         lastErr = json.error;
         const code = json.error?.code;
+        const subcode = json.error?.error_subcode;
+        logStep("Meta read failed", { label, code, subcode, message: json.error?.message });
         const transient = code === 17 || code === 32 || code === 4 || code === 613;
         if (!transient) break;
       }
@@ -220,6 +222,76 @@ Deno.serve(async (req) => {
         level: "campaign",
         new_budget: newBudget,
         message: `Budget updated to $${newBudget}/day on Meta`,
+      });
+    }
+
+    // Fast path for explicit ABO ad-set targets. The UI often already knows
+    // which ad set should be scaled from evaluate-campaign-status, so don't
+    // burn another expensive `/{campaign}/adsets` list call just to preview or
+    // update one target. That list call is what was surfacing as a misleading
+    // Meta "User request limit reached" toast.
+    if (adSetId) {
+      const adSetUrl =
+        `https://graph.facebook.com/v25.0/${adSetId}` +
+        `?fields=id,name,daily_budget,lifetime_budget,status,campaign_id&access_token=${encodeURIComponent(accessToken)}`;
+      const adSetData = await fetchMetaJson(adSetUrl, "ad set");
+      if (adSetData?.campaign_id && String(adSetData.campaign_id) !== String(campaignId)) {
+        throw new Error(`Ad set ${adSetId} does not belong to campaign ${campaignId}`);
+      }
+
+      if (preview) {
+        return jsonResponse({
+          success: true,
+          preview: true,
+          isCBO,
+          level: "adset",
+          current_daily_budget: adSetData.daily_budget ? parseFloat(adSetData.daily_budget) / 100 : null,
+          ad_set_id: adSetId,
+          active_ad_sets: [{
+            id: adSetId,
+            name: adSetData.name,
+            status: adSetData.status,
+            dailyBudget: adSetData.daily_budget ? parseFloat(adSetData.daily_budget) / 100 : null,
+          }],
+        });
+      }
+
+      const targetUrl = `https://graph.facebook.com/v25.0/${adSetId}`;
+      const resp = await fetch(targetUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          access_token: accessToken,
+          daily_budget: budgetCents,
+        }),
+      });
+      const result = await resp.json();
+      if (!result.success) {
+        throw new Error(
+          `Failed to update ad set budget: ${result.error?.message || "unknown error"}`,
+        );
+      }
+
+      await supabase.from("ad_action_log").insert({
+        brand_id: brand.id,
+        workspace_id: workspaceId,
+        action_type: "budget_update",
+        action_detail: {
+          level: "adset_targeted",
+          campaign_id: campaignId,
+          ad_set_id: adSetId,
+          new_budget: newBudget,
+        },
+        source: "user",
+        meta_entity_id: adSetId,
+      });
+
+      return jsonResponse({
+        success: true,
+        level: "adset_targeted",
+        ad_set_id: adSetId,
+        new_budget: newBudget,
+        message: `Budget updated to $${newBudget}/day on the target ad set`,
       });
     }
 
