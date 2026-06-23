@@ -1051,11 +1051,13 @@ export type Database = {
           name: string
           objective: string
           optimization_event: string | null
+          positioning_brief: Json | null
           prepopulated_fields: Json | null
           purpose: string | null
           slug: string
           sort_order: number | null
           strategy_template: Json
+          type: string
           use_case: string
         }
         Insert: {
@@ -1074,11 +1076,13 @@ export type Database = {
           name: string
           objective: string
           optimization_event?: string | null
+          positioning_brief?: Json | null
           prepopulated_fields?: Json | null
           purpose?: string | null
           slug: string
           sort_order?: number | null
-          strategy_template: Json
+          strategy_template?: Json
+          type?: string
           use_case: string
         }
         Update: {
@@ -1097,11 +1101,13 @@ export type Database = {
           name?: string
           objective?: string
           optimization_event?: string | null
+          positioning_brief?: Json | null
           prepopulated_fields?: Json | null
           purpose?: string | null
           slug?: string
           sort_order?: number | null
           strategy_template?: Json
+          type?: string
           use_case?: string
         }
         Relationships: []
