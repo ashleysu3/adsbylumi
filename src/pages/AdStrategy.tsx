@@ -421,7 +421,7 @@ export default function AdStrategy() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => navigate("/create")}
+                  onClick={() => navigate("/create?from=strategy")}
                   className="gap-1.5"
                 >
                   <Plus className="h-3.5 w-3.5" /> Add a funnel
