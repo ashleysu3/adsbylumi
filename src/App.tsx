@@ -24,6 +24,7 @@ import Auth from "./pages/Auth";
 import Reactivate from "./pages/Reactivate";
 import WelcomeBack from "./pages/WelcomeBack";
 import Onboarding from "./pages/Onboarding";
+import GuidedOnboarding from "./pages/GuidedOnboarding";
 import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
 import Start from "./pages/Start";
