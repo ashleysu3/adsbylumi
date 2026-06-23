@@ -140,12 +140,13 @@ function TrendArrow({ direction, kpi }: { direction?: string; kpi: string }) {
 }
 
 export default function CloserLook() {
-  const { campaignId: workspaceId } = useParams<{ campaignId: string }>();
+  const { campaignId } = useParams<{ campaignId: string }>();
   const navigate = useNavigate();
   const { activeBrand, loading: brandLoading } = useBrand();
 
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<EngineResult | null>(null);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [workspaceName, setWorkspaceName] = useState<string>("");
   const [actions, setActions] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -157,26 +158,27 @@ export default function CloserLook() {
   const [bugOpen, setBugOpen] = useState(false);
 
   useEffect(() => {
-    if (brandLoading || !activeBrand || !workspaceId) return;
+    if (brandLoading || !activeBrand || !campaignId) return;
     let cancelled = false;
 
     (async () => {
       setLoading(true);
       setError(null);
       setResult(null);
+      setWorkspaceId(null);
       try {
-        const { data: ws, error: wsErr } = await supabase
+        const { data: workspaceRows, error: wsErr } = await supabase
           .from("campaign_workspaces")
           .select("id, name, meta_campaign_ids, brand_id")
-          .eq("id", workspaceId)
-          .maybeSingle();
+          .eq("brand_id", activeBrand.id)
+          .not("meta_campaign_ids", "is", null);
         if (wsErr) throw wsErr;
+        const ws = (workspaceRows || []).find((row: any) => {
+          const metaId = (row.meta_campaign_ids as any)?.campaignId;
+          return row.id === campaignId || metaId === campaignId;
+        });
         if (!ws) {
           setError("Couldn't find that campaign in your account.");
-          return;
-        }
-        if (ws.brand_id !== activeBrand.id) {
-          setError("This campaign belongs to a different brand.");
           return;
         }
         const metaCampaignId = (ws.meta_campaign_ids as any)?.campaignId;
@@ -184,6 +186,7 @@ export default function CloserLook() {
           setError("This campaign hasn't been pushed to Meta yet.");
           return;
         }
+        setWorkspaceId(ws.id);
         setWorkspaceName(ws.name || "Campaign");
 
         const { data, error: evalErr } = await supabase.functions.invoke("evaluate-campaign-status", {
@@ -201,7 +204,7 @@ export default function CloserLook() {
           .from("ad_action_log")
           .select("id, action_type, action_detail, source, created_at, meta_entity_id")
           .eq("brand_id", activeBrand.id)
-          .eq("workspace_id", workspaceId)
+          .eq("workspace_id", ws.id)
           .order("created_at", { ascending: false })
           .limit(8);
         if (!cancelled) setActions(logs || []);
@@ -215,7 +218,7 @@ export default function CloserLook() {
     return () => {
       cancelled = true;
     };
-  }, [activeBrand, brandLoading, workspaceId]);
+  }, [activeBrand, brandLoading, campaignId]);
 
   const top = result?.topRecommendation || null;
   const fatigue = useMemo(
@@ -230,6 +233,7 @@ export default function CloserLook() {
   // -------------------------------------------------------------------------
   async function openExecuteFor(rec: AdEval) {
     if (!result || !activeBrand || !workspaceId) return;
+    if (!workspaceId) return;
     const action = rec.recommendation.action;
     let actionType: "pause" | "budget" | "rotate" | null = null;
     if (action === "turn_off") actionType = "pause";
