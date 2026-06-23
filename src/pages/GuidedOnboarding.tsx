@@ -1392,7 +1392,7 @@ function OfferRowEditor({ offer, brand, onSave }: { offer: any; brand?: any; onS
     } catch (e: any) {
       toast.error(e?.message || "Couldn't pull design from this page");
     } finally {
-      setGlobalLoader?.(null);
+      setPullingDesign(false);
     }
   };
 
