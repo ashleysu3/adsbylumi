@@ -281,54 +281,50 @@ export default function GuidedOnboarding() {
     }
   };
 
-  // =================== STEP 2 — auto-extract social proof ===================
+  // =================== STEP 2 — auto-extract social proof + load brand kit ===================
   useEffect(() => {
     if (step !== 2 || !brandId) return;
     let cancelled = false;
     (async () => {
-      // refresh brand
-      const { data } = await supabase.from("brands").select("*").eq("id", brandId).maybeSingle();
-      if (!cancelled && data) setBrand(data);
+      // refresh brand + brand_kit together
+      const loadAll = async () => {
+        const [{ data: b }, { data: k }] = await Promise.all([
+          supabase.from("brands").select("*").eq("id", brandId).maybeSingle(),
+          supabase.from("brand_kits" as any).select("colors, fonts, logo_url").eq("brand_id", brandId).maybeSingle(),
+        ]);
+        return { b: b as any, k: k as any };
+      };
 
-      // If colors/fonts haven't landed yet, try the brand_kits row, then poll briefly.
-      const hasDesign = (b: any) => (b?.brand_colors?.length || 0) > 0 || (b?.brand_fonts?.length || 0) > 0;
-      if (!hasDesign(data)) {
-        const { data: kit } = await supabase
-          .from("brand_kits" as any)
-          .select("colors, fonts, logo_url")
-          .eq("brand_id", brandId)
-          .maybeSingle();
-        const k: any = kit;
-        if (k && (k.colors?.length || k.fonts?.length)) {
-          const patch: any = {};
-          if (k.colors?.length) patch.brand_colors = k.colors;
-          if (k.fonts?.length) patch.brand_fonts = k.fonts;
-          await supabase.from("brands").update(patch).eq("id", brandId);
-          if (!cancelled) setBrand((prev: any) => ({ ...(prev || {}), ...patch }));
-        } else {
-          // Extraction may still be running — poll a few times.
-          for (let i = 0; i < 6 && !cancelled; i++) {
-            await new Promise((r) => setTimeout(r, 1500));
-            const { data: again } = await supabase.from("brands").select("*").eq("id", brandId).maybeSingle();
-            if (again && hasDesign(again)) {
-              if (!cancelled) setBrand(again);
-              break;
-            }
+      let { b, k } = await loadAll();
+      if (!cancelled && b) {
+        setBrand({ ...b, _kit: k || null });
+      }
+
+      // Poll briefly for colors/fonts if extraction is still landing
+      const kitHasDesign = (kit: any) => (kit?.colors?.length || 0) > 0 || (kit?.fonts?.length || 0) > 0;
+      if (!kitHasDesign(k)) {
+        for (let i = 0; i < 6 && !cancelled; i++) {
+          await new Promise((r) => setTimeout(r, 1500));
+          const next = await loadAll();
+          if (kitHasDesign(next.k)) {
+            if (!cancelled) setBrand({ ...next.b, _kit: next.k });
+            k = next.k;
+            break;
           }
         }
       }
 
       // Auto-pull social proof if missing
-      const sp = (data as any)?.social_proof;
-      const hasProof = Array.isArray(sp) ? sp.length > 0 : !!sp;
-      if (!hasProof && (data as any)?.website_url) {
+      const sp = b?.social_proof;
+      const hasProof = Array.isArray(sp) ? sp.length > 0 : (sp && typeof sp === "object" ? Object.values(sp).some((v: any) => Array.isArray(v) ? v.length : !!v) : !!sp);
+      if (!hasProof && b?.website_url) {
         setProofExtracting(true);
         try {
           await supabase.functions.invoke("extract-social-proof", {
-            body: { brandId, url: (data as any).website_url },
+            body: { brandId, url: b.website_url },
           });
           const { data: refreshed } = await supabase.from("brands").select("*").eq("id", brandId).maybeSingle();
-          if (!cancelled && refreshed) setBrand(refreshed);
+          if (!cancelled && refreshed) setBrand((prev: any) => ({ ...(refreshed as any), _kit: prev?._kit }));
         } catch (e) { console.warn("social proof failed", e); }
         finally { if (!cancelled) setProofExtracting(false); }
       }
