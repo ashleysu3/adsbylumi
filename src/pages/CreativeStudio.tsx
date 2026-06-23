@@ -1244,6 +1244,34 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
     );
   }
 
+  if (activeTab === "saved") {
+    return (
+      <Layout>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="min-h-[calc(100vh-120px)]"
+        >
+          <div className="max-w-6xl mx-auto w-full py-6">
+            <div className="mb-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveTab("angles")}
+                className="gap-2 -ml-2"
+              >
+                <ArrowRight className="h-4 w-4 rotate-180" />
+                Back to Creative Studio
+              </Button>
+            </div>
+            <MyCreativeLibrary />
+          </div>
+        </motion.div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <motion.div
