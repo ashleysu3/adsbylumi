@@ -105,6 +105,11 @@ const ARCHETYPE_CONFIG: Record<string, {
   fallbackPrimaryGoal: number;
   fallbackPrimaryDirection: 'less_than' | 'greater_than';
   gradingNotes: string[];
+  // Cadence — mirrors src/lib/business-archetypes.ts. Low-ticket rotates
+  // sooner (lower frequency tolerance); high-ticket later. Falls back to
+  // the temp-based default (warm=5, cold=3) when undefined.
+  fatigueFrequency?: { cold: number; warm: number };
+  refreshEveryDays?: { min: number; max: number };
 }> = {
   lead_gen_funnels: {
     label: 'Lead Generation Funnel',
