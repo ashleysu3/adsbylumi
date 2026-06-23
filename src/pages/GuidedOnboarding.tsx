@@ -429,7 +429,7 @@ export default function GuidedOnboarding() {
   }, [brandId]);
 
   useEffect(() => {
-    if (step !== 4 || !brandId) return;
+    if (step !== 2 || !brandId) return;
     if (assetsInitRef.current) { loadAssets(); return; }
     assetsInitRef.current = true;
     (async () => {
@@ -454,6 +454,15 @@ export default function GuidedOnboarding() {
       } catch { /* ignore */ }
     })();
   }, [step, brandId, loadAssets]);
+
+  // Re-load the library once the harvest extractor finishes streaming in new images.
+  useEffect(() => {
+    if (step !== 2 || !brandId) return;
+    if (loadingAssets) return;
+    if (!assetsInitRef.current) return;
+    loadAssets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingAssets]);
 
   const grouped = useMemo(() => {
     const map: Record<string, AssetRow[]> = {
