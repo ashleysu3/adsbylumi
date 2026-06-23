@@ -1975,8 +1975,13 @@ function ReviewProofCard({ brand, onSave, loading }: { brand: any; onSave: (p: a
                   <div className="space-y-1.5">
                     {items.map((it, i) => {
                       const { primary, secondary } = renderItem(it);
+                      const usesBrand = key === "testimonials" || key === "case_studies";
                       return (
-                        <div key={i} className={`rounded-md border bg-muted/30 border-l-4 ${tint} px-3 py-2`}>
+                        <div
+                          key={i}
+                          className={`rounded-md border bg-muted/30 border-l-4 ${usesBrand ? "" : tint} px-3 py-2`}
+                          style={usesBrand ? { borderLeftColor: "var(--brand-accent)" } : undefined}
+                        >
                           <div className="text-sm leading-snug">{primary}</div>
                           {secondary && <div className="text-xs text-muted-foreground mt-0.5">{secondary}</div>}
                         </div>
