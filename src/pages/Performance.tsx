@@ -118,6 +118,7 @@ interface EngineResult {
     goals?: { kpi: string; label: string; goal: number; direction: string; isDefault: boolean }[];
     hasUserGoals?: boolean;
     campaignType?: string;
+    objective?: string | null;
   };
   campaign: AdEval;
   adsets: AdEval[];
@@ -148,18 +149,42 @@ const ACTION_VERB: Record<string, string> = {
   reduce_budget: "Reduce budget on",
 };
 
-const CAMPAIGN_TYPE_LABELS: Record<string, string> = {
-  cold_acquisition: "Cold acquisition — reach brand-new buyers",
-  warm_retargeting: "Warm retargeting — convert people who already engaged",
-  retention: "Retention — bring back existing audience",
-  awareness: "Awareness — get in front of new people",
-  lead_gen: "Lead generation — collect new leads",
-  sales: "Sales — drive purchases",
+// Plain-English purpose statements keyed by Meta objective. Covers both the
+// modern OUTCOME_* values and the older legacy objective names.
+const OBJECTIVE_PURPOSE: Record<string, string> = {
+  OUTCOME_SALES: "Get in front of cold audiences and drive purchases of your offer.",
+  OUTCOME_LEADS: "Reach cold audiences and collect new leads for your offer.",
+  OUTCOME_TRAFFIC: "Send cold audiences to your website and grow awareness of your offer.",
+  OUTCOME_ENGAGEMENT: "Get more people interacting with your content (messages, likes, comments, shares).",
+  OUTCOME_AWARENESS: "Put your brand in front of as many of the right people as possible.",
+  OUTCOME_APP_PROMOTION: "Drive installs and activity for your app.",
+  // Legacy objective names
+  CONVERSIONS: "Get in front of cold audiences and drive purchases or sign-ups for your offer.",
+  LEAD_GENERATION: "Reach cold audiences and collect new leads for your offer.",
+  LINK_CLICKS: "Send cold audiences to your website and grow awareness of your offer.",
+  TRAFFIC: "Send cold audiences to your website and grow awareness of your offer.",
+  POST_ENGAGEMENT: "Get more people interacting with your content (messages, likes, comments, shares).",
+  MESSAGES: "Start more conversations with potential customers in DMs.",
+  VIDEO_VIEWS: "Get your video in front of more of the right people.",
+  REACH: "Put your brand in front of as many of the right people as possible.",
+  BRAND_AWARENESS: "Put your brand in front of as many of the right people as possible.",
 };
 
-function purposeLine(t?: string): string {
-  if (!t) return "Drive results from this campaign";
-  return CAMPAIGN_TYPE_LABELS[t] || t.replace(/_/g, " ");
+function purposeLine(objective?: string | null, primaryKpi?: string): string {
+  if (objective && OBJECTIVE_PURPOSE[objective]) return OBJECTIVE_PURPOSE[objective];
+  // Fallback by primary KPI when objective is missing/unknown.
+  switch (primaryKpi) {
+    case "roas":
+    case "cpp":
+      return "Get in front of cold audiences and drive purchases of your offer.";
+    case "cpl":
+      return "Reach cold audiences and collect new leads for your offer.";
+    case "cpc":
+    case "ctr":
+      return "Send cold audiences to your website and grow awareness of your offer.";
+    default:
+      return "Drive results from this campaign.";
+  }
 }
 
 function formatKpi(kpi: string, value: number | null): string {
@@ -927,7 +952,7 @@ export default function Performance() {
                                 </Badge>
                               </div>
                               <p className="text-xs text-muted-foreground mt-1">
-                                <span className="font-medium text-foreground">Purpose:</span> {purposeLine(r.meta.campaignType)}
+                                <span className="font-medium text-foreground">Purpose:</span> {purposeLine(r.meta.objective, r.meta.primaryKpi)}
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 <span className="font-medium text-foreground">Measure of success:</span>{" "}
