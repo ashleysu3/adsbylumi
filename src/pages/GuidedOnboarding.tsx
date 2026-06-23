@@ -770,202 +770,217 @@ export default function GuidedOnboarding() {
         {/* ============== STEP 2 — Reveal page (streams in live) ============== */}
         {step === 2 && (
           <div className="space-y-4">
-            <Card className="border-primary/20 bg-primary/5">
+            <Card className="border-primary/20 bg-primary/5 overflow-hidden">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Sparkles className="h-4 w-4 text-primary" /> Here's what we found ✨
+                  <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+                  {allRevealed
+                    ? <>Here's what we found ✨</>
+                    : <>Reading {brand?.website_url ? brand.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "") : "your site"}…</>}
                 </CardTitle>
-                <CardDescription>
-                  Pulled straight from your website{brand?.website_url ? ` (${brand.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "")})` : ""}. Edit anything that's off — rebrand, outdated copy, new audience — and we'll use the updated version everywhere.
+                <CardDescription className="min-h-[20px]">
+                  {allRevealed ? (
+                    <>Edit anything that's off — rebrand, outdated copy, new audience — and we'll use the updated version everywhere.</>
+                  ) : (
+                    <span key={narrationIdx} className="inline-block animate-fade-in text-foreground/80">
+                      {WITTY_LINES[narrationIdx]}
+                    </span>
+                  )}
                 </CardDescription>
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-500"
+                      style={{ width: `${(revealedCount / REVEAL_SECTIONS.length) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
+                    Found {revealedCount} of {REVEAL_SECTIONS.length} ✨
+                  </span>
+                </div>
               </CardHeader>
             </Card>
 
-            {/* Brand basics — first to populate */}
-            <SectionShell
-              loading={loadingBrandBasics}
-              loadingMsg="🔍 Snooping through your website (politely)…"
-            >
-              <BrandBasicsCard brand={brand} onSave={updateBrand} />
-            </SectionShell>
+            <RevealGate revealed={revealed.basics} kind="basics">
+              <BrandBasicsCard brand={brand} placeholderName={placeholderNameRef.current} onSave={updateBrand} />
+            </RevealGate>
 
-            {/* Audience */}
-            <SectionShell
-              loading={loadingAudience}
-              loadingMsg="🧠 Profiling your dream client (in a kind way)…"
-            >
-              <ReviewAudienceCard brand={brand} onSave={updateBrand} />
-            </SectionShell>
-
-            {/* Design guide & images */}
-            <SectionShell
-              loading={loadingBrandBasics}
-              loadingMsg="🎨 Stealing your color palette — for science…"
-            >
+            <RevealGate revealed={revealed.design} kind="design">
               <ReviewDesignCard brand={brand} onSave={updateBrand} />
-            </SectionShell>
+            </RevealGate>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base"><ImageIcon className="h-4 w-4" /> Brand images</CardTitle>
-                <CardDescription>Keep what looks like your brand. Toss what doesn't. Add the missing pieces.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                {(loadingAssets || classifying) && (
-                  <div className="text-xs text-muted-foreground flex items-center gap-2">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    {loadingAssets ? "📸 Hunting for logos and pretty photos…" : "LUMI is sorting your images by type…"}
-                  </div>
-                )}
+            <RevealGate revealed={revealed.audience} kind="audience">
+              <ReviewAudienceCard brand={brand} onSave={updateBrand} />
+            </RevealGate>
 
-                {!logoUrl && (
-                  <SetupPrompt
-                    title="Add a logo"
-                    description="We use it on every ad — even a transparent PNG works."
-                    ctaLabel="Upload logo"
-                    onCta={() => document.getElementById("upload-logo")?.click()}
-                    autoTask={{ title: "Add a brand logo", link_to: "/brand" }}
-                  />
-                )}
-                {grouped.headshot.length === 0 && (
-                  <SetupPrompt
-                    title="Add a headshot"
-                    description="A founder/face photo lifts ad performance a lot. Plain backdrop works best."
-                    ctaLabel="Upload headshot"
-                    onCta={() => document.getElementById("upload-headshot")?.click()}
-                    autoTask={{ title: "Add a headshot photo", link_to: "/brand" }}
-                  />
-                )}
-                {grouped.lifestyle.length === 0 && grouped.background.length === 0 && (
-                  <SetupPrompt
-                    title="Upload a lifestyle photo or backdrop"
-                    description="You at work, with clients, behind the scenes — anything that feels like your world."
-                    ctaLabel="Upload lifestyle"
-                    onCta={() => document.getElementById("upload-lifestyle")?.click()}
-                    autoTask={{ title: "Upload a lifestyle photo", link_to: "/brand" }}
-                  />
-                )}
+            <RevealGate revealed={revealed.proof} kind="proof">
+              {hasProof ? (
+                <ReviewProofCard brand={brand} onSave={updateBrand} loading={proofExtracting} />
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base"><Quote className="h-4 w-4" /> Social proof</CardTitle>
+                    <CardDescription className="text-xs">We didn't spot testimonials, press, or stats on your site — you can add them anytime from Brand.</CardDescription>
+                  </CardHeader>
+                </Card>
+              )}
+            </RevealGate>
 
-                {assetsLoading && (
-                  <div className="text-sm text-muted-foreground flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Loading your library…
-                  </div>
-                )}
+            <RevealGate revealed={revealed.images} kind="images">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base"><ImageIcon className="h-4 w-4" /> Brand images</CardTitle>
+                  <CardDescription>Keep what looks like your brand. Toss what doesn't. Add the missing pieces.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  {(loadingAssets || classifying) && (
+                    <div className="text-xs text-muted-foreground flex items-center gap-2">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      {loadingAssets ? "📸 Hunting for logos and pretty photos…" : "LUMI is sorting your images by type…"}
+                    </div>
+                  )}
 
-                {(() => {
-                  const ASSET_CATEGORIES: { key: keyof typeof grouped; label: string; hint: string }[] = [
-                    { key: "logo", label: "Logo", hint: "Wordmarks and brand marks. Transparent PNG preferred." },
-                    { key: "headshot", label: "Headshot", hint: "Close-up of a face — founder, coach, team." },
-                    { key: "full_body", label: "Full body", hint: "Head-to-toe photos. Great for hero shots." },
-                    { key: "lifestyle", label: "Lifestyle", hint: "You in context — working, teaching, with clients." },
-                    { key: "product", label: "Product", hint: "Physical products, packaging, mockups." },
-                    { key: "graphic", label: "Graphics", hint: "Icons, illustrations, charts, UI screenshots." },
-                    { key: "texture", label: "Textures", hint: "Abstract surfaces and patterns." },
-                    { key: "background", label: "Backgrounds", hint: "Empty scenes — rooms, landscapes — to layer on." },
-                    { key: "other", label: "Other", hint: "Anything else we couldn't auto-sort." },
-                  ];
-                  const ROLE_OPTIONS = ASSET_CATEGORIES.map((c) => ({ value: c.key as string, label: c.label }));
-                  return ASSET_CATEGORIES.map(({ key, label, hint }) => {
-                    const list = grouped[key];
-                    if (!list || list.length === 0) return null;
-                    return (
-                      <div key={key} className="space-y-2">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <div>
-                            <h3 className="text-sm font-semibold">{label} <span className="text-muted-foreground font-normal">· {list.length}</span></h3>
-                            <p className="text-xs text-muted-foreground">{hint}</p>
+                  {!logoUrl && (
+                    <SetupPrompt
+                      title="Add a logo"
+                      description="We use it on every ad — even a transparent PNG works."
+                      ctaLabel="Upload logo"
+                      onCta={() => document.getElementById("upload-logo")?.click()}
+                      autoTask={{ title: "Add a brand logo", link_to: "/brand" }}
+                    />
+                  )}
+                  {grouped.headshot.length === 0 && (
+                    <SetupPrompt
+                      title="Add a headshot"
+                      description="A founder/face photo lifts ad performance a lot. Plain backdrop works best."
+                      ctaLabel="Upload headshot"
+                      onCta={() => document.getElementById("upload-headshot")?.click()}
+                      autoTask={{ title: "Add a headshot photo", link_to: "/brand" }}
+                    />
+                  )}
+                  {grouped.lifestyle.length === 0 && grouped.background.length === 0 && (
+                    <SetupPrompt
+                      title="Upload a lifestyle photo or backdrop"
+                      description="You at work, with clients, behind the scenes — anything that feels like your world."
+                      ctaLabel="Upload lifestyle"
+                      onCta={() => document.getElementById("upload-lifestyle")?.click()}
+                      autoTask={{ title: "Upload a lifestyle photo", link_to: "/brand" }}
+                    />
+                  )}
+
+                  {assetsLoading && (
+                    <div className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading your library…
+                    </div>
+                  )}
+
+                  {(() => {
+                    const ASSET_CATEGORIES: { key: keyof typeof grouped; label: string; hint: string }[] = [
+                      { key: "logo", label: "Logo", hint: "Wordmarks and brand marks. Transparent PNG preferred." },
+                      { key: "headshot", label: "Headshot", hint: "Close-up of a face — founder, coach, team." },
+                      { key: "full_body", label: "Full body", hint: "Head-to-toe photos. Great for hero shots." },
+                      { key: "lifestyle", label: "Lifestyle", hint: "You in context — working, teaching, with clients." },
+                      { key: "product", label: "Product", hint: "Physical products, packaging, mockups." },
+                      { key: "graphic", label: "Graphics", hint: "Icons, illustrations, charts, UI screenshots." },
+                      { key: "texture", label: "Textures", hint: "Abstract surfaces and patterns." },
+                      { key: "background", label: "Backgrounds", hint: "Empty scenes — rooms, landscapes — to layer on." },
+                      { key: "other", label: "Other", hint: "Anything else we couldn't auto-sort." },
+                    ];
+                    const ROLE_OPTIONS = ASSET_CATEGORIES.map((c) => ({ value: c.key as string, label: c.label }));
+                    return ASSET_CATEGORIES.map(({ key, label, hint }) => {
+                      const list = grouped[key];
+                      if (!list || list.length === 0) return null;
+                      return (
+                        <div key={key} className="space-y-2">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <div>
+                              <h3 className="text-sm font-semibold">{label} <span className="text-muted-foreground font-normal">· {list.length}</span></h3>
+                              <p className="text-xs text-muted-foreground">{hint}</p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                            {list.map((a) => (
+                              <div key={a.id} className={`group relative rounded-md overflow-hidden border ${a.kept ? "ring-2 ring-lumi-pink-1" : "opacity-60"}`}>
+                                {a.signedUrl ? (
+                                  <img src={a.signedUrl} alt="" className="aspect-square object-cover w-full" loading="lazy" />
+                                ) : (
+                                  <div className="aspect-square bg-muted" />
+                                )}
+                                <div className="absolute top-1 right-1 flex gap-1">
+                                  <button onClick={() => toggleKept(a.id, !a.kept)} className="bg-background/90 rounded-full p-1" title={a.kept ? "Remove from set" : "Keep"}>
+                                    <Check className={`h-3 w-3 ${a.kept ? "" : "text-muted-foreground"}`} />
+                                  </button>
+                                  <button onClick={() => removeAsset(a.id)} className="bg-background/90 rounded-full p-1" title="Delete">
+                                    <Trash2 className="h-3 w-3" />
+                                  </button>
+                                </div>
+                                <div className="p-1">
+                                  <Select value={a.role || "other"} onValueChange={(v) => setRole(a.id, v)}>
+                                    <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      {ROLE_OPTIONS.map((r) => (
+                                        <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                          {list.map((a) => (
-                            <div key={a.id} className={`group relative rounded-md overflow-hidden border ${a.kept ? "ring-2 ring-lumi-pink-1" : "opacity-60"}`}>
-                              {a.signedUrl ? (
-                                <img src={a.signedUrl} alt="" className="aspect-square object-cover w-full" loading="lazy" />
-                              ) : (
-                                <div className="aspect-square bg-muted" />
-                              )}
-                              <div className="absolute top-1 right-1 flex gap-1">
-                                <button onClick={() => toggleKept(a.id, !a.kept)} className="bg-background/90 rounded-full p-1" title={a.kept ? "Remove from set" : "Keep"}>
-                                  <Check className={`h-3 w-3 ${a.kept ? "" : "text-muted-foreground"}`} />
-                                </button>
-                                <button onClick={() => removeAsset(a.id)} className="bg-background/90 rounded-full p-1" title="Delete">
-                                  <Trash2 className="h-3 w-3" />
-                                </button>
-                              </div>
-                              <div className="p-1">
-                                <Select value={a.role || "other"} onValueChange={(v) => setRole(a.id, v)}>
-                                  <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    {ROLE_OPTIONS.map((r) => (
-                                      <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  });
-                })()}
+                      );
+                    });
+                  })()}
 
-                <div className="pt-3 border-t space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Add more</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <UploadBtn id="upload-logo" label="+ Logo" onFile={(f) => uploadFile(f, "logo")} />
-                    <UploadBtn id="upload-headshot" label="+ Headshot" onFile={(f) => uploadFile(f, "headshot")} />
-                    <UploadBtn id="upload-fullbody" label="+ Full body" onFile={(f) => uploadFile(f, "full_body")} />
-                    <UploadBtn id="upload-lifestyle" label="+ Lifestyle" onFile={(f) => uploadFile(f, "lifestyle")} />
-                    <UploadBtn id="upload-product" label="+ Product" onFile={(f) => uploadFile(f, "product")} />
-                    <UploadBtn id="upload-graphic" label="+ Graphic" onFile={(f) => uploadFile(f, "graphic")} />
-                    <UploadBtn id="upload-texture" label="+ Texture" onFile={(f) => uploadFile(f, "texture")} />
-                    <UploadBtn id="upload-bg" label="+ Background" onFile={(f) => uploadFile(f, "background")} />
-                  </div>
-                </div>
-
-                {/* B-roll */}
-                <div className="pt-4 border-t space-y-3">
-                  <h3 className="text-sm font-semibold flex items-center gap-2"><Film className="h-4 w-4" /> B-roll</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <UploadBtn id="upload-broll" label="Upload b-roll (mp4)" accept="video/*" onFile={uploadBroll} />
-                    <Button variant="outline" size="sm" onClick={saveShotList} disabled={!brollIdeas?.length}>
-                      <ListChecks className="h-3 w-3 mr-1" /> Save suggested shot list
-                    </Button>
-                  </div>
-                  {brollIdeas?.length ? (
-                    <div className="rounded-md border bg-muted/30 p-3 space-y-1 max-h-44 overflow-auto">
-                      <p className="text-xs font-medium mb-1">Suggested shots</p>
-                      {brollIdeas.slice(0, 8).map((i: any, idx: number) => (
-                        <p key={idx} className="text-xs text-muted-foreground">
-                          • {i.title || i.description || JSON.stringify(i)}
-                        </p>
-                      ))}
+                  <div className="pt-3 border-t space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Add more</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <UploadBtn id="upload-logo" label="+ Logo" onFile={(f) => uploadFile(f, "logo")} />
+                      <UploadBtn id="upload-headshot" label="+ Headshot" onFile={(f) => uploadFile(f, "headshot")} />
+                      <UploadBtn id="upload-fullbody" label="+ Full body" onFile={(f) => uploadFile(f, "full_body")} />
+                      <UploadBtn id="upload-lifestyle" label="+ Lifestyle" onFile={(f) => uploadFile(f, "lifestyle")} />
+                      <UploadBtn id="upload-product" label="+ Product" onFile={(f) => uploadFile(f, "product")} />
+                      <UploadBtn id="upload-graphic" label="+ Graphic" onFile={(f) => uploadFile(f, "graphic")} />
+                      <UploadBtn id="upload-texture" label="+ Texture" onFile={(f) => uploadFile(f, "texture")} />
+                      <UploadBtn id="upload-bg" label="+ Background" onFile={(f) => uploadFile(f, "background")} />
                     </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">LUMI is brewing custom b-roll ideas for you…</p>
-                  )}
+                  </div>
+
+                  {/* B-roll */}
+                  <div className="pt-4 border-t space-y-3">
+                    <h3 className="text-sm font-semibold flex items-center gap-2"><Film className="h-4 w-4" /> B-roll</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <UploadBtn id="upload-broll" label="Upload b-roll (mp4)" accept="video/*" onFile={uploadBroll} />
+                      <Button variant="outline" size="sm" onClick={saveShotList} disabled={!brollIdeas?.length}>
+                        <ListChecks className="h-3 w-3 mr-1" /> Save suggested shot list
+                      </Button>
+                    </div>
+                    {brollIdeas?.length ? (
+                      <div className="rounded-md border bg-muted/30 p-3 space-y-1 max-h-44 overflow-auto">
+                        <p className="text-xs font-medium mb-1">Suggested shots</p>
+                        {brollIdeas.slice(0, 8).map((i: any, idx: number) => (
+                          <p key={idx} className="text-xs text-muted-foreground">
+                            • {i.title || i.description || JSON.stringify(i)}
+                          </p>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">LUMI is brewing custom b-roll ideas for you…</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </RevealGate>
+
+            {allRevealed && (
+              <div className="flex justify-between pt-2 animate-fade-in">
+                <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => finishLater("Finish your brand review", "/brand")}>Finish later</Button>
+                  <Button onClick={advance}>Looks good <ArrowRight className="h-4 w-4 ml-1" /></Button>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Social proof — only renders when something was actually found (or still loading) */}
-            {(loadingProof || hasProof) && (
-              <SectionShell
-                loading={loadingProof && !hasProof}
-                loadingMsg="💬 Reading every testimonial out loud…"
-              >
-                <ReviewProofCard brand={brand} onSave={updateBrand} loading={proofExtracting} />
-              </SectionShell>
-            )}
-
-            <div className="flex justify-between pt-2">
-              <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => finishLater("Finish your brand review", "/brand")}>Finish later</Button>
-                <Button onClick={advance}>Looks good <ArrowRight className="h-4 w-4 ml-1" /></Button>
               </div>
-            </div>
+            )}
           </div>
         )}
 
