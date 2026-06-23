@@ -178,7 +178,7 @@ const App = () => {
                   <Route path="/launch" element={<Launch />} />
                   <Route path="/ad-performance" element={<Performance />} />
                   <Route path="/live-ads" element={<Navigate to="/ad-performance" replace />} />
-                  <Route path="/live-ads/:campaignId" element={<CloserLookPlaceholder />} />
+                  <Route path="/live-ads/:campaignId" element={<CloserLook />} />
                   <Route path="/data" element={<AdPerformance />} />
                   <Route path="/performance" element={<Navigate to="/ad-performance" replace />} />
                   <Route path="/performance-summary" element={<Navigate to="/ad-performance" replace />} />
