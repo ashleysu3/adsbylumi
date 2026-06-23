@@ -952,7 +952,7 @@ export default function Performance() {
                                 </Badge>
                               </div>
                               <p className="text-xs text-muted-foreground mt-1">
-                                <span className="font-medium text-foreground">Purpose:</span> {purposeLine(r.meta.campaignType)}
+                                <span className="font-medium text-foreground">Purpose:</span> {purposeLine(r.meta.objective, r.meta.primaryKpi)}
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 <span className="font-medium text-foreground">Measure of success:</span>{" "}
