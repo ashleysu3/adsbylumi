@@ -36,6 +36,7 @@ import { ProductionManager } from "@/components/creative/ProductionManager";
 import { AngleCopyEditor } from "@/components/creative/AngleCopyEditor";
 
 import { BrandLearningsPanel } from "@/components/creative/BrandLearningsPanel";
+import { CadenceNudge } from "@/components/creative/CadenceNudge";
  import { CreativeContextInput, CreativeContext } from "@/components/creative/CreativeContextInput";
 import { CreativeStudioExplainer, useCreativeStudioExplainer } from "@/components/creative/CreativeStudioExplainer";
 import { Json } from "@/integrations/supabase/types";
@@ -1325,8 +1326,16 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
             </div>
           </div>
 
+          {/* Archetype-driven creative cadence — suggested test size +
+              time-to-refresh nudge. Hidden when brand has no archetype. */}
+          <CadenceNudge
+            brandId={brandId || null}
+            archetypeSlug={(activeBrand as any)?.business_model ?? null}
+            workspaceId={workspace?.id ?? null}
+            onStartTest={() => setActiveTab("angles")}
+          />
 
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkflowTab)}>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkflowTab)} className="mt-4">
             <TabsList className="grid w-full grid-cols-5 mb-6 h-12 bg-transparent p-0 gap-2 rounded-none">
             {workflowTabs.map((t) => {
               const isActive = activeTab === t.id;

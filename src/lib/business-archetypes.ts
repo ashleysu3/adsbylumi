@@ -46,6 +46,28 @@ export type ArchetypeBudgetApproach = {
   scaleTrigger?: string;
 };
 
+// Creative cadence — how often to refresh creative, how many angles per
+// test, and (for community launches) the narrative arc across the window.
+// Surfaced in Creative Studio nudges and used by the fatigue engine to
+// pick archetype-appropriate frequency thresholds.
+export type ArchetypeCadence = {
+  // Plain-language pace shown in the nudge ("Weekly rotation", "Slow").
+  rotationPace: string;
+  // How many distinct angles/variations to ship per test cycle.
+  anglesPerTest: { min: number; max: number };
+  // Days between scheduled refreshes (lower bound = "due soon" trigger).
+  refreshEveryDays: { min: number; max: number };
+  // Override fatigue threshold — frequency at which the evaluator should
+  // call this audience fatigued. Low-ticket rotates sooner (lower threshold),
+  // high-ticket tolerates more repetition. Falls back to the temp-based
+  // default (warm=5, cold=3) when undefined.
+  fatigueFrequencyThreshold?: { cold: number; warm: number };
+  // For launch-window archetypes — the week-by-week narrative arc.
+  narrativeArc?: string[];
+  // One-line tip surfaced in the nudge body.
+  tip: string;
+};
+
 export type Archetype = {
   slug: ArchetypeSlug;
   label: string;
@@ -60,6 +82,8 @@ export type Archetype = {
   // intentionally empty (ecommerce) — the framework is seeded even if
   // templates come later.
   templateSlugs: string[];
+  // Creative cadence — drives Studio nudges + fatigue thresholds.
+  cadence: ArchetypeCadence;
 };
 
 export const ARCHETYPES: Record<ArchetypeSlug, Archetype> = {
@@ -99,6 +123,13 @@ export const ARCHETYPES: Record<ArchetypeSlug, Archetype> = {
       "Weak Day-1 ROAS is normal. The real read is downstream nurture revenue at 30/60/90 days.",
     ],
     templateSlugs: ["webinar-cold", "paid-challenge-cold", "lead-magnet-cold"],
+    cadence: {
+      rotationPace: "Weekly rotation",
+      anglesPerTest: { min: 3, max: 5 },
+      refreshEveryDays: { min: 7, max: 14 },
+      fatigueFrequencyThreshold: { cold: 3, warm: 5 },
+      tip: "Ship 3–5 angles, refresh every 1–2 weeks. Hooks fatigue fast on cold lead-gen.",
+    },
   },
 
   low_ticket_direct: {
@@ -131,6 +162,13 @@ export const ARCHETYPES: Record<ArchetypeSlug, Archetype> = {
       "Repeat purchase rate is the real margin lever, not first-sale ROAS.",
     ],
     templateSlugs: ["paid-challenge-cold", "low-ticket-offer"],
+    cadence: {
+      rotationPace: "High rotation",
+      anglesPerTest: { min: 8, max: 12 },
+      refreshEveryDays: { min: 5, max: 10 },
+      fatigueFrequencyThreshold: { cold: 2.5, warm: 4 },
+      tip: "Ship 8–12 variations weekly. Impulse buyers burn through hooks fast — rotate before frequency hits 3.",
+    },
   },
 
   high_ticket_consult: {
@@ -163,6 +201,13 @@ export const ARCHETYPES: Record<ArchetypeSlug, Archetype> = {
       "If app-to-call is below 30%, the qualifier is too loose, not the ad.",
     ],
     templateSlugs: ["dm-conversations", "application-booked-call"],
+    cadence: {
+      rotationPace: "Slow rotation",
+      anglesPerTest: { min: 2, max: 4 },
+      refreshEveryDays: { min: 14, max: 21 },
+      fatigueFrequencyThreshold: { cold: 4, warm: 7 },
+      tip: "Quality over quantity. Refresh every 2–3 weeks — high-ticket buyers need repetition to convert.",
+    },
   },
 
   ecommerce: {
@@ -196,6 +241,13 @@ export const ARCHETYPES: Record<ArchetypeSlug, Archetype> = {
       "Repeat customer rate compounds — a 2:1 first-purchase ROAS becomes 4:1 with repeats.",
     ],
     templateSlugs: [],
+    cadence: {
+      rotationPace: "Monthly refresh",
+      anglesPerTest: { min: 5, max: 10 },
+      refreshEveryDays: { min: 21, max: 30 },
+      fatigueFrequencyThreshold: { cold: 3.5, warm: 8 },
+      tip: "Plan 5–10 angles per product line. Retargeting tolerates much higher frequency than cold.",
+    },
   },
 
   community_membership: {
@@ -230,6 +282,19 @@ export const ARCHETYPES: Record<ArchetypeSlug, Archetype> = {
       "Outside an enrollment window? Don't grade — pause and wait.",
     ],
     templateSlugs: ["launch-window-membership"],
+    cadence: {
+      rotationPace: "Launch-window narrative arc",
+      anglesPerTest: { min: 4, max: 6 },
+      refreshEveryDays: { min: 7, max: 7 },
+      fatigueFrequencyThreshold: { cold: 4, warm: 8 },
+      narrativeArc: [
+        "Wk 1 — Problem / awareness",
+        "Wk 2 — Community / belonging",
+        "Wk 3 — Social proof / transformation",
+        "Wk 4 — Urgency / doors closing",
+      ],
+      tip: "Run a 4-week narrative arc across the launch window — one creative theme per week.",
+    },
   },
 };
 
@@ -376,4 +441,117 @@ export function getArchetypeKpiSuggestions(slug: string | null | undefined): {
       : null,
     note,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Creative cadence helpers — surfaced in Creative Studio + fatigue engine.
+// ---------------------------------------------------------------------------
+
+export function getArchetypeCadence(
+  slug: string | null | undefined,
+): ArchetypeCadence | null {
+  const a = getArchetype(slug);
+  return a?.cadence ?? null;
+}
+
+export type RefreshStatus =
+  | { state: "no-archetype" }
+  | { state: "never-refreshed"; tip: string }
+  | { state: "fresh"; daysSince: number; daysUntilDue: number; tip: string }
+  | { state: "due-soon"; daysSince: number; daysUntilDue: number; tip: string }
+  | { state: "overdue"; daysSince: number; daysOverdue: number; tip: string };
+
+/**
+ * Compare the last refresh date against the archetype's cadence and return a
+ * surfaced state for the Studio nudge.
+ *
+ * - fresh:     well within the refresh window
+ * - due-soon:  inside the cadence min, but past 70%
+ * - overdue:   past the cadence max
+ */
+export function getRefreshStatus(
+  slug: string | null | undefined,
+  lastRefreshAt: string | Date | null | undefined,
+): RefreshStatus {
+  const cadence = getArchetypeCadence(slug);
+  if (!cadence) return { state: "no-archetype" };
+
+  if (!lastRefreshAt) {
+    return {
+      state: "never-refreshed",
+      tip: `No creative refreshes logged yet. ${cadence.tip}`,
+    };
+  }
+
+  const last =
+    lastRefreshAt instanceof Date ? lastRefreshAt : new Date(lastRefreshAt);
+  if (isNaN(last.getTime())) return { state: "no-archetype" };
+
+  const daysSince = Math.floor(
+    (Date.now() - last.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  const { min, max } = cadence.refreshEveryDays;
+  const dueSoonThreshold = Math.round(min * 0.7);
+
+  if (daysSince >= max) {
+    return {
+      state: "overdue",
+      daysSince,
+      daysOverdue: daysSince - max,
+      tip: `${cadence.rotationPace.toLowerCase()} is overdue. ${cadence.tip}`,
+    };
+  }
+  if (daysSince >= dueSoonThreshold) {
+    return {
+      state: "due-soon",
+      daysSince,
+      daysUntilDue: Math.max(0, max - daysSince),
+      tip: `Refresh window opens soon. ${cadence.tip}`,
+    };
+  }
+  return {
+    state: "fresh",
+    daysSince,
+    daysUntilDue: max - daysSince,
+    tip: cadence.tip,
+  };
+}
+
+/**
+ * Suggested test size for a new round of creative — used by the Studio
+ * "how many should I make?" nudge.
+ */
+export function getTestSizeSuggestion(slug: string | null | undefined): {
+  min: number;
+  max: number;
+  label: string;
+  pace: string;
+} | null {
+  const c = getArchetypeCadence(slug);
+  if (!c) return null;
+  return {
+    min: c.anglesPerTest.min,
+    max: c.anglesPerTest.max,
+    label: `${c.anglesPerTest.min}–${c.anglesPerTest.max} angles per test`,
+    pace: c.rotationPace,
+  };
+}
+
+/**
+ * Archetype-aware frequency threshold for the fatigue engine.
+ * Falls back to the temp-based default when no override is configured.
+ */
+export function getFatigueFrequencyThreshold(
+  slug: string | null | undefined,
+  temp: "cold" | "warm",
+): number {
+  const c = getArchetypeCadence(slug);
+  if (c?.fatigueFrequencyThreshold) {
+    return temp === "warm"
+      ? c.fatigueFrequencyThreshold.warm
+      : c.fatigueFrequencyThreshold.cold;
+  }
+  // Default mirrors evaluate-campaign-status §6.4.
+  return temp === "warm" ? 5 : 3;
 }
