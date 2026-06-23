@@ -84,6 +84,7 @@ import AdminPartners from "./pages/admin/Partners";
 import AdminPartnerApplications from "./pages/admin/PartnerApplications";
 import AdminEmailLogs from "./pages/admin/EmailLogs";
 import AdminEmails from "./pages/admin/Emails";
+import AdminTestReports from "./pages/admin/TestReports";
 import AdminCancellations from "./pages/admin/Cancellations";
 import AdminDisputeEvidence from "./pages/admin/DisputeEvidence";
 import ClientPortal from "./pages/ClientPortal";
