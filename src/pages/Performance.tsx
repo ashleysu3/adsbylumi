@@ -37,6 +37,11 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 import { upsertRecommendationTasks, closeMatchingTasks, RecForTask } from "@/lib/task-executors";
+import { DateRangePicker } from "@/components/insights/DateRangePicker";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
+import { format } from "date-fns";
+
 
 // ============================================================================
 // /ad-performance — Live Ads "Big Picture"
