@@ -95,13 +95,43 @@ export function MetaSetupStatus({ brandId, onReconnectRequested, onPixelSetupReq
 
   useEffect(() => { runCheck(); }, [brandId]);
 
+  const runIgFix = async () => {
+    setIgFixing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('connect-ig-to-ad-account', {
+        body: { brandId },
+      });
+      if (error) throw new Error(error.message || 'Could not connect Instagram.');
+      if (data?.success) {
+        toast.success(
+          data?.instagram?.username
+            ? `Connected @${data.instagram.username} to your ad account ✅`
+            : 'Instagram connected to your ad account ✅',
+        );
+        await runCheck();
+      } else if (data?.manual) {
+        setIgManualOpen(true);
+        toast.error(data?.error || "Meta couldn't connect it automatically — follow the manual steps.");
+      } else {
+        toast.error(data?.error || "Couldn't connect Instagram. Try the manual steps.");
+      }
+    } catch (err: any) {
+      setIgManualOpen(true);
+      toast.error(err?.message || "Couldn't connect Instagram. Try the manual steps.");
+    } finally {
+      setIgFixing(false);
+    }
+  };
+
   const handleAction = (a: ActionHint | null | undefined) => {
     if (!a) return;
     switch (a.kind) {
+      case 'ig_link':
+        runIgFix();
+        break;
       case 'reconnect':
       case 'choose_ad_account':
       case 'page_link':
-      case 'ig_link':
         onReconnectRequested?.();
         if (!onReconnectRequested) toast.info('Use the Connect Meta button below to reconnect.');
         break;
