@@ -325,6 +325,7 @@ export default function GuidedOnboarding() {
     const normalized = normalizeWebsiteUrl(offerUrl);
     if (!normalized) { toast.error("Add your offer's sales page URL"); return; }
     setOfferBusy(true);
+    setGlobalLoaderMsg("LUMI is reading your offer page…");
     try {
       const { data: existing } = await supabase
         .from("offers").select("id").eq("brand_id", brandId).eq("url", normalized).maybeSingle();
