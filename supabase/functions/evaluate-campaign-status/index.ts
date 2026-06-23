@@ -337,11 +337,15 @@ Deno.serve(async req => {
       ...adEvaluations, ...adsetEvaluations, campaignEvaluation,
     ]);
 
+    const hasUserGoals = !!(globalThis as any).__lumi_goal_row;
     return json({
       success: true,
       meta: {
         primaryKpi, primaryKpiLabel: KPI_LABELS[primaryKpi] || primaryKpi.toUpperCase(),
-        primaryGoal, primaryDirection, secondaryKpi, goals: goalsConfig, campaignType,
+        primaryGoal, primaryDirection, secondaryKpi,
+        goals: goalsConfig.map(g => ({ ...g, isDefaultGoal: g.isDefault })),
+        hasUserGoals,
+        campaignType,
         asOf: asOfDate.toISOString(),
         displayRange: { since: displayWindow.since, until: displayWindow.until, days: displayWindow.days, label: displayWindow.label },
       },
@@ -791,7 +795,7 @@ function classify(args: ClassifyArgs): AdEvaluation {
       else if (g.direction === 'less_than') status = value <= g.goal ? 'above' : 'below';
       else status = value >= g.goal ? 'above' : 'below';
     }
-    return { kpi: g.kpi, label: g.label, value, goal: g.goal, vsGoalPct, direction: g.direction, status, isDefault: g.isDefault };
+    return { kpi: g.kpi, label: g.label, value, goal: g.goal, vsGoalPct, direction: g.direction, status, isDefault: g.isDefault, isDefaultGoal: g.isDefault };
   });
 
 

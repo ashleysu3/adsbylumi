@@ -39,7 +39,10 @@ import {
   Lightbulb,
   Heart,
   History,
+  Target,
 } from "lucide-react";
+import { SetupPrompt } from "@/components/SetupPrompt";
+import { GoalSetupModal } from "@/components/insights/GoalSetupModal";
 
 // ============================================================================
 // /live-ads/:campaignId — Closer Look at one live campaign.
@@ -102,6 +105,7 @@ interface EngineResult {
     primaryDirection?: "less_than" | "greater_than";
     secondaryKpi: string | null;
     goals?: { kpi: string; label: string; goal: number; direction: string; isDefault: boolean }[];
+    hasUserGoals?: boolean;
     campaignType?: string;
   };
   campaign: AdEval;
@@ -163,6 +167,7 @@ export default function CloserLook() {
   const [workspaceName, setWorkspaceName] = useState<string>("");
   const [actions, setActions] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
 
   // Task-execute dialog (shared confirm + execute path)
   const [taskOpen, setTaskOpen] = useState(false);
@@ -418,6 +423,22 @@ export default function CloserLook() {
             </p>
 
           </div>
+          {result.meta.hasUserGoals === false && (
+            <div className="w-full">
+              <SetupPrompt
+                icon={Target}
+                title="Set goals for this campaign"
+                description="So LUMI can measure success against your targets (we're showing benchmark defaults for now)."
+                ctaLabel="Set goals"
+                tone="warning"
+                onCta={() => setGoalModalOpen(true)}
+                autoTask={{
+                  title: `Set goals for ${workspaceName || result.campaign.name}`,
+                  link_to: `/live-ads/${campaignId}`,
+                }}
+              />
+            </div>
+          )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -656,6 +677,16 @@ export default function CloserLook() {
         />
 
         <BugReportModal open={bugOpen} onOpenChange={setBugOpen} context="closer-look" />
+        <GoalSetupModal
+          open={goalModalOpen}
+          onOpenChange={setGoalModalOpen}
+          campaigns={workspaceId ? [{
+            id: workspaceId,
+            name: workspaceName || result.campaign.name,
+            brandId: activeBrand?.id,
+          }] : []}
+          onGoalsSaved={() => { setGoalModalOpen(false); window.location.reload(); }}
+        />
       </div>
     </DashboardLayout>
   );
