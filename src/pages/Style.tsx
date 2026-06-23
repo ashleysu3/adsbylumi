@@ -12,6 +12,8 @@ import { Separator } from "@/components/ui/separator";
 import { PageShimmer } from "@/components/GradientShimmer";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { BRollLibrary } from "@/components/BRollLibrary";
+import { BrandEditDialog } from "@/components/BrandEditDialog";
+import { Globe, Target, Edit } from "lucide-react";
 import BrandImageLibrary from "@/components/BrandImageLibrary";
 import BrandColorsAndFonts from "@/components/BrandColorsAndFonts";
 import { BRollLibrariesManager } from "@/components/BRollLibrariesManager";
@@ -45,6 +47,7 @@ export default function Style() {
   const [newEmoji, setNewEmoji] = useState("");
   const [overlayStyle, setOverlayStyle] = useState<OverlayStyle>(DEFAULT_OVERLAY_STYLE);
   const [brollClips, setBrollClips] = useState<any[]>([]);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchBrand();
@@ -196,8 +199,55 @@ export default function Style() {
         </div>
 
         <div className="space-y-6 md:space-y-8 min-w-0">
+          {/* Brand Details */}
+          <Card variant="glow">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Building2 className="h-5 w-5 text-primary" />
+                  <CardTitle>Brand Details</CardTitle>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Details
+                </Button>
+              </div>
+              <CardDescription>The basics that anchor your brand.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-start space-x-3">
+                <Building2 className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium">Name</p>
+                  <p className="text-sm text-muted-foreground">{brand.name || "—"}</p>
+                </div>
+              </div>
+              {brand.website_url && (
+                <div className="flex items-start space-x-3">
+                  <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">Website</p>
+                    <a href={brand.website_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
+                      {brand.website_url}
+                    </a>
+                  </div>
+                </div>
+              )}
+              {brand.industry && (
+                <div className="flex items-start space-x-3">
+                  <Target className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">Industry</p>
+                    <p className="text-sm text-muted-foreground">{brand.industry}</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Brand Colors & Fonts */}
           <BrandColorsAndFonts brandId={brand.id} websiteUrl={brand?.website_url || brand?.website} />
+
 
           {/* Brand Image Library */}
           <BrandImageLibrary brandId={brand.id} websiteUrl={brand?.website_url || brand?.website} />
@@ -232,6 +282,14 @@ export default function Style() {
           />
         </div>
       </div>
+
+      <BrandEditDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        brand={brand}
+        onUpdate={fetchBrand}
+      />
     </DashboardLayout>
   );
 }
+

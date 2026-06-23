@@ -210,181 +210,175 @@ export function AudiencePsychology({
         customCopy={PSYCHOLOGY_LOADING_COPY}
       />
       
-      <Collapsible open={open} onOpenChange={setOpen}>
-        <Card data-section="audience-psychology">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CollapsibleTrigger asChild>
-                <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                  <Brain className="h-5 w-5 text-primary" />
-                  <CardTitle>Audience Psychology</CardTitle>
-                  <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
-                </button>
-              </CollapsibleTrigger>
+      <Card data-section="audience-psychology">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-primary" />
+              <CardTitle>Audience Psychology</CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              {getStatusBadge()}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleOpenEdit}
+                title="Edit"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleGenerate}
+                disabled={generating}
+                title="Regenerate"
+              >
+                <RefreshCw className={`h-4 w-4 ${generating ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
+          <CardDescription>
+            Deep psychological insights about your target audience
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          {psychology?.demographics && (
+            <div className="space-y-2">
               <div className="flex items-center gap-2">
-                {getStatusBadge()}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleOpenEdit}
-                  title="Edit"
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleGenerate}
-                  disabled={generating}
-                  title="Regenerate"
-                >
-                  <RefreshCw className={`h-4 w-4 ${generating ? 'animate-spin' : ''}`} />
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <h4 className="font-semibold">Demographics</h4>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">{psychology.demographics}</p>
+            </div>
+          )}
+
+          {psychology?.psychographics && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Brain className="h-4 w-4 text-muted-foreground" />
+                <h4 className="font-semibold">Psychographics</h4>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">{psychology.psychographics}</p>
+            </div>
+          )}
+
+          {psychology?.pain_points && psychology.pain_points.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                <h4 className="font-semibold">Pain Points</h4>
+              </div>
+              <ul className="list-disc list-inside space-y-1">
+                {psychology.pain_points.map((point: string, i: number) => (
+                  <li key={i} className="text-sm text-muted-foreground">{point}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {psychology?.desires && psychology.desires.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Heart className="h-4 w-4 text-muted-foreground" />
+                <h4 className="font-semibold">Desires</h4>
+              </div>
+              <ul className="list-disc list-inside space-y-1">
+                {psychology.desires.map((desire: string, i: number) => (
+                  <li key={i} className="text-sm text-muted-foreground">{desire}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {psychology?.objections && psychology.objections.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                <h4 className="font-semibold">Objections</h4>
+              </div>
+              <ul className="list-disc list-inside space-y-1">
+                {psychology.objections.map((objection: string, i: number) => (
+                  <li key={i} className="text-sm text-muted-foreground">{objection}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {psychology?.motivations && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-muted-foreground" />
+                <h4 className="font-semibold">Motivations</h4>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">{psychology.motivations}</p>
+            </div>
+          )}
+
+          {/* Approval Section */}
+          {canApprove && (
+            <div className="pt-4 border-t">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Review the insights above. Once approved, this step is complete.
+                </p>
+                <Button onClick={handleApprove} className="gap-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Approve Psychology
                 </Button>
               </div>
             </div>
-            <CardDescription>
-              Deep psychological insights about your target audience
-            </CardDescription>
-          </CardHeader>
+          )}
 
-          <CollapsibleContent>
-            <CardContent className="space-y-6">
-              {psychology?.demographics && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="font-semibold">Demographics</h4>
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{psychology.demographics}</p>
-                </div>
-              )}
+          {isApproved && (
+            <div className="pt-4 border-t">
+              <p className="text-sm text-green-600 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" />
+                Audience psychology approved and ready to use
+              </p>
+            </div>
+          )}
 
-              {psychology?.psychographics && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Brain className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="font-semibold">Psychographics</h4>
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{psychology.psychographics}</p>
-                </div>
-              )}
+          {/* Content Assets Available Alert */}
+          {hasNewContent && (
+            <Alert className="mt-4 border-primary/20 bg-primary/5">
+              <FileText className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between">
+                <span className="text-sm">
+                  <Sparkles className="inline h-3 w-3 mr-1" />
+                  {contentAssets.length} content asset{contentAssets.length !== 1 ? 's' : ''} available – regenerate to include them
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleGenerate}
+                  disabled={generating}
+                  className="h-7 text-xs"
+                >
+                  {generating ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <>
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Regenerate
+                    </>
+                  )}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
 
-              {psychology?.pain_points && psychology.pain_points.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="font-semibold">Pain Points</h4>
-                  </div>
-                  <ul className="list-disc list-inside space-y-1">
-                    {psychology.pain_points.map((point: string, i: number) => (
-                      <li key={i} className="text-sm text-muted-foreground">{point}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+          {/* Show when psychology was generated */}
+          {psychologyGeneratedAt && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Last generated: {new Date(psychologyGeneratedAt).toLocaleDateString()}
+              {psychologyContentHash && ` • Using ${psychologyContentHash.split(',').length} content asset(s)`}
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
-              {psychology?.desires && psychology.desires.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Heart className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="font-semibold">Desires</h4>
-                  </div>
-                  <ul className="list-disc list-inside space-y-1">
-                    {psychology.desires.map((desire: string, i: number) => (
-                      <li key={i} className="text-sm text-muted-foreground">{desire}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {psychology?.objections && psychology.objections.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="font-semibold">Objections</h4>
-                  </div>
-                  <ul className="list-disc list-inside space-y-1">
-                    {psychology.objections.map((objection: string, i: number) => (
-                      <li key={i} className="text-sm text-muted-foreground">{objection}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {psychology?.motivations && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="font-semibold">Motivations</h4>
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{psychology.motivations}</p>
-                </div>
-              )}
-
-              {/* Approval Section */}
-              {canApprove && (
-                <div className="pt-4 border-t">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">
-                      Review the insights above. Once approved, this step is complete.
-                    </p>
-                    <Button onClick={handleApprove} className="gap-2">
-                      <CheckCircle2 className="h-4 w-4" />
-                      Approve Psychology
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {isApproved && (
-                <div className="pt-4 border-t">
-                  <p className="text-sm text-green-600 flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4" />
-                    Audience psychology approved and ready to use
-                  </p>
-                </div>
-              )}
-
-              {/* Content Assets Available Alert */}
-              {hasNewContent && (
-                <Alert className="mt-4 border-primary/20 bg-primary/5">
-                  <FileText className="h-4 w-4" />
-                  <AlertDescription className="flex items-center justify-between">
-                    <span className="text-sm">
-                      <Sparkles className="inline h-3 w-3 mr-1" />
-                      {contentAssets.length} content asset{contentAssets.length !== 1 ? 's' : ''} available – regenerate to include them
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleGenerate}
-                      disabled={generating}
-                      className="h-7 text-xs"
-                    >
-                      {generating ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <>
-                          <RefreshCw className="h-3 w-3 mr-1" />
-                          Regenerate
-                        </>
-                      )}
-                    </Button>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {/* Show when psychology was generated */}
-              {psychologyGeneratedAt && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Last generated: {new Date(psychologyGeneratedAt).toLocaleDateString()}
-                  {psychologyContentHash && ` • Using ${psychologyContentHash.split(',').length} content asset(s)`}
-                </p>
-              )}
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
