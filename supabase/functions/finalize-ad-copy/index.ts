@@ -70,6 +70,7 @@ serve(async (req) => {
     const productPsychology = offer?.product_psychology || {};
 
     const systemPrompt = `You are a Meta Ads copywriter specializing in high-converting ad copy that complies with Meta's policies.
+${positioningBlock}
 
 ## BRAND CONTEXT
 - Brand Name: ${brandInfo?.name || 'Not specified'}
