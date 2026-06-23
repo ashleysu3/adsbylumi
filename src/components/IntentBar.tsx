@@ -1,7 +1,14 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBrand } from "@/contexts/BrandContext";
+import { toast } from "sonner";
+import {
+  IntentConversation,
+  callIntentRouter,
+  type IntentResponse,
+} from "@/components/IntentConversation";
 
 interface IntentBarProps {
   /**
@@ -37,9 +44,13 @@ export function IntentBar({
   className,
 }: IntentBarProps) {
   const navigate = useNavigate();
+  const { activeBrand } = useBrand();
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
   const [animatedPlaceholder, setAnimatedPlaceholder] = useState(placeholder);
+  const [submitting, setSubmitting] = useState(false);
+  const [convoOpen, setConvoOpen] = useState(false);
+  const [convoSeed, setConvoSeed] = useState<{ userText: string; response: IntentResponse } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Typewriter cycling through example prompts. Disabled while the user is
@@ -91,10 +102,51 @@ export function IntentBar({
     };
   }, [typewriterPrompts, placeholder, value, focused]);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // TODO: connect to AI intent router + task tray
-    navigate("/create");
+    const text = value.trim();
+    if (!text || submitting) return;
+    setSubmitting(true);
+    try {
+      const res = await callIntentRouter(
+        [{ role: "user", content: text }],
+        activeBrand?.id,
+      );
+      if (res.mode === "route" && res.route) {
+        setValue("");
+        const params = res.routeParams || {};
+        const qs = new URLSearchParams();
+        Object.entries(params).forEach(([k, v]) => {
+          if (v === null || v === undefined) return;
+          qs.set(k, typeof v === "string" ? v : JSON.stringify(v));
+        });
+        const sep = res.route.includes("?") ? "&" : "?";
+        const dest = qs.toString() ? `${res.route}${sep}${qs.toString()}` : res.route;
+        navigate(dest);
+      } else {
+        setConvoSeed({ userText: text, response: res });
+        setConvoOpen(true);
+        setValue("");
+      }
+    } catch (err: any) {
+      console.error("[IntentBar] router failed", err);
+      toast.error("Couldn't reach LUMI — opening chat instead");
+      setConvoSeed({
+        userText: text,
+        response: {
+          mode: "converse",
+          reply: "I couldn't reach the router. Try one of these to get going:",
+          actions: [
+            { label: "Launch a campaign", type: "route", target: "/create" },
+            { label: "Check performance", type: "route", target: "/ad-performance" },
+            { label: "Make creative", type: "route", target: "/creative-studio" },
+          ],
+        },
+      });
+      setConvoOpen(true);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const isLg = size === "lg";
@@ -131,26 +183,41 @@ export function IntentBar({
               : "rounded-[10px] px-2.5 py-1.5",
           )}
         >
-          <Sparkles
-            className={cn(
-              "text-lumi-pink-1 flex-shrink-0",
-              isLg ? "h-5 w-5" : "h-3.5 w-3.5",
-            )}
-          />
+          {submitting ? (
+            <Loader2
+              className={cn(
+                "text-lumi-pink-1 flex-shrink-0 animate-spin",
+                isLg ? "h-5 w-5" : "h-3.5 w-3.5",
+              )}
+            />
+          ) : (
+            <Sparkles
+              className={cn(
+                "text-lumi-pink-1 flex-shrink-0",
+                isLg ? "h-5 w-5" : "h-3.5 w-3.5",
+              )}
+            />
+          )}
           <input
             ref={inputRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
+            disabled={submitting}
             placeholder={animatedPlaceholder}
             className={cn(
-              "flex-1 bg-transparent outline-none placeholder:text-muted-foreground/70",
+              "flex-1 bg-transparent outline-none placeholder:text-muted-foreground/70 disabled:opacity-70",
               isLg ? "text-base sm:text-lg" : "text-sm",
             )}
           />
         </div>
       </div>
+      <IntentConversation
+        open={convoOpen}
+        onOpenChange={setConvoOpen}
+        initial={convoSeed}
+      />
     </form>
   );
 }
