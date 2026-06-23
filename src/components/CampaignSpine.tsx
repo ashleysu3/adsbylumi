@@ -8,7 +8,7 @@ interface CampaignSpineProps {
 }
 
 const STEPS = [
-  { num: 1, label: "Strategy", path: "/strategy" },
+  { num: 1, label: "Strategy", path: "/strategy-builder" },
   { num: 2, label: "Creative", path: "/creative" },
   { num: 3, label: "Launch", path: "/launch" },
   { num: 4, label: "Optimize", path: "/performance" },

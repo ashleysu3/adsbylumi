@@ -104,6 +104,7 @@ import Retrospectives from "./pages/Retrospectives";
 import RecommendedStrategy from "./pages/RecommendedStrategy";
 import StrategyPlan from "./pages/StrategyPlan";
 import Strategy from "./pages/Strategy";
+import AdStrategy from "./pages/AdStrategy";
 import AdminStrategies from "./pages/admin/Strategies";
 import OfficeHours from "./pages/OfficeHours";
 import PartnerPortal from "./pages/PartnerPortal";
@@ -176,7 +177,9 @@ const App = () => {
                   <Route path="/home" element={<Home />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/planning" element={<Navigate to="/campaigns" replace />} />
-                  <Route path="/strategy" element={<Strategy />} />
+                  <Route path="/strategy" element={<AdStrategy />} />
+                  <Route path="/strategy-builder" element={<Strategy />} />
+                  
                   <Route path="/creative" element={<Creative />} />
                   <Route path="/launch" element={<Launch />} />
                   <Route path="/live-ads" element={<Performance />} />

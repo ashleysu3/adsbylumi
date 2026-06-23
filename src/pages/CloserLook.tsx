@@ -482,7 +482,7 @@ export default function CloserLook() {
                 <Wand2 className="h-4 w-4 mr-2" /> New creative
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate("/strategy")}>
+              <DropdownMenuItem onClick={() => navigate("/strategy-builder")}>
                 <Brain className="h-4 w-4 mr-2" /> Build a new strategy
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/launch")}>

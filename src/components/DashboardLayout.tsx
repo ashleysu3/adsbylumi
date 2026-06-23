@@ -222,7 +222,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <DropdownMenuItem onClick={() => navigate("/tasks")}>
                     <CheckSquare className="mr-2 h-4 w-4" /> my tasks
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/strategy-plan")}>
+                  <DropdownMenuItem onClick={() => navigate("/strategy")}>
                     <Sparkles className="mr-2 h-4 w-4" /> my ad strategy
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
