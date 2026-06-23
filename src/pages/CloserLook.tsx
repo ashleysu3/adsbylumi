@@ -252,6 +252,16 @@ export default function CloserLook() {
     [result?.campaign.frequency],
   );
 
+  function budgetTargetAdSetId(action: string, rec: AdEval) {
+    if (!result) return undefined;
+    if (rec.level === "adset") return rec.id;
+    if (result.meta?.campaignType !== "ABO") return undefined;
+    const matching = result.adsets.find((adset) => adset.recommendation?.action === action);
+    if (matching) return matching.id;
+    return [...result.adsets]
+      .sort((a, b) => (b.windows?.medium?.spend ?? 0) - (a.windows?.medium?.spend ?? 0))[0]?.id;
+  }
+
   // -------------------------------------------------------------------------
   // Launch the shared confirm+execute dialog. Builds a transient task shape;
   // also writes a real task row via upsertRecommendationTasks so the action
@@ -265,6 +275,7 @@ export default function CloserLook() {
     if (action === "turn_off") actionType = "pause";
     else if (action === "increase_budget" || action === "reduce_budget") actionType = "budget";
     else if (action === "refresh_creative") actionType = "rotate";
+    const targetAdSetId = actionType === "budget" ? budgetTargetAdSetId(action, rec) : undefined;
 
     if (!actionType) {
       // Non-meta-mutating recs — route via reuse paths.
@@ -312,6 +323,7 @@ export default function CloserLook() {
           action,
           reasoning: rec.recommendation.reasoning,
           hasBench,
+          adSetId: targetAdSetId ?? null,
         },
       ]);
     } catch (e) {
@@ -330,7 +342,7 @@ export default function CloserLook() {
         workspaceId,
         brandId: activeBrand.id,
         action,
-        ...(actionType === "budget" ? { kind: action } : {}),
+        ...(actionType === "budget" ? { kind: action, adSetId: targetAdSetId ?? null } : {}),
         ...(actionType === "rotate" ? { fatigueAdId: rec.id, fatigueAdName: rec.name } : {}),
         reason: rec.recommendation.reasoning,
       },

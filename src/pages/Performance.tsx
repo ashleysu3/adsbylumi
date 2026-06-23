@@ -88,6 +88,7 @@ interface AdEval {
   reach?: number;
   frequency?: number;
   daysLive?: number;
+  windows?: { short: WindowSnapshot; medium: WindowSnapshot; long: WindowSnapshot };
   recommendation: {
     action: string;
     reasoning: string;
@@ -411,6 +412,7 @@ export default function Performance() {
               action,
               reasoning: t.recommendation?.reasoning || "",
               hasBench,
+              adSetId: action === "increase_budget" || action === "reduce_budget" ? budgetTargetAdSetId(action, { result: r, rec: t }) : null,
             });
           }
           await upsertRecommendationTasks(recsForTasks);
