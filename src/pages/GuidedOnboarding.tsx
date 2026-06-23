@@ -168,13 +168,11 @@ export default function GuidedOnboarding() {
         row = { ...row, website_url: normalized, name: placeholder };
         setBrand(row);
       }
-      setStep1Reveal({ brandName: row?.name });
 
-      // Kick off parallel extractors and stream reveal
       const websiteForCall = normalized;
       const brandIdLocal = id!;
 
-      // Witty rotating loading toast so the user knows LUMI is working, not stalled
+      // Flip to full-screen loader — hide everything else.
       const wittyLines = [
         "🔍 Snooping through your website (politely)…",
         "🎨 Stealing your color palette — for science…",
@@ -184,11 +182,12 @@ export default function GuidedOnboarding() {
         "💬 Reading every testimonial out loud…",
         "✨ Doing our homework so you don't have to…",
       ];
-      const loadingId = toast.loading(wittyLines[0], { duration: Infinity });
+      setLoaderMsg(wittyLines[0]);
+      setExtractionPhase('running');
       let lineIdx = 0;
       const rotator = setInterval(() => {
         lineIdx = (lineIdx + 1) % wittyLines.length;
-        toast.loading(wittyLines[lineIdx], { id: loadingId, duration: Infinity });
+        setLoaderMsg(wittyLines[lineIdx]);
       }, 2800);
 
       // extract-brand → colors/logo/fonts/description
@@ -201,13 +200,11 @@ export default function GuidedOnboarding() {
         if (d.colors?.length) kitPatch.colors = d.colors;
         if (d.fonts?.length) kitPatch.fonts = d.fonts;
         if (d.logoUrl) kitPatch.logo_url = d.logoUrl;
-        // brand_kits unique constraint is (user_id, brand_id) — use both for the conflict target.
         const { error: kitErr } = await supabase
           .from("brand_kits" as any)
           .upsert(kitPatch, { onConflict: "user_id,brand_id" });
         if (kitErr) console.warn("brand_kits upsert failed", kitErr);
 
-        // Mirror name + tagline onto brands (colors/fonts live on brand_kits, not brands).
         const brandPatch: any = {};
         if (d.name) brandPatch.name = d.name;
         if (d.description) brandPatch.value_proposition = d.description;
@@ -216,7 +213,6 @@ export default function GuidedOnboarding() {
           if (brErr) console.warn("brand update failed", brErr);
           else setBrand((prev: any) => ({ ...(prev || {}), ...brandPatch }));
         }
-        // Stash kit on local brand state so the design card pre-fills immediately at Step 2.
         if (kitPatch.colors || kitPatch.fonts || kitPatch.logo_url) {
           setBrand((prev: any) => ({
             ...(prev || {}),
@@ -227,23 +223,14 @@ export default function GuidedOnboarding() {
             },
           }));
         }
-        setStep1Reveal((p) => ({
-          ...p,
-          brandName: brandPatch.name || p.brandName,
-          description: d.description || p.description,
-          colors: d.colors || p.colors,
-        }));
       }).catch(() => {});
 
-
-      // Voice + audience need the brand's value_prop/name to be populated first,
-      // otherwise the AI has nothing real to work with and writes generic output.
       const pVoice = pBrand.then(() =>
         supabase.functions.invoke("analyze-brand-voice", { body: { brandId: brandIdLocal } })
           .then(async () => {
             const { data: refreshed } = await supabase.from("brands").select("brand_voice").eq("id", brandIdLocal).maybeSingle();
             if (refreshed?.brand_voice) {
-              setStep1Reveal((p) => ({ ...p, voice: (refreshed as any).brand_voice.slice(0, 260) }));
+              setBrand((prev: any) => ({ ...(prev || {}), brand_voice: (refreshed as any).brand_voice }));
             }
           })
       ).catch(() => {});
@@ -252,31 +239,40 @@ export default function GuidedOnboarding() {
         supabase.functions.invoke("generate-audience-psychology", { body: { brandId: brandIdLocal } })
           .then(async () => {
             const { data: refreshed } = await supabase.from("brands").select("audience_psychology").eq("id", brandIdLocal).maybeSingle();
-            const ap: any = refreshed?.audience_psychology;
-            const parts = {
-              pain: ap?.pain_points?.[0],
-              wants: ap?.desires?.[0],
-              doubt: ap?.objections?.[0],
-            };
-            const fallback = ap?.summary || ap?.demographics;
-            if (parts.pain || parts.wants || parts.doubt || fallback) {
-              setStep1Reveal((p) => ({
-                ...p,
-                audienceParts: parts,
-                audience: !parts.pain && !parts.wants && !parts.doubt ? String(fallback).slice(0, 320) : undefined,
-              }));
+            if (refreshed) {
+              setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: (refreshed as any).audience_psychology }));
             }
           })
       ).catch(() => {});
 
-      // harvest assets in the background (used in step 4)
+      // Social proof — runs in parallel with the rest so the user lands on a fully-populated review.
+      const pProof = pBrand.then(() =>
+        supabase.functions.invoke("extract-social-proof", { body: { brandId: brandIdLocal, url: websiteForCall } })
+          .then(async () => {
+            const { data: refreshed } = await supabase.from("brands").select("social_proof").eq("id", brandIdLocal).maybeSingle();
+            if (refreshed) {
+              setBrand((prev: any) => ({ ...(prev || {}), social_proof: (refreshed as any).social_proof }));
+            }
+          })
+      ).catch(() => {});
+
       const pAssets = supabase.functions.invoke("harvest-brand-assets", { body: { url: websiteForCall, brandId: brandIdLocal } })
         .catch(() => {});
 
-      // When all extractors settle, dismiss the witty loader with a success note
-      Promise.allSettled([pBrand, pVoice, pAud, pAssets]).then(() => {
+      // When everything settles, dismiss the loader and auto-advance to the review.
+      Promise.allSettled([pBrand, pVoice, pAud, pProof, pAssets]).then(async () => {
         clearInterval(rotator);
-        toast.success("All done — take a look ✨", { id: loadingId, duration: 3500 });
+        // Refresh brand once more so the review screens see latest server state.
+        try {
+          const [{ data: b }, { data: k }] = await Promise.all([
+            supabase.from("brands").select("*").eq("id", brandIdLocal).maybeSingle(),
+            supabase.from("brand_kits" as any).select("colors, fonts, logo_url").eq("brand_id", brandIdLocal).maybeSingle(),
+          ]);
+          if (b) setBrand({ ...(b as any), _kit: k || null });
+        } catch { /* ignore */ }
+        setExtractionPhase('done');
+        setStep(2);
+        if (brandIdLocal) await persistStep(brandIdLocal, 2);
       });
 
       await refreshBrands();
@@ -284,58 +280,22 @@ export default function GuidedOnboarding() {
       console.error(e);
       toast.error(e.message || "Could not save");
       step1Fired.current = false;
+      setExtractionPhase('idle');
     } finally {
       setStep1Busy(false);
     }
   };
 
-  // =================== STEP 2 — auto-extract social proof + load brand kit ===================
+  // =================== STEP review — keep brand_kit in sync ===================
   useEffect(() => {
-    if (step !== 2 || !brandId) return;
+    if (step < 2 || step > 5 || !brandId) return;
     let cancelled = false;
     (async () => {
-      // refresh brand + brand_kit together
-      const loadAll = async () => {
-        const [{ data: b }, { data: k }] = await Promise.all([
-          supabase.from("brands").select("*").eq("id", brandId).maybeSingle(),
-          supabase.from("brand_kits" as any).select("colors, fonts, logo_url").eq("brand_id", brandId).maybeSingle(),
-        ]);
-        return { b: b as any, k: k as any };
-      };
-
-      let { b, k } = await loadAll();
-      if (!cancelled && b) {
-        setBrand({ ...b, _kit: k || null });
-      }
-
-      // Poll briefly for colors/fonts if extraction is still landing
-      const kitHasDesign = (kit: any) => (kit?.colors?.length || 0) > 0 || (kit?.fonts?.length || 0) > 0;
-      if (!kitHasDesign(k)) {
-        for (let i = 0; i < 6 && !cancelled; i++) {
-          await new Promise((r) => setTimeout(r, 1500));
-          const next = await loadAll();
-          if (kitHasDesign(next.k)) {
-            if (!cancelled) setBrand({ ...next.b, _kit: next.k });
-            k = next.k;
-            break;
-          }
-        }
-      }
-
-      // Auto-pull social proof if missing
-      const sp = b?.social_proof;
-      const hasProof = Array.isArray(sp) ? sp.length > 0 : (sp && typeof sp === "object" ? Object.values(sp).some((v: any) => Array.isArray(v) ? v.length : !!v) : !!sp);
-      if (!hasProof && b?.website_url) {
-        setProofExtracting(true);
-        try {
-          await supabase.functions.invoke("extract-social-proof", {
-            body: { brandId, url: b.website_url },
-          });
-          const { data: refreshed } = await supabase.from("brands").select("*").eq("id", brandId).maybeSingle();
-          if (!cancelled && refreshed) setBrand((prev: any) => ({ ...(refreshed as any), _kit: prev?._kit }));
-        } catch (e) { console.warn("social proof failed", e); }
-        finally { if (!cancelled) setProofExtracting(false); }
-      }
+      const [{ data: b }, { data: k }] = await Promise.all([
+        supabase.from("brands").select("*").eq("id", brandId).maybeSingle(),
+        supabase.from("brand_kits" as any).select("colors, fonts, logo_url").eq("brand_id", brandId).maybeSingle(),
+      ]);
+      if (!cancelled && b) setBrand({ ...(b as any), _kit: k || null });
     })();
     return () => { cancelled = true; };
   }, [step, brandId]);
