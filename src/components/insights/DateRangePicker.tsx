@@ -32,8 +32,10 @@ const presetOptions = [
   { value: '3', label: 'Last 3 days' },
   { value: '7', label: 'Last 7 days' },
   { value: '14', label: 'Last 14 days' },
+  { value: '30', label: 'Last 30 days' },
   { value: 'custom', label: 'Custom range' },
 ];
+
 
 export function DateRangePicker({
   dateRange,
