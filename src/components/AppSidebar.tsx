@@ -77,6 +77,7 @@ const groups: NavGroup[] = [
     icon: Target,
     emoji: "🎯",
     items: [
+      { label: "Strategy", to: "/strategy", icon: Sparkles },
       { label: "Live Ads", to: "/ad-performance", icon: Activity },
       { label: "In Progress", to: "/campaigns", icon: Loader2 },
       { label: "Create New", to: "/create", icon: Plus },
