@@ -314,15 +314,45 @@ serve(async (req) => {
       });
     }
 
-    // Engine fallback — still merge our scraped name/description so the brand isn't named after the URL.
+    // Engine fallback — normalize to the same flat shape the client expects
+    // (name, description, colors, fonts, logoUrl) so colors + tagline render in the reveal.
     const engineRes = await engineFallback(url);
     try {
       const text = await engineRes.text();
       const parsed = text ? JSON.parse(text) : {};
+      const raw = parsed?.raw ?? {};
+      const suggested = parsed?.suggested ?? {};
+
+      // Colors: prefer curated suggested.colors (accent, pops, bg, ink); fall back to raw.backgrounds.
+      const sc = suggested?.colors ?? {};
+      const colorList = [
+        sc.accent,
+        ...(Array.isArray(sc.pops) ? sc.pops : []),
+        sc.background,
+        sc.ink,
+      ].filter((c: unknown): c is string => typeof c === "string" && /^#[0-9a-f]{3,8}$/i.test(c));
+      const fallbackColors = Array.isArray(raw?.backgrounds)
+        ? raw.backgrounds.filter((c: unknown): c is string => typeof c === "string" && /^#[0-9a-f]{3,8}$/i.test(c))
+        : [];
+      const colors = Array.from(new Set(colorList.length ? colorList : fallbackColors)).slice(0, 8);
+
+      // Fonts
+      const sf = suggested?.fonts ?? {};
+      const fontList = [sf?.display?.family, sf?.body?.family].filter(
+        (f: unknown): f is string => typeof f === "string" && f.length > 0,
+      );
+      const fallbackFonts = Array.isArray(raw?.fonts) ? raw.fonts.filter((f: unknown) => typeof f === "string") : [];
+      const fonts = Array.from(new Set(fontList.length ? fontList : fallbackFonts)).slice(0, 6) as string[];
+
+      const logoUrl = suggested?.imagery?.ogImage || raw?.ogImage || undefined;
+
       const merged = {
         ...parsed,
         name: parsed?.name || meta.name,
-        description: parsed?.description || meta.description,
+        description: parsed?.description || meta.description || raw?.description,
+        colors,
+        fonts,
+        logoUrl,
       };
       return new Response(JSON.stringify(merged), {
         status: engineRes.status,
