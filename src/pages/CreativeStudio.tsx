@@ -17,6 +17,7 @@ import {
 import AdGenerator from "@/pages/AdGenerator";
 import CreativeToolkit from "@/pages/CreativeToolkit";
 import ContentLibrary from "@/pages/ContentLibrary";
+import { MyCreativeLibrary } from "@/components/creative/MyCreativeLibrary";
 import { printCreativeBrief } from "@/lib/print-creative-brief";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -1159,7 +1160,7 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
     { id: "concepts" as const, label: "Concepts", icon: Lightbulb },
     { id: "copy" as const, label: "Ad Copy", icon: FileText },
     { id: "build" as const, label: "Produce", icon: Rocket },
-    { id: "saved" as const, label: "Saved", icon: Bookmark },
+    { id: "saved" as const, label: "My Creative", icon: Bookmark },
   ];
 
   // Tab progress indicators
@@ -1791,7 +1792,7 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
           </TabsContent>
 
           <TabsContent value="saved">
-            <ContentLibrary embedded />
+            <MyCreativeLibrary />
           </TabsContent>
         </Tabs>
       </div>
