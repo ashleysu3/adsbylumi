@@ -778,8 +778,25 @@ export default function GuidedOnboarding() {
     await seedFirstCampaignTasks(brandId);
     await seedStrategyTasks();
     await completeAndGoHome();
-    navigate("/create?onboarding=1");
+    const params = new URLSearchParams({ onboarding: "1" });
+    const strategyName = strategy?.name || strategy?.title;
+    if (strategyName) params.set("strategy", String(strategyName));
+    if (strategy?.id) params.set("strategy_id", String(strategy.id));
+    if (chosenOfferId) params.set("offer_id", chosenOfferId);
+    if (chosenGoal) params.set("goal", chosenGoal);
+    navigate(`/create?${params.toString()}`);
   };
+
+  const skipStrategyForLater = async () => {
+    await seedFirstCampaignTasks(brandId);
+    await seedDeferredTask({
+      title: "Pick your first campaign strategy",
+      link_to: "/strategy",
+      brand_id: brandId,
+    });
+    await completeAndGoHome();
+  };
+
 
   // ---------- helpers used by the reveal page ----------
   const hasProofVal = (v: any): boolean => {
