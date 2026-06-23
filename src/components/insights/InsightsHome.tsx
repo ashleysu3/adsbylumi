@@ -1095,9 +1095,10 @@ export function InsightsHome({
                           // the previously-filtered pause_ad / swap_creative / budget
                           // types. Drops any the user has already executed in-session.
                           const userRecs = recommendations.filter(
-                            r => r.campaignId === campaign.id && !recCompleted.has(r.id)
+                            r => r.campaignId === campaign.id && !recCompleted.has(r.id) && !isSnoozedRec(r)
                           );
                           if (userRecs.length === 0) return null;
+
 
                           return (
                             <div className="space-y-1.5 pl-5">
