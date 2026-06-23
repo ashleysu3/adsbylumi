@@ -397,9 +397,17 @@ export default function CloserLook() {
             </div>
             <p className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">Measure of success:</span>{" "}
-              {result.meta.primaryKpiLabel}
-              {result.meta.primaryGoal != null && ` (goal ${formatKpi(primaryKpi, result.meta.primaryGoal)})`}
+              {(result.meta.goals && result.meta.goals.length > 0
+                ? result.meta.goals
+                : [{ kpi: primaryKpi, label: result.meta.primaryKpiLabel, goal: result.meta.primaryGoal ?? 0, direction: "less_than", isDefault: false }]
+              ).map((g, i) => (
+                <span key={g.kpi}>
+                  {i > 0 ? " · " : ""}
+                  {g.label} (goal {formatKpi(g.kpi, g.goal)})
+                </span>
+              ))}
             </p>
+
           </div>
 
           <DropdownMenu>
