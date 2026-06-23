@@ -297,6 +297,20 @@ export default function AdminStrategies() {
                     />
                   </div>
                   <div>
+                    <Label>Access code (optional)</Label>
+                    <Input
+                      value={editing.access_code ?? ""}
+                      onChange={(e) =>
+                        setEditing({ ...editing, access_code: e.target.value.toUpperCase() })
+                      }
+                      placeholder="e.g. SUMMER25"
+                      className="font-mono uppercase tracking-wider"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Share this code with specific people — they can redeem it from Create New to unlock this strategy.
+                    </p>
+                  </div>
+                  <div>
                     <Label>Campaigns (JSON array)</Label>
                     <Textarea
                       className="font-mono text-xs"
