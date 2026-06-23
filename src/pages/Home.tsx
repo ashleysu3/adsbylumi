@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sparkles, Check, Clock, Trash2, Rocket, Plug, ChevronRight, Loader2 } from "lucide-react";
 
-import { DashboardLayout } from "@/components/DashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
 import { IntentBar } from "@/components/IntentBar";
 import { SetupPrompt } from "@/components/SetupPrompt";
 import { Button } from "@/components/ui/button";
