@@ -1504,6 +1504,11 @@ function OfferRowEditor({ offer, brand, onSave, setGlobalLoader }: { offer: any;
                 <Label className="text-xs">Offer fonts</Label>
                 <Input value={fonts} onChange={(e) => setFonts(e.target.value)} placeholder="Inter, Playfair Display" />
               </div>
+              {offer.url && (
+                <Button type="button" size="sm" variant="outline" onClick={pullOfferDesign}>
+                  <Palette className="h-3 w-3 mr-1" /> Re-pull design from this page
+                </Button>
+              )}
             </div>
           )}
         </div>
