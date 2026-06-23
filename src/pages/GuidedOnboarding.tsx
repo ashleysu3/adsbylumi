@@ -335,7 +335,11 @@ export default function GuidedOnboarding() {
   const updateBrand = async (patch: Record<string, any>) => {
     if (!brandId) return;
     setBrand((prev: any) => ({ ...(prev || {}), ...patch }));
-    await supabase.from("brands").update(patch).eq("id", brandId);
+    // _kit is local-only state (mirrors brand_kits) — never push it to the brands table.
+    const { _kit, ...dbPatch } = patch as any;
+    if (Object.keys(dbPatch).length) {
+      await supabase.from("brands").update(dbPatch).eq("id", brandId);
+    }
   };
 
   // =================== STEP 3 — offer ===================
