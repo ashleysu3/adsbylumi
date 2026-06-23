@@ -1023,13 +1023,26 @@ export default function GuidedOnboarding() {
                       </Button>
                     </div>
                     {brollIdeas?.length ? (
-                      <div className="rounded-md border bg-muted/30 p-3 space-y-1 max-h-44 overflow-auto">
+                      <div className="rounded-md border bg-muted/30 p-3 space-y-2 max-h-60 overflow-auto">
                         <p className="text-xs font-medium mb-1">Suggested shots</p>
-                        {brollIdeas.slice(0, 8).map((i: any, idx: number) => (
-                          <p key={idx} className="text-xs text-muted-foreground">
-                            • {i.title || i.description || JSON.stringify(i)}
-                          </p>
-                        ))}
+                        {brollIdeas.slice(0, 8).map((i: any, idx: number) => {
+                          const scene = i.scene || i.title || "Shot idea";
+                          const direction = i.direction || i.description || "";
+                          const emoji = i.emoji || "🎬";
+                          const mood = i.mood;
+                          return (
+                            <div key={idx} className="flex gap-2 text-xs">
+                              <span className="text-base leading-tight shrink-0" aria-hidden>{emoji}</span>
+                              <div className="min-w-0">
+                                <div className="font-medium text-foreground">
+                                  {scene}
+                                  {mood && <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground font-normal">· {mood}</span>}
+                                </div>
+                                {direction && <div className="text-muted-foreground leading-snug">{direction}</div>}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-xs text-muted-foreground">LUMI is brewing custom b-roll ideas for you…</p>
