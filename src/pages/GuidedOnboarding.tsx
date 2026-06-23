@@ -106,7 +106,9 @@ export default function GuidedOnboarding() {
           setBrandId(latest.id);
           setBrand(latest);
           setWebsiteUrl(latest.website_url || "");
-          const resumeStep = Math.max(1, Math.min(TOTAL, latest.onboarding_step || 1));
+          const stored = latest.onboarding_step || 1;
+          const remapped = stored <= 6 && stored in RESUME_REMAP ? RESUME_REMAP[stored] : stored;
+          const resumeStep = Math.max(1, Math.min(TOTAL, remapped));
           setStep(resumeStep);
         }
       }
