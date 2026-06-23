@@ -77,6 +77,7 @@ export default function GuidedOnboarding() {
   const [offerUrl, setOfferUrl] = useState("");
   const [offers, setOffers] = useState<any[]>([]);
   const [offerBusy, setOfferBusy] = useState(false);
+  const [globalLoaderMsg, setGlobalLoaderMsg] = useState<string | null>(null);
 
   // Step 4 — assets
   const [assets, setAssets] = useState<AssetRow[]>([]);
@@ -324,6 +325,7 @@ export default function GuidedOnboarding() {
     const normalized = normalizeWebsiteUrl(offerUrl);
     if (!normalized) { toast.error("Add your offer's sales page URL"); return; }
     setOfferBusy(true);
+    setGlobalLoaderMsg("LUMI is reading your offer page…");
     try {
       const { data: existing } = await supabase
         .from("offers").select("id").eq("brand_id", brandId).eq("url", normalized).maybeSingle();
@@ -375,6 +377,7 @@ export default function GuidedOnboarding() {
       toast.error(e.message || "Couldn't pull the offer");
     } finally {
       setOfferBusy(false);
+      setGlobalLoaderMsg(null);
     }
   };
 
@@ -637,6 +640,9 @@ export default function GuidedOnboarding() {
   // While LUMI is reading the site, hide the entire onboarding UI and show the loader only.
   if (extractionPhase === 'running') {
     return <LumiPageLoader message={loaderMsg || "LUMI is reading your site…"} />;
+  }
+  if (globalLoaderMsg) {
+    return <LumiPageLoader message={globalLoaderMsg} />;
   }
 
   return (
@@ -924,7 +930,7 @@ export default function GuidedOnboarding() {
               ) : (
                 <div className="space-y-3">
                   {offers.map((o) => (
-                    <OfferRowEditor key={o.id} offer={o} brand={brand} onSave={(p) => updateOffer(o.id, p)} />
+                    <OfferRowEditor key={o.id} offer={o} brand={brand} onSave={(p) => updateOffer(o.id, p)} setGlobalLoader={setGlobalLoaderMsg} /> 
                   ))}
                 </div>
               )}
@@ -1331,7 +1337,7 @@ function BrandBasicsCard({ brand, onSave }: { brand: any; onSave: (p: any) => Pr
   );
 }
 
-function OfferRowEditor({ offer, brand, onSave }: { offer: any; brand?: any; onSave: (p: any) => Promise<void> }) {
+function OfferRowEditor({ offer, brand, onSave, setGlobalLoader }: { offer: any; brand?: any; onSave: (p: any) => Promise<void>; setGlobalLoader?: (m: string | null) => void }) {
   const [name, setName] = useState(offer.name || "");
   const [description, setDescription] = useState(offer.description || "");
   const [price, setPrice] = useState(offer.price_point || "");
@@ -1341,6 +1347,7 @@ function OfferRowEditor({ offer, brand, onSave }: { offer: any; brand?: any; onS
   const so = offer.style_overrides || {};
   const [colors, setColors] = useState<string>((so.colors || []).join(", "));
   const [fonts, setFonts] = useState<string>((so.fonts || []).join(", "));
+  const [designPulled, setDesignPulled] = useState(false);
 
   const oap = offer.offer_audience_psychology || {};
   const [pains, setPains] = useState<string>((oap.pain_points || []).join("\n"));
@@ -1371,6 +1378,37 @@ function OfferRowEditor({ offer, brand, onSave }: { offer: any; brand?: any; onS
 
   const parsedColors = colors.split(",").map((s) => s.trim()).filter(Boolean);
   const parsedFonts = fonts.split(",").map((s) => s.trim()).filter(Boolean);
+
+  const pullOfferDesign = async () => {
+    if (!offer.url) { toast.error("This offer has no URL to pull from"); return; }
+    setGlobalLoader?.("LUMI is pulling this offer's design guide…");
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-brand", { body: { url: offer.url } });
+      if (error) throw error;
+      const d: any = data || {};
+      const pulledColors: string[] = Array.isArray(d.colors) ? d.colors.filter(Boolean) : [];
+      const pulledFonts: string[] = Array.isArray(d.fonts) ? d.fonts.filter(Boolean) : [];
+      if (pulledColors.length) setColors(pulledColors.join(", "));
+      if (pulledFonts.length) setFonts(pulledFonts.join(", "));
+      setDesignPulled(true);
+      if (pulledColors.length || pulledFonts.length) {
+        toast.success("Pulled this offer's design guide");
+      } else {
+        toast.message("Couldn't detect colors or fonts on that page");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Couldn't pull design from this page");
+    } finally {
+      setGlobalLoader?.(null);
+    }
+  };
+
+  const onToggleStyle = (next: boolean) => {
+    setStyleOverride(next);
+    if (next && !designPulled && !colors.trim() && !fonts.trim() && offer.url) {
+      pullOfferDesign();
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -1435,7 +1473,7 @@ function OfferRowEditor({ offer, brand, onSave }: { offer: any; brand?: any; onS
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Label htmlFor={`style-${offer.id}`} className="text-xs">Custom</Label>
-              <Switch id={`style-${offer.id}`} checked={styleOverride} onCheckedChange={setStyleOverride} />
+              <Switch id={`style-${offer.id}`} checked={styleOverride} onCheckedChange={onToggleStyle} />
             </div>
           </div>
 
@@ -1466,6 +1504,11 @@ function OfferRowEditor({ offer, brand, onSave }: { offer: any; brand?: any; onS
                 <Label className="text-xs">Offer fonts</Label>
                 <Input value={fonts} onChange={(e) => setFonts(e.target.value)} placeholder="Inter, Playfair Display" />
               </div>
+              {offer.url && (
+                <Button type="button" size="sm" variant="outline" onClick={pullOfferDesign}>
+                  <Palette className="h-3 w-3 mr-1" /> Re-pull design from this page
+                </Button>
+              )}
             </div>
           )}
         </div>
