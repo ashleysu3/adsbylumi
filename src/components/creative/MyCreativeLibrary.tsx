@@ -8,19 +8,15 @@ import { Input } from "@/components/ui/input";
 import {
   Film,
   Image as ImageIcon,
-  Lightbulb,
   Sparkles,
-  FileText,
-  Video,
   Search,
   Loader2,
   ExternalLink,
-  Camera,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-type CreativeKind = "idea" | "broll" | "graphic" | "photo";
+type CreativeKind = "broll" | "graphic";
 
 type CreativeItem = {
   id: string;
@@ -35,19 +31,9 @@ type CreativeItem = {
 
 const KIND_FILTERS: { value: CreativeKind | "all"; label: string; icon: any }[] = [
   { value: "all", label: "All", icon: Sparkles },
-  { value: "idea", label: "Ideas & Scripts", icon: Lightbulb },
   { value: "broll", label: "B-Roll", icon: Film },
   { value: "graphic", label: "Graphics", icon: ImageIcon },
-  { value: "photo", label: "Photos", icon: Camera },
 ];
-
-const IDEA_TYPE_ICON: Record<string, any> = {
-  hook: Sparkles,
-  script: FileText,
-  visual: ImageIcon,
-  video: Video,
-  idea: Lightbulb,
-};
 
 function pathFromBrandAssetUrl(url: string): string | null {
   const m = url.match(/\/storage\/v1\/object\/(?:public|sign)\/brand-assets\/([^?]+)/);
@@ -70,12 +56,7 @@ export function MyCreativeLibrary() {
     setLoading(true);
     try {
       const brandId = activeBrand.id;
-      const [ideasRes, brollRes, brandAssetsRes, photosRes] = await Promise.all([
-        supabase
-          .from("content_ideas")
-          .select("id, title, content, type, created_at")
-          .eq("brand_id", brandId)
-          .order("created_at", { ascending: false }),
+      const [brollRes, brandAssetsRes] = await Promise.all([
         supabase
           .from("broll_libraries")
           .select("id, name, description, clips, created_at")
@@ -85,44 +66,15 @@ export function MyCreativeLibrary() {
           .from("brand_assets" as any)
           .select("id, url, role, created_at")
           .eq("brand_id", brandId)
-          .in("role", ["graphic", "background", "texture", "logo"])
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("user_assets" as any)
-          .select("id, original_url, kind, created_at")
-          .eq("brand_id", brandId)
-          .eq("kind", "photo")
+          .in("role", ["graphic", "background", "texture"])
           .order("created_at", { ascending: false }),
       ]);
 
       const collected: CreativeItem[] = [];
 
-      // Ideas
-      for (const row of (ideasRes.data ?? []) as any[]) {
-        collected.push({
-          id: `idea-${row.id}`,
-          kind: "idea",
-          title: row.title || "Untitled idea",
-          subtitle: row.content ? String(row.content).slice(0, 140) : null,
-          badge: row.type || "idea",
-          createdAt: row.created_at,
-        });
-      }
-
-      // B-Roll: flatten clips inside each library
+      // B-Roll: flatten clips inside each library (only real clips LUMI produced)
       for (const lib of (brollRes.data ?? []) as any[]) {
         const clips = Array.isArray(lib.clips) ? lib.clips : [];
-        if (clips.length === 0) {
-          collected.push({
-            id: `broll-lib-${lib.id}`,
-            kind: "broll",
-            title: lib.name || "B-Roll library",
-            subtitle: lib.description || "Empty library",
-            badge: "Library",
-            createdAt: lib.created_at,
-          });
-          continue;
-        }
         for (const clip of clips) {
           collected.push({
             id: `broll-${lib.id}-${clip.id ?? Math.random()}`,
@@ -137,7 +89,7 @@ export function MyCreativeLibrary() {
         }
       }
 
-      // Brand assets — sign URLs in batch when stored as storage paths
+      // Brand graphics — sign URLs in batch when stored as storage paths
       const brandAssets = (brandAssetsRes.data ?? []) as any[];
       const assetPaths = brandAssets
         .map((a) => pathFromBrandAssetUrl(a.url))
@@ -166,31 +118,6 @@ export function MyCreativeLibrary() {
         });
       }
 
-      // Photos — signed urls from ad-photos bucket
-      const photoRows = (photosRes.data ?? []) as any[];
-      const photoPaths = photoRows.map((p) => p.original_url).filter(Boolean) as string[];
-      let signedPhoto: Record<string, string> = {};
-      if (photoPaths.length) {
-        const { data: signed } = await supabase.storage
-          .from("ad-photos")
-          .createSignedUrls(photoPaths, 60 * 60);
-        (signed || []).forEach((s, i) => {
-          if (photoPaths[i] && s.signedUrl) signedPhoto[photoPaths[i]] = s.signedUrl;
-        });
-      }
-      for (const p of photoRows) {
-        const display = signedPhoto[p.original_url] || "";
-        collected.push({
-          id: `photo-${p.id}`,
-          kind: "photo",
-          title: "Photo",
-          subtitle: null,
-          thumbUrl: display,
-          href: display,
-          badge: "photo",
-          createdAt: p.created_at,
-        });
-      }
 
       // Sort newest first
       collected.sort((a, b) => {
@@ -314,17 +241,11 @@ export function MyCreativeLibrary() {
 }
 
 function CreativeCard({ item }: { item: CreativeItem }) {
-  const Icon =
-    item.kind === "idea"
-      ? IDEA_TYPE_ICON[(item.badge || "idea").toLowerCase()] || Lightbulb
-      : item.kind === "broll"
-      ? Film
-      : item.kind === "graphic"
-      ? ImageIcon
-      : Camera;
+  const Icon = item.kind === "broll" ? Film : ImageIcon;
 
-  const isMedia = item.kind === "graphic" || item.kind === "photo";
+  const isMedia = item.kind === "graphic";
   const hasVideo = item.kind === "broll" && item.href && /\.(mp4|webm|mov)(\?|$)/i.test(item.href);
+
 
   return (
     <Card className="overflow-hidden group hover:shadow-md transition-shadow">
