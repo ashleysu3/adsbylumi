@@ -325,7 +325,10 @@ export default function GuidedOnboarding() {
       });
       setHeadshotUrl(url);
     } else if (role === "logo") {
-      await supabase.from("brands").update({ logo_url: url }).eq("id", brandId);
+      await supabase.from("brand_kits" as any).upsert(
+        { user_id: user.id, brand_id: brandId, logo_url: url, status: "approved" },
+        { onConflict: "brand_id" }
+      );
       setLogoUrl(url);
       await supabase.from("brand_assets" as any).insert({ user_id: user.id, url, role: "logo", kept: true });
       const { data } = await supabase.from("brand_assets" as any).select("*").order("created_at", { ascending: false });
