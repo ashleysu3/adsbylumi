@@ -62,6 +62,17 @@ interface WindowSnapshot {
   kpiValue: number | null;
 }
 
+interface KpiEntry {
+  kpi: string;
+  label: string;
+  value: number | null;
+  goal: number;
+  vsGoalPct: number | null;
+  direction: "less_than" | "greater_than";
+  status: "above" | "below" | "at" | "no_data";
+  isDefault: boolean;
+}
+
 interface AdEval {
   id: string;
   name: string;
@@ -69,6 +80,7 @@ interface AdEval {
   status: Status;
   primary: { value: number | null; vsGoalPct: number | null; trendDirection?: "up" | "down" | "flat" };
   secondary: { value: number | null; label: string } | null;
+  kpis?: KpiEntry[];
   reach?: number;
   frequency?: number;
   daysLive?: number;
@@ -89,6 +101,7 @@ interface EngineResult {
     primaryGoal: number | null;
     primaryDirection?: "less_than" | "greater_than";
     secondaryKpi: string | null;
+    goals?: { kpi: string; label: string; goal: number; direction: string; isDefault: boolean }[];
     campaignType?: string;
   };
   campaign: AdEval;
@@ -364,6 +377,15 @@ export default function CloserLook() {
   const secondaryKpi = result.meta.secondaryKpi;
   const s = STATUS_STYLE[result.campaign.status] ?? STATUS_STYLE.learning;
 
+  // Configured goal KPIs — derive from meta.goals (preferred) or fall back
+  // to whatever shows up in the campaign-row's kpis[], or just the primary.
+  const goalKpis: { kpi: string; label: string; goal: number; direction: string; isDefault: boolean }[] =
+    (result.meta.goals && result.meta.goals.length > 0)
+      ? result.meta.goals
+      : (result.campaign.kpis && result.campaign.kpis.length > 0)
+        ? result.campaign.kpis.map(k => ({ kpi: k.kpi, label: k.label, goal: k.goal, direction: k.direction, isDefault: k.isDefault }))
+        : [{ kpi: primaryKpi, label: result.meta.primaryKpiLabel, goal: result.meta.primaryGoal ?? 0, direction: "less_than", isDefault: false }];
+
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
@@ -384,9 +406,17 @@ export default function CloserLook() {
             </div>
             <p className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">Measure of success:</span>{" "}
-              {result.meta.primaryKpiLabel}
-              {result.meta.primaryGoal != null && ` (goal ${formatKpi(primaryKpi, result.meta.primaryGoal)})`}
+              {(result.meta.goals && result.meta.goals.length > 0
+                ? result.meta.goals
+                : [{ kpi: primaryKpi, label: result.meta.primaryKpiLabel, goal: result.meta.primaryGoal ?? 0, direction: "less_than", isDefault: false }]
+              ).map((g, i) => (
+                <span key={g.kpi}>
+                  {i > 0 ? " · " : ""}
+                  {g.label} (goal {formatKpi(g.kpi, g.goal)})
+                </span>
+              ))}
             </p>
+
           </div>
 
           <DropdownMenu>
@@ -491,7 +521,7 @@ export default function CloserLook() {
           </Card>
         )}
 
-        {/* KPI table: campaign → adsets → ads */}
+        {/* KPI table: campaign → adsets → ads. One column per configured KPI. */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Performance breakdown</CardTitle>
@@ -504,24 +534,27 @@ export default function CloserLook() {
                   <th className="py-2 px-2 font-medium">Status</th>
                   <th className="py-2 px-2 font-medium text-right">Reach</th>
                   <th className="py-2 px-2 font-medium text-right">Freq</th>
-                  <th className="py-2 px-2 font-medium text-right">
-                    {result.meta.primaryKpiLabel}
-                  </th>
-                  <th className="py-2 pl-2 font-medium text-right">
-                    {result.campaign.secondary?.label || (secondaryKpi ? secondaryKpi.toUpperCase() : "—")}
-                  </th>
+                  {goalKpis.map(g => (
+                    <th key={g.kpi} className="py-2 px-2 font-medium text-right">
+                      {g.label}
+                      <div className="text-[10px] text-muted-foreground font-normal">
+                        goal {formatKpi(g.kpi, g.goal)}
+                      </div>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                <KpiRow row={result.campaign} primaryKpi={primaryKpi} secondaryKpi={secondaryKpi} depth={0} />
+                <KpiRow row={result.campaign} goalKpis={goalKpis} depth={0} />
                 {result.adsets.map((as) => (
-                  <KpiRow key={as.id} row={as} primaryKpi={primaryKpi} secondaryKpi={secondaryKpi} depth={1} />
+                  <KpiRow key={as.id} row={as} goalKpis={goalKpis} depth={1} />
                 ))}
                 {result.ads.map((ad) => (
-                  <KpiRow key={ad.id} row={ad} primaryKpi={primaryKpi} secondaryKpi={secondaryKpi} depth={2} />
+                  <KpiRow key={ad.id} row={ad} goalKpis={goalKpis} depth={2} />
                 ))}
               </tbody>
             </table>
+
           </CardContent>
         </Card>
 
@@ -630,21 +663,17 @@ export default function CloserLook() {
 
 function KpiRow({
   row,
-  primaryKpi,
-  secondaryKpi,
+  goalKpis,
   depth,
 }: {
   row: AdEval;
-  primaryKpi: string;
-  secondaryKpi: string | null;
+  goalKpis: { kpi: string; label: string; goal: number; direction: string; isDefault: boolean }[];
   depth: 0 | 1 | 2;
 }) {
   const s = STATUS_STYLE[row.status] ?? STATUS_STYLE.learning;
   const indent = depth === 0 ? "" : depth === 1 ? "pl-4" : "pl-8";
-  const goalNote =
-    row.primary.vsGoalPct != null && Math.abs(row.primary.vsGoalPct) > 1
-      ? `${row.primary.vsGoalPct > 0 ? "+" : ""}${row.primary.vsGoalPct.toFixed(0)}% vs goal`
-      : null;
+  // Index entity's kpis by key so we can match the configured columns.
+  const byKpi = new Map<string, KpiEntry>((row.kpis || []).map(k => [k.kpi, k]));
   return (
     <tr className="border-b last:border-b-0 align-top">
       <td className={cn("py-2 pr-2", indent)}>
@@ -664,16 +693,27 @@ function KpiRow({
       <td className="py-2 px-2 text-right tabular-nums">
         {row.frequency != null ? row.frequency.toFixed(2) : "—"}
       </td>
-      <td className="py-2 px-2 text-right tabular-nums">
-        <div className="flex items-center justify-end gap-1">
-          {formatKpi(primaryKpi, row.primary.value)}
-          <TrendArrow direction={row.primary.trendDirection} kpi={primaryKpi} />
-        </div>
-        {goalNote && <div className="text-[10px] text-muted-foreground">{goalNote}</div>}
-      </td>
-      <td className="py-2 pl-2 text-right tabular-nums">
-        {row.secondary && secondaryKpi ? formatKpi(secondaryKpi, row.secondary.value) : "—"}
-      </td>
+      {goalKpis.map(g => {
+        const entry = byKpi.get(g.kpi);
+        const value = entry?.value ?? null;
+        const hitting = entry?.status === "above" || entry?.status === "at";
+        const missing = entry?.status === "below";
+        const cls = entry?.status === "no_data" || value == null
+          ? "text-muted-foreground"
+          : hitting ? "text-emerald-700" : "text-amber-700";
+        const pct = entry?.vsGoalPct;
+        return (
+          <td key={g.kpi} className="py-2 px-2 text-right tabular-nums">
+            <div className={cn("font-medium", cls)}>
+              {formatKpi(g.kpi, value)} {hitting && value != null ? "✓" : missing ? "✗" : ""}
+            </div>
+            <div className="text-[10px] text-muted-foreground">
+              vs {formatKpi(g.kpi, g.goal)}
+              {pct != null && Math.abs(pct) > 1 ? ` (${pct > 0 ? "+" : ""}${pct.toFixed(0)}%)` : ""}
+            </div>
+          </td>
+        );
+      })}
     </tr>
   );
 }

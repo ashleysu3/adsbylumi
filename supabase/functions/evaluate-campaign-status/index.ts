@@ -63,16 +63,21 @@ const KPI_LABELS: Record<string, string> = {
   cpl: 'Cost Per Lead', cpp: 'Cost Per Purchase', cpc: 'Cost Per Click',
   cpm: 'Cost Per 1k Impressions', ctr: 'Click-Through Rate', roas: 'Return on Ad Spend',
   costPerThruPlay: 'Cost Per ThruPlay',
+  cplpv: 'Cost Per Landing Page View', cppv: 'Cost Per Profile Visit',
+  cp2sc: 'Cost Per 2-Sec View', purchases: 'Purchases', frequency: 'Frequency',
 };
 
 const KPI_DEFAULT_DIRECTION: Record<string, 'less_than' | 'greater_than'> = {
   cpl: 'less_than', cpp: 'less_than', cpc: 'less_than', cpm: 'less_than',
   costPerThruPlay: 'less_than', roas: 'greater_than', ctr: 'greater_than',
+  cplpv: 'less_than', cppv: 'less_than', cp2sc: 'less_than',
+  purchases: 'greater_than', frequency: 'less_than',
 };
 
 // Sensible benchmark goal when no goal is set. From src/lib/lumi-kpi-config.ts.
 const KPI_DEFAULT_GOAL: Record<string, number> = {
   cpl: 15, cpp: 25, cpc: 0.5, cpm: 8, costPerThruPlay: 0.05, roas: 2.5, ctr: 1.0,
+  cplpv: 1.0, cppv: 1.0, cp2sc: 0.01, purchases: 1, frequency: 4,
 };
 
 // Secondary KPI per primary KPI — playbook §3.
@@ -103,6 +108,17 @@ type Action =
   | 'increase_budget' | 'hold' | 'wait' | 'refresh_creative'
   | 'push_delivery' | 'broaden_audience' | 'reduce_budget';
 
+interface KpiEntry {
+  kpi: string;
+  label: string;
+  value: number | null;
+  goal: number;
+  vsGoalPct: number | null;
+  direction: 'less_than' | 'greater_than';
+  status: 'above' | 'below' | 'at' | 'no_data';
+  isDefault: boolean; // true when no user-set goal — fell back to benchmark
+}
+
 interface AdEvaluation {
   id: string;
   name: string;
@@ -110,6 +126,7 @@ interface AdEvaluation {
   status: Status;
   primary: { value: number | null; vsGoalPct: number | null; trendDirection: 'up' | 'down' | 'flat' };
   secondary: { value: number | null; label: string } | null;
+  kpis: KpiEntry[];
   reach: number;
   frequency: number;
   daysLive: number;
@@ -183,24 +200,34 @@ Deno.serve(async req => {
     } else if (workspaceId) {
       const { data: goalRow } = await sb
         .from('campaign_goals')
-        .select('primary_kpi, primary_kpi_threshold, primary_kpi_goal_type')
+        .select('primary_kpi, primary_kpi_threshold, primary_kpi_goal_type, primary_kpi_label, secondary_kpi, secondary_kpi_threshold, secondary_kpi_goal_type, secondary_kpi_label, tertiary_kpi, tertiary_kpi_threshold, tertiary_kpi_goal_type, tertiary_kpi_label')
         .eq('workspace_id', workspaceId).maybeSingle();
       if (goalRow?.primary_kpi && goalRow.primary_kpi_threshold != null) {
         primaryKpi = String(goalRow.primary_kpi);
         primaryGoal = Number(goalRow.primary_kpi_threshold);
         primaryDirection = goalRow.primary_kpi_goal_type === 'greater_than' ? 'greater_than' : 'less_than';
+        (globalThis as any).__lumi_goal_row = goalRow;
       } else {
         primaryKpi = LUMI_KPI_FROM_OBJECTIVE[meta.objective || ''] || 'cpl';
         primaryGoal = KPI_DEFAULT_GOAL[primaryKpi] ?? 15;
         primaryDirection = KPI_DEFAULT_DIRECTION[primaryKpi] ?? 'less_than';
+        (globalThis as any).__lumi_goal_row = null;
       }
     } else {
       primaryKpi = LUMI_KPI_FROM_OBJECTIVE[meta.objective || ''] || 'cpl';
       primaryGoal = KPI_DEFAULT_GOAL[primaryKpi] ?? 15;
       primaryDirection = KPI_DEFAULT_DIRECTION[primaryKpi] ?? 'less_than';
+      (globalThis as any).__lumi_goal_row = null;
     }
 
     const secondaryKpi = SECONDARY_KPI_FOR[primaryKpi] || null;
+
+    // Build the full goals[] list (primary + optional secondary + optional tertiary)
+    // that the engine will compute per-entity KPIs for. Falls back to benchmark
+    // when the user hasn't set a goal so the UI always has SOMETHING to show.
+    const storedGoals = (globalThis as any).__lumi_goal_row as any;
+    const goalsConfig: GoalConfig[] = buildGoalsConfig(primaryKpi, primaryGoal, primaryDirection, storedGoals);
+
 
     // Compute the four windows (3-day, 7-day, 30-day, fatigue-ref = prior 14 days).
     const asOfDate = asOf ? new Date(asOf) : new Date();
@@ -242,7 +269,7 @@ Deno.serve(async req => {
       return classify({
         id, name: adInfo?.name || adRow.ad_name || id,
         level: 'ad',
-        primaryKpi, primaryGoal, primaryDirection,
+        primaryKpi, primaryGoal, primaryDirection, goalsConfig,
         secondaryKpi,
         meta3, meta7, meta30, metaFatigueRef,
         adsetType: detectAdsetType(parentAdset?.name),
@@ -264,7 +291,7 @@ Deno.serve(async req => {
       return classify({
         id, name: adsetInfo?.name || asRow.adset_name || id,
         level: 'adset',
-        primaryKpi, primaryGoal, primaryDirection, secondaryKpi,
+        primaryKpi, primaryGoal, primaryDirection, secondaryKpi, goalsConfig,
         meta3, meta7, meta30, metaFatigueRef,
         adsetType: detectAdsetType(adsetInfo?.name),
         audienceTemp: detectAudienceTemp(adsetInfo?.name, adsetInfo?.targeting),
@@ -278,7 +305,7 @@ Deno.serve(async req => {
       id: metaCampaignId,
       name: meta.name || 'Campaign',
       level: 'campaign',
-      primaryKpi, primaryGoal, primaryDirection, secondaryKpi,
+      primaryKpi, primaryGoal, primaryDirection, secondaryKpi, goalsConfig,
       meta3: c3?.[0], meta7: c7?.[0], meta30: c30?.[0], metaFatigueRef: cFatigueRef?.[0],
       adsetType: 'unknown',
       audienceTemp: 'unknown',
@@ -293,7 +320,7 @@ Deno.serve(async req => {
 
     return json({
       success: true,
-      meta: { primaryKpi, primaryKpiLabel: KPI_LABELS[primaryKpi], primaryGoal, primaryDirection, secondaryKpi, campaignType, asOf: asOfDate.toISOString() },
+      meta: { primaryKpi, primaryKpiLabel: KPI_LABELS[primaryKpi] || primaryKpi.toUpperCase(), primaryGoal, primaryDirection, secondaryKpi, goals: goalsConfig, campaignType, asOf: asOfDate.toISOString() },
       campaign: campaignEvaluation,
       adsets: adsetEvaluations,
       ads: adEvaluations,
@@ -588,6 +615,45 @@ function detectAudienceTemp(name?: string | null, targeting?: any): 'cold' | 'wa
 // Classification — the heart of the engine. Implements every rule in §6.
 // ---------------------------------------------------------------------------
 
+interface GoalConfig {
+  kpi: string;
+  label: string;
+  goal: number;
+  direction: 'less_than' | 'greater_than';
+  isDefault: boolean;
+}
+
+function buildGoalsConfig(
+  primaryKpi: string,
+  primaryGoal: number,
+  primaryDirection: 'less_than' | 'greater_than',
+  storedGoals: any,
+): GoalConfig[] {
+  const out: GoalConfig[] = [];
+  out.push({
+    kpi: primaryKpi,
+    label: storedGoals?.primary_kpi_label || KPI_LABELS[primaryKpi] || primaryKpi.toUpperCase(),
+    goal: primaryGoal,
+    direction: primaryDirection,
+    isDefault: !storedGoals?.primary_kpi_threshold,
+  });
+  for (const slot of ['secondary', 'tertiary'] as const) {
+    const k = storedGoals?.[`${slot}_kpi`];
+    const t = storedGoals?.[`${slot}_kpi_threshold`];
+    if (k && t != null) {
+      const dir = storedGoals?.[`${slot}_kpi_goal_type`] === 'greater_than' ? 'greater_than' : (KPI_DEFAULT_DIRECTION[k] || 'less_than');
+      out.push({
+        kpi: String(k),
+        label: storedGoals?.[`${slot}_kpi_label`] || KPI_LABELS[k] || String(k).toUpperCase(),
+        goal: Number(t),
+        direction: dir as any,
+        isDefault: false,
+      });
+    }
+  }
+  return out;
+}
+
 interface ClassifyArgs {
   id: string;
   name: string;
@@ -595,6 +661,7 @@ interface ClassifyArgs {
   primaryKpi: string;
   primaryGoal: number;
   primaryDirection: 'less_than' | 'greater_than';
+  goalsConfig: GoalConfig[];
   secondaryKpi: string | null;
   meta3: any; meta7: any; meta30: any; metaFatigueRef: any;
   adsetType: 'testing' | 'scaling' | 'unknown';
@@ -649,15 +716,77 @@ function classify(args: ClassifyArgs): AdEvaluation {
   // Trend direction across long → medium → short (whether KPI is improving).
   const trendDirection = computeTrend(args.primaryDirection, w30.kpiValue, w7.kpiValue, w3.kpiValue);
 
+  // Build the kpis[] array — one entry per configured goal KPI. Uses the
+  // medium (7-day) window as the headline value, computed from meta7.
+  const kpis: KpiEntry[] = (args.goalsConfig || []).map(g => {
+    const value = computeKpiValueFromRow(args.meta7, g.kpi, { reach, frequency });
+    const vsGoalPct = value != null && g.goal > 0 ? ((value - g.goal) / g.goal) * 100 : null;
+    let status: KpiEntry['status'] = 'no_data';
+    if (value != null) {
+      if (Math.abs((value - g.goal) / (g.goal || 1)) < 0.01) status = 'at';
+      else if (g.direction === 'less_than') status = value <= g.goal ? 'above' : 'below';
+      else status = value >= g.goal ? 'above' : 'below';
+      // 'above' means hitting/beating the goal; 'below' means missing it.
+    }
+    return { kpi: g.kpi, label: g.label, value, goal: g.goal, vsGoalPct, direction: g.direction, status, isDefault: g.isDefault };
+  });
+
   return {
     id: args.id, name: args.name, level: args.level,
     status: result.status,
     primary: { value: w7.kpiValue, vsGoalPct, trendDirection },
     secondary,
+    kpis,
     reach, frequency, daysLive,
     windows: { short: w3, medium: w7, long: w30 },
     recommendation: result.recommendation,
   };
+}
+
+// Computes any KPI value from a single insights row. Generalizes
+// rollupRowForKpi to cover frequency, purchases, and CTR-style metrics
+// regardless of which KPI was used for window rollups.
+function computeKpiValueFromRow(
+  row: any,
+  kpi: string,
+  ctx: { reach: number; frequency: number },
+): number | null {
+  if (kpi === 'frequency') return ctx.frequency || null;
+  if (kpi === 'reach') return ctx.reach || null;
+  if (!row) return null;
+  const actions = Array.isArray(row.actions) ? row.actions : [];
+  const cpa = Array.isArray(row.cost_per_action_type) ? row.cost_per_action_type : [];
+  const spend = Number(row.spend || 0);
+  const impressions = Number(row.impressions || 0);
+  const clicks = Number(row.clicks || 0);
+  const leads = sumActions(actions, LEAD_ACTION_TYPES);
+  const purchases = sumActions(actions, PURCHASE_ACTION_TYPES);
+  const videoViews = sumActions(actions, VIDEO_VIEW_ACTION_TYPES);
+  switch (kpi) {
+    case 'cpl': return firstCpa(cpa, LEAD_ACTION_TYPES) ?? (leads > 0 ? spend / leads : null);
+    case 'cpp': return firstCpa(cpa, PURCHASE_ACTION_TYPES) ?? (purchases > 0 ? spend / purchases : null);
+    case 'cpc': return numberish(row.cpc) ?? (clicks > 0 ? spend / clicks : null);
+    case 'cpm': return numberish(row.cpm);
+    case 'ctr': return numberish(row.ctr);
+    case 'roas': {
+      const pr = Array.isArray(row.purchase_roas) && row.purchase_roas.length
+        ? Number(row.purchase_roas[0]?.value || 0) || null : null;
+      return pr;
+    }
+    case 'costPerThruPlay':
+    case 'cp2sc':
+      return firstCpa(cpa, VIDEO_VIEW_ACTION_TYPES) ?? (videoViews > 0 ? spend / videoViews : null);
+    case 'cplpv': {
+      const lpv = sumActions(actions, ['landing_page_view', 'offsite_conversion.fb_pixel_view_content']);
+      return firstCpa(cpa, ['landing_page_view']) ?? (lpv > 0 ? spend / lpv : null);
+    }
+    case 'cppv': {
+      const visits = sumActions(actions, ['onsite_conversion.profile_visit', 'profile_visit']);
+      return visits > 0 ? spend / visits : null;
+    }
+    case 'purchases': return purchases || 0;
+    default: return null;
+  }
 }
 
 function computeTrend(
