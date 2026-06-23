@@ -25,6 +25,7 @@ import Reactivate from "./pages/Reactivate";
 import WelcomeBack from "./pages/WelcomeBack";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
+import Home from "./pages/Home";
 import Start from "./pages/Start";
 import Create from "./pages/Create";
 import AdPerformance from "./pages/Data";
