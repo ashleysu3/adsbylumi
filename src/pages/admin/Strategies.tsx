@@ -27,6 +27,7 @@ type Strategy = {
   campaigns: any[];
   is_active: boolean;
   sort_order: number;
+  access_code: string | null;
 };
 
 type RequestRow = {
@@ -52,6 +53,7 @@ const EMPTY: Partial<Strategy> = {
   campaigns: [],
   is_active: true,
   sort_order: 0,
+  access_code: null,
 };
 
 function arrToStr(a: string[] | undefined) {
@@ -295,6 +297,20 @@ export default function AdminStrategies() {
                     />
                   </div>
                   <div>
+                    <Label>Access code (optional)</Label>
+                    <Input
+                      value={editing.access_code ?? ""}
+                      onChange={(e) =>
+                        setEditing({ ...editing, access_code: e.target.value.toUpperCase() })
+                      }
+                      placeholder="e.g. SUMMER25"
+                      className="font-mono uppercase tracking-wider"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Share this code with specific people — they can redeem it from Create New to unlock this strategy.
+                    </p>
+                  </div>
+                  <div>
                     <Label>Campaigns (JSON array)</Label>
                     <Textarea
                       className="font-mono text-xs"
@@ -370,6 +386,11 @@ export default function AdminStrategies() {
                         {s.name}
                         {!s.is_active && (
                           <Badge variant="outline">Inactive</Badge>
+                        )}
+                        {s.access_code && (
+                          <Badge variant="secondary" className="font-mono text-[10px]">
+                            🎟 {s.access_code}
+                          </Badge>
                         )}
                       </CardTitle>
                       <p className="text-xs text-muted-foreground">{s.slug}</p>
