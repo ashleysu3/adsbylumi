@@ -719,7 +719,7 @@ export function GenerateCreativeDialog() {
   };
 
   const approveBoardResult = async (
-    r: { aspect: string; url: string; path: string },
+    r: { aspect: string; url: string; path: string; base64: string; isVertical: boolean },
     idx: number,
   ) => {
     if (!itemId) {
@@ -728,13 +728,8 @@ export function GenerateCreativeDialog() {
     }
     setBoardApprovingIdx(idx);
     try {
-      const imgRes = await fetch(r.url);
-      if (!imgRes.ok) throw new Error("Could not fetch generated image");
-      const buf = new Uint8Array(await imgRes.arrayBuffer());
-      let bin = "";
-      for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-      const base64 = btoa(bin);
-      const isVertical = r.aspect === "4x5" || r.aspect.includes("9x16");
+      const base64 = r.base64;
+      const isVertical = r.isVertical;
       await new Promise<void>((resolve, reject) => {
         const reqId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const onDone = (e: Event) => {
