@@ -167,9 +167,22 @@ export default function AdStrategy() {
 
         if (cancelled) return;
         const offersList = (offersRes.data || []) as OfferRow[];
-        const wsList = ((wsRes.data || []) as WorkspaceRow[]).filter(
-          (w) => (w.meta_campaign_ids as any)?.campaignId,
-        );
+        // Only surface campaigns that are actually LIVE on Meta. Drafts (no
+        // meta_campaign_ids), paused, archived, or deleted campaigns shouldn't
+        // appear on the 30,000-ft strategy map — they're not part of the
+        // current system. De-dupe by Meta campaign id so re-saved workspaces
+        // don't double up.
+        const seen = new Set<string>();
+        const wsList = ((wsRes.data || []) as WorkspaceRow[]).filter((w) => {
+          const cid = (w.meta_campaign_ids as any)?.campaignId;
+          if (!cid) return false;
+          const status = (w.meta_campaign_status || "").toLowerCase();
+          if (status !== "active") return false;
+          const key = String(cid);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
         setOffers(offersList);
         setWorkspaces(wsList);
         setGoals((goalsRes.data || []) as GoalRow[]);
