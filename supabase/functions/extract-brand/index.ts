@@ -323,7 +323,6 @@ serve(async (req) => {
         ...parsed,
         name: parsed?.name || meta.name,
         description: parsed?.description || meta.description,
-        debug: { marker: debugMarker, meta },
       };
       return new Response(JSON.stringify(merged), {
         status: engineRes.status,
