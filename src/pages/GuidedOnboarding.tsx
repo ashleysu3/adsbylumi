@@ -550,7 +550,14 @@ export default function GuidedOnboarding() {
           body: { brand_id: brandId, offer_id: offerId, user_goal: "leads" },
         });
         if (error) throw error;
-        setStrategy(data);
+        if ((data as any)?.error) throw new Error((data as any).error);
+        if ((data as any)?.pending) {
+          setStrategy({ pending: true, name: "Custom strategy in the works",
+            description: "Your setup is unique enough that LUMI flagged it for a human review. We'll have a tailored plan ready for you shortly — you can keep going in the meantime." });
+        } else {
+          const s = (data as any)?.strategy ?? data;
+          setStrategy({ ...s, personalized_intro: (data as any)?.personalized_intro });
+        }
       } catch (e: any) {
         console.error(e);
         toast.error("Couldn't generate a strategy — you can do this later");
