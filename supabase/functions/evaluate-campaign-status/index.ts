@@ -63,16 +63,21 @@ const KPI_LABELS: Record<string, string> = {
   cpl: 'Cost Per Lead', cpp: 'Cost Per Purchase', cpc: 'Cost Per Click',
   cpm: 'Cost Per 1k Impressions', ctr: 'Click-Through Rate', roas: 'Return on Ad Spend',
   costPerThruPlay: 'Cost Per ThruPlay',
+  cplpv: 'Cost Per Landing Page View', cppv: 'Cost Per Profile Visit',
+  cp2sc: 'Cost Per 2-Sec View', purchases: 'Purchases', frequency: 'Frequency',
 };
 
 const KPI_DEFAULT_DIRECTION: Record<string, 'less_than' | 'greater_than'> = {
   cpl: 'less_than', cpp: 'less_than', cpc: 'less_than', cpm: 'less_than',
   costPerThruPlay: 'less_than', roas: 'greater_than', ctr: 'greater_than',
+  cplpv: 'less_than', cppv: 'less_than', cp2sc: 'less_than',
+  purchases: 'greater_than', frequency: 'less_than',
 };
 
 // Sensible benchmark goal when no goal is set. From src/lib/lumi-kpi-config.ts.
 const KPI_DEFAULT_GOAL: Record<string, number> = {
   cpl: 15, cpp: 25, cpc: 0.5, cpm: 8, costPerThruPlay: 0.05, roas: 2.5, ctr: 1.0,
+  cplpv: 1.0, cppv: 1.0, cp2sc: 0.01, purchases: 1, frequency: 4,
 };
 
 // Secondary KPI per primary KPI — playbook §3.
