@@ -1173,7 +1173,15 @@ export default function Performance() {
                   </li>
                 );
               }
-              const rec = row.rec!;
+              if (!row.rec) {
+                return (
+                  <li key={row.result.workspaceId || name} className="rounded-lg border p-3 space-y-1">
+                    <div className="font-medium text-sm">{name}</div>
+                    <p className="text-xs text-muted-foreground">Holding steady — no recommendation right now.</p>
+                  </li>
+                );
+              }
+              const rec = row.rec;
               const why = rec.recommendation.diagnosis?.why || rec.recommendation.reasoning;
               const a = rec.recommendation.action;
               const approveLabel =
