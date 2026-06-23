@@ -173,6 +173,7 @@ const App = () => {
                   <Route path="/create" element={<Create />} />
                   <Route path="/recommended-strategy" element={<RecommendedStrategy />} />
                   <Route path="/strategy-plan" element={<StrategyPlan />} />
+                  <Route path="/home" element={<Home />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/planning" element={<Navigate to="/campaigns" replace />} />
                   <Route path="/strategy" element={<Strategy />} />
