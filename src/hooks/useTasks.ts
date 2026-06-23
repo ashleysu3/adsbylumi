@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type TaskStatus = "open" | "done" | "dismissed";
+export type TaskFilter = TaskStatus | "snoozed" | "all";
 
 export interface Task {
   id: string;
@@ -14,12 +15,13 @@ export interface Task {
   action_type: string | null;
   action_payload: any;
   status: TaskStatus;
+  snoozed_until: string | null;
   created_at: string;
   completed_at: string | null;
   updated_at: string;
 }
 
-export function useTasks(statusFilter: TaskStatus | "all" = "open") {
+export function useTasks(statusFilter: TaskFilter = "open") {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -32,12 +34,19 @@ export function useTasks(statusFilter: TaskStatus | "all" = "open") {
         return;
       }
       setUserId(user.id);
+      const nowIso = new Date().toISOString();
       let q = supabase
         .from("tasks" as any)
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
-      if (statusFilter !== "all") q = q.eq("status", statusFilter);
+      if (statusFilter === "open") {
+        q = q.eq("status", "open").or(`snoozed_until.is.null,snoozed_until.lte.${nowIso}`);
+      } else if (statusFilter === "snoozed") {
+        q = q.eq("status", "open").gt("snoozed_until", nowIso);
+      } else if (statusFilter !== "all") {
+        q = q.eq("status", statusFilter);
+      }
       const { data, error } = await q;
       if (error) throw error;
       setTasks((data as any) || []);
@@ -52,7 +61,6 @@ export function useTasks(statusFilter: TaskStatus | "all" = "open") {
     fetchTasks();
   }, [fetchTasks]);
 
-  // Realtime
   useEffect(() => {
     if (!userId) return;
     const channel = supabase
@@ -72,9 +80,44 @@ export function useTasks(statusFilter: TaskStatus | "all" = "open") {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
     const patch: any = { status };
     if (status === "done") patch.completed_at = new Date().toISOString();
+    // Reopening clears any pending snooze.
+    if (status === "open") patch.snoozed_until = null;
     const { error } = await supabase.from("tasks" as any).update(patch).eq("id", id);
     if (error) {
       console.error("[useTasks] update failed", error);
+      fetchTasks();
+    }
+  }, [fetchTasks]);
+
+  const snoozeTask = useCallback(async (id: string, until: Date) => {
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+    const { error } = await supabase
+      .from("tasks" as any)
+      .update({ snoozed_until: until.toISOString(), status: "open" })
+      .eq("id", id);
+    if (error) {
+      console.error("[useTasks] snooze failed", error);
+      fetchTasks();
+    }
+  }, [fetchTasks]);
+
+  const unsnoozeTask = useCallback(async (id: string) => {
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+    const { error } = await supabase
+      .from("tasks" as any)
+      .update({ snoozed_until: null })
+      .eq("id", id);
+    if (error) {
+      console.error("[useTasks] unsnooze failed", error);
+      fetchTasks();
+    }
+  }, [fetchTasks]);
+
+  const deleteTask = useCallback(async (id: string) => {
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+    const { error } = await supabase.from("tasks" as any).delete().eq("id", id);
+    if (error) {
+      console.error("[useTasks] delete failed", error);
       fetchTasks();
     }
   }, [fetchTasks]);
@@ -100,7 +143,7 @@ export function useTasks(statusFilter: TaskStatus | "all" = "open") {
     [fetchTasks]
   );
 
-  return { tasks, loading, refetch: fetchTasks, updateStatus, createTask };
+  return { tasks, loading, refetch: fetchTasks, updateStatus, snoozeTask, unsnoozeTask, deleteTask, createTask };
 }
 
 export function useOpenTaskCount() {
@@ -111,11 +154,13 @@ export function useOpenTaskCount() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     setUserId(user.id);
+    const nowIso = new Date().toISOString();
     const { count: c } = await supabase
       .from("tasks" as any)
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .eq("status", "open");
+      .eq("status", "open")
+      .or(`snoozed_until.is.null,snoozed_until.lte.${nowIso}`);
     setCount(c || 0);
   }, []);
 
@@ -136,3 +181,4 @@ export function useOpenTaskCount() {
 
   return count;
 }
+
