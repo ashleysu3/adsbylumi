@@ -320,7 +320,7 @@ Deno.serve(async req => {
 
     return json({
       success: true,
-      meta: { primaryKpi, primaryKpiLabel: KPI_LABELS[primaryKpi], primaryGoal, primaryDirection, secondaryKpi, campaignType, asOf: asOfDate.toISOString() },
+      meta: { primaryKpi, primaryKpiLabel: KPI_LABELS[primaryKpi] || primaryKpi.toUpperCase(), primaryGoal, primaryDirection, secondaryKpi, goals: goalsConfig, campaignType, asOf: asOfDate.toISOString() },
       campaign: campaignEvaluation,
       adsets: adsetEvaluations,
       ads: adEvaluations,
