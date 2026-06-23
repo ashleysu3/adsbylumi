@@ -462,6 +462,7 @@ Deno.serve(async req => {
       audienceTemp: 'unknown',
       adsetDailyBudget: dollarsFromMetaBudget(meta),
       campaignType,
+      archetypeSlug,
     });
 
     // Pick top recommendation across all evaluations using tiered priority (§7).
