@@ -193,10 +193,34 @@ function pickMeta(html: string, names: string[]): string | null {
   return null;
 }
 
+function parseMetaFromHtml(html: string): { name?: string; description?: string } {
+  const ogSite = pickMeta(html, ["og:site_name", "application-name", "twitter:site"]);
+  const ogTitle = pickMeta(html, ["og:title", "twitter:title"]);
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const rawTitle = titleMatch ? decodeEntities(titleMatch[1].replace(/\s+/g, " ")) : null;
+  const splitTitle = (t?: string | null) => {
+    if (!t) return null;
+    const parts = t.split(/\s+[|—–\-·•:]\s+/).map((p) => p.trim()).filter(Boolean);
+    if (parts.length === 1) return parts[0];
+    const last = parts[parts.length - 1];
+    const first = parts[0];
+    // Prefer the segment that looks most like a brand name (shorter, no verbs)
+    return first.length <= last.length ? first : last;
+  };
+  const name = ogSite || splitTitle(ogTitle) || splitTitle(rawTitle) || undefined;
+  const description =
+    pickMeta(html, ["og:description", "twitter:description", "description"]) || undefined;
+  return {
+    name: name && name.length > 0 && name.length < 80 ? name : undefined,
+    description: description && description.length < 400 ? description : undefined,
+  };
+}
+
 async function fetchSiteMeta(url: string): Promise<{ name?: string; description?: string }> {
+  // Try direct fetch first (fast)
   try {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 9000);
+    const t = setTimeout(() => ctrl.abort(), 7000);
     const res = await fetch(url, {
       signal: ctrl.signal,
       redirect: "follow",
@@ -207,32 +231,51 @@ async function fetchSiteMeta(url: string): Promise<{ name?: string; description?
       },
     });
     clearTimeout(t);
-    if (!res.ok) return {};
-    const html = (await res.text()).slice(0, 200_000);
-    const ogSite = pickMeta(html, ["og:site_name", "application-name", "twitter:site"]);
-    const ogTitle = pickMeta(html, ["og:title", "twitter:title"]);
-    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-    const rawTitle = titleMatch ? decodeEntities(titleMatch[1]) : null;
-    // Title often looks like "Brand Name — Tagline" or "Page | Brand Name" — extract brand portion
-    const splitTitle = (t?: string | null) => {
-      if (!t) return null;
-      const parts = t.split(/\s+[|—–\-·•]\s+/).map((p) => p.trim()).filter(Boolean);
-      if (parts.length === 1) return parts[0];
-      // Brand is usually the shortest/last segment
-      const last = parts[parts.length - 1];
-      const first = parts[0];
-      return last.length <= first.length ? last : first;
-    };
-    const name = ogSite || splitTitle(ogTitle) || splitTitle(rawTitle) || undefined;
-    const description =
-      pickMeta(html, ["og:description", "twitter:description", "description"]) || undefined;
-    return {
-      name: name && name.length < 80 ? name : undefined,
-      description: description && description.length < 400 ? description : undefined,
-    };
-  } catch {
-    return {};
+    if (res.ok) {
+      const html = (await res.text()).slice(0, 200_000);
+      const meta = parseMetaFromHtml(html);
+      if (meta.name || meta.description) return meta;
+    }
+  } catch (e) {
+    console.warn("fetchSiteMeta direct fetch failed", (e as any)?.message || e);
   }
+
+  // Fallback: Firecrawl scrape (handles bot-protected / SPA / Showit sites)
+  if (FIRECRAWL_API_KEY) {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 15000);
+      const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
+        method: "POST",
+        signal: ctrl.signal,
+        headers: {
+          Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url, formats: ["html"], onlyMainContent: false }),
+      });
+      clearTimeout(t);
+      const data = await res.json().catch(() => null);
+      const html: string | undefined = data?.data?.html || data?.html;
+      const md: any = data?.data?.metadata || data?.metadata;
+      const fromHtml = html ? parseMetaFromHtml(html) : {};
+      const name =
+        fromHtml.name ||
+        md?.ogSiteName ||
+        md?.["og:site_name"] ||
+        md?.title?.split?.(/\s+[|—–\-·•:]\s+/)?.[0]?.trim();
+      const description = fromHtml.description || md?.description || md?.ogDescription;
+      return {
+        name: name && name.length < 80 ? name : undefined,
+        description: description && description.length < 400 ? description : undefined,
+      };
+    } catch (e) {
+      console.warn("fetchSiteMeta firecrawl fallback failed", (e as any)?.message || e);
+    }
+  }
+
+  return {};
+}
 }
 
 serve(async (req) => {
@@ -246,6 +289,10 @@ serve(async (req) => {
 
     // Fetch site meta (title, og:site_name, description) in parallel with branding
     const [fc, meta] = await Promise.all([firecrawlBranding(url), fetchSiteMeta(url)]);
+    console.log("[XBR-V2] meta:", JSON.stringify(meta), "fcOk:", !!fc);
+
+    // Sentinel so we can confirm the deployed code version
+    const debugMarker = "XBR-V2";
 
     if (fc && (fc.suggested.colors?.background || (fc.suggested.colors?.pops?.length ?? 0) > 0)) {
       // Normalize into the flat shape the client reads (name, description, colors, fonts, logoUrl)
@@ -278,6 +325,7 @@ serve(async (req) => {
         ...parsed,
         name: parsed?.name || meta.name,
         description: parsed?.description || meta.description,
+        debug: { marker: debugMarker, meta },
       };
       return new Response(JSON.stringify(merged), {
         status: engineRes.status,
