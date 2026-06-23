@@ -214,9 +214,19 @@ Deno.serve(async (req) => {
       return json({ pending: true, request_id: reqRow?.id });
     }
 
+    // Adapt the matched template's campaign objectives to the actual offer.
+    // Templates are written generically (often defaulting to OUTCOME_SALES),
+    // but the PRIMARY campaign must reflect what the user is promoting:
+    //   - Free trial / webinar / opt-in / lead magnet → OUTCOME_LEADS
+    //   - Paid product / course / coaching            → OUTCOME_SALES
+    //   - "Just grow / awareness" goals               → OUTCOME_AWARENESS
+    // Top-of-funnel (awareness) and warm retargeting layers are preserved
+    // and aligned to the primary objective so the funnel stays coherent.
+    const adapted = adaptCampaignsToOffer(matched, brandSnapshot);
+
     return json({
       matched: true,
-      strategy: matched,
+      strategy: adapted,
       personalized_intro:
         parsed?.personalized_intro ??
         `Based on what we see for ${brand.name}, this plan is the cleanest path forward.`,
@@ -226,3 +236,124 @@ Deno.serve(async (req) => {
     return json({ error: (err as Error).message ?? "Unknown error" });
   }
 });
+
+function detectPrimaryObjective(
+  snapshot: any,
+): "OUTCOME_LEADS" | "OUTCOME_SALES" | "OUTCOME_AWARENESS" {
+  const offer =
+    snapshot?.selected_offer || (snapshot?.offers && snapshot.offers[0]) || {};
+  const goal = String(snapshot?.user_goal || "").toLowerCase();
+  const fields = [
+    offer?.name,
+    offer?.description,
+    offer?.page_goal,
+    offer?.target_outcome,
+    offer?.price_point,
+    goal,
+  ]
+    .map((v) => String(v || "").toLowerCase())
+    .join(" | ");
+
+  const leadSignals = [
+    "free trial", "trial", "webinar", "masterclass", "workshop", "challenge",
+    "opt-in", "opt in", "optin", "signup", "sign up", "sign-up",
+    "register", "registration", "lead magnet", "lead-magnet", "freebie",
+    "free guide", "free download", "free pdf", "free ebook", "free quiz",
+    "free call", "free consult", "discovery call", "book a call",
+    "inquiry", "inquire", "waitlist", "email capture", "newsletter",
+    "subscribe", "leads", "get leads",
+  ];
+  const awarenessSignals = [
+    "awareness", "grow social", "grow my account", "grow following",
+    "build audience", "brand awareness", "video views",
+  ];
+  const salesSignals = [
+    "purchase", "buy now", "checkout", "sales page", "add to cart",
+    "shop", "store", "ecommerce", "coaching package", "membership",
+  ];
+
+  const priceStr = String(offer?.price_point || "").toLowerCase();
+  const nameStr = String(offer?.name || "").toLowerCase();
+  const isFree =
+    /\bfree\b|\$0\b|^0$|no cost|complimentary/.test(priceStr) ||
+    /\bfree\b/.test(nameStr);
+
+  const hasLead = leadSignals.some((s) => fields.includes(s));
+  const hasAwareness = awarenessSignals.some((s) => fields.includes(s));
+  const hasSale = salesSignals.some((s) => fields.includes(s));
+
+  if (isFree || hasLead) return "OUTCOME_LEADS";
+  if (hasAwareness && !hasSale) return "OUTCOME_AWARENESS";
+  return "OUTCOME_SALES";
+}
+
+function classifyRole(c: any): "awareness" | "primary" | "retarget" {
+  const obj = String(c?.objective || "").toUpperCase();
+  const name = String(c?.name || "").toLowerCase();
+  const aud = String(c?.audience || "").toLowerCase();
+  if (
+    obj === "OUTCOME_AWARENESS" ||
+    /awareness|top of funnel|tof|educational/.test(name)
+  ) {
+    return "awareness";
+  }
+  if (
+    /retarget|warm|engaged|nurture|remarket/.test(name) ||
+    /engaged|warm|retarget|remarket/.test(aud)
+  ) {
+    return "retarget";
+  }
+  return "primary";
+}
+
+function adaptCampaignsToOffer(matched: any, snapshot: any) {
+  const primaryObjective = detectPrimaryObjective(snapshot);
+  const offerName: string =
+    snapshot?.selected_offer?.name ||
+    snapshot?.offers?.[0]?.name ||
+    "your offer";
+  const campaigns = Array.isArray(matched?.campaigns)
+    ? matched.campaigns.slice()
+    : [];
+
+  const rewritten = campaigns.map((c: any) => {
+    const role = classifyRole(c);
+    if (role === "awareness") return c;
+
+    if (role === "primary") {
+      if (primaryObjective === "OUTCOME_LEADS") {
+        return {
+          ...c,
+          name: "Lead generation (primary)",
+          objective: "OUTCOME_LEADS",
+          creative_brief:
+            `Direct invitation to sign up for ${offerName}. Lead with the outcome they get by registering, ` +
+            `one clear benefit, and a single CTA to the opt-in / registration page. Use an instant lead form if it fits, ` +
+            `otherwise drive to the registration landing page.`,
+        };
+      }
+      if (primaryObjective === "OUTCOME_AWARENESS") {
+        return { ...c, name: "Awareness (primary)", objective: "OUTCOME_AWARENESS" };
+      }
+      return { ...c, objective: "OUTCOME_SALES" };
+    }
+
+    // Retarget: align with whatever the primary objective is.
+    if (primaryObjective === "OUTCOME_LEADS") {
+      return {
+        ...c,
+        name: "Warm retargeting (sign-ups)",
+        objective: "OUTCOME_LEADS",
+        creative_brief:
+          `Re-invite warm viewers/visitors who haven't signed up yet for ${offerName}. ` +
+          `Handle the top 1-2 objections (time, "is this for me?", trust), then a clear CTA to register.`,
+      };
+    }
+    if (primaryObjective === "OUTCOME_AWARENESS") {
+      return { ...c, objective: "OUTCOME_AWARENESS" };
+    }
+    return { ...c, objective: "OUTCOME_SALES" };
+  });
+
+  return { ...matched, campaigns: rewritten };
+}
