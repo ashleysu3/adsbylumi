@@ -377,6 +377,15 @@ export default function CloserLook() {
   const secondaryKpi = result.meta.secondaryKpi;
   const s = STATUS_STYLE[result.campaign.status] ?? STATUS_STYLE.learning;
 
+  // Configured goal KPIs — derive from meta.goals (preferred) or fall back
+  // to whatever shows up in the campaign-row's kpis[], or just the primary.
+  const goalKpis: { kpi: string; label: string; goal: number; direction: string; isDefault: boolean }[] =
+    (result.meta.goals && result.meta.goals.length > 0)
+      ? result.meta.goals
+      : (result.campaign.kpis && result.campaign.kpis.length > 0)
+        ? result.campaign.kpis.map(k => ({ kpi: k.kpi, label: k.label, goal: k.goal, direction: k.direction, isDefault: k.isDefault }))
+        : [{ kpi: primaryKpi, label: result.meta.primaryKpiLabel, goal: result.meta.primaryGoal ?? 0, direction: "less_than", isDefault: false }];
+
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
