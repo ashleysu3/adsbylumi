@@ -199,6 +199,8 @@ export default function Performance() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pausing, setPausing] = useState(false);
   const [goalModalFor, setGoalModalFor] = useState<EngineResult | null>(null);
+  const [quickListOpen, setQuickListOpen] = useState(false);
+
 
   // Date range — persists in localStorage. "3" | "7" | "14" | "30" (preset days)
   // or "custom" with a customDateRange. Default: last 7 days.
