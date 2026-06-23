@@ -62,6 +62,17 @@ interface WindowSnapshot {
   kpiValue: number | null;
 }
 
+interface KpiEntry {
+  kpi: string;
+  label: string;
+  value: number | null;
+  goal: number;
+  vsGoalPct: number | null;
+  direction: "less_than" | "greater_than";
+  status: "above" | "below" | "at" | "no_data";
+  isDefault: boolean;
+}
+
 interface AdEval {
   id: string;
   name: string;
@@ -69,6 +80,7 @@ interface AdEval {
   status: Status;
   primary: { value: number | null; vsGoalPct: number | null; trendDirection?: "up" | "down" | "flat" };
   secondary: { value: number | null; label: string } | null;
+  kpis?: KpiEntry[];
   reach?: number;
   frequency?: number;
   daysLive?: number;
@@ -89,6 +101,7 @@ interface EngineResult {
     primaryGoal: number | null;
     primaryDirection?: "less_than" | "greater_than";
     secondaryKpi: string | null;
+    goals?: { kpi: string; label: string; goal: number; direction: string; isDefault: boolean }[];
     campaignType?: string;
   };
   campaign: AdEval;
