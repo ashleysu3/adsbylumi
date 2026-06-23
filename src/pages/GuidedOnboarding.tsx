@@ -228,13 +228,19 @@ export default function GuidedOnboarding() {
           .then(async () => {
             const { data: refreshed } = await supabase.from("brands").select("audience_psychology").eq("id", brandIdLocal).maybeSingle();
             const ap: any = refreshed?.audience_psychology;
-            // Build a richer snapshot from the structured psychology
-            const bits: string[] = [];
-            if (ap?.pain_points?.[0]) bits.push(`Pain: ${ap.pain_points[0]}`);
-            if (ap?.desires?.[0]) bits.push(`Wants: ${ap.desires[0]}`);
-            if (ap?.objections?.[0]) bits.push(`Doubt: ${ap.objections[0]}`);
-            const snap = bits.length ? bits.join(" · ") : (ap?.summary || ap?.demographics);
-            if (snap) setStep1Reveal((p) => ({ ...p, audience: String(snap).slice(0, 320) }));
+            const parts = {
+              pain: ap?.pain_points?.[0],
+              wants: ap?.desires?.[0],
+              doubt: ap?.objections?.[0],
+            };
+            const fallback = ap?.summary || ap?.demographics;
+            if (parts.pain || parts.wants || parts.doubt || fallback) {
+              setStep1Reveal((p) => ({
+                ...p,
+                audienceParts: parts,
+                audience: !parts.pain && !parts.wants && !parts.doubt ? String(fallback).slice(0, 320) : undefined,
+              }));
+            }
           })
       ).catch(() => {});
 
