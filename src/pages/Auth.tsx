@@ -119,7 +119,7 @@ export default function Auth() {
         
         toast.success("Welcome back!");
         if (inviteToken) await acceptInvite(inviteToken);
-        navigate(||);
+        navigate(safeReturnTo || "/home");
       } else {
         const { data, error } = await supabase.auth.signUp({
           email,
