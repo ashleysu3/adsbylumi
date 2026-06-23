@@ -145,7 +145,7 @@ const supportGroup: NavGroup = {
     // TODO: dedicated troubleshooting page.
     { label: "Troubleshooting", to: "/troubleshooting", icon: HelpCircle },
     { label: "Human Help", to: "/office-hours", icon: Users },
-    { label: "Initial Setup", to: "/onboarding", icon: PenLine },
+    { label: "Initial Setup", to: "/initial-setup", icon: PenLine },
   ],
 };
 
