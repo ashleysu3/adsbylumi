@@ -177,8 +177,9 @@ Deno.serve(async req => {
     );
 
     // Resolve campaign + brand + ownership.
-    const { brandId, metaCampaignId, workspaceId, accessToken, primaryKpiOverride, primaryGoal: goalIn, primaryDirection: directionIn, attributionWindow, asOf } =
+    const { brandId, metaCampaignId, workspaceId, accessToken, primaryKpiOverride, primaryGoal: goalIn, primaryDirection: directionIn, attributionWindow, asOf, displayRange } =
       await resolveContext(body, sb, user.id);
+
 
     if (!metaCampaignId || !accessToken) {
       return json({ error: 'Could not resolve a connected Meta campaign for this request' }, 400);
@@ -233,25 +234,40 @@ Deno.serve(async req => {
     const asOfDate = asOf ? new Date(asOf) : new Date();
     const windows = computeWindows(asOfDate);
 
+    // Optional display window — only changes what metrics are SHOWN in the UI;
+    // never feeds into the 3/7/30-day judgment rules below. When the caller
+    // doesn't provide one, default to the medium (7-day) window so behavior
+    // matches the prior implementation.
+    const displayWindow: DateWindow = buildDisplayWindow(displayRange, asOfDate) || windows.medium;
+    const displayMatchesMedium =
+      displayWindow.since === windows.medium.since && displayWindow.until === windows.medium.until;
+
     // Pull insights at all three levels for the three primary windows + the fatigue ref.
-    const [c3, c7, c30, cFatigueRef] = await Promise.all([
+    const [c3, c7, c30, cFatigueRef, cDisp] = await Promise.all([
       fetchInsights(metaCampaignId, accessToken, windows.short, 'campaign'),
       fetchInsights(metaCampaignId, accessToken, windows.medium, 'campaign'),
       fetchInsights(metaCampaignId, accessToken, windows.long, 'campaign'),
       fetchInsights(metaCampaignId, accessToken, windows.fatigueRef, 'campaign'),
+      displayMatchesMedium ? Promise.resolve(null) : fetchInsights(metaCampaignId, accessToken, displayWindow, 'campaign'),
     ]);
-    const [s3, s7, s30, sFatigueRef] = await Promise.all([
+    const [s3, s7, s30, sFatigueRef, sDisp] = await Promise.all([
       fetchInsights(metaCampaignId, accessToken, windows.short, 'adset'),
       fetchInsights(metaCampaignId, accessToken, windows.medium, 'adset'),
       fetchInsights(metaCampaignId, accessToken, windows.long, 'adset'),
       fetchInsights(metaCampaignId, accessToken, windows.fatigueRef, 'adset'),
+      displayMatchesMedium ? Promise.resolve(null) : fetchInsights(metaCampaignId, accessToken, displayWindow, 'adset'),
     ]);
-    const [a3, a7, a30, aFatigueRef] = await Promise.all([
+    const [a3, a7, a30, aFatigueRef, aDisp] = await Promise.all([
       fetchInsights(metaCampaignId, accessToken, windows.short, 'ad'),
       fetchInsights(metaCampaignId, accessToken, windows.medium, 'ad'),
       fetchInsights(metaCampaignId, accessToken, windows.long, 'ad'),
       fetchInsights(metaCampaignId, accessToken, windows.fatigueRef, 'ad'),
+      displayMatchesMedium ? Promise.resolve(null) : fetchInsights(metaCampaignId, accessToken, displayWindow, 'ad'),
     ]);
+    const cDisplay = displayMatchesMedium ? c7 : (cDisp as any[] | null);
+    const sDisplay = displayMatchesMedium ? s7 : (sDisp as any[] | null);
+    const aDisplay = displayMatchesMedium ? a7 : (aDisp as any[] | null);
+
 
     // Pull adset metadata so we can detect testing/scaling type, audience temp, daily budget.
     const adsetMeta = await fetchAdsetMeta(metaCampaignId, accessToken);
@@ -264,6 +280,7 @@ Deno.serve(async req => {
       const meta7 = (a7 as any[]).find(r => r.ad_id === id);
       const meta30 = adRow;
       const metaFatigueRef = (aFatigueRef as any[]).find(r => r.ad_id === id);
+      const metaDisplay = aDisplay ? (aDisplay as any[]).find(r => r.ad_id === id) : undefined;
       const adInfo = adMeta.find(m => m.id === id);
       const parentAdset = adsetMeta.find(s => s.id === adInfo?.adset_id);
       return classify({
@@ -271,7 +288,7 @@ Deno.serve(async req => {
         level: 'ad',
         primaryKpi, primaryGoal, primaryDirection, goalsConfig,
         secondaryKpi,
-        meta3, meta7, meta30, metaFatigueRef,
+        meta3, meta7, meta30, metaFatigueRef, metaDisplay,
         adsetType: detectAdsetType(parentAdset?.name),
         audienceTemp: detectAudienceTemp(parentAdset?.name, parentAdset?.targeting),
         adsetDailyBudget: dollarsFromMetaBudget(parentAdset),
@@ -287,12 +304,13 @@ Deno.serve(async req => {
       const meta7 = (s7 as any[]).find(r => r.adset_id === id);
       const meta30 = asRow;
       const metaFatigueRef = (sFatigueRef as any[]).find(r => r.adset_id === id);
+      const metaDisplay = sDisplay ? (sDisplay as any[]).find(r => r.adset_id === id) : undefined;
       const adsetInfo = adsetMeta.find(s => s.id === id);
       return classify({
         id, name: adsetInfo?.name || asRow.adset_name || id,
         level: 'adset',
         primaryKpi, primaryGoal, primaryDirection, secondaryKpi, goalsConfig,
-        meta3, meta7, meta30, metaFatigueRef,
+        meta3, meta7, meta30, metaFatigueRef, metaDisplay,
         adsetType: detectAdsetType(adsetInfo?.name),
         audienceTemp: detectAudienceTemp(adsetInfo?.name, adsetInfo?.targeting),
         adsetDailyBudget: dollarsFromMetaBudget(adsetInfo),
@@ -307,6 +325,7 @@ Deno.serve(async req => {
       level: 'campaign',
       primaryKpi, primaryGoal, primaryDirection, secondaryKpi, goalsConfig,
       meta3: c3?.[0], meta7: c7?.[0], meta30: c30?.[0], metaFatigueRef: cFatigueRef?.[0],
+      metaDisplay: cDisplay?.[0],
       adsetType: 'unknown',
       audienceTemp: 'unknown',
       adsetDailyBudget: dollarsFromMetaBudget(meta),
@@ -320,12 +339,18 @@ Deno.serve(async req => {
 
     return json({
       success: true,
-      meta: { primaryKpi, primaryKpiLabel: KPI_LABELS[primaryKpi] || primaryKpi.toUpperCase(), primaryGoal, primaryDirection, secondaryKpi, goals: goalsConfig, campaignType, asOf: asOfDate.toISOString() },
+      meta: {
+        primaryKpi, primaryKpiLabel: KPI_LABELS[primaryKpi] || primaryKpi.toUpperCase(),
+        primaryGoal, primaryDirection, secondaryKpi, goals: goalsConfig, campaignType,
+        asOf: asOfDate.toISOString(),
+        displayRange: { since: displayWindow.since, until: displayWindow.until, days: displayWindow.days, label: displayWindow.label },
+      },
       campaign: campaignEvaluation,
       adsets: adsetEvaluations,
       ads: adEvaluations,
       topRecommendation,
     });
+
   } catch (err: any) {
     console.error('evaluate-campaign-status error:', err);
     return json({ error: err?.message || 'Unknown error' }, 500);
@@ -372,7 +397,37 @@ async function resolveContext(body: any, sb: any, userId: string) {
     primaryDirection: body?.primaryDirection as 'less_than' | 'greater_than' | undefined,
     attributionWindow: body?.attributionWindow as string | undefined,
     asOf: body?.asOf as string | undefined,
+    displayRange: body?.displayRange as { since?: string; until?: string; days?: number } | undefined,
   };
+}
+
+// Builds a display-only window from caller input. Accepts either a custom
+// { since, until } or a { days: N } preset. Returns null when input is
+// missing / unusable so the caller can fall back to the 7-day default.
+function buildDisplayWindow(
+  input: { since?: string; until?: string; days?: number } | undefined,
+  asOf: Date,
+): DateWindow | null {
+  if (!input) return null;
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  if (input.since && input.until) {
+    const since = String(input.since).slice(0, 10);
+    const until = String(input.until).slice(0, 10);
+    const days = Math.max(
+      1,
+      Math.round((new Date(until + 'T00:00:00Z').getTime() - new Date(since + 'T00:00:00Z').getTime()) / 86400000) + 1,
+    );
+    return { since, until, days, label: `display_${since}_to_${until}` };
+  }
+  if (typeof input.days === 'number' && input.days > 0) {
+    const n = Math.min(365, Math.round(input.days));
+    const until = fmt(asOf);
+    const sinceDate = new Date(asOf);
+    sinceDate.setUTCDate(sinceDate.getUTCDate() - (n - 1));
+    const since = fmt(sinceDate);
+    return { since, until, days: n, label: `display_last_${n}d` };
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -664,6 +719,8 @@ interface ClassifyArgs {
   goalsConfig: GoalConfig[];
   secondaryKpi: string | null;
   meta3: any; meta7: any; meta30: any; metaFatigueRef: any;
+  metaDisplay?: any;
+
   adsetType: 'testing' | 'scaling' | 'unknown';
   audienceTemp: 'cold' | 'warm' | 'unknown';
   adsetDailyBudget: number;
@@ -677,9 +734,13 @@ function classify(args: ClassifyArgs): AdEvaluation {
   const w30 = rollupRowForKpi(args.meta30, args.primaryKpi);
   const wFatigueRef = rollupRowForKpi(args.metaFatigueRef, args.primaryKpi);
 
-  // Pull reach + frequency from the LONG window — most stable.
-  const reach = Number(args.meta30?.reach || 0);
-  const frequency = Number(args.meta30?.frequency || 0);
+  // Display row — what the UI shows. Falls back to the medium (7-day)
+  // window for backwards compatibility when no display range was passed in.
+  // The judgment rules below NEVER read from this — they only use
+  // w3 / w7 / w30 / wFatigueRef.
+  const displayRow = args.metaDisplay ?? args.meta7;
+  const reach = Number(displayRow?.reach || 0);
+  const frequency = Number(displayRow?.frequency || 0);
 
   // Days live: prefer Meta's date_start on the ad, fall back to LONG window's date_start.
   const createdTime = args.adInfo?.created_time;
@@ -691,50 +752,53 @@ function classify(args: ClassifyArgs): AdEvaluation {
   // Secondary KPI value — show purchases / ROAS regardless of primary, when applicable.
   let secondary: AdEvaluation['secondary'] = null;
   if (args.secondaryKpi === 'cpp') {
-    const purchases = sumActions(args.meta30?.actions || [], PURCHASE_ACTION_TYPES);
-    secondary = { value: purchases || 0, label: 'Purchases (lifetime)' };
+    const purchases = sumActions(displayRow?.actions || [], PURCHASE_ACTION_TYPES);
+    secondary = { value: purchases || 0, label: 'Purchases' };
   } else if (args.secondaryKpi === 'roas') {
-    const r = Array.isArray(args.meta30?.purchase_roas) && args.meta30.purchase_roas.length
-      ? Number(args.meta30.purchase_roas[0]?.value || 0) || null : null;
+    const r = Array.isArray(displayRow?.purchase_roas) && displayRow.purchase_roas.length
+      ? Number(displayRow.purchase_roas[0]?.value || 0) || null : null;
     secondary = { value: r, label: 'ROAS' };
   } else if (args.secondaryKpi === 'cvr_proxy') {
     secondary = { value: null, label: 'On-site conversion rate (set up pixel to see)' };
   }
 
   // -- Apply rules in priority order. First match wins.
+  // Judgment is ALWAYS based on the 3 / 7 / 30-day windows + fatigue ref —
+  // the display range can't make the engine flip-flop.
   const result = applyRules({
-    args, reach, frequency, daysLive,
+    args, reach: Number(args.meta30?.reach || 0), frequency: Number(args.meta30?.frequency || 0), daysLive,
     w3, w7, w30, wFatigueRef,
   });
 
-  // vsGoalPct — using the medium window as the headline.
-  const headlineKpi = w7.kpiValue;
-  const vsGoalPct = headlineKpi != null && args.primaryGoal > 0
-    ? ((headlineKpi - args.primaryGoal) / args.primaryGoal) * 100
+  // Headline primary KPI value — uses the DISPLAY row so the card shows
+  // the value for the timeframe the user selected.
+  const displayPrimary = computeKpiValueFromRow(displayRow, args.primaryKpi, { reach, frequency });
+  const vsGoalPct = displayPrimary != null && args.primaryGoal > 0
+    ? ((displayPrimary - args.primaryGoal) / args.primaryGoal) * 100
     : null;
 
   // Trend direction across long → medium → short (whether KPI is improving).
   const trendDirection = computeTrend(args.primaryDirection, w30.kpiValue, w7.kpiValue, w3.kpiValue);
 
-  // Build the kpis[] array — one entry per configured goal KPI. Uses the
-  // medium (7-day) window as the headline value, computed from meta7.
+  // Build the kpis[] array — one entry per configured goal KPI, computed
+  // from the DISPLAY row so the colored pills match what's on screen.
   const kpis: KpiEntry[] = (args.goalsConfig || []).map(g => {
-    const value = computeKpiValueFromRow(args.meta7, g.kpi, { reach, frequency });
+    const value = computeKpiValueFromRow(displayRow, g.kpi, { reach, frequency });
     const vsGoalPct = value != null && g.goal > 0 ? ((value - g.goal) / g.goal) * 100 : null;
     let status: KpiEntry['status'] = 'no_data';
     if (value != null) {
       if (Math.abs((value - g.goal) / (g.goal || 1)) < 0.01) status = 'at';
       else if (g.direction === 'less_than') status = value <= g.goal ? 'above' : 'below';
       else status = value >= g.goal ? 'above' : 'below';
-      // 'above' means hitting/beating the goal; 'below' means missing it.
     }
     return { kpi: g.kpi, label: g.label, value, goal: g.goal, vsGoalPct, direction: g.direction, status, isDefault: g.isDefault };
   });
 
+
   return {
     id: args.id, name: args.name, level: args.level,
     status: result.status,
-    primary: { value: w7.kpiValue, vsGoalPct, trendDirection },
+    primary: { value: displayPrimary, vsGoalPct, trendDirection },
     secondary,
     kpis,
     reach, frequency, daysLive,
