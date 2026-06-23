@@ -282,6 +282,14 @@ export default function Style() {
           />
         </div>
       </div>
+
+      <BrandEditDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        brand={brand}
+        onUpdate={fetchBrand}
+      />
     </DashboardLayout>
   );
 }
+
