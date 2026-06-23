@@ -94,16 +94,9 @@ Deno.serve(async (req) => {
           result.alertCreated = await createAlert(supabase, brand, result.status, result.daysUntilExpiry);
         }
 
-        // Send email for expiring/expired/invalid tokens
-        if (result.status !== 'valid' && RESEND_API_KEY) {
-          result.emailSent = await sendAlertEmail(
-            supabase,
-            brand,
-            result.status,
-            result.daysUntilExpiry,
-            RESEND_API_KEY
-          );
-        }
+        // Email notifications disabled — users are notified in-app on next login
+        // via the user_alerts banner (see AlertsBanner). Do not send reconnect emails.
+        result.emailSent = false;
 
         // Attempt auto-refresh for expiring tokens
         if (result.status === 'expiring' && META_APP_ID && META_APP_SECRET) {
