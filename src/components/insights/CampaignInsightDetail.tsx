@@ -40,6 +40,8 @@ import {
   getLumiStatusLabel,
 } from '@/lib/lumi-kpi-config';
 import { useRecommendationActions, describeRecAction, type Recommendation as RecType } from '@/hooks/useRecommendationActions';
+import { ConfirmRecExecuteDialog } from './ConfirmRecExecuteDialog';
+
 import { Eye, Pause, Play, Rocket, Hourglass, Flame } from 'lucide-react';
 import { getFatigueStatus } from '@/lib/fatigue';
 import { FatigueGauge } from './FatigueGauge';
