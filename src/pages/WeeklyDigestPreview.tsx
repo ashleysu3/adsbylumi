@@ -98,8 +98,13 @@ export default function WeeklyDigestPreview() {
     }
     setSendingTest(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-      toast.success(`Test email sent to ${testEmail}!`);
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase.functions.invoke('send-weekly-reports', {
+        body: { testMode: true, testEmail: testEmail.trim() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Test email sent to ${testEmail}! Check your inbox in a moment.`);
     } catch (error: any) {
       toast.error(error.message || 'Failed to send test email');
     } finally {
