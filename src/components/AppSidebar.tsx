@@ -28,6 +28,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { LadybugIcon } from "@/components/LadybugIcon";
+import { IntentBar } from "@/components/IntentBar";
 import { BugReportModal } from "@/components/BugReportModal";
 import { NavLink } from "@/components/NavLink";
 import { BrandSelector } from "@/components/BrandSelector";
