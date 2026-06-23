@@ -733,6 +733,8 @@ export type Database = {
           never_use_words: string[] | null
           next_report_due: string | null
           notification_preferences: Json | null
+          onboarding_completed_at: string | null
+          onboarding_step: number
           overlay_style: Json | null
           page_id: string | null
           page_name: string | null
@@ -784,6 +786,8 @@ export type Database = {
           never_use_words?: string[] | null
           next_report_due?: string | null
           notification_preferences?: Json | null
+          onboarding_completed_at?: string | null
+          onboarding_step?: number
           overlay_style?: Json | null
           page_id?: string | null
           page_name?: string | null
@@ -835,6 +839,8 @@ export type Database = {
           never_use_words?: string[] | null
           next_report_due?: string | null
           notification_preferences?: Json | null
+          onboarding_completed_at?: string | null
+          onboarding_step?: number
           overlay_style?: Json | null
           page_id?: string | null
           page_name?: string | null
@@ -2667,6 +2673,8 @@ export type Database = {
           email: string
           first_campaign_launched_at: string | null
           full_name: string | null
+          guided_onboarding_completed_at: string | null
+          guided_onboarding_step: number
           id: string
           is_agency_user: boolean | null
           is_beta_user: boolean
@@ -2685,6 +2693,8 @@ export type Database = {
           email: string
           first_campaign_launched_at?: string | null
           full_name?: string | null
+          guided_onboarding_completed_at?: string | null
+          guided_onboarding_step?: number
           id: string
           is_agency_user?: boolean | null
           is_beta_user?: boolean
@@ -2703,6 +2713,8 @@ export type Database = {
           email?: string
           first_campaign_launched_at?: string | null
           full_name?: string | null
+          guided_onboarding_completed_at?: string | null
+          guided_onboarding_step?: number
           id?: string
           is_agency_user?: boolean | null
           is_beta_user?: boolean

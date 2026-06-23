@@ -24,6 +24,7 @@ import Auth from "./pages/Auth";
 import Reactivate from "./pages/Reactivate";
 import WelcomeBack from "./pages/WelcomeBack";
 import Onboarding from "./pages/Onboarding";
+import GuidedOnboarding from "./pages/GuidedOnboarding";
 import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
 import Start from "./pages/Start";
@@ -171,7 +172,8 @@ const App = () => {
                   <Route path="/freetrial" element={<FreeTrial />} />
                   <Route path="/free-trial" element={<Navigate to="/freetrial" replace />} />
                   <Route path="/welcome" element={<Welcome />} />
-                  <Route path="/onboarding" element={<Onboarding />} />
+                  <Route path="/onboarding" element={<GuidedOnboarding />} />
+                  <Route path="/onboarding-legacy" element={<Onboarding />} />
                   <Route path="/start" element={<Start />} />
                   <Route path="/create" element={<Create />} />
                   <Route path="/recommended-strategy" element={<RecommendedStrategy />} />

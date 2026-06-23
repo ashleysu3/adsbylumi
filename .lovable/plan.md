@@ -1,75 +1,112 @@
-# Plan: Business-Model Archetype Framework Layer
+# Guided Onboarding Flow
 
-A new layer above templates that sets each brand's operating model and drives budget + success-metric defaults. Five archetypes: `lead_gen_funnels`, `low_ticket_direct`, `high_ticket_consult`, `ecommerce`, `community_membership`.
+Replace `/onboarding` with a 5-step wizard that pulls a new signup all the way to a launch-ready first campaign. Every step reuses existing edge functions and tables. Anything the user skips becomes a task in the tray. The wizard is resumable from where they left off and ends on `/home`.
 
-## 1. Archetype config (single source of truth)
+## User experience
 
-New file `src/lib/business-archetypes.ts` — TypeScript config, no DB table needed (archetypes are global, not per-tenant). Each archetype carries:
+```text
+SIGN UP
+   │
+   ▼
+┌─────────────────────────────────────────────────────────────┐
+│  /onboarding  (single page, 5 internal steps + progress)    │
+│                                                              │
+│  1. Business basics  ──►  Required: name, website, offer    │
+│     + Connect Meta        URL(s), Meta OAuth                │
+│                                                              │
+│  2. "LUMI is reading your site…" (parallel extraction)      │
+│     Review + edit cards:                                     │
+│       · Design guide (colors + fonts)                        │
+│       · Brand voice                                          │
+│       · Audience psychology                                  │
+│       · Offer psychology                                     │
+│       · Social proof                                         │
+│     Each card editable, none ever blank.                     │
+│                                                              │
+│  3. Assets & approval                                        │
+│     Harvested brand_assets grouped by role (logo /           │
+│     background / texture / graphic / lifestyle). Toggle      │
+│     "kept", remove, upload more. SetupPrompts for missing    │
+│     logo, headshot, backgrounds, b-roll, voice example.      │
+│                                                              │
+│  4. Suggested strategy                                       │
+│     recommend-strategy result shown plainly. "Add these      │
+│     steps to my tasks" seeds the tray.                       │
+│                                                              │
+│  5. First-campaign walkthrough                               │
+│     Hand off to /create with the campaign tasks already in   │
+│     the tray. "I'll do it later" lands on /home.             │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+                       /home (launchpad)
+```
 
-- `slug`, `label`, `tagline`
-- `budgetApproach`: `{ testDaily: {min,max}, scaleTrigger, scalingRule, retargetMultiplier?, launchWindowOnly? }`
-- `successMetrics`: array of `{ key, label, target, isPrimary }` — e.g. `opt_in_rate`, `show_up_rate`, `live_conversion`, `cost_per_application`, `cost_per_member`, `roas`
-- `gradingNotes`: rules that override generic grading (e.g. "do NOT grade lead_gen on webinar ROAS — grade on LTV from list")
-- `templateSlugs`: array of strategy template slugs that belong under it
-- `diagnose(offer)`: returns confidence score given offer price + type + goal
+Required: step 1 + Meta connect. Steps 2–5 each have a **Finish later** button that creates a task and advances.
 
-Exported helper `diagnoseArchetype({ price, offerType, goal })` returns the best-match slug + confidence + an explanation string.
+## Reuse — no rebuilding
 
-## 2. Schema migration
+- Edge functions: `extract-brand`, `extract-offer-info`, `harvest-brand-assets`, `analyze-brand-voice`, `generate-audience-psychology`, `generate-product-psychology`, `recommend-strategy`.
+- Components: `MetaAccountConnect`, `SetupPrompt`, `LumiThinkingInline`, `BrandImageLibrary` (read patterns), `Card`, `Button`, etc.
+- Tables: `brands`, `offers`, `brand_assets` (role + kept), `user_assets`, `tasks`.
+- Hooks: `useTasks` for tray inserts, `useBrand` for active brand context.
 
-Add to `public.brands`:
+## What gets built
 
-- `business_model text` (nullable; one of the 5 archetype slugs)
-- `business_model_confirmed_at timestamptz` (so we know the user accepted it vs. it being an auto-guess)
+### 1. New page: `src/pages/GuidedOnboarding.tsx`
 
-No new table — the 5 archetypes are code-level constants. No grants needed (existing brand grants already cover the column).
+Single component with `step` 1–5 state, header progress strip, and a sub-component per step:
 
-## 3. Diagnosis UI
+- `Step1Basics` — name, website, comma-separated offer URLs, `MetaAccountConnect` embedded. Saves a `brands` row + one `offers` row per URL on **Continue**.
+- `Step2Review` — on mount kicks off the six extraction calls in parallel against the new brand/offer ids. Shows the friendly "LUMI is reading your site…" state with `LumiThinkingInline` until results land, then renders five editable review cards. Each card writes its edits straight to the existing brand/offer columns on save.
+- `Step3Assets` — queries `brand_assets` for the user grouped by `role`, lets the user toggle `kept`, delete, and upload (logo/headshot/background → `user_assets` for personal, `brand_assets` for brand-scoped). Renders a `SetupPrompt` for each missing essential (logo, headshot, ≥1 background, voice example, b-roll-to-record).
+- `Step4Strategy` — calls `recommend-strategy`, renders the suggested plan, button "Add these to my tasks" inserts one row per next-step into `tasks` linked to `/strategy`.
+- `Step5FirstCampaign` — short hand-off card with two buttons: **Start my first campaign** (→ `/create?onboarding=1`) and **I'll do it later** (→ `/home`). Either path seeds tasks for angle → copy → creative → launch first if they aren't already there.
 
-**Onboarding (`BrandOnboardingWizard.tsx`)** — after offer + price are captured, insert a lightweight "Looks like you're running **{archetype}**" confirm card. Two actions: "Yes, that's me" (writes `business_model` + `business_model_confirmed_at`) or "Change" (opens a 5-option selector with the archetype label/tagline).
+Each step has Back / Continue / Finish later. Continue advances and persists `brands.onboarding_step`.
 
-**Strategy page (`Strategy.tsx`)** — same card at the top of the page. If `business_model` is null, show the diagnosis prompt. If set, show "Operating as **{archetype}** · Change" with a popover to switch.
+### 2. New shared helper: `src/lib/onboarding-tasks.ts`
 
-Reusable component: `src/components/ArchetypeDiagnosisCard.tsx` (handles both surfaces).
+`seedDeferredTask(kind, brandId)` — idempotent upsert into `tasks` keyed by `(user_id, source='guided_onboarding', title)`. Used by every "Finish later" path and by Step 3 SetupPrompts. Maps each missing item to a clear task title + `link_to` (e.g. `Add a logo` → `/brand`, `Approve your strategy` → `/strategy`, `Record your headshot video` → `/creative-studio`).
 
-## 4. Budget wiring (`src/lib/strategy-budget.ts`)
+### 3. Routing + entry point
 
-Extend `StrategyBudgetInput` with optional `archetypeSlug`. When present:
+- `src/App.tsx`: keep route `/onboarding` pointing at the new page. The old `Onboarding.tsx` becomes `OnboardingLegacy.tsx` (kept in repo only for fallback reference — not routed).
+- Post-signup / post-payment redirects already send users to `/onboarding`, so no caller changes.
+- On mount, the page reads `profiles.guided_onboarding_step` (or active brand's `onboarding_step`) and jumps to that step so it's resumable.
 
-- Use the archetype's `budgetApproach.testDaily` as the **floor range** for `leanDaily`/`idealDaily` on the primary main campaign (overrides KPI-derived defaults; still respects the template-level `budgetSuggestion` when that one is tighter).
-- When the archetype defines `retargetMultiplier` (e.g. ecommerce 2–3×), apply it to supplemental retargeting allocations instead of the generic 15% rule.
-- When `launchWindowOnly` is true (community_membership), tag the rationale string with "Run only during open-enrollment windows (2–4/yr)" and skip the always-on monthly projection.
-- Scaling rule note ("test → ~50 conversions → scale +20%") is surfaced in the `rationale` string so the user sees it in the budget panel.
+### 4. Schema (one migration)
 
-Callers (`Strategy.tsx`, `StrategyPlan.tsx`, `CloserLook.tsx`, `Performance.tsx`, `recommend-strategy` edge function) pull `brand.business_model` and pass it through. Back-compat: if absent, current behavior is unchanged.
+```sql
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS guided_onboarding_step int NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS guided_onboarding_completed_at timestamptz;
 
-Unit tests added to `strategy-budget.test.ts` for each archetype's floor + scaling note.
+ALTER TABLE public.brands
+  ADD COLUMN IF NOT EXISTS onboarding_step int NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS onboarding_completed_at timestamptz;
+```
 
-## 5. Success metrics wiring
+No new tables — review state lives in the existing brand/offer columns the extractors already write to. No grants needed (both tables already have them).
 
-**`src/lib/goal-suggestions.ts`** — new `getArchetypeGoalSuggestions(archetypeSlug, objective)` that returns the archetype's `successMetrics` as the suggested primary/secondary/tertiary KPIs (with target values). Existing generic suggestions remain as fallback.
+### 5. "Never blank" enforcement
 
-**`GoalSetupModal.tsx`** — when opened, pull the brand's archetype and pre-fill KPI dropdowns + target values from `getArchetypeGoalSuggestions`. User can still override (user-set goals remain truth).
+If any extractor fails or returns empty, the review card renders a `SetupPrompt` with a sensible default placeholder and lets the user fill it in. Saving is allowed with minimum-viable values; "Finish later" always creates a follow-up task.
 
-**`evaluate-campaign-status` edge function** — accept `archetypeSlug` in the request body. When present, use the archetype's `successMetrics` and `gradingNotes` to drive grading:
+## What I am NOT touching
 
-- `lead_gen_funnels`: grade on opt-in / show-up / live-conversion rates and LTV-from-list. Do NOT fail a webinar campaign on weak ROAS alone — surface as "ROAS is informational; LTV is the real read."
-- `community_membership`: grade on cost-per-member + retention; only evaluate during launch windows.
-- `high_ticket_consult`: grade on cost-per-application + application→call + call→close, not raw CPL.
-- `ecommerce`: grade on ROAS + CAC + repeat-customer.
-- `low_ticket_direct`: grade on cost-per-purchase + conversion rate.
+- Meta OAuth flow itself (reused as-is).
+- Billing / Stripe / pricing tiers.
+- Existing `Create` campaign flow internals — only the entry point gets the new tasks pre-seeded.
+- The legacy `Onboarding.tsx` extraction logic — we just stop routing to it.
 
-Keep MRR/LTV-aware judgment intact. User-set goals (from `campaign_goals`) always win — archetype only sets defaults and fills in unspecified KPIs.
+## Acceptance check
 
-## 6. Out of scope
-
-- Meta execution (build-meta-campaign, update-meta-budget) — unchanged
-- Billing / Stripe — unchanged
-- Lumi Engine internals — unchanged
-- No new templates (ecommerce templates intentionally TBD; framework seeded only)
-- No changes to template seeding from the prior round
-
-## Files touched
-
-- **New:** `src/lib/business-archetypes.ts`, `src/components/ArchetypeDiagnosisCard.tsx`, migration adding `business_model` to `brands`
-- **Edited:** `src/lib/strategy-budget.ts` (+ tests), `src/lib/goal-suggestions.ts`, `src/components/insights/GoalSetupModal.tsx`, `src/components/BrandOnboardingWizard.tsx`, `src/pages/Strategy.tsx`, `supabase/functions/evaluate-campaign-status/index.ts`, `supabase/functions/recommend-strategy/index.ts`, and the budget call sites that already have `brand` in scope (`StrategyPlan.tsx`, `CloserLook.tsx`, `Performance.tsx`)
+1. New user signs up → lands on `/onboarding` step 1.
+2. Fills basics, connects Meta → advances to step 2.
+3. Sees the friendly "reading your site" state, then five editable cards. Approves or edits each.
+4. Reviews harvested assets, uploads logo + headshot, removes one bad image.
+5. Sees a recommended strategy and a "next steps in your tasks" confirmation.
+6. Clicks **Start my first campaign** → lands in `/create` with angle/copy/creative/launch tasks in the tray.
+7. Leaves and comes back → reopening `/onboarding` resumes at the last step they were on.
+8. Clicks **Finish later** anywhere → tasks for the deferred items are visible in the tray on `/home`.
