@@ -280,6 +280,7 @@ Deno.serve(async req => {
       const meta7 = (a7 as any[]).find(r => r.ad_id === id);
       const meta30 = adRow;
       const metaFatigueRef = (aFatigueRef as any[]).find(r => r.ad_id === id);
+      const metaDisplay = aDisplay ? (aDisplay as any[]).find(r => r.ad_id === id) : undefined;
       const adInfo = adMeta.find(m => m.id === id);
       const parentAdset = adsetMeta.find(s => s.id === adInfo?.adset_id);
       return classify({
@@ -287,7 +288,7 @@ Deno.serve(async req => {
         level: 'ad',
         primaryKpi, primaryGoal, primaryDirection, goalsConfig,
         secondaryKpi,
-        meta3, meta7, meta30, metaFatigueRef,
+        meta3, meta7, meta30, metaFatigueRef, metaDisplay,
         adsetType: detectAdsetType(parentAdset?.name),
         audienceTemp: detectAudienceTemp(parentAdset?.name, parentAdset?.targeting),
         adsetDailyBudget: dollarsFromMetaBudget(parentAdset),
@@ -303,12 +304,13 @@ Deno.serve(async req => {
       const meta7 = (s7 as any[]).find(r => r.adset_id === id);
       const meta30 = asRow;
       const metaFatigueRef = (sFatigueRef as any[]).find(r => r.adset_id === id);
+      const metaDisplay = sDisplay ? (sDisplay as any[]).find(r => r.adset_id === id) : undefined;
       const adsetInfo = adsetMeta.find(s => s.id === id);
       return classify({
         id, name: adsetInfo?.name || asRow.adset_name || id,
         level: 'adset',
         primaryKpi, primaryGoal, primaryDirection, secondaryKpi, goalsConfig,
-        meta3, meta7, meta30, metaFatigueRef,
+        meta3, meta7, meta30, metaFatigueRef, metaDisplay,
         adsetType: detectAdsetType(adsetInfo?.name),
         audienceTemp: detectAudienceTemp(adsetInfo?.name, adsetInfo?.targeting),
         adsetDailyBudget: dollarsFromMetaBudget(adsetInfo),
@@ -323,6 +325,7 @@ Deno.serve(async req => {
       level: 'campaign',
       primaryKpi, primaryGoal, primaryDirection, secondaryKpi, goalsConfig,
       meta3: c3?.[0], meta7: c7?.[0], meta30: c30?.[0], metaFatigueRef: cFatigueRef?.[0],
+      metaDisplay: cDisplay?.[0],
       adsetType: 'unknown',
       audienceTemp: 'unknown',
       adsetDailyBudget: dollarsFromMetaBudget(meta),
@@ -336,12 +339,18 @@ Deno.serve(async req => {
 
     return json({
       success: true,
-      meta: { primaryKpi, primaryKpiLabel: KPI_LABELS[primaryKpi] || primaryKpi.toUpperCase(), primaryGoal, primaryDirection, secondaryKpi, goals: goalsConfig, campaignType, asOf: asOfDate.toISOString() },
+      meta: {
+        primaryKpi, primaryKpiLabel: KPI_LABELS[primaryKpi] || primaryKpi.toUpperCase(),
+        primaryGoal, primaryDirection, secondaryKpi, goals: goalsConfig, campaignType,
+        asOf: asOfDate.toISOString(),
+        displayRange: { since: displayWindow.since, until: displayWindow.until, days: displayWindow.days, label: displayWindow.label },
+      },
       campaign: campaignEvaluation,
       adsets: adsetEvaluations,
       ads: adEvaluations,
       topRecommendation,
     });
+
   } catch (err: any) {
     console.error('evaluate-campaign-status error:', err);
     return json({ error: err?.message || 'Unknown error' }, 500);
