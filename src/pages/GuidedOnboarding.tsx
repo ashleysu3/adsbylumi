@@ -1579,14 +1579,6 @@ function BrandBasicsCard({ brand, placeholderName, onSave }: { brand: any; place
           )}
         </div>
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">What you do</Label>
-          {editing ? (
-            <Textarea rows={3} value={desc} onChange={(e) => setDesc(e.target.value)} />
-          ) : (
-            <p className="text-sm leading-relaxed">{desc || <span className="italic text-muted-foreground">Not set</span>}</p>
-          )}
-        </div>
-        <div className="space-y-1">
           <Label className="text-xs uppercase tracking-wide text-muted-foreground">Brand voice</Label>
           {editing ? (
             <Textarea rows={6} value={voice} onChange={(e) => setVoice(e.target.value)} placeholder="Warm, witty, never salesy…" />
