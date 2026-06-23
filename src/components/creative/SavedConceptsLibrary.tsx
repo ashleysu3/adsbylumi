@@ -151,7 +151,9 @@ export function SavedConceptsLibrary() {
         .eq("id", c.workspaceId)
         .maybeSingle();
       if (error) throw error;
-      const current: string[] = Array.isArray(ws?.loved_concepts) ? ws.loved_concepts : [];
+      const current: string[] = Array.isArray(ws?.loved_concepts)
+        ? (ws!.loved_concepts as unknown as string[])
+        : [];
       const next = current.filter((id) => id !== c.matchedLovedId);
       const { error: upErr } = await supabase
         .from("campaign_workspaces")
