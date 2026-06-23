@@ -111,6 +111,7 @@ interface AdEvaluation {
   primary: { value: number | null; vsGoalPct: number | null; trendDirection: 'up' | 'down' | 'flat' };
   secondary: { value: number | null; label: string } | null;
   reach: number;
+  frequency: number;
   daysLive: number;
   windows: {
     short: WindowSnapshot;
@@ -653,7 +654,7 @@ function classify(args: ClassifyArgs): AdEvaluation {
     status: result.status,
     primary: { value: w7.kpiValue, vsGoalPct, trendDirection },
     secondary,
-    reach, daysLive,
+    reach, frequency, daysLive,
     windows: { short: w3, medium: w7, long: w30 },
     recommendation: result.recommendation,
   };
