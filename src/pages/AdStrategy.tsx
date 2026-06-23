@@ -155,7 +155,6 @@ export default function AdStrategy() {
               "id, name, objective, offer_id, offer_name, offer_price, meta_campaign_ids, meta_campaign_status, archived",
             )
             .eq("brand_id", activeBrand.id)
-            .eq("archived", false)
             .order("created_at", { ascending: false }),
           supabase
             .from("campaign_goals")
