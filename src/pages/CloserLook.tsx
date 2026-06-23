@@ -663,21 +663,17 @@ export default function CloserLook() {
 
 function KpiRow({
   row,
-  primaryKpi,
-  secondaryKpi,
+  goalKpis,
   depth,
 }: {
   row: AdEval;
-  primaryKpi: string;
-  secondaryKpi: string | null;
+  goalKpis: { kpi: string; label: string; goal: number; direction: string; isDefault: boolean }[];
   depth: 0 | 1 | 2;
 }) {
   const s = STATUS_STYLE[row.status] ?? STATUS_STYLE.learning;
   const indent = depth === 0 ? "" : depth === 1 ? "pl-4" : "pl-8";
-  const goalNote =
-    row.primary.vsGoalPct != null && Math.abs(row.primary.vsGoalPct) > 1
-      ? `${row.primary.vsGoalPct > 0 ? "+" : ""}${row.primary.vsGoalPct.toFixed(0)}% vs goal`
-      : null;
+  // Index entity's kpis by key so we can match the configured columns.
+  const byKpi = new Map<string, KpiEntry>((row.kpis || []).map(k => [k.kpi, k]));
   return (
     <tr className="border-b last:border-b-0 align-top">
       <td className={cn("py-2 pr-2", indent)}>
@@ -697,16 +693,27 @@ function KpiRow({
       <td className="py-2 px-2 text-right tabular-nums">
         {row.frequency != null ? row.frequency.toFixed(2) : "—"}
       </td>
-      <td className="py-2 px-2 text-right tabular-nums">
-        <div className="flex items-center justify-end gap-1">
-          {formatKpi(primaryKpi, row.primary.value)}
-          <TrendArrow direction={row.primary.trendDirection} kpi={primaryKpi} />
-        </div>
-        {goalNote && <div className="text-[10px] text-muted-foreground">{goalNote}</div>}
-      </td>
-      <td className="py-2 pl-2 text-right tabular-nums">
-        {row.secondary && secondaryKpi ? formatKpi(secondaryKpi, row.secondary.value) : "—"}
-      </td>
+      {goalKpis.map(g => {
+        const entry = byKpi.get(g.kpi);
+        const value = entry?.value ?? null;
+        const hitting = entry?.status === "above" || entry?.status === "at";
+        const missing = entry?.status === "below";
+        const cls = entry?.status === "no_data" || value == null
+          ? "text-muted-foreground"
+          : hitting ? "text-emerald-700" : "text-amber-700";
+        const pct = entry?.vsGoalPct;
+        return (
+          <td key={g.kpi} className="py-2 px-2 text-right tabular-nums">
+            <div className={cn("font-medium", cls)}>
+              {formatKpi(g.kpi, value)} {hitting && value != null ? "✓" : missing ? "✗" : ""}
+            </div>
+            <div className="text-[10px] text-muted-foreground">
+              vs {formatKpi(g.kpi, g.goal)}
+              {pct != null && Math.abs(pct) > 1 ? ` (${pct > 0 ? "+" : ""}${pct.toFixed(0)}%)` : ""}
+            </div>
+          </td>
+        );
+      })}
     </tr>
   );
 }
