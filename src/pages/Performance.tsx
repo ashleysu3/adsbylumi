@@ -233,6 +233,7 @@ export default function Performance() {
   const [pausing, setPausing] = useState(false);
   const [goalModalFor, setGoalModalFor] = useState<EngineResult | null>(null);
   const [quickListOpen, setQuickListOpen] = useState(false);
+  const [reloadNonce, setReloadNonce] = useState(0);
 
 
   // Date range — persists in localStorage. "3" | "7" | "14" | "30" (preset days)
@@ -435,7 +436,7 @@ export default function Performance() {
     return () => {
       cancelled = true;
     };
-  }, [activeBrand, brandLoading, activeRange.since, activeRange.until]);
+  }, [activeBrand, brandLoading, activeRange.since, activeRange.until, reloadNonce]);
 
   // Top 3 across all campaigns, sorted by impact, excluding snoozed.
   const topThree = useMemo(() => {
@@ -837,7 +838,7 @@ export default function Performance() {
                           {item.rec.recommendation.diagnosis && (
                             <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-xs space-y-1">
                               <div className="font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wide text-[10px]">
-                                Root cause: {item.rec.recommendation.diagnosis.rootCause.replace(/_/g, ' ')}
+                                Root cause: {(item.rec.recommendation.diagnosis.rootCause || 'unknown').replace(/_/g, ' ')}
                               </div>
                               {item.rec.recommendation.diagnosis.signals?.length > 0 && (
                                 <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
@@ -1183,7 +1184,7 @@ export default function Performance() {
           name: goalModalFor.workspaceName || goalModalFor.campaign.name,
           brandId: activeBrand?.id,
         }] : []}
-        onGoalsSaved={() => { setGoalModalFor(null); setResults([]); setLoading(true); }}
+        onGoalsSaved={() => { setGoalModalFor(null); setReloadNonce((n) => n + 1); }}
       />
 
       <Sheet open={quickListOpen} onOpenChange={setQuickListOpen}>
