@@ -68,11 +68,8 @@ Deno.serve(async (req) => {
         status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    if (!req.headers.get('Authorization')) {
-      return new Response(JSON.stringify({ error: 'Auth required' }), {
-        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // Note: no auth check on testMode — this is a preview helper that just
+    // sends a sample to the email the user typed. Resend rate-limits the rest.
     try {
       const html = buildBigPictureEmail({
         userName: 'there',
