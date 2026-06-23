@@ -681,52 +681,43 @@ export default function GuidedOnboarding() {
           </Card>
         )}
 
-        {/* ============== Shared review-step intro banner ============== */}
-        {step >= 2 && step <= 5 && (
-          <Card className="border-primary/20 bg-primary/5 mb-4">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="h-4 w-4 text-primary" /> Here's what we gathered ✨
-              </CardTitle>
-              <CardDescription>
-                Pulled straight from your website{brand?.website_url ? ` (${brand.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "")})` : ""}. Edit anything that's off — rebrand, outdated copy, new audience — and we'll use the updated version everywhere.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        )}
-
-        {/* ============== STEP 2 — Brand basics ============== */}
+        {/* ============== STEP 2 — Reveal page (streams in live) ============== */}
         {step === 2 && (
           <div className="space-y-4">
-            <BrandBasicsCard brand={brand} onSave={updateBrand} />
-            <div className="flex justify-between pt-2">
-              <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => finishLater("Review your brand basics", "/brand")}>Finish later</Button>
-                <Button onClick={advance}>Looks good <ArrowRight className="h-4 w-4 ml-1" /></Button>
-              </div>
-            </div>
-          </div>
-        )}
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Sparkles className="h-4 w-4 text-primary" /> Here's what we found ✨
+                </CardTitle>
+                <CardDescription>
+                  Pulled straight from your website{brand?.website_url ? ` (${brand.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "")})` : ""}. Edit anything that's off — rebrand, outdated copy, new audience — and we'll use the updated version everywhere.
+                </CardDescription>
+              </CardHeader>
+            </Card>
 
-        {/* ============== STEP 3 — Audience ============== */}
-        {step === 3 && (
-          <div className="space-y-4">
-            <ReviewAudienceCard brand={brand} onSave={updateBrand} />
-            <div className="flex justify-between pt-2">
-              <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => finishLater("Review your audience", "/brand")}>Finish later</Button>
-                <Button onClick={advance}>Looks good <ArrowRight className="h-4 w-4 ml-1" /></Button>
-              </div>
-            </div>
-          </div>
-        )}
+            {/* Brand basics — first to populate */}
+            <SectionShell
+              loading={loadingBrandBasics}
+              loadingMsg="🔍 Snooping through your website (politely)…"
+            >
+              <BrandBasicsCard brand={brand} onSave={updateBrand} />
+            </SectionShell>
 
-        {/* ============== STEP 4 — Design guide & images ============== */}
-        {step === 4 && (
-          <div className="space-y-4">
-            <ReviewDesignCard brand={brand} onSave={updateBrand} />
+            {/* Audience */}
+            <SectionShell
+              loading={loadingAudience}
+              loadingMsg="🧠 Profiling your dream client (in a kind way)…"
+            >
+              <ReviewAudienceCard brand={brand} onSave={updateBrand} />
+            </SectionShell>
+
+            {/* Design guide & images */}
+            <SectionShell
+              loading={loadingBrandBasics}
+              loadingMsg="🎨 Stealing your color palette — for science…"
+            >
+              <ReviewDesignCard brand={brand} onSave={updateBrand} />
+            </SectionShell>
 
             <Card>
               <CardHeader>
@@ -734,9 +725,10 @@ export default function GuidedOnboarding() {
                 <CardDescription>Keep what looks like your brand. Toss what doesn't. Add the missing pieces.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
-                {classifying && (
+                {(loadingAssets || classifying) && (
                   <div className="text-xs text-muted-foreground flex items-center gap-2">
-                    <Loader2 className="h-3 w-3 animate-spin" /> LUMI is sorting your images by type…
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    {loadingAssets ? "📸 Hunting for logos and pretty photos…" : "LUMI is sorting your images by type…"}
                   </div>
                 )}
 
@@ -871,32 +863,28 @@ export default function GuidedOnboarding() {
               </CardContent>
             </Card>
 
-            <div className="flex justify-between pt-2">
-              <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => finishLater("Finish your design guide", "/brand")}>Finish later</Button>
-                <Button onClick={advance}>Continue <ArrowRight className="h-4 w-4 ml-1" /></Button>
-              </div>
-            </div>
-          </div>
-        )}
+            {/* Social proof — only renders when something was actually found (or still loading) */}
+            {(loadingProof || hasProof) && (
+              <SectionShell
+                loading={loadingProof && !hasProof}
+                loadingMsg="💬 Reading every testimonial out loud…"
+              >
+                <ReviewProofCard brand={brand} onSave={updateBrand} loading={proofExtracting} />
+              </SectionShell>
+            )}
 
-        {/* ============== STEP 5 — Social proof (auto-skips when empty) ============== */}
-        {step === 5 && (
-          <div className="space-y-4">
-            <ReviewProofCard brand={brand} onSave={updateBrand} loading={proofExtracting} />
             <div className="flex justify-between pt-2">
               <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => finishLater("Review your social proof", "/brand")}>Finish later</Button>
+                <Button variant="outline" onClick={() => finishLater("Finish your brand review", "/brand")}>Finish later</Button>
                 <Button onClick={advance}>Looks good <ArrowRight className="h-4 w-4 ml-1" /></Button>
               </div>
             </div>
           </div>
         )}
 
-        {/* ============== STEP 6 — Offer sales page ============== */}
-        {step === 6 && (
+        {/* ============== STEP 3 — Offer sales page ============== */}
+        {step === 3 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5" /> Your offer</CardTitle>
@@ -910,6 +898,7 @@ export default function GuidedOnboarding() {
                     value={offerUrl} onChange={(e) => setOfferUrl(e.target.value)}
                     placeholder="https://yourbrand.com/program"
                     onKeyDown={(e) => { if (e.key === "Enter") submitOfferUrl(); }}
+                    disabled={offerBusy}
                   />
                   <Button onClick={submitOfferUrl} disabled={offerBusy}>
                     {offerBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Pull offer"}
@@ -917,7 +906,13 @@ export default function GuidedOnboarding() {
                 </div>
               </div>
 
-              {offers.length === 0 ? (
+              {offerBusy && offerStatusMsg && (
+                <div className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> {offerStatusMsg}
+                </div>
+              )}
+
+              {offers.length === 0 && !offerBusy ? (
                 <SetupPrompt
                   title="No offer yet"
                   description="Add at least one sales page so LUMI can write campaigns that actually convert."
@@ -927,7 +922,7 @@ export default function GuidedOnboarding() {
               ) : (
                 <div className="space-y-3">
                   {offers.map((o) => (
-                    <OfferRowEditor key={o.id} offer={o} brand={brand} onSave={(p) => updateOffer(o.id, p)} setGlobalLoader={setGlobalLoaderMsg} /> 
+                    <OfferRowEditor key={o.id} offer={o} brand={brand} onSave={(p) => updateOffer(o.id, p)} />
                   ))}
                 </div>
               )}
@@ -943,8 +938,8 @@ export default function GuidedOnboarding() {
           </Card>
         )}
 
-        {/* ============== STEP 7 — Connect Meta ============== */}
-        {step === 7 && (
+        {/* ============== STEP 4 — Connect Meta ============== */}
+        {step === 4 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" /> Connect Meta</CardTitle>
