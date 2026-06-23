@@ -1329,7 +1329,7 @@ function BrandBasicsCard({ brand, onSave }: { brand: any; onSave: (p: any) => Pr
   );
 }
 
-function OfferRowEditor({ offer, brand, onSave, setGlobalLoader }: { offer: any; brand?: any; onSave: (p: any) => Promise<void>; setGlobalLoader?: (m: string | null) => void }) {
+function OfferRowEditor({ offer, brand, onSave }: { offer: any; brand?: any; onSave: (p: any) => Promise<void> }) {
   const [name, setName] = useState(offer.name || "");
   const [description, setDescription] = useState(offer.description || "");
   const [price, setPrice] = useState(offer.price_point || "");
@@ -1340,6 +1340,7 @@ function OfferRowEditor({ offer, brand, onSave, setGlobalLoader }: { offer: any;
   const [colors, setColors] = useState<string>((so.colors || []).join(", "));
   const [fonts, setFonts] = useState<string>((so.fonts || []).join(", "));
   const [designPulled, setDesignPulled] = useState(false);
+  const [pullingDesign, setPullingDesign] = useState(false);
 
   const oap = offer.offer_audience_psychology || {};
   const [pains, setPains] = useState<string>((oap.pain_points || []).join("\n"));
