@@ -265,7 +265,7 @@ export function GenerateCreativeDialog() {
     headline: "", subhead: "", cta: "Learn more",
   });
   const [boardGenerating, setBoardGenerating] = useState(false);
-  const [boardResults, setBoardResults] = useState<Array<{ aspect: string; url: string; path: string }>>([]);
+  const [boardResults, setBoardResults] = useState<Array<{ aspect: string; url: string; path: string; base64: string; isVertical: boolean }>>([]);
   const [boardApprovingIdx, setBoardApprovingIdx] = useState<number | null>(null);
   const [boardApprovedIdxs, setBoardApprovedIdxs] = useState<Set<number>>(new Set());
   const boardResultsRef = useRef<HTMLDivElement | null>(null);
