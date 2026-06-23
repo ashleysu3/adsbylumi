@@ -10,33 +10,60 @@ import { toast } from 'sonner';
 import { ArrowLeft, Loader2, Send, ExternalLink, Mail } from 'lucide-react';
 
 // Sample data mirrors what send-weekly-reports puts in the email — Big
-// Picture rows + Quick List items, both drawn from the engine.
+// Picture rows + Quick List items, both drawn from the engine. The card
+// layout intentionally mirrors the Live Ads page so the email feels like
+// the same product.
+type CampaignStatus = 'healthy' | 'attention' | 'critical' | 'no-data';
+
+const STATUS_LABEL: Record<CampaignStatus, string> = {
+  healthy: '✨ Doing great',
+  attention: '👀 Keep an eye on this',
+  critical: '🔄 Needs a refresh',
+  'no-data': '⏳ Still warming up',
+};
+
+const STATUS_DOT: Record<CampaignStatus, string> = {
+  healthy: 'bg-green-500',
+  attention: 'bg-amber-500',
+  critical: 'bg-red-500',
+  'no-data': 'bg-amber-500',
+};
+
+const STATUS_BADGE: Record<CampaignStatus, string> = {
+  healthy: 'bg-green-50 text-green-700 border-green-200',
+  attention: 'bg-amber-50 text-amber-700 border-amber-200',
+  critical: 'bg-red-50 text-red-700 border-red-200',
+  'no-data': 'bg-muted text-muted-foreground border-border',
+};
+
 const SAMPLE_CAMPAIGNS = [
   {
     name: 'Free Workshop Registration',
-    status: 'attention' as const,
-    statusLabel: 'Watch closely',
+    status: 'attention' as CampaignStatus,
+    isLive: true,
+    dailyBudget: '$45.00/day',
+    spend: '$298.10 spent',
     primaryLabel: 'CPL',
     primaryValue: '$32.40',
     primaryGoal: '< $25',
     secondaryLabel: 'Leads',
     secondaryValue: '14',
     secondaryGoal: '> 20',
-    spend: '$298.10',
     actionRec: 'Refresh creative before scaling',
     changeNote: '2 recent changes — data still settling',
   },
   {
     name: 'Client Success Stories — Video',
-    status: 'healthy' as const,
-    statusLabel: 'On track',
+    status: 'healthy' as CampaignStatus,
+    isLive: true,
+    dailyBudget: '$50.00/day',
+    spend: '$312.40 spent',
     primaryLabel: 'CPL',
     primaryValue: '$18.50',
     primaryGoal: '< $30',
     secondaryLabel: 'Leads',
     secondaryValue: '21',
     secondaryGoal: '> 15',
-    spend: '$312.40',
     actionRec: 'Increase budget',
     changeNote: '',
   },
@@ -46,13 +73,15 @@ const SAMPLE_QUICK_LIST = [
   {
     campaign: 'Free Workshop Registration',
     title: 'CPL is $32 — each lead is costing $7 over target',
-    description: "Your goal is under $25 but you're at $32.40. CTR is 0.82% — people aren't clicking, so the hook and creative aren't grabbing attention. Meta can't optimize delivery to your goal when the click signal is weak.",
+    description:
+      "Your goal is under $25 but you're at $32.40. CTR is 0.82% — people aren't clicking, so the hook and creative aren't grabbing attention. Meta can't optimize delivery to your goal when the click signal is weak.",
     impact: 'Better creative signals help Meta find the right people faster.',
   },
   {
     campaign: 'Client Success Stories — Video',
     title: 'Scale budget 20% — hitting your goal',
-    description: "Your CPL is $18.50, which beats your goal of under $30. This campaign is ready to scale at its current efficiency.",
+    description:
+      "Your CPL is $18.50, which beats your goal of under $30. This campaign is ready to scale at its current efficiency.",
     impact: 'Capture more results at the same cost per lead.',
   },
 ];
@@ -69,7 +98,7 @@ export default function WeeklyDigestPreview() {
     }
     setSendingTest(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      await new Promise((resolve) => setTimeout(resolve, 1200));
       toast.success(`Test email sent to ${testEmail}!`);
     } catch (error: any) {
       toast.error(error.message || 'Failed to send test email');
@@ -144,48 +173,59 @@ export default function WeeklyDigestPreview() {
               </p>
             </div>
 
-            {/* Big Picture */}
+            {/* Big Picture — matches the Live Ads card layout */}
             <div>
               <p className="text-[11px] font-bold tracking-wider uppercase text-muted-foreground mb-3">The Big Picture</p>
-              <div className="border rounded-xl divide-y bg-muted/30">
+              <div className="space-y-3">
                 {SAMPLE_CAMPAIGNS.map((c) => (
-                  <div key={c.name} className="p-4 flex flex-wrap justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="font-bold text-sm">{c.name}</div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                        <Badge
-                          variant="outline"
-                          className={
-                            c.status === 'healthy'
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                              : c.status === 'attention'
-                                ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                : 'bg-red-50 text-red-800 border-red-200'
-                          }
-                        >
-                          {c.statusLabel}
-                        </Badge>
-                        <span className="text-foreground">
-                          {c.primaryLabel}: <strong>{c.primaryValue}</strong>{' '}
-                          <span className="text-muted-foreground">(goal {c.primaryGoal})</span>
-                        </span>
-                        <span className="text-muted-foreground">·</span>
-                        <span className="text-foreground">
-                          {c.secondaryLabel}: <strong>{c.secondaryValue}</strong>{' '}
-                          <span className="text-muted-foreground">(goal {c.secondaryGoal})</span>
-                        </span>
-                      </div>
-                      {c.changeNote && (
-                        <div className="mt-2 inline-block text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                  <div key={c.name} className="rounded-2xl border bg-card p-4 sm:p-5 space-y-3">
+                    {/* Change context chip */}
+                    {c.changeNote && (
+                      <div className="pl-5 -mb-1">
+                        <div className="inline-flex items-center gap-1.5 text-[11px] rounded-full px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200">
                           ⏳ {c.changeNote}
                         </div>
-                      )}
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        <strong className="text-foreground">LUMI says:</strong> {c.actionRec}
                       </div>
+                    )}
+
+                    {/* Row 1: status dot + name + Live label */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_DOT[c.status]}`} />
+                        <h3 className="font-semibold text-sm sm:text-base truncate">{c.name}</h3>
+                      </div>
+                      <span className={`text-xs font-medium ${c.isLive ? 'text-green-600' : 'text-muted-foreground'}`}>
+                        {c.isLive ? 'Live' : 'Paused'}
+                      </span>
                     </div>
-                    <div className="text-[11px] text-muted-foreground whitespace-nowrap">
-                      Spend {c.spend}
+
+                    {/* Row 2: budget + spend chips */}
+                    <div className="flex flex-wrap items-center gap-2 pl-5">
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{c.dailyBudget}</span>
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{c.spend}</span>
+                    </div>
+
+                    {/* Row 3: verdict + KPI vs goal */}
+                    <div className="flex flex-wrap items-center gap-2 pl-5">
+                      <Badge variant="outline" className={`text-xs rounded-full ${STATUS_BADGE[c.status]}`}>
+                        {STATUS_LABEL[c.status]}
+                      </Badge>
+                      <span className="text-xs text-foreground">
+                        {c.primaryLabel}: <strong>{c.primaryValue}</strong>{' '}
+                        <span className="text-muted-foreground">(goal {c.primaryGoal})</span>
+                      </span>
+                      <span className="text-xs text-muted-foreground">·</span>
+                      <span className="text-xs text-foreground">
+                        {c.secondaryLabel}: <strong>{c.secondaryValue}</strong>{' '}
+                        <span className="text-muted-foreground">(goal {c.secondaryGoal})</span>
+                      </span>
+                    </div>
+
+                    {/* Row 4: action recommendation pill */}
+                    <div className="pl-5">
+                      <Badge variant="outline" className="text-xs rounded-full">
+                        {c.actionRec}
+                      </Badge>
                     </div>
                   </div>
                 ))}
