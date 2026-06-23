@@ -7,11 +7,18 @@ import { getLumiKPIConfig } from "./lumi-kpi-config";
 
 export type CampaignTier = "main" | "supplemental";
 
+export type BudgetSuggestion = string | { min?: number; max?: number } | null | undefined;
+
 export type BudgetCampaignInput = {
   name?: string;
   objective?: string;
   goal?: string;
   audience?: string;
+  // Optional per-campaign budget floor coming from a strategy template's
+  // `budget_suggestion` field (e.g. "$20–60/day cold" or { min: 20, max: 60 }).
+  // When present, sets the lean/ideal floors so the template's recommendation
+  // beats the generic KPI-based default.
+  budgetSuggestion?: BudgetSuggestion;
 };
 
 export type StageBudget = {
