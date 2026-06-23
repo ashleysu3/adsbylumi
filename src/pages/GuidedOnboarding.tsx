@@ -622,7 +622,33 @@ export default function GuidedOnboarding() {
                     ) : undefined}
                   />
                   <RevealRow label="Brand voice" value={step1Reveal.voice} />
-                  <RevealRow label="Audience snapshot" value={step1Reveal.audience} />
+                  <RevealRow
+                    label="Audience snapshot"
+                    value={
+                      step1Reveal.audienceParts && (step1Reveal.audienceParts.pain || step1Reveal.audienceParts.wants || step1Reveal.audienceParts.doubt) ? (
+                        <div className="space-y-2">
+                          {step1Reveal.audienceParts.pain && (
+                            <div>
+                              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Pain</div>
+                              <div className="text-sm leading-snug">{step1Reveal.audienceParts.pain}</div>
+                            </div>
+                          )}
+                          {step1Reveal.audienceParts.wants && (
+                            <div>
+                              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Wants</div>
+                              <div className="text-sm leading-snug">{step1Reveal.audienceParts.wants}</div>
+                            </div>
+                          )}
+                          {step1Reveal.audienceParts.doubt && (
+                            <div>
+                              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Doubt</div>
+                              <div className="text-sm leading-snug">{step1Reveal.audienceParts.doubt}</div>
+                            </div>
+                          )}
+                        </div>
+                      ) : step1Reveal.audience
+                    }
+                  />
                 </div>
               )}
 
