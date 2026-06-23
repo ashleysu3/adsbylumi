@@ -673,7 +673,159 @@ export default function CloserLook() {
                 </div>
               );
             })()}
+
+            {/* Suggested actions — context aware, with LUMI's pick flagged */}
+            {(() => {
+              const goal = result.meta.primaryGoal;
+              const direction = result.meta.primaryDirection || "less_than";
+              const short = result.campaign.windows?.short?.kpiValue ?? null;
+              const medium = result.campaign.windows?.medium?.kpiValue ?? null;
+              const long = result.campaign.windows?.long?.kpiValue ?? null;
+              const totalSpend = (result.campaign.windows?.long?.spend ?? 0);
+              const meets = (v: number | null) => v !== null && v > 0 && (direction === "less_than" ? v <= (goal ?? 0) : v >= (goal ?? 0));
+              const valid = [short, medium, long].filter((v): v is number => v !== null && v > 0);
+              if (!goal || valid.length === 0) return null;
+              const hits = [short, medium, long].filter(meets).length;
+              const allHit = hits === 3 && valid.length === 3;
+              const allMiss = hits === 0;
+              const isFatigued = fatigue.shouldSurface && (fatigue.level === "high" || fatigue.level === "building");
+              // Trend: in less_than goal, lower 3d than 30d = improving
+              const improving = short !== null && long !== null && (direction === "less_than" ? short < long : short > long);
+              const worsening = short !== null && long !== null && (direction === "less_than" ? short > long * 1.15 : short < long * 0.85);
+
+              type Suggestion = {
+                id: string;
+                label: string;
+                why: string;
+                run: () => void;
+                tone: "primary" | "secondary" | "danger";
+              };
+
+              const scale: Suggestion = {
+                id: "increase_budget",
+                label: "Scale budget +15–25%",
+                why: "Performance is consistent across windows — small, additive budget bumps compound without breaking learnings.",
+                run: () => { const r = syntheticRecForOption("increase_budget", "Approved scaling from Closer Look"); if (r) openExecuteFor(r); },
+                tone: "primary",
+              };
+              const refresh: Suggestion = {
+                id: "refresh_creative",
+                label: "Refresh creative — new hooks & angles",
+                why: "Add 2–3 new hooks or angles and rebuild variations of past winners to bring the KPI back in line.",
+                run: () => { const r = syntheticRecForOption("refresh_creative", "Approved creative refresh from Closer Look"); if (r) openExecuteFor(r); },
+                tone: "primary",
+              };
+              const hold: Suggestion = {
+                id: "hold",
+                label: "Hold steady — monitor for 3–5 more days",
+                why: "Volatility across windows is usually normal fluctuation. Don't make structural changes off one bad window.",
+                run: () => {},
+                tone: "secondary",
+              };
+              const newCreative: Suggestion = {
+                id: "new_creative",
+                label: "Generate fresh creative in Creative Studio",
+                why: "Queue up variations of your winning hooks before fatigue hits or to inject new angles into the mix.",
+                run: () => navigate("/creative-studio"),
+                tone: "secondary",
+              };
+              const pause: Suggestion = {
+                id: "turn_off",
+                label: "Pause the campaign",
+                why: "Consistent miss across every window with enough spend behind it — stop the bleed and rework before relaunching.",
+                run: () => { const r = syntheticRecForOption("turn_off", "Approved pause from Closer Look"); if (r) openExecuteFor(r); },
+                tone: "danger",
+              };
+              const reviewAudience: Suggestion = {
+                id: "review_audience",
+                label: "Revisit offer & audience alignment",
+                why: "When every window misses, the message-to-market match is usually the root cause — not the creative.",
+                run: () => navigate("/brand"),
+                tone: "secondary",
+              };
+
+              const suggestions: Suggestion[] = [];
+              if (allHit) {
+                suggestions.push(scale, newCreative, hold);
+              } else if (allMiss) {
+                if (totalSpend > 100) {
+                  suggestions.push(pause, refresh, reviewAudience);
+                } else {
+                  suggestions.push(refresh, reviewAudience, hold);
+                }
+              } else if (isFatigued) {
+                suggestions.push(refresh, newCreative, hold);
+              } else if (worsening) {
+                suggestions.push(refresh, newCreative, hold);
+              } else if (improving) {
+                suggestions.push(hold, newCreative, scale);
+              } else {
+                suggestions.push(hold, newCreative, refresh);
+              }
+
+              // Which one does LUMI back? Map from engine top rec when present.
+              const engineAction = top?.recommendation?.action;
+              const lumiPickId = (() => {
+                if (engineAction === "increase_budget") return "increase_budget";
+                if (engineAction === "turn_off") return "turn_off";
+                if (engineAction === "refresh_creative" || engineAction === "new_creative") return "refresh_creative";
+                // Fallback: first suggestion in our context-aware list
+                return suggestions[0]?.id;
+              })();
+
+              const toneCls: Record<Suggestion["tone"], string> = {
+                primary: "border-primary/30",
+                secondary: "border-border",
+                danger: "border-destructive/40",
+              };
+
+              return (
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      What you could do next
+                    </p>
+                    <span className="text-[10px] text-muted-foreground">Tailored to this campaign's numbers</span>
+                  </div>
+                  <div className="grid gap-2">
+                    {suggestions.map((sg) => {
+                      const isPick = sg.id === lumiPickId;
+                      return (
+                        <div
+                          key={sg.id}
+                          className={`rounded-lg border ${toneCls[sg.tone]} ${isPick ? "bg-gradient-to-r from-lumi-orange-1/5 via-lumi-pink-1/5 to-lumi-purple-1/5 border-lumi-pink-1/40" : "bg-background/60"} p-3 flex items-start gap-3`}
+                        >
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-semibold">{sg.label}</span>
+                              {isPick && (
+                                <Badge variant="outline" className="text-[10px] bg-lumi-pink-1/10 border-lumi-pink-1/40 text-foreground gap-1">
+                                  <Sparkles className="h-3 w-3 text-lumi-pink-1" /> LUMI recommends
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground leading-relaxed">{sg.why}</p>
+                          </div>
+                          {sg.id !== "hold" && (
+                            <Button
+                              size="sm"
+                              variant={isPick ? "default" : "outline"}
+                              className="flex-shrink-0"
+                              onClick={sg.run}
+                            >
+                              {sg.id === "new_creative" || sg.id === "review_audience" ? "Open" : "Approve"}
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </CardContent>
+
+
 
         </Card>
 
