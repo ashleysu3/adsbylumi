@@ -100,7 +100,7 @@ const groups: NavGroup[] = [
     icon: Tag,
     emoji: "🏷️",
     items: [
-      { label: "Brand Dashboard", to: "/dashboard", icon: LayoutGrid },
+      
       { label: "Design Guide", to: "/style", icon: Paintbrush },
       // TODO: dedicated voice page — currently routes to placeholder.
       { label: "Voice + Examples", to: "/voice", icon: Mic },
