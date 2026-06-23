@@ -1473,7 +1473,7 @@ function OfferRowEditor({ offer, brand, onSave, setGlobalLoader }: { offer: any;
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Label htmlFor={`style-${offer.id}`} className="text-xs">Custom</Label>
-              <Switch id={`style-${offer.id}`} checked={styleOverride} onCheckedChange={setStyleOverride} />
+              <Switch id={`style-${offer.id}`} checked={styleOverride} onCheckedChange={onToggleStyle} />
             </div>
           </div>
 
