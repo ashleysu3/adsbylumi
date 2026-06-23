@@ -253,6 +253,9 @@ export default function Performance() {
           if (s.status === "fulfilled" && s.value.res.data && !(s.value.res as any).error) {
             const d = s.value.res.data as any;
             if (d && d.campaign) {
+              // Skip campaigns that have never delivered (no reach) — nothing to show.
+              const reach = Number(d.campaign.reach || 0);
+              if (reach <= 0) return;
               ok.push({
                 ...d,
                 workspaceId: s.value.workspaceId,
