@@ -269,10 +269,40 @@ export default function GuidedOnboarding() {
   // =================== STEP 2 — auto-extract social proof ===================
   useEffect(() => {
     if (step !== 2 || !brandId) return;
+    let cancelled = false;
     (async () => {
       // refresh brand
       const { data } = await supabase.from("brands").select("*").eq("id", brandId).maybeSingle();
-      if (data) setBrand(data);
+      if (!cancelled && data) setBrand(data);
+
+      // If colors/fonts haven't landed yet, try the brand_kits row, then poll briefly.
+      const hasDesign = (b: any) => (b?.brand_colors?.length || 0) > 0 || (b?.brand_fonts?.length || 0) > 0;
+      if (!hasDesign(data)) {
+        const { data: kit } = await supabase
+          .from("brand_kits" as any)
+          .select("colors, fonts, logo_url")
+          .eq("brand_id", brandId)
+          .maybeSingle();
+        const k: any = kit;
+        if (k && (k.colors?.length || k.fonts?.length)) {
+          const patch: any = {};
+          if (k.colors?.length) patch.brand_colors = k.colors;
+          if (k.fonts?.length) patch.brand_fonts = k.fonts;
+          await supabase.from("brands").update(patch).eq("id", brandId);
+          if (!cancelled) setBrand((prev: any) => ({ ...(prev || {}), ...patch }));
+        } else {
+          // Extraction may still be running — poll a few times.
+          for (let i = 0; i < 6 && !cancelled; i++) {
+            await new Promise((r) => setTimeout(r, 1500));
+            const { data: again } = await supabase.from("brands").select("*").eq("id", brandId).maybeSingle();
+            if (again && hasDesign(again)) {
+              if (!cancelled) setBrand(again);
+              break;
+            }
+          }
+        }
+      }
+
       // Auto-pull social proof if missing
       const sp = (data as any)?.social_proof;
       const hasProof = Array.isArray(sp) ? sp.length > 0 : !!sp;
@@ -283,11 +313,12 @@ export default function GuidedOnboarding() {
             body: { brandId, url: (data as any).website_url },
           });
           const { data: refreshed } = await supabase.from("brands").select("*").eq("id", brandId).maybeSingle();
-          if (refreshed) setBrand(refreshed);
+          if (!cancelled && refreshed) setBrand(refreshed);
         } catch (e) { console.warn("social proof failed", e); }
-        finally { setProofExtracting(false); }
+        finally { if (!cancelled) setProofExtracting(false); }
       }
     })();
+    return () => { cancelled = true; };
   }, [step, brandId]);
 
   const updateBrand = async (patch: Record<string, any>) => {
