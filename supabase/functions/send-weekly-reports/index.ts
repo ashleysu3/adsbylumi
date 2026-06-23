@@ -533,3 +533,57 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+// Sample campaign rows used by testMode previews. Shape matches CampaignRow
+// so they flow through the same buildBigPictureEmail template the cron uses.
+function buildSampleCampaigns(): CampaignRow[] {
+  return [
+    {
+      workspaceId: 'sample-1',
+      name: 'Free Workshop Registration',
+      spend: 298.10,
+      reach: 12400,
+      cardDisplay: {
+        primary: { key: 'cpl', label: 'CPL', valueDisplay: '$32.40', goalDisplay: '< $25', status: 'attention' },
+        secondary: { key: 'leads', label: 'Leads', valueDisplay: '14', goalDisplay: '> 20', status: 'attention' },
+        ctr: { valueDisplay: '0.82%', benchmarkDisplay: '> 1.0%', status: 'attention' },
+        frequency: { valueDisplay: '2.1', goalDisplay: '< 3.5', status: 'healthy' },
+        overallStatus: 'attention',
+        actionRec: 'Refresh creative before scaling — your hook isn\'t earning the click.',
+        spendDisplay: '$298.10',
+      },
+      changeContext: { recentEventsCount: 2, summary: '2 recent changes — data still settling' },
+      topRecs: [
+        {
+          title: 'CPL is $32 — each lead is costing $7 over target',
+          description: "Your goal is under $25 but you're at $32.40. CTR is 0.82% — people aren't clicking, so the hook and creative aren't grabbing attention.",
+          impact: 'Better creative signals help Meta find the right people faster.',
+          confidence: 'high', priority: 1, type: 'swap_creative',
+        },
+      ],
+    },
+    {
+      workspaceId: 'sample-2',
+      name: 'Client Success Stories — Video',
+      spend: 312.40,
+      reach: 18900,
+      cardDisplay: {
+        primary: { key: 'cpl', label: 'CPL', valueDisplay: '$18.50', goalDisplay: '< $30', status: 'healthy' },
+        secondary: { key: 'leads', label: 'Leads', valueDisplay: '21', goalDisplay: '> 15', status: 'healthy' },
+        ctr: { valueDisplay: '1.6%', benchmarkDisplay: '> 1.0%', status: 'healthy' },
+        frequency: { valueDisplay: '1.8', goalDisplay: '< 3.5', status: 'healthy' },
+        overallStatus: 'healthy',
+        actionRec: 'Increase budget — this one\'s ready to scale.',
+        spendDisplay: '$312.40',
+      },
+      topRecs: [
+        {
+          title: 'Scale budget 20% — hitting your goal',
+          description: 'Your CPL is $18.50, which beats your goal of under $30. This campaign is ready to scale at its current efficiency.',
+          impact: 'Capture more results at the same cost per lead.',
+          confidence: 'high', priority: 2, type: 'budget',
+        },
+      ],
+    },
+  ];
+}
