@@ -397,7 +397,37 @@ async function resolveContext(body: any, sb: any, userId: string) {
     primaryDirection: body?.primaryDirection as 'less_than' | 'greater_than' | undefined,
     attributionWindow: body?.attributionWindow as string | undefined,
     asOf: body?.asOf as string | undefined,
+    displayRange: body?.displayRange as { since?: string; until?: string; days?: number } | undefined,
   };
+}
+
+// Builds a display-only window from caller input. Accepts either a custom
+// { since, until } or a { days: N } preset. Returns null when input is
+// missing / unusable so the caller can fall back to the 7-day default.
+function buildDisplayWindow(
+  input: { since?: string; until?: string; days?: number } | undefined,
+  asOf: Date,
+): DateWindow | null {
+  if (!input) return null;
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  if (input.since && input.until) {
+    const since = String(input.since).slice(0, 10);
+    const until = String(input.until).slice(0, 10);
+    const days = Math.max(
+      1,
+      Math.round((new Date(until + 'T00:00:00Z').getTime() - new Date(since + 'T00:00:00Z').getTime()) / 86400000) + 1,
+    );
+    return { since, until, days, label: `display_${since}_to_${until}` };
+  }
+  if (typeof input.days === 'number' && input.days > 0) {
+    const n = Math.min(365, Math.round(input.days));
+    const until = fmt(asOf);
+    const sinceDate = new Date(asOf);
+    sinceDate.setUTCDate(sinceDate.getUTCDate() - (n - 1));
+    const since = fmt(sinceDate);
+    return { since, until, days: n, label: `display_last_${n}d` };
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
