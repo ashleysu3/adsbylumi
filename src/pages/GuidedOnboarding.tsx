@@ -1498,8 +1498,9 @@ function OfferRowEditor({ offer, brand, onSave }: { offer: any; brand?: any; onS
                 <Input value={fonts} onChange={(e) => setFonts(e.target.value)} placeholder="Inter, Playfair Display" />
               </div>
               {offer.url && (
-                <Button type="button" size="sm" variant="outline" onClick={pullOfferDesign}>
-                  <Palette className="h-3 w-3 mr-1" /> Re-pull design from this page
+                <Button type="button" size="sm" variant="outline" onClick={pullOfferDesign} disabled={pullingDesign}>
+                  {pullingDesign ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Palette className="h-3 w-3 mr-1" />}
+                  {pullingDesign ? "Pulling design…" : "Re-pull design from this page"}
                 </Button>
               )}
             </div>
