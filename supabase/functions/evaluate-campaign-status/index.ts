@@ -1252,6 +1252,28 @@ function applyRules(r: RuleArgs): { status: Status; recommendation: AdEvaluation
     }
   }
 
+  // Scale opportunity (campaign-level) — hitting/beating the primary goal
+  // with audience headroom (frequency ≤ 2). Surface a real "scale" move
+  // instead of a quiet "hold".
+  if (
+    args.level === 'campaign' &&
+    isBetterOrEq(w7.kpiValue, args.primaryGoal) &&
+    isBetterOrEq(w3.kpiValue, args.primaryGoal) &&
+    frequency > 0 && frequency <= 2
+  ) {
+    return {
+      status: 'scaling_ready',
+      recommendation: {
+        action: 'increase_budget',
+        reasoning: `${args.primaryKpi.toUpperCase()} is at or beating goal (${formatKpiValue(w7.kpiValue, args.primaryKpi)} vs ${formatKpiValue(args.primaryGoal, args.primaryKpi)}) and frequency is only ${frequency.toFixed(1)} — audience still has headroom. Good moment to raise budget ~20% and let Meta find more of who's working.`,
+        confidence: w7.results >= 30 ? 'high' : 'medium',
+        impact: estimateImpact('scale_up', { weeklySpend: w7.spend, kpiValue: w7.kpiValue, goal: args.primaryGoal }),
+        impactReasoning: `Hitting goal with low frequency — scale before saturation`,
+        priorityTier: 4,
+      },
+    };
+  }
+
   // Default: holding pattern. Not exceptional in either direction.
   return {
     status: 'performing',
