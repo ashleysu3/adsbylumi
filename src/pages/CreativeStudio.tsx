@@ -525,6 +525,11 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
       }
     }
     
+    // Honor explicit ?tab= in URL (e.g. ?tab=saved from sidebar "My Creative")
+    const urlTab = searchParams.get("tab") as WorkflowTab | null;
+    if (urlTab === "saved" || urlTab === "angles" || urlTab === "concepts" || urlTab === "copy" || urlTab === "build") {
+      targetTab = urlTab;
+    }
     setActiveTab(targetTab);
     // ========== End smart tab selection ==========
     
