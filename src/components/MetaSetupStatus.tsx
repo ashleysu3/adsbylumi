@@ -4,11 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   CheckCircle2, XCircle, AlertTriangle, Loader2, RefreshCw,
-  ChevronDown, ChevronUp, Circle, MinusCircle,
+  ChevronDown, ChevronUp, Circle, MinusCircle, Instagram, Wrench,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { SetupPrompt } from '@/components/SetupPrompt';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 // ============================================================================
 // MetaSetupStatus (Patch #30 — single source of truth for connection health)
@@ -71,6 +73,8 @@ export function MetaSetupStatus({ brandId, onReconnectRequested, onPixelSetupReq
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandDetails, setExpandDetails] = useState(false);
+  const [igFixing, setIgFixing] = useState(false);
+  const [igManualOpen, setIgManualOpen] = useState(false);
 
   const runCheck = async () => {
     setLoading(true);
@@ -91,13 +95,43 @@ export function MetaSetupStatus({ brandId, onReconnectRequested, onPixelSetupReq
 
   useEffect(() => { runCheck(); }, [brandId]);
 
+  const runIgFix = async () => {
+    setIgFixing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('connect-ig-to-ad-account', {
+        body: { brandId },
+      });
+      if (error) throw new Error(error.message || 'Could not connect Instagram.');
+      if (data?.success) {
+        toast.success(
+          data?.instagram?.username
+            ? `Connected @${data.instagram.username} to your ad account ✅`
+            : 'Instagram connected to your ad account ✅',
+        );
+        await runCheck();
+      } else if (data?.manual) {
+        setIgManualOpen(true);
+        toast.error(data?.error || "Meta couldn't connect it automatically — follow the manual steps.");
+      } else {
+        toast.error(data?.error || "Couldn't connect Instagram. Try the manual steps.");
+      }
+    } catch (err: any) {
+      setIgManualOpen(true);
+      toast.error(err?.message || "Couldn't connect Instagram. Try the manual steps.");
+    } finally {
+      setIgFixing(false);
+    }
+  };
+
   const handleAction = (a: ActionHint | null | undefined) => {
     if (!a) return;
     switch (a.kind) {
+      case 'ig_link':
+        runIgFix();
+        break;
       case 'reconnect':
       case 'choose_ad_account':
       case 'page_link':
-      case 'ig_link':
         onReconnectRequested?.();
         if (!onReconnectRequested) toast.info('Use the Connect Meta button below to reconnect.');
         break;
@@ -141,9 +175,10 @@ export function MetaSetupStatus({ brandId, onReconnectRequested, onPixelSetupReq
 
   if (!result) return null;
 
-  const { overallStatus, summary, checks, primaryAction } = result;
+  const { overallStatus, summary, checks, primaryAction, meta } = result;
   const tone = TONE[overallStatus];
   const Icon = tone.icon;
+  const igMismatch = meta?.igMismatch as { pageIgId: string; pageIgUsername: string | null } | undefined;
 
   return (
     <Card className={cn('border', tone.border)}>
@@ -173,6 +208,41 @@ export function MetaSetupStatus({ brandId, onReconnectRequested, onPixelSetupReq
             </Button>
           </div>
         </div>
+
+        {/* #1 hangup: IG connected to Page but not to ad account */}
+        {igMismatch && (
+          <div className="space-y-2">
+            <SetupPrompt
+              icon={Instagram}
+              tone="warning"
+              title="Connect Instagram to your ad account"
+              description={
+                igMismatch.pageIgUsername
+                  ? `@${igMismatch.pageIgUsername} is linked to your Page but not your ad account — that's the usual reason ads won't run.`
+                  : "Your IG is linked to your Page but not your ad account — that's the usual reason ads won't run."
+              }
+              ctaLabel={igFixing ? 'Connecting…' : 'Connect it for me'}
+              onCta={runIgFix}
+            />
+            <Collapsible open={igManualOpen} onOpenChange={setIgManualOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-auto py-1 px-0 text-xs gap-1 text-muted-foreground hover:text-foreground">
+                  <Wrench className="h-3 w-3" />
+                  {igManualOpen ? 'Hide manual steps' : 'Do it manually'}
+                  {igManualOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside rounded-md border bg-background/50 p-3">
+                  <li>Go to <a href="https://business.facebook.com/settings" target="_blank" rel="noopener noreferrer" className="underline">business.facebook.com/settings</a> → Accounts → Instagram accounts.</li>
+                  <li>Click <strong>Add</strong> and log into your Instagram.</li>
+                  <li>Open the Instagram account, click <strong>Assign assets / Connect</strong>, and assign it to this ad account.</li>
+                  <li>Come back and click <strong>Re-check</strong>.</li>
+                </ol>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        )}
 
         {/* Collapsible details */}
         <button
