@@ -243,7 +243,7 @@ export function AppSidebar({ isAdmin: _isAdmin, brandId: _brandId }: AppSidebarP
               alt="Lumi"
               className="h-8 w-auto object-contain flex-shrink-0 cursor-pointer"
               src={lumiLogo}
-              onClick={() => navigate("/start")}
+              onClick={() => navigate("/home")}
             />
             {!collapsed && (
               <>
