@@ -100,6 +100,15 @@ Deno.serve(async (req) => {
     }
   }
 
+  // ADMIN TEST MODE: send a real engine-driven report for a specific brand to
+  // any recipient, for a chosen rolling window. Bypasses Monday/last-sent
+  // gating. Does NOT update last_report_sent_at.
+  if (body?.adminTestMode === true) {
+    const adminResult = await handleAdminTestMode(req, body, corsHeaders);
+    return adminResult;
+  }
+
+
   if (!isServiceRoleRequest(req)) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
