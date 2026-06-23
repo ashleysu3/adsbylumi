@@ -775,6 +775,25 @@ export default function Performance() {
                           <p className="text-sm text-muted-foreground">
                             {item.rec.recommendation.reasoning}
                           </p>
+                          {item.rec.recommendation.diagnosis && (
+                            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-xs space-y-1">
+                              <div className="font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wide text-[10px]">
+                                Root cause: {item.rec.recommendation.diagnosis.rootCause.replace(/_/g, ' ')}
+                              </div>
+                              {item.rec.recommendation.diagnosis.signals?.length > 0 && (
+                                <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+                                  {item.rec.recommendation.diagnosis.signals.map((s: string, i: number) => (
+                                    <li key={i}>{s}</li>
+                                  ))}
+                                </ul>
+                              )}
+                              {item.rec.recommendation.diagnosis.needsConversionTracking && (
+                                <div className="text-amber-700 dark:text-amber-300 italic">
+                                  Conversion tracking isn't reporting — we can't fully diagnose without it.
+                                </div>
+                              )}
+                            </div>
+                          )}
                           {whyOpen && (
                             <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground space-y-0.5">
                               <div>
