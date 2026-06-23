@@ -102,6 +102,7 @@ interface EngineResult {
     primaryDirection?: "less_than" | "greater_than";
     secondaryKpi: string | null;
     goals?: { kpi: string; label: string; goal: number; direction: string; isDefault: boolean }[];
+    hasUserGoals?: boolean;
     campaignType?: string;
   };
   campaign: AdEval;
