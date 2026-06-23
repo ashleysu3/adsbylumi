@@ -209,23 +209,32 @@ export default function GuidedOnboarding() {
         }));
       }).catch(() => {});
 
-      // analyze-brand-voice → brand_voice
-      const pVoice = supabase.functions.invoke("analyze-brand-voice", { body: { brandId: brandIdLocal } })
-        .then(async () => {
-          const { data: refreshed } = await supabase.from("brands").select("brand_voice").eq("id", brandIdLocal).maybeSingle();
-          if (refreshed?.brand_voice) {
-            setStep1Reveal((p) => ({ ...p, voice: (refreshed as any).brand_voice.slice(0, 220) }));
-          }
-        }).catch(() => {});
+      // Voice + audience need the brand's value_prop/name to be populated first,
+      // otherwise the AI has nothing real to work with and writes generic output.
+      const pVoice = pBrand.then(() =>
+        supabase.functions.invoke("analyze-brand-voice", { body: { brandId: brandIdLocal } })
+          .then(async () => {
+            const { data: refreshed } = await supabase.from("brands").select("brand_voice").eq("id", brandIdLocal).maybeSingle();
+            if (refreshed?.brand_voice) {
+              setStep1Reveal((p) => ({ ...p, voice: (refreshed as any).brand_voice.slice(0, 260) }));
+            }
+          })
+      ).catch(() => {});
 
-      // generate-audience-psychology → audience snapshot
-      const pAud = supabase.functions.invoke("generate-audience-psychology", { body: { brandId: brandIdLocal } })
-        .then(async () => {
-          const { data: refreshed } = await supabase.from("brands").select("audience_psychology").eq("id", brandIdLocal).maybeSingle();
-          const ap: any = refreshed?.audience_psychology;
-          const snap = ap?.summary || ap?.pain_points?.[0] || ap?.desires?.[0];
-          if (snap) setStep1Reveal((p) => ({ ...p, audience: String(snap).slice(0, 220) }));
-        }).catch(() => {});
+      const pAud = pBrand.then(() =>
+        supabase.functions.invoke("generate-audience-psychology", { body: { brandId: brandIdLocal } })
+          .then(async () => {
+            const { data: refreshed } = await supabase.from("brands").select("audience_psychology").eq("id", brandIdLocal).maybeSingle();
+            const ap: any = refreshed?.audience_psychology;
+            // Build a richer snapshot from the structured psychology
+            const bits: string[] = [];
+            if (ap?.pain_points?.[0]) bits.push(`Pain: ${ap.pain_points[0]}`);
+            if (ap?.desires?.[0]) bits.push(`Wants: ${ap.desires[0]}`);
+            if (ap?.objections?.[0]) bits.push(`Doubt: ${ap.objections[0]}`);
+            const snap = bits.length ? bits.join(" · ") : (ap?.summary || ap?.demographics);
+            if (snap) setStep1Reveal((p) => ({ ...p, audience: String(snap).slice(0, 320) }));
+          })
+      ).catch(() => {});
 
       // harvest assets in the background (used in step 4)
       const pAssets = supabase.functions.invoke("harvest-brand-assets", { body: { url: websiteForCall, brandId: brandIdLocal } })
