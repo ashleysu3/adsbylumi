@@ -509,7 +509,7 @@ export default function GuidedOnboarding() {
 
   const uploadFile = async (
     file: File,
-    role: "logo" | "background" | "headshot" | "graphic" | "product" | "texture"
+    role: "logo" | "headshot" | "lifestyle" | "full_body" | "product" | "texture" | "graphic" | "background" | "other"
   ) => {
     if (!brandId) return;
     const { data: { user } } = await supabase.auth.getUser();
