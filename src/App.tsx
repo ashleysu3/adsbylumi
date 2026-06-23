@@ -117,6 +117,7 @@ import {
   GoalsPlaceholder,
   VoicePlaceholder,
   TroubleshootingPlaceholder,
+  CloserLookPlaceholder,
 } from "./pages/Placeholder";
 import Tasks from "./pages/Tasks";
 
