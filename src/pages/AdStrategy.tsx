@@ -457,7 +457,7 @@ export default function AdStrategy() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => navigate("/create")}
+                              onClick={() => navigate(`/create?from=strategy&goal=promote_offer&offerId=${f.offerId}`)}
                               className="gap-1.5"
                             >
                               <Plus className="h-3.5 w-3.5" /> Build a campaign
