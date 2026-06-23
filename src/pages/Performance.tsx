@@ -34,6 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
+import { upsertRecommendationTasks, closeMatchingTasks, RecForTask } from "@/lib/task-executors";
 
 
 
@@ -226,6 +227,43 @@ export default function Performance() {
           }
         });
         setResults(ok);
+
+        // Mirror actionable topRecommendations into the task system so the
+        // tray surfaces them. Dedupe is handled inside upsertRecommendationTasks.
+        try {
+          const recsForTasks: RecForTask[] = [];
+          for (const r of ok) {
+            const t = r.topRecommendation;
+            if (!t) continue;
+            if (snoozedIds.has(t.id)) continue;
+            const action = t.recommendation?.action;
+            if (!action) continue;
+            let hasBench = false;
+            if (action === "refresh_creative") {
+              const { count } = await supabase
+                .from("creative_bench")
+                .select("id", { count: "exact", head: true })
+                .eq("brand_id", activeBrand.id)
+                .eq("workspace_id", r.workspaceId!)
+                .in("status", ["bench", "paused", "retesting"])
+                .not("meta_ad_id", "is", null);
+              hasBench = (count || 0) > 0;
+            }
+            recsForTasks.push({
+              entityId: t.id,
+              entityName: t.name,
+              entityLevel: t.level,
+              workspaceId: r.workspaceId!,
+              brandId: activeBrand.id,
+              action,
+              reasoning: t.recommendation?.reasoning || "",
+              hasBench,
+            });
+          }
+          await upsertRecommendationTasks(recsForTasks);
+        } catch (e) {
+          console.warn("[performance] task upsert failed", e);
+        }
 
         let best: { result: EngineResult; rec: AdEval } | null = null;
         for (const r of ok) {
@@ -421,6 +459,7 @@ export default function Performance() {
         return;
       }
       toast.success(`Budget updated to $${newBudget}/day in Meta`);
+      await closeMatchingTasks({ actionType: "budget", entityId: chosen.rec.id });
       await logOverride(budgetActionKind, "modified");
       removeChosenFromQueue();
       setBudgetOpen(false);
@@ -493,6 +532,7 @@ export default function Performance() {
         return;
       }
       toast.success("Creative swapped in Meta");
+      await closeMatchingTasks({ actionType: "rotate", entityId: chosen.rec.id });
       await logOverride("refresh_creative", "modified");
       removeChosenFromQueue();
       setRefreshOpen(false);
@@ -527,6 +567,7 @@ export default function Performance() {
         return;
       }
       toast.success("Paused in Meta");
+      await closeMatchingTasks({ actionType: "pause", entityId: chosen.rec.id });
       try {
         await supabase.from("recommendation_overrides").insert({
           brand_id: activeBrand.id,

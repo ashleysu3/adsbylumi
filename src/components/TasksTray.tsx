@@ -4,13 +4,16 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CheckSquare, ArrowRight, Sparkles } from "lucide-react";
-import { useTasks, useOpenTaskCount } from "@/hooks/useTasks";
+import { useTasks, useOpenTaskCount, Task } from "@/hooks/useTasks";
+import { TaskExecuteDialog } from "@/components/TaskExecuteDialog";
+import { TaskActionType } from "@/lib/task-executors";
 
 export function TasksTray() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const count = useOpenTaskCount();
-  const { tasks, loading, updateStatus } = useTasks("open");
+  const { tasks, loading, updateStatus, refetch } = useTasks("open");
+  const [execTask, setExecTask] = useState<Task | null>(null);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -52,8 +55,16 @@ export function TasksTray() {
                 {t.description && (
                   <p className="text-xs text-muted-foreground mt-1">{t.description}</p>
                 )}
-                <div className="flex items-center gap-2 mt-2">
-                  {t.link_to && (
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  {t.action_type && ["pause", "budget", "rotate"].includes(t.action_type) ? (
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => setExecTask(t)}
+                    >
+                      <Sparkles className="h-3 w-3" /> LUMI can do this
+                    </Button>
+                  ) : t.link_to ? (
                     <Button
                       size="sm"
                       variant="outline"
@@ -65,12 +76,7 @@ export function TasksTray() {
                     >
                       Go <ArrowRight className="ml-1 h-3 w-3" />
                     </Button>
-                  )}
-                  {t.action_type && (
-                    <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
-                      <Sparkles className="h-3 w-3" /> LUMI can handle this (coming soon)
-                    </span>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -87,6 +93,18 @@ export function TasksTray() {
             View all tasks
           </Button>
         </div>
+
+        <TaskExecuteDialog
+          task={execTask && execTask.action_type ? {
+            id: execTask.id,
+            title: execTask.title,
+            action_type: execTask.action_type as TaskActionType,
+            action_payload: execTask.action_payload,
+          } : null}
+          open={!!execTask}
+          onOpenChange={(o) => { if (!o) setExecTask(null); }}
+          onDone={() => { setExecTask(null); refetch(); }}
+        />
       </SheetContent>
     </Sheet>
   );
