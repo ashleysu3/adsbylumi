@@ -269,7 +269,7 @@ Deno.serve(async req => {
       return classify({
         id, name: adInfo?.name || adRow.ad_name || id,
         level: 'ad',
-        primaryKpi, primaryGoal, primaryDirection,
+        primaryKpi, primaryGoal, primaryDirection, goalsConfig,
         secondaryKpi,
         meta3, meta7, meta30, metaFatigueRef,
         adsetType: detectAdsetType(parentAdset?.name),
@@ -291,7 +291,7 @@ Deno.serve(async req => {
       return classify({
         id, name: adsetInfo?.name || asRow.adset_name || id,
         level: 'adset',
-        primaryKpi, primaryGoal, primaryDirection, secondaryKpi,
+        primaryKpi, primaryGoal, primaryDirection, secondaryKpi, goalsConfig,
         meta3, meta7, meta30, metaFatigueRef,
         adsetType: detectAdsetType(adsetInfo?.name),
         audienceTemp: detectAudienceTemp(adsetInfo?.name, adsetInfo?.targeting),
@@ -305,7 +305,7 @@ Deno.serve(async req => {
       id: metaCampaignId,
       name: meta.name || 'Campaign',
       level: 'campaign',
-      primaryKpi, primaryGoal, primaryDirection, secondaryKpi,
+      primaryKpi, primaryGoal, primaryDirection, secondaryKpi, goalsConfig,
       meta3: c3?.[0], meta7: c7?.[0], meta30: c30?.[0], metaFatigueRef: cFatigueRef?.[0],
       adsetType: 'unknown',
       audienceTemp: 'unknown',
