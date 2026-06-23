@@ -12,6 +12,8 @@ import { Separator } from "@/components/ui/separator";
 import { PageShimmer } from "@/components/GradientShimmer";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { BRollLibrary } from "@/components/BRollLibrary";
+import { BrandEditDialog } from "@/components/BrandEditDialog";
+import { Globe, Target, Edit } from "lucide-react";
 import BrandImageLibrary from "@/components/BrandImageLibrary";
 import BrandColorsAndFonts from "@/components/BrandColorsAndFonts";
 import { BRollLibrariesManager } from "@/components/BRollLibrariesManager";
