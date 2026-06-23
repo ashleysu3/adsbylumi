@@ -310,9 +310,9 @@ export default function GuidedOnboarding() {
     }
   };
 
-  // =================== STEP 3 — offer ===================
+  // =================== STEP 6 — offer ===================
   useEffect(() => {
-    if (step !== 3 || !brandId) return;
+    if (step !== 6 || !brandId) return;
     (async () => {
       const { data } = await supabase.from("offers").select("*").eq("brand_id", brandId);
       setOffers(data || []);
