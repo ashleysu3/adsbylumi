@@ -261,9 +261,10 @@ const App = () => {
                  <Route path="/admin/updates/:campaignId" element={<AdminUpdatesResults />} />
                  <Route path="/admin/features" element={<AdminFeatures />} />
                   <Route path="/tasks" element={<Tasks />} />
-                  <Route path="/audience" element={<AudiencePlaceholder />} />
+                  <Route path="/audience" element={<Audience />} />
                   <Route path="/goals" element={<GoalsPlaceholder />} />
-                  <Route path="/voice" element={<VoicePlaceholder />} />
+                  <Route path="/voice" element={<Voice />} />
+                  <Route path="/initial-setup" element={<InitialSetup />} />
                   <Route path="/troubleshooting" element={<TroubleshootingPlaceholder />} />
                   <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
