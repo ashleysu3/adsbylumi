@@ -677,6 +677,16 @@ export default function CloserLook() {
         />
 
         <BugReportModal open={bugOpen} onOpenChange={setBugOpen} context="closer-look" />
+        <GoalSetupModal
+          open={goalModalOpen}
+          onOpenChange={setGoalModalOpen}
+          campaigns={workspaceId ? [{
+            id: workspaceId,
+            name: workspaceName || result.campaign.name,
+            brandId: activeBrand?.id,
+          }] : []}
+          onGoalsSaved={() => { setGoalModalOpen(false); window.location.reload(); }}
+        />
       </div>
     </DashboardLayout>
   );
