@@ -58,6 +58,20 @@ function domainName(url: string): string {
   } catch { return "My brand"; }
 }
 
+const WITTY_LINES = [
+  "🔍 Snooping through your website (politely)…",
+  "🎨 Stealing your color palette — for science…",
+  "🧠 Profiling your dream client (in a kind way)…",
+  "✍️ Listening for how your brand actually sounds…",
+  "💬 Reading every testimonial out loud…",
+  "📸 Hunting for logos and pretty photos…",
+  "🪄 Cross-referencing with what we know about your space…",
+];
+const REVEAL_SECTIONS = ["basics", "design", "audience", "proof", "images"] as const;
+type RevealKey = typeof REVEAL_SECTIONS[number];
+const FIRST_DELAY_MS = 500;
+const STAGGER_MS = 800;
+
 export default function GuidedOnboarding() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -81,6 +95,14 @@ export default function GuidedOnboarding() {
   const [loadingAssets, setLoadingAssetsHarvest] = useState(false);
   const step1Fired = useRef(false);
 
+  // Reveal orchestration — placeholder name (domain slug) is INTERNAL ONLY; never shown.
+  const placeholderNameRef = useRef<string>("");
+  const [revealStartedAt, setRevealStartedAt] = useState<number | null>(null);
+  const [revealed, setRevealed] = useState<Record<RevealKey, boolean>>({
+    basics: false, design: false, audience: false, proof: false, images: false,
+  });
+  const [narrationIdx, setNarrationIdx] = useState(0);
+
   // Step 2 — review (uses brand state)
   const [proofExtracting, setProofExtracting] = useState(false);
 
@@ -102,6 +124,63 @@ export default function GuidedOnboarding() {
   // Strategy
   const [strategy, setStrategy] = useState<any>(null);
   const [strategyLoading, setStrategyLoading] = useState(false);
+
+  // Rotate witty narration while extraction runs
+  useEffect(() => {
+    if (extractionPhase !== 'running') return;
+    const t = setInterval(() => setNarrationIdx((i) => (i + 1) % WITTY_LINES.length), 1800);
+    return () => clearInterval(t);
+  }, [extractionPhase]);
+
+  // Orchestrated reveal: each section waits for (a) its extractor to settle AND
+  // (b) the prior section to reveal, plus a stagger, so it always feels paced.
+  const markRevealed = useCallback((k: RevealKey) => {
+    setRevealed((r) => (r[k] ? r : { ...r, [k]: true }));
+  }, []);
+
+  // basics — gated by brand extractor; also needs min first-delay from start
+  useEffect(() => {
+    if (!revealStartedAt || revealed.basics) return;
+    if (loadingBrandBasics) return;
+    const wait = Math.max(0, revealStartedAt + FIRST_DELAY_MS - Date.now());
+    const t = setTimeout(() => markRevealed("basics"), wait);
+    return () => clearTimeout(t);
+  }, [revealStartedAt, loadingBrandBasics, revealed.basics, markRevealed]);
+
+  // design — after basics, same extractor (brand) drives colors/fonts
+  useEffect(() => {
+    if (!revealed.basics || revealed.design) return;
+    if (loadingBrandBasics) return;
+    const t = setTimeout(() => markRevealed("design"), STAGGER_MS);
+    return () => clearTimeout(t);
+  }, [revealed.basics, revealed.design, loadingBrandBasics, markRevealed]);
+
+  // audience — after design
+  useEffect(() => {
+    if (!revealed.design || revealed.audience) return;
+    if (loadingAudience) return;
+    const t = setTimeout(() => markRevealed("audience"), STAGGER_MS);
+    return () => clearTimeout(t);
+  }, [revealed.design, revealed.audience, loadingAudience, markRevealed]);
+
+  // proof — after audience
+  useEffect(() => {
+    if (!revealed.audience || revealed.proof) return;
+    if (loadingProof) return;
+    const t = setTimeout(() => markRevealed("proof"), STAGGER_MS);
+    return () => clearTimeout(t);
+  }, [revealed.audience, revealed.proof, loadingProof, markRevealed]);
+
+  // images — last
+  useEffect(() => {
+    if (!revealed.proof || revealed.images) return;
+    if (loadingAssets) return;
+    const t = setTimeout(() => markRevealed("images"), STAGGER_MS);
+    return () => clearTimeout(t);
+  }, [revealed.proof, revealed.images, loadingAssets, markRevealed]);
+
+  const revealedCount = REVEAL_SECTIONS.filter((k) => revealed[k]).length;
+  const allRevealed = revealedCount === REVEAL_SECTIONS.length;
 
   // ---------- auth + resume ----------
   useEffect(() => {
