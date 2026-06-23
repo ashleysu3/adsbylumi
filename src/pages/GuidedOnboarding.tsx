@@ -296,7 +296,7 @@ export default function GuidedOnboarding() {
       const { data: rows } = await supabase
         .from("brand_assets" as any).select("*")
         .eq("brand_id", brandId).order("created_at", { ascending: false });
-      const list = (rows || []) as AssetRow[];
+      const list = ((rows || []) as unknown) as AssetRow[];
       const paths = list.map((r) => pathFromUrl(r.url));
       const validPaths = paths.filter(Boolean) as string[];
       const signedMap = new Map<string, string>();
