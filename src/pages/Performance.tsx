@@ -781,11 +781,8 @@ export default function Performance() {
         {!loading && hasActive && (
           <>
             {/* THE ONE LIST — up to top 3 highest-impact recommendations */}
-            <Card className="relative overflow-hidden border-transparent">
-              <div
-                aria-hidden
-                className="absolute inset-0 rounded-lg p-[1.5px] bg-gradient-to-br from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 [mask:linear-gradient(#000,#000)_content-box,linear-gradient(#000,#000)] [mask-composite:exclude]"
-              />
+            <Card className="border-lumi-pink-1/30">
+
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Sparkles className="h-4 w-4 text-lumi-pink-1" />
