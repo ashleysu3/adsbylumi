@@ -101,6 +101,12 @@ export default function GuidedOnboarding() {
   const [revealed, setRevealed] = useState<Record<RevealKey, boolean>>({
     basics: false, design: false, audience: false, proof: false, images: false,
   });
+  // Sections whose extractor timed out — we still reveal them, but with a friendly
+  // "couldn't pull this one" hint above the editable card.
+  const [failed, setFailed] = useState<Record<RevealKey, boolean>>({
+    basics: false, design: false, audience: false, proof: false, images: false,
+  });
+  const [slowMode, setSlowMode] = useState(false);
   const [narrationIdx, setNarrationIdx] = useState(0);
 
   // Step 2 — review (uses brand state)
@@ -130,6 +136,14 @@ export default function GuidedOnboarding() {
     if (extractionPhase !== 'running') return;
     const t = setInterval(() => setNarrationIdx((i) => (i + 1) % WITTY_LINES.length), 1800);
     return () => clearInterval(t);
+  }, [extractionPhase]);
+
+  // Slow-mode kicks in after ~15s of still-running extraction so a sluggish
+  // network reads as patient, not broken.
+  useEffect(() => {
+    if (extractionPhase !== 'running') { setSlowMode(false); return; }
+    const t = setTimeout(() => setSlowMode(true), 15_000);
+    return () => clearTimeout(t);
   }, [extractionPhase]);
 
   // Orchestrated reveal: each section waits for (a) its extractor to settle AND
@@ -275,11 +289,48 @@ export default function GuidedOnboarding() {
       setLoadingProof(true);
       setLoadingAssetsHarvest(true);
       setRevealed({ basics: false, design: false, audience: false, proof: false, images: false });
+      setFailed({ basics: false, design: false, audience: false, proof: false, images: false });
+      setSlowMode(false);
       setRevealStartedAt(Date.now());
       setNarrationIdx(0);
       setExtractionPhase('running');
       setStep(2);
       if (brandIdLocal) persistStep(brandIdLocal, 2);
+
+      // Hard-cap each extractor at ~40s. If it hasn't resolved by then we stop
+      // waiting, surface a friendly "couldn't pull this one" hint, and let the
+      // user keep going. The actual promise can still resolve later and update
+      // state — the cap only governs UX, never cancels work.
+      const HARD_CAP_MS = 40_000;
+      const armCap = (
+        label: string,
+        sections: RevealKey[],
+        setLoading: (b: boolean) => void,
+        settled: { done: boolean },
+      ) => {
+        const timer = setTimeout(() => {
+          if (settled.done) return;
+          console.warn(`[onboarding] extractor timed out after ${HARD_CAP_MS}ms: ${label}`);
+          setFailed((f) => {
+            const next = { ...f };
+            for (const s of sections) next[s] = true;
+            return next;
+          });
+          setLoading(false);
+        }, HARD_CAP_MS);
+        return () => { settled.done = true; clearTimeout(timer); };
+      };
+
+      const brandSettled = { done: false };
+      const voiceSettled = { done: false };
+      const audSettled = { done: false };
+      const proofSettled = { done: false };
+      const assetsSettled = { done: false };
+      const clearBrandCap = armCap("extract-brand", ["basics", "design"], setLoadingBrandBasics, brandSettled);
+      const clearVoiceCap = armCap("analyze-brand-voice", ["basics"], setLoadingVoice, voiceSettled);
+      const clearAudCap = armCap("generate-audience-psychology", ["audience"], setLoadingAudience, audSettled);
+      const clearProofCap = armCap("extract-social-proof", ["proof"], setLoadingProof, proofSettled);
+      const clearAssetsCap = armCap("harvest-brand-assets", ["images"], setLoadingAssetsHarvest, assetsSettled);
 
       // extract-brand → colors/logo/fonts/description (the first thing to render)
       const pBrand = supabase.functions.invoke("extract-brand", { body: { url: websiteForCall } }).then(async (r) => {
@@ -314,7 +365,7 @@ export default function GuidedOnboarding() {
             },
           }));
         }
-      }).catch(() => {}).finally(() => setLoadingBrandBasics(false));
+      }).catch(() => {}).finally(() => { clearBrandCap(); setLoadingBrandBasics(false); });
 
       const pVoice = pBrand.then(() =>
         supabase.functions.invoke("analyze-brand-voice", { body: { brandId: brandIdLocal } })
@@ -324,7 +375,7 @@ export default function GuidedOnboarding() {
               setBrand((prev: any) => ({ ...(prev || {}), brand_voice: (refreshed as any).brand_voice }));
             }
           })
-      ).catch(() => {}).finally(() => setLoadingVoice(false));
+      ).catch(() => {}).finally(() => { clearVoiceCap(); setLoadingVoice(false); });
 
       const pAud = pBrand.then(() =>
         supabase.functions.invoke("generate-audience-psychology", { body: { brandId: brandIdLocal } })
@@ -334,7 +385,7 @@ export default function GuidedOnboarding() {
               setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: (refreshed as any).audience_psychology }));
             }
           })
-      ).catch(() => {}).finally(() => setLoadingAudience(false));
+      ).catch(() => {}).finally(() => { clearAudCap(); setLoadingAudience(false); });
 
       const pProof = pBrand.then(() =>
         supabase.functions.invoke("extract-social-proof", { body: { brandId: brandIdLocal, url: websiteForCall } })
@@ -344,11 +395,11 @@ export default function GuidedOnboarding() {
               setBrand((prev: any) => ({ ...(prev || {}), social_proof: (refreshed as any).social_proof }));
             }
           })
-      ).catch(() => {}).finally(() => setLoadingProof(false));
+      ).catch(() => {}).finally(() => { clearProofCap(); setLoadingProof(false); });
 
       const pAssets = supabase.functions.invoke("harvest-brand-assets", { body: { url: websiteForCall, brandId: brandIdLocal } })
         .catch(() => {})
-        .finally(() => setLoadingAssetsHarvest(false));
+        .finally(() => { clearAssetsCap(); setLoadingAssetsHarvest(false); });
 
       // When everything settles, flag the phase as done so the resume logic stops trying.
       Promise.allSettled([pBrand, pVoice, pAud, pProof, pAssets]).then(async () => {
@@ -781,6 +832,10 @@ export default function GuidedOnboarding() {
                 <CardDescription className="min-h-[20px]">
                   {allRevealed ? (
                     <>Edit anything that's off — rebrand, outdated copy, new audience — and we'll use the updated version everywhere.</>
+                  ) : slowMode ? (
+                    <span className="inline-block animate-fade-in text-foreground/80">
+                      This one's taking a little longer than usual — hang tight, almost there.
+                    </span>
                   ) : (
                     <span key={narrationIdx} className="inline-block animate-fade-in text-foreground/80">
                       {WITTY_LINES[narrationIdx]}
@@ -802,19 +857,29 @@ export default function GuidedOnboarding() {
             </Card>
 
             <RevealGate revealed={revealed.basics} kind="basics">
+              {failed.basics && <TimeoutNotice label="brand basics" />}
               <BrandBasicsCard brand={brand} placeholderName={placeholderNameRef.current} onSave={updateBrand} />
             </RevealGate>
 
             <RevealGate revealed={revealed.design} kind="design">
+              {failed.design && <TimeoutNotice label="your design guide" />}
               <ReviewDesignCard brand={brand} onSave={updateBrand} />
             </RevealGate>
 
             <RevealGate revealed={revealed.audience} kind="audience">
+              {failed.audience && <TimeoutNotice label="your audience" />}
               <ReviewAudienceCard brand={brand} onSave={updateBrand} />
             </RevealGate>
 
             <RevealGate revealed={revealed.proof} kind="proof">
-              {hasProof ? (
+              {failed.proof ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base"><Quote className="h-4 w-4" /> Social proof</CardTitle>
+                    <CardDescription className="text-xs">We couldn't grab this one — add a testimonial or stat in a sec, it takes 10 seconds.</CardDescription>
+                  </CardHeader>
+                </Card>
+              ) : hasProof ? (
                 <ReviewProofCard brand={brand} onSave={updateBrand} loading={proofExtracting} />
               ) : (
                 <Card>
@@ -826,7 +891,9 @@ export default function GuidedOnboarding() {
               )}
             </RevealGate>
 
+
             <RevealGate revealed={revealed.images} kind="images">
+              {failed.images && <TimeoutNotice label="your brand images" />}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base"><ImageIcon className="h-4 w-4" /> Brand images</CardTitle>
@@ -1140,6 +1207,15 @@ const SKELETON_LABELS: Record<string, { title: string; rows: number }> = {
   proof: { title: "Social proof", rows: 2 },
   images: { title: "Brand images", rows: 3 },
 };
+
+function TimeoutNotice({ label }: { label: string }) {
+  return (
+    <div className="mb-2 rounded-md border border-amber-200/60 bg-amber-50/60 dark:bg-amber-950/20 px-3 py-2 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2 animate-fade-in">
+      <Sparkles className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+      <span>We couldn't grab {label} from your site — no big deal, you can fill it in below. Takes about 10 seconds.</span>
+    </div>
+  );
+}
 
 function RevealGate({ revealed, kind, children }: { revealed: boolean; kind: keyof typeof SKELETON_LABELS; children: React.ReactNode }) {
   if (revealed) {
