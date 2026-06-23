@@ -118,8 +118,6 @@ const groups: NavGroup[] = [
       { label: "Meta Connection", to: "/meta-settings", icon: Link2 },
       { label: "Tracking", to: "/tracking-setup", icon: Activity },
       { label: "Ad Glossary", to: "/glossary", icon: BookOpen },
-      // TODO: dedicated goals page.
-      { label: "Goals", to: "/goals", icon: Flag },
     ],
   },
 ];

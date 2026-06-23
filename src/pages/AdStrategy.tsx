@@ -13,10 +13,11 @@ import {
   Wallet,
   Package,
   Link2,
+  Flag,
 } from "lucide-react";
 
 import DashboardLayout from "@/components/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SetupPrompt } from "@/components/SetupPrompt";
@@ -375,6 +376,20 @@ export default function AdStrategy() {
             refine anything that's off.
           </p>
         </header>
+
+        {/* Goals */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Flag className="h-4 w-4 text-lumi-pink-1" /> Goals
+            </CardTitle>
+            <CardDescription>
+              Set the business outcomes LUMI should optimize against.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+
+
 
         {loading ? (
           <Card>
