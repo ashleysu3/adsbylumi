@@ -941,7 +941,7 @@ export default function GuidedOnboarding() {
                       title="Upload a lifestyle photo or backdrop"
                       description="You at work, with clients, behind the scenes — anything that feels like your world."
                       ctaLabel="Upload lifestyle"
-                      onCta={() => document.getElementById("upload-lifestyle")?.click()}
+                      onCta={() => document.getElementById("upload-any")?.click()}
                       autoTask={{ title: "Upload a lifestyle photo", link_to: "/brand" }}
                     />
                   )}
