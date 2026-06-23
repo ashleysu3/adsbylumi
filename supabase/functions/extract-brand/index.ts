@@ -162,6 +162,79 @@ async function engineFallback(url: string): Promise<Response> {
   });
 }
 
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_m, n) => String.fromCharCode(Number(n)))
+    .trim();
+}
+
+function pickMeta(html: string, names: string[]): string | null {
+  for (const name of names) {
+    const re = new RegExp(
+      `<meta[^>]+(?:name|property)=["']${name}["'][^>]*content=["']([^"']+)["']`,
+      "i",
+    );
+    const m = html.match(re);
+    if (m?.[1]) return decodeEntities(m[1]);
+    const re2 = new RegExp(
+      `<meta[^>]+content=["']([^"']+)["'][^>]*(?:name|property)=["']${name}["']`,
+      "i",
+    );
+    const m2 = html.match(re2);
+    if (m2?.[1]) return decodeEntities(m2[1]);
+  }
+  return null;
+}
+
+async function fetchSiteMeta(url: string): Promise<{ name?: string; description?: string }> {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 9000);
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      redirect: "follow",
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+    });
+    clearTimeout(t);
+    if (!res.ok) return {};
+    const html = (await res.text()).slice(0, 200_000);
+    const ogSite = pickMeta(html, ["og:site_name", "application-name", "twitter:site"]);
+    const ogTitle = pickMeta(html, ["og:title", "twitter:title"]);
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const rawTitle = titleMatch ? decodeEntities(titleMatch[1]) : null;
+    // Title often looks like "Brand Name — Tagline" or "Page | Brand Name" — extract brand portion
+    const splitTitle = (t?: string | null) => {
+      if (!t) return null;
+      const parts = t.split(/\s+[|—–\-·•]\s+/).map((p) => p.trim()).filter(Boolean);
+      if (parts.length === 1) return parts[0];
+      // Brand is usually the shortest/last segment
+      const last = parts[parts.length - 1];
+      const first = parts[0];
+      return last.length <= first.length ? last : first;
+    };
+    const name = ogSite || splitTitle(ogTitle) || splitTitle(rawTitle) || undefined;
+    const description =
+      pickMeta(html, ["og:description", "twitter:description", "description"]) || undefined;
+    return {
+      name: name && name.length < 80 ? name : undefined,
+      description: description && description.length < 400 ? description : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
@@ -171,14 +244,48 @@ serve(async (req) => {
       return json(400, { error: "url is required" });
     }
 
-    // 1) Try Firecrawl branding (more accurate than HTML/CSS heuristics)
-    const fc = await firecrawlBranding(url);
+    // Fetch site meta (title, og:site_name, description) in parallel with branding
+    const [fc, meta] = await Promise.all([firecrawlBranding(url), fetchSiteMeta(url)]);
+
     if (fc && (fc.suggested.colors?.background || (fc.suggested.colors?.pops?.length ?? 0) > 0)) {
-      return json(200, fc);
+      // Normalize into the flat shape the client reads (name, description, colors, fonts, logoUrl)
+      const colors = [
+        fc.suggested.colors?.accent,
+        ...(fc.suggested.colors?.pops ?? []),
+        fc.suggested.colors?.background,
+        fc.suggested.colors?.ink,
+      ].filter((c): c is string => !!c);
+      const fonts = [fc.suggested.fonts?.display?.family, fc.suggested.fonts?.body?.family].filter(
+        (f): f is string => !!f,
+      );
+      return json(200, {
+        name: meta.name,
+        description: meta.description,
+        colors: Array.from(new Set(colors)),
+        fonts: Array.from(new Set(fonts)),
+        logoUrl: fc.suggested.imagery?.ogImage,
+        suggested: fc.suggested,
+        raw: fc.raw,
+      });
     }
 
-    // 2) Fallback to internal engine
-    return await engineFallback(url);
+    // Engine fallback — still merge our scraped name/description so the brand isn't named after the URL.
+    const engineRes = await engineFallback(url);
+    try {
+      const text = await engineRes.text();
+      const parsed = text ? JSON.parse(text) : {};
+      const merged = {
+        ...parsed,
+        name: parsed?.name || meta.name,
+        description: parsed?.description || meta.description,
+      };
+      return new Response(JSON.stringify(merged), {
+        status: engineRes.status,
+        headers: { ...cors, "content-type": "application/json" },
+      });
+    } catch {
+      return engineRes;
+    }
   } catch (e) {
     return json(200, { error: String(e) });
   }

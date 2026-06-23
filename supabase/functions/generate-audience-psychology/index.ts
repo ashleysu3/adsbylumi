@@ -147,82 +147,106 @@ serve(async (req) => {
     const contentAssetsContext = buildContentAssetsContext(contentAssets);
     const contentHash = generateContentHash(contentAssets);
 
-    const systemPrompt = `You are an expert in audience psychology and advertising strategy, trained in the "After Organic" methodology.
-Your task is to create a comprehensive psychological profile of the target audience based on brand information.
+    // Scrape the brand's website so the AI has real source material, not just
+    // a one-line value prop. This is the biggest lever against generic output.
+    let websiteText = "";
+    const websiteUrl = (brand as any).website_url as string | null;
+    if (websiteUrl && /^https?:\/\//i.test(websiteUrl)) {
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 9000);
+        const res = await fetch(websiteUrl, {
+          signal: ctrl.signal,
+          redirect: 'follow',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          },
+        });
+        clearTimeout(t);
+        if (res.ok) {
+          const html = await res.text();
+          websiteText = html
+            .replace(/<script[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[\s\S]*?<\/style>/gi, '')
+            .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+            .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 8000);
+        }
+      } catch (e) {
+        console.warn('audience: website scrape failed', (e as any)?.message || e);
+      }
+    }
+
+    // Also pull voice profile for tone/vocabulary clues if it exists
+    const voiceProfile = (brand as any).voice_profile;
+    const voiceContext = voiceProfile && typeof voiceProfile === 'object'
+      ? `\nBRAND'S VOICE PROFILE (use the same vocabulary the brand uses):\n${JSON.stringify(voiceProfile).slice(0, 2000)}`
+      : '';
+
+    const systemPrompt = `You are an expert in audience psychology and conversion copywriting, trained in the "After Organic" methodology.
+
+Your job: produce a SPECIFIC, GROUNDED audience profile based on the brand's own website copy. NOT a generic "busy entrepreneur" sketch.
 ${contentAssetsContext ? `\n${contentAssetsContext}` : ''}
 
-CRITICAL FORMATTING REQUIREMENTS:
-All text must be formatted for easy reading and scanning:
-- Use line breaks between distinct ideas
-- Use bullet points (•) within text fields to break up information
-- Keep paragraphs short (2-3 sentences max)
-- Never write dense walls of text
-- Make every section scannable
+GROUNDING RULES (most important):
+- Every pain point, desire, and objection MUST reference something from the website copy, the brand's voice profile, or the testimonials/content assets above. If a category has nothing real to draw from, return 1-2 items and mark them as inferences using language like "likely…" — do NOT pad with filler.
+- Use the audience's OWN words wherever possible. Quote phrases from the source. Never use marketing clichés ("take their business to the next level", "achieve their goals", "live their dream life").
+- Be uncomfortably specific. Name the situation, the time of day, the tool they're stuck in, the dollar figure they're losing, the person they're hiding it from. Vague = wrong.
+- Avoid: "freedom", "scale", "growth mindset", "limiting beliefs", "next level", "dream life", "passion", "purpose-driven" unless quoted directly from the source.
 
-Analyze the brand's value proposition, target audience, and industry to generate:
+FORMATTING:
+- Use short paragraphs with line breaks.
+- Use bullets (•) inside text fields.
+- No dense walls of text.
 
-1. Demographics - Format as a scannable profile:
-   
-   Age: [range]
-   Income: [level]
-   Occupation: [types]
-   Location: [patterns]
-   
-   [1-2 sentences of additional context]
+Generate:
 
-2. Psychographics - Format with clear sections:
-   
-   Values: [what they believe in]
-   
-   Lifestyle: [how they live]
-   
-   Aspirations: [what they want to become]
-   
-   Identity: [how they see themselves]
+1. Demographics — Age / Income / Occupation / Location, then 1-2 sentences of grounded context (who they are, what stage of business/life).
 
-3. Pain Points - Specific problems, frustrations, struggles (array of 5-8 items)
-   Each item should be a complete, relatable statement that resonates emotionally.
-   Example: "Spending hours on ads that get zero engagement, wondering if anyone even sees them"
+2. Psychographics — Values / Lifestyle / Aspirations / Identity, each as one specific sentence.
 
-4. Desires - Deep wants, outcomes they're seeking (array of 5-8 items)
-   Each item should paint a vivid picture of the desired outcome.
-   Example: "Wake up to sales notifications while actually enjoying life instead of hustling 24/7"
+3. Pain Points (5-8) — Each is a complete sentence written as the audience would say it to a friend. Reference the actual scenario (e.g. "Refreshing Stripe at 11pm hoping a sale came in") not abstractions ("financial stress").
 
-5. Objections - Reasons they might not buy, hesitations, doubts (array of 5-8 items)
-   Frame as actual thoughts they'd have.
-   Example: "I've tried other programs before and they didn't work for my specific situation"
+4. Desires (5-8) — Concrete outcomes with sensory or situational detail. Not "more freedom" → "Closing the laptop at 3pm to pick up the kids without checking ad spend on the way."
 
-6. Motivations - Format as a clear breakdown:
-   
-   Core Driver: [their deepest motivation]
-   
-   What Moves Them:
-   • [motivation 1]
-   • [motivation 2]
-   • [motivation 3]
-   
-   Decision Triggers: [what finally makes them act]
+5. Objections (5-8) — Real internal thoughts including price, time, trust, "I've tried this before", "my niche is different". Frame as inner monologue.
+
+6. Motivations — Core Driver / What Moves Them (bullets) / Decision Triggers — all tied to evidence from the source.
+
+7. Summary — One paragraph (3-4 sentences) describing this person as if briefing a copywriter. End with the single most important emotional truth.
 
 Return ONLY a valid JSON object with these exact fields:
 {
-  "demographics": "string (formatted with line breaks and structure)",
-  "psychographics": "string (formatted with sections and spacing)",
+  "demographics": "string",
+  "psychographics": "string",
   "pain_points": ["string"],
   "desires": ["string"],
   "objections": ["string"],
-  "motivations": "string (formatted with structure)"
+  "motivations": "string",
+  "summary": "string"
 }
 
-Be specific and psychology-driven. Use language that resonates with the After Organic tone: warm, clever, strategic.`;
+Tone: warm, clever, strategic — After Organic. Never robotic, never hype.`;
 
-    const userPrompt = `Create a psychological profile for this audience:
+    const userPrompt = `Build a grounded psychological profile for this brand's audience.
 
-Brand: ${brand.name}
-What they offer: ${brand.value_proposition || 'Not specified'}
-Who they serve: ${brand.target_audience || 'Not specified'}
-Industry: ${brand.industry || 'Not specified'}
+BRAND: ${brand.name}
+WEBSITE: ${websiteUrl || 'Not provided'}
+WHAT THEY OFFER: ${brand.value_proposition || 'Not specified'}
+WHO THEY SAY THEY SERVE: ${brand.target_audience || 'Not specified'}
+INDUSTRY: ${brand.industry || 'Not specified'}
+${voiceContext}
 
-Generate a deep, actionable psychological profile.${contentAssets?.length ? ` Use the specific language and insights from the ${contentAssets.length} content asset(s) provided above.` : ''}`;
+=== WEBSITE COPY (primary source — quote from this) ===
+${websiteText || '(could not fetch — infer carefully and flag inferences)'}
+
+${contentAssets?.length ? `Use the ${contentAssets.length} real content asset(s) above as the highest-priority source.` : ''}
+
+Reminder: ground every claim in the source. Be specific. Skip the clichés.`;
 
     console.log('Calling Lovable AI for psychology generation...');
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
