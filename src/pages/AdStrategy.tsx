@@ -377,6 +377,20 @@ export default function AdStrategy() {
           </p>
         </header>
 
+        {/* Goals */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Flag className="h-4 w-4 text-lumi-pink-1" /> Goals
+            </CardTitle>
+            <CardDescription>
+              Set the business outcomes LUMI should optimize against.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+
+
+
         {loading ? (
           <Card>
             <CardContent className="py-10 flex items-center justify-center gap-2 text-sm text-muted-foreground">
