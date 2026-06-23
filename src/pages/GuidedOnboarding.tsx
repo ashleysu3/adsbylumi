@@ -184,25 +184,18 @@ export default function GuidedOnboarding() {
       const websiteForCall = normalized;
       const brandIdLocal = id!;
 
-      // Flip to full-screen loader — hide everything else.
-      const wittyLines = [
-        "🔍 Snooping through your website (politely)…",
-        "🎨 Stealing your color palette — for science…",
-        "✍️ Learning how you actually talk…",
-        "🧠 Profiling your dream client (in a kind way)…",
-        "📸 Hunting for logos and pretty photos…",
-        "💬 Reading every testimonial out loud…",
-        "✨ Doing our homework so you don't have to…",
-      ];
-      setLoaderMsg(wittyLines[0]);
+      // Mark all sections as loading and immediately move the user to the reveal page.
+      // They watch each section populate as its extractor resolves — no blocking screen.
+      setLoadingBrandBasics(true);
+      setLoadingVoice(true);
+      setLoadingAudience(true);
+      setLoadingProof(true);
+      setLoadingAssetsHarvest(true);
       setExtractionPhase('running');
-      let lineIdx = 0;
-      const rotator = setInterval(() => {
-        lineIdx = (lineIdx + 1) % wittyLines.length;
-        setLoaderMsg(wittyLines[lineIdx]);
-      }, 2800);
+      setStep(2);
+      if (brandIdLocal) persistStep(brandIdLocal, 2);
 
-      // extract-brand → colors/logo/fonts/description
+      // extract-brand → colors/logo/fonts/description (the first thing to render)
       const pBrand = supabase.functions.invoke("extract-brand", { body: { url: websiteForCall } }).then(async (r) => {
         const d: any = r.data;
         if (!d || r.error) return;
@@ -235,7 +228,7 @@ export default function GuidedOnboarding() {
             },
           }));
         }
-      }).catch(() => {});
+      }).catch(() => {}).finally(() => setLoadingBrandBasics(false));
 
       const pVoice = pBrand.then(() =>
         supabase.functions.invoke("analyze-brand-voice", { body: { brandId: brandIdLocal } })
@@ -245,7 +238,7 @@ export default function GuidedOnboarding() {
               setBrand((prev: any) => ({ ...(prev || {}), brand_voice: (refreshed as any).brand_voice }));
             }
           })
-      ).catch(() => {});
+      ).catch(() => {}).finally(() => setLoadingVoice(false));
 
       const pAud = pBrand.then(() =>
         supabase.functions.invoke("generate-audience-psychology", { body: { brandId: brandIdLocal } })
@@ -255,9 +248,8 @@ export default function GuidedOnboarding() {
               setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: (refreshed as any).audience_psychology }));
             }
           })
-      ).catch(() => {});
+      ).catch(() => {}).finally(() => setLoadingAudience(false));
 
-      // Social proof — runs in parallel with the rest so the user lands on a fully-populated review.
       const pProof = pBrand.then(() =>
         supabase.functions.invoke("extract-social-proof", { body: { brandId: brandIdLocal, url: websiteForCall } })
           .then(async () => {
@@ -266,25 +258,22 @@ export default function GuidedOnboarding() {
               setBrand((prev: any) => ({ ...(prev || {}), social_proof: (refreshed as any).social_proof }));
             }
           })
-      ).catch(() => {});
+      ).catch(() => {}).finally(() => setLoadingProof(false));
 
       const pAssets = supabase.functions.invoke("harvest-brand-assets", { body: { url: websiteForCall, brandId: brandIdLocal } })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => setLoadingAssetsHarvest(false));
 
-      // When everything settles, dismiss the loader and auto-advance to the review.
+      // When everything settles, flag the phase as done so the resume logic stops trying.
       Promise.allSettled([pBrand, pVoice, pAud, pProof, pAssets]).then(async () => {
-        clearInterval(rotator);
-        // Refresh brand once more so the review screens see latest server state.
         try {
           const [{ data: b }, { data: k }] = await Promise.all([
             supabase.from("brands").select("*").eq("id", brandIdLocal).maybeSingle(),
             supabase.from("brand_kits" as any).select("colors, fonts, logo_url").eq("brand_id", brandIdLocal).maybeSingle(),
           ]);
-          if (b) setBrand({ ...(b as any), _kit: k || null });
+          if (b) setBrand((prev: any) => ({ ...(b as any), _kit: k || (prev?._kit ?? null) }));
         } catch { /* ignore */ }
         setExtractionPhase('done');
-        setStep(2);
-        if (brandIdLocal) await persistStep(brandIdLocal, 2);
       });
 
       await refreshBrands();
@@ -293,6 +282,11 @@ export default function GuidedOnboarding() {
       toast.error(e.message || "Could not save");
       step1Fired.current = false;
       setExtractionPhase('idle');
+      setLoadingBrandBasics(false);
+      setLoadingVoice(false);
+      setLoadingAudience(false);
+      setLoadingProof(false);
+      setLoadingAssetsHarvest(false);
     } finally {
       setStep1Busy(false);
     }
