@@ -424,6 +424,7 @@ Deno.serve(async req => {
         adsetDailyBudget: dollarsFromMetaBudget(parentAdset),
         campaignType,
         adInfo,
+        archetypeSlug,
       });
     });
 
