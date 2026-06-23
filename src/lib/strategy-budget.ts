@@ -66,6 +66,35 @@ export function parsePricePoint(price?: string | null): number | null {
   return isFinite(n) && n > 0 ? n : null;
 }
 
+export function parseBudgetSuggestion(
+  suggestion: BudgetSuggestion,
+): { min: number; max: number } | null {
+  if (!suggestion) return null;
+  if (typeof suggestion === "object") {
+    const min = Number(suggestion.min);
+    const max = Number(suggestion.max);
+    if (isFinite(min) && isFinite(max) && min > 0 && max >= min) return { min, max };
+    if (isFinite(max) && max > 0) return { min: max, max };
+    if (isFinite(min) && min > 0) return { min, max: min };
+    return null;
+  }
+  // Parse strings like "$20–60/day", "$20-60/day", "$40/day", "20 to 60 per day"
+  const s = String(suggestion).replace(/,/g, "").replace(/\u2013|\u2014/g, "-");
+  // First numeric range in the string is treated as the suggested daily floor.
+  const range = s.match(/\$?\s*(\d+(?:\.\d+)?)\s*(?:-|to)\s*\$?\s*(\d+(?:\.\d+)?)/i);
+  if (range) {
+    const min = Number(range[1]);
+    const max = Number(range[2]);
+    if (isFinite(min) && isFinite(max) && min > 0 && max >= min) return { min, max };
+  }
+  const single = s.match(/\$\s*(\d+(?:\.\d+)?)/);
+  if (single) {
+    const n = Number(single[1]);
+    if (isFinite(n) && n > 0) return { min: n, max: n };
+  }
+  return null;
+}
+
 function targetCostForCampaign(
   objective: string | undefined,
   name: string | undefined,
