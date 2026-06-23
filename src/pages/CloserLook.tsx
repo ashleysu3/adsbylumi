@@ -208,7 +208,7 @@ export default function CloserLook() {
         setWorkspaceName(ws.name || "Campaign");
 
         const { data, error: evalErr } = await supabase.functions.invoke("evaluate-campaign-status", {
-          body: { brandId: activeBrand.id, metaCampaignId },
+          body: { workspaceId: ws.id, brandId: activeBrand.id, metaCampaignId },
         });
         if (cancelled) return;
         if (evalErr || !data?.campaign) {
