@@ -164,6 +164,7 @@ export default function CloserLook() {
   const [workspaceName, setWorkspaceName] = useState<string>("");
   const [actions, setActions] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
 
   // Task-execute dialog (shared confirm + execute path)
   const [taskOpen, setTaskOpen] = useState(false);
