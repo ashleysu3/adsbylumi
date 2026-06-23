@@ -188,6 +188,7 @@ export default function Performance() {
   const [snoozedIds, setSnoozedIds] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pausing, setPausing] = useState(false);
+  const [goalModalFor, setGoalModalFor] = useState<EngineResult | null>(null);
 
   // Date range — persists in localStorage. "3" | "7" | "14" | "30" (preset days)
   // or "custom" with a customDateRange. Default: last 7 days.
@@ -905,6 +906,20 @@ export default function Performance() {
                               );
                             })}
                           </div>
+                          {r.meta.hasUserGoals === false && (
+                            <SetupPrompt
+                              icon={Target}
+                              title="Set goals for this campaign"
+                              description="So LUMI can measure success against your targets (we're showing benchmark defaults for now)."
+                              ctaLabel="Set goals"
+                              tone="warning"
+                              onCta={() => setGoalModalFor(r)}
+                              autoTask={{
+                                title: `Set goals for ${r.workspaceName || r.campaign.name}`,
+                                link_to: `/live-ads/${r.workspaceId}`,
+                              }}
+                            />
+                          )}
                           <p className="text-sm">
                             <span className="text-muted-foreground">Next: </span>
                             <span className="text-foreground">{topLine}</span>
