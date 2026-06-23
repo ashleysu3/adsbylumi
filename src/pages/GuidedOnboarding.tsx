@@ -101,6 +101,12 @@ export default function GuidedOnboarding() {
   const [revealed, setRevealed] = useState<Record<RevealKey, boolean>>({
     basics: false, design: false, audience: false, proof: false, images: false,
   });
+  // Sections whose extractor timed out — we still reveal them, but with a friendly
+  // "couldn't pull this one" hint above the editable card.
+  const [failed, setFailed] = useState<Record<RevealKey, boolean>>({
+    basics: false, design: false, audience: false, proof: false, images: false,
+  });
+  const [slowMode, setSlowMode] = useState(false);
   const [narrationIdx, setNarrationIdx] = useState(0);
 
   // Step 2 — review (uses brand state)
