@@ -164,8 +164,25 @@ export default function GuidedOnboarding() {
       const websiteForCall = normalized;
       const brandIdLocal = id!;
 
+      // Witty rotating loading toast so the user knows LUMI is working, not stalled
+      const wittyLines = [
+        "🔍 Snooping through your website (politely)…",
+        "🎨 Stealing your color palette — for science…",
+        "✍️ Learning how you actually talk…",
+        "🧠 Profiling your dream client (in a kind way)…",
+        "📸 Hunting for logos and pretty photos…",
+        "💬 Reading every testimonial out loud…",
+        "✨ Doing our homework so you don't have to…",
+      ];
+      const loadingId = toast.loading(wittyLines[0], { duration: Infinity });
+      let lineIdx = 0;
+      const rotator = setInterval(() => {
+        lineIdx = (lineIdx + 1) % wittyLines.length;
+        toast.loading(wittyLines[lineIdx], { id: loadingId, duration: Infinity });
+      }, 2800);
+
       // extract-brand → colors/logo/fonts/description
-      supabase.functions.invoke("extract-brand", { body: { url: websiteForCall } }).then(async (r) => {
+      const pBrand = supabase.functions.invoke("extract-brand", { body: { url: websiteForCall } }).then(async (r) => {
         const d: any = r.data;
         if (!d || r.error) return;
         const kitPatch: any = {
@@ -193,7 +210,7 @@ export default function GuidedOnboarding() {
       }).catch(() => {});
 
       // analyze-brand-voice → brand_voice
-      supabase.functions.invoke("analyze-brand-voice", { body: { brandId: brandIdLocal } })
+      const pVoice = supabase.functions.invoke("analyze-brand-voice", { body: { brandId: brandIdLocal } })
         .then(async () => {
           const { data: refreshed } = await supabase.from("brands").select("brand_voice").eq("id", brandIdLocal).maybeSingle();
           if (refreshed?.brand_voice) {
@@ -202,7 +219,7 @@ export default function GuidedOnboarding() {
         }).catch(() => {});
 
       // generate-audience-psychology → audience snapshot
-      supabase.functions.invoke("generate-audience-psychology", { body: { brandId: brandIdLocal } })
+      const pAud = supabase.functions.invoke("generate-audience-psychology", { body: { brandId: brandIdLocal } })
         .then(async () => {
           const { data: refreshed } = await supabase.from("brands").select("audience_psychology").eq("id", brandIdLocal).maybeSingle();
           const ap: any = refreshed?.audience_psychology;
@@ -211,8 +228,14 @@ export default function GuidedOnboarding() {
         }).catch(() => {});
 
       // harvest assets in the background (used in step 4)
-      supabase.functions.invoke("harvest-brand-assets", { body: { url: websiteForCall, brandId: brandIdLocal } })
+      const pAssets = supabase.functions.invoke("harvest-brand-assets", { body: { url: websiteForCall, brandId: brandIdLocal } })
         .catch(() => {});
+
+      // When all extractors settle, dismiss the witty loader with a success note
+      Promise.allSettled([pBrand, pVoice, pAud, pAssets]).then(() => {
+        clearInterval(rotator);
+        toast.success("All done — take a look ✨", { id: loadingId, duration: 3500 });
+      });
 
       await refreshBrands();
     } catch (e: any) {
