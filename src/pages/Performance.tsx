@@ -312,11 +312,13 @@ export default function Performance() {
                 body: {
                   brandId: activeBrand.id,
                   metaCampaignId: (w.meta_campaign_ids as any).campaignId,
+                  displayRange: activeRange.body,
                 },
               })
               .then((res) => ({ res, workspaceId: w.id as string, workspaceName: w.name as string })),
           ),
         );
+
         if (cancelled) return;
 
         const ok: EngineResult[] = [];
