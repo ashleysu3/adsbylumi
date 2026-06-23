@@ -878,8 +878,16 @@ export default function Performance() {
                         ? `${r.campaign.secondary.label}: ${formatKpi(r.meta.secondaryKpi, r.campaign.secondary.value)}`
                         : null;
                     const top = r.topRecommendation;
+                    // LUMI recommends always reflects a real recommendation:
+                    // prefer the top (entity-scoped) pick; otherwise fall back
+                    // to the campaign-level recommendation from the engine —
+                    // which the headline guard guarantees is honest (never a
+                    // generic "holding steady" while the primary KPI fails).
+                    const campRec = r.campaign?.recommendation;
                     const topLine = top
                       ? `${recTitle(top)} — ${top.recommendation.reasoning}`
+                      : campRec?.reasoning
+                      ? campRec.reasoning
                       : "Holding steady — no changes needed right now.";
                     return (
                       <Card
@@ -1174,10 +1182,12 @@ export default function Performance() {
                 );
               }
               if (!row.rec) {
+                const cRec = row.result.campaign?.recommendation;
+                const why = cRec?.diagnosis?.why || cRec?.reasoning || "Holding steady — no recommendation right now.";
                 return (
                   <li key={row.result.workspaceId || name} className="rounded-lg border p-3 space-y-1">
                     <div className="font-medium text-sm">{name}</div>
-                    <p className="text-xs text-muted-foreground">Holding steady — no recommendation right now.</p>
+                    <p className="text-xs text-muted-foreground">{why}</p>
                   </li>
                 );
               }
