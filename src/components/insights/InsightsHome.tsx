@@ -300,6 +300,59 @@ export function InsightsHome({
   const [postPickerBrand, setPostPickerBrand] = useState<any>(null);
   const [addingPosts, setAddingPosts] = useState(false);
 
+  // Snoozed ad IDs from recommendation_overrides — same filter Performance
+  // uses. Recs that target a snoozed ad must NOT render as executable, and
+  // must NOT trigger task creation downstream.
+  const [snoozedAdIds, setSnoozedAdIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!brandId) {
+      setSnoozedAdIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const nowIso = new Date().toISOString();
+      const { data } = await supabase
+        .from('recommendation_overrides')
+        .select('ad_id, snooze_until')
+        .eq('brand_id', brandId)
+        .eq('user_action', 'snoozed')
+        .gt('snooze_until', nowIso);
+      if (cancelled) return;
+      setSnoozedAdIds(new Set((data || []).map((o: any) => o.ad_id).filter(Boolean)));
+    })();
+    return () => { cancelled = true; };
+  }, [brandId]);
+
+  // Confirm-before-execute gating. Without this, a single click on Pause /
+  // Swap / Promote fires a Meta mutation against the user's real ad spend.
+  const [confirmRec, setConfirmRec] = useState<RecType | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const requestExecute = (rec: RecType) => {
+    setConfirmRec(rec);
+    setConfirmOpen(true);
+  };
+  const confirmExecute = async () => {
+    if (!confirmRec) return;
+    await executeRecommendation(confirmRec);
+    setConfirmOpen(false);
+    setConfirmRec(null);
+  };
+
+  // True if a rec references an ad the user has snoozed. Pulls from any of
+  // the action-payload shapes the recs use (pause/resume/swap/promote).
+  const isSnoozedRec = (rec: any): boolean => {
+    if (snoozedAdIds.size === 0) return false;
+    const ap = rec?.actionPayload || {};
+    return (
+      (ap.adId && snoozedAdIds.has(ap.adId)) ||
+      (ap.fatigueAdId && snoozedAdIds.has(ap.fatigueAdId)) ||
+      (ap.sourceAdId && snoozedAdIds.has(ap.sourceAdId))
+    );
+  };
+
+
+
   // Fetch campaign goals for all campaigns (and silently auto-heal any whose
   // primary_kpi disagrees with the objective-aware kpiConfig).
   useEffect(() => {
