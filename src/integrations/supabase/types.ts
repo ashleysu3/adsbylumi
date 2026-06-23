@@ -964,6 +964,10 @@ export type Database = {
           secondary_kpi_goal_type: string | null
           secondary_kpi_label: string | null
           secondary_kpi_threshold: number | null
+          tertiary_kpi: string | null
+          tertiary_kpi_goal_type: string | null
+          tertiary_kpi_label: string | null
+          tertiary_kpi_threshold: number | null
           updated_at: string | null
           workspace_id: string | null
         }
@@ -983,6 +987,10 @@ export type Database = {
           secondary_kpi_goal_type?: string | null
           secondary_kpi_label?: string | null
           secondary_kpi_threshold?: number | null
+          tertiary_kpi?: string | null
+          tertiary_kpi_goal_type?: string | null
+          tertiary_kpi_label?: string | null
+          tertiary_kpi_threshold?: number | null
           updated_at?: string | null
           workspace_id?: string | null
         }
@@ -1002,6 +1010,10 @@ export type Database = {
           secondary_kpi_goal_type?: string | null
           secondary_kpi_label?: string | null
           secondary_kpi_threshold?: number | null
+          tertiary_kpi?: string | null
+          tertiary_kpi_goal_type?: string | null
+          tertiary_kpi_label?: string | null
+          tertiary_kpi_threshold?: number | null
           updated_at?: string | null
           workspace_id?: string | null
         }
