@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requirePaidUser } from "../_shared/check-subscription.ts";
+import { buildPositioningBriefBlock } from "../_shared/positioning-brief.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,7 +17,8 @@ Deno.serve(async (req) => {
     const gate = await requirePaidUser(req, corsHeaders);
     if (gate.blocked) return gate.blocked;
 
-    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext, creativeIntelligence, previouslyUsedAngles, neverUseWords, singleAngleReplacement, maxAngles, campaignObjective, creativeBrief, campaignName } = await req.json();
+    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext, creativeIntelligence, previouslyUsedAngles, neverUseWords, singleAngleReplacement, maxAngles, campaignObjective, creativeBrief, campaignName, positioningBrief } = await req.json();
+    const positioningBlock = buildPositioningBriefBlock(positioningBrief);
 
     // Map the campaign's Meta objective to an angle-shaping intent. Keeps
     // top-of-funnel awareness campaigns from generating webinar-registration
@@ -438,6 +440,7 @@ ${offerData?.price ? `Price: ${offerData.price}` : ""}
 STRATEGY CONTEXT:
 ${JSON.stringify(strategyData, null, 2)}
 ${intentBlock}
+${positioningBlock}
 ${dmContext}
 
 ${audiencePsychology ? `BRAND-LEVEL AUDIENCE PSYCHOLOGY:\n${JSON.stringify(audiencePsychology, null, 2)}` : ""}

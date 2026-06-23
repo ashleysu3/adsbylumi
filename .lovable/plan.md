@@ -1,49 +1,54 @@
-# Admin: Send Test Weekly Ad Report
+# Plan: New Strategy Templates + Positioning-Aware Generators
 
-Give admins a way to send a real (not sample) weekly ad report for any user/brand, to any email address, for a chosen time window. Uses the exact same engine + email template the live cron uses — just bypasses the "is it Monday / already sent" gating and lets you override the recipient.
+## 1. Schema migration (campaign_templates)
 
-## What gets built
+Add two columns:
+- `type` text default `'funnel'` with check (`'funnel'`, `'addon'`)
+- `positioning_brief` jsonb (shape: `{ angle_intent, awareness_level, say, never_say }`)
 
-### 1. New admin page: `/admin/test-reports`
-- Linked from `AdminTabs`.
-- Form fields:
-  - **Brand** — searchable select of all brands (shows brand name + owner email).
-  - **Send to** — email input (defaults to the brand owner's email; admin can override).
-  - **Time window** — preset buttons: Last 7 days (default), Last 14 days, Last 30 days.
-  - **Send Test Report** button.
-- After send: shows status (sent / skipped / error), how many campaigns had data in the window, and any error detail.
+## 2. Seed 7 templates
 
-### 2. Extend `supabase/functions/send-weekly-reports`
-Add an `adminTestMode` branch (admin-authenticated, similar shape to existing `testMode`):
+I'll seed via the same migration (idempotent `INSERT ... ON CONFLICT (slug) DO UPDATE`). Each row will include:
+- `journey_stages` / `campaign_structure` describing number of campaigns and each stage's objective, optimization_event, and cold/warm/sale role
+- `kpi_benchmarks` with primary KPI per stage (and notes like "MRR-aware" / "judged on booked calls, not raw cost" / "judged on cost-to-warm, not conversions" / "no podcast download tracking")
+- `budget_suggestion`
+- `positioning_brief` exactly as specified in the request
 
-```ts
-// body: { adminTestMode: true, brandId, recipientEmail, daysWindow }
-```
+**Funnel templates (`type='funnel'`):**
+1. `lead-magnet-cold` — Lead Magnet (Leads, CPL ~$2–8)
+2. `webinar-cold` — Webinar / Free Training (Leads → warm retarget to offer)
+3. `paid-challenge-cold` — Paid Challenge (Sales, MRR-aware)
+4. `podcast-grow` — Podcast Grow + Capture (Video Views → retarget Leads/Traffic)
+5. `dm-conversations` — Direct Conversational Starters (Messages, judged on booked calls)
 
-Branch behavior:
-- Verify caller is an admin (`has_role(auth.uid(), 'admin')`) using a user-context client.
-- Load just the one brand + its workspaces (reuses the existing select).
-- Skip frequency / Monday / last_sent gating.
-- For each workspace, filter `performance_history` snapshots to `now() - daysWindow .. now()`; sum spend/reach/impressions over that window to decide "had delivery in the period." Skip campaigns with no delivery (matches live rule).
-- Run the same `generate-recommendations` invoke per workspace (same engine → same cardDisplay + topRecs).
-- Build email with the **existing** `buildBigPictureEmail` / `buildQuietWeekEmail`, prefix subject with `[TEST]` and the window label.
-- Send via Resend to `recipientEmail` (override; never to the brand owner unless they typed it).
-- Do **not** update `last_report_sent_at` (so a test send never blocks the real Monday send).
-- Return `{ ok, campaignCount, status }`.
+**Add-on templates (`type='addon'`):**
+6. `warmup-social` — Warm-Up (3 variants: Traffic / Engagement / Video Views)
+7. `event-geo` — Event / Geo (geo'd ad set or standalone)
 
-Cron path and existing `testMode` (sample) branch are unchanged.
+## 3. Strategy budget wiring (`src/lib/strategy-budget.ts`)
 
-### 3. Route + nav
-- Register `/admin/test-reports` in `src/App.tsx` (admin-protected like other admin routes).
-- Add a tab to `AdminTabs` ("Test Reports").
+- Extend `BudgetCampaignInput` with optional `templateSlug` / `budgetSuggestion` (string or `{min,max}` shape stored on the template).
+- When sizing the funnel, if the active template provides a `budget_suggestion`, use it as the floor for `mainDaily` and `leanDaily` instead of the generic KPI-based default.
+- Keep current behavior as fallback when no template hint is passed.
 
-## Out of scope
-- Pulling fresh Meta data on demand for arbitrary ranges (would require Meta API roundtrips per brand). We use what's already in `performance_history`, which is what the live email uses.
-- Bulk-sending to many brands at once.
-- Custom from/subject — same template, same `reports@adsbylumi.com` sender.
+## 4. Generator wiring (positioning_brief → AI prompts)
+
+For each of: `generate-creative-angles`, `compose-ad`, `finalize-ad-copy`, `generate-angle-copy`:
+- Accept optional `positioningBrief` in the request body (forwarded by callers that already pass strategy/template context).
+- When present, inject a `POSITIONING BRIEF` block into the system prompt with `angle_intent`, `awareness_level`, `say` (must-include language), `never_say` (banned phrasing) — and instruct the model to make these override the generic objective→tone mapping.
+- When absent, behavior is unchanged (back-compat).
+
+Frontend callers that already resolve a selected template (strategy/creative flows) will pull `template.positioning_brief` and pass it through. I'll only touch the call sites that already have the template in scope (no new prop drilling beyond that).
+
+## 5. Out of scope (explicitly not touched)
+
+- Billing / Stripe
+- Meta execution (campaign build, budget update edge functions)
+- Lumi Engine
+- No changes to recommendation/optimization logic
 
 ## Technical notes
-- Admin check uses the two-client pattern: anon client with the user's `Authorization` to verify role, service-role client for the data fetch + send.
-- Reuses `buildBigPictureEmail`, `buildQuietWeekEmail`, `CampaignRow`, `statusColors` — no template duplication.
-- Frontend uses `supabase.functions.invoke('send-weekly-reports', { body: { adminTestMode: true, ... } })`, which auto-attaches the admin's auth token.
-- After file edits I'll deploy `send-weekly-reports`.
+
+- Migration uses `ON CONFLICT (slug) DO UPDATE` so re-running is safe and existing rows get the new fields populated where slugs collide.
+- All new templates set `active=true` and reasonable `sort_order` (funnels 50–54, addons 90–91) so they don't reorder existing templates.
+- The two new columns are additive; existing rows get `type='funnel'` and `positioning_brief=NULL` and continue to work.

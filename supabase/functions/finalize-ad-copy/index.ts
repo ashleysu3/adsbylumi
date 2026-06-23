@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.83.0';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { buildPositioningBriefBlock } from '../_shared/positioning-brief.ts';
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -12,7 +13,8 @@ serve(async (req) => {
   }
 
   try {
-    const { concept, stage, uploadedAssetUrl, brandInfo } = await req.json();
+    const { concept, stage, uploadedAssetUrl, brandInfo, positioningBrief } = await req.json();
+    const positioningBlock = buildPositioningBriefBlock(positioningBrief);
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -68,6 +70,7 @@ serve(async (req) => {
     const productPsychology = offer?.product_psychology || {};
 
     const systemPrompt = `You are a Meta Ads copywriter specializing in high-converting ad copy that complies with Meta's policies.
+${positioningBlock}
 
 ## BRAND CONTEXT
 - Brand Name: ${brandInfo?.name || 'Not specified'}

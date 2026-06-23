@@ -7,11 +7,18 @@ import { getLumiKPIConfig } from "./lumi-kpi-config";
 
 export type CampaignTier = "main" | "supplemental";
 
+export type BudgetSuggestion = string | { min?: number; max?: number } | null | undefined;
+
 export type BudgetCampaignInput = {
   name?: string;
   objective?: string;
   goal?: string;
   audience?: string;
+  // Optional per-campaign budget floor coming from a strategy template's
+  // `budget_suggestion` field (e.g. "$20–60/day cold" or { min: 20, max: 60 }).
+  // When present, sets the lean/ideal floors so the template's recommendation
+  // beats the generic KPI-based default.
+  budgetSuggestion?: BudgetSuggestion;
 };
 
 export type StageBudget = {
@@ -57,6 +64,35 @@ export function parsePricePoint(price?: string | null): number | null {
   if (!matches?.length) return null;
   const n = Math.max(...matches.map(Number).filter((value) => isFinite(value)));
   return isFinite(n) && n > 0 ? n : null;
+}
+
+export function parseBudgetSuggestion(
+  suggestion: BudgetSuggestion,
+): { min: number; max: number } | null {
+  if (!suggestion) return null;
+  if (typeof suggestion === "object") {
+    const min = Number(suggestion.min);
+    const max = Number(suggestion.max);
+    if (isFinite(min) && isFinite(max) && min > 0 && max >= min) return { min, max };
+    if (isFinite(max) && max > 0) return { min: max, max };
+    if (isFinite(min) && min > 0) return { min, max: min };
+    return null;
+  }
+  // Parse strings like "$20–60/day", "$20-60/day", "$40/day", "20 to 60 per day"
+  const s = String(suggestion).replace(/,/g, "").replace(/\u2013|\u2014/g, "-");
+  // First numeric range in the string is treated as the suggested daily floor.
+  const range = s.match(/\$?\s*(\d+(?:\.\d+)?)\s*(?:-|to)\s*\$?\s*(\d+(?:\.\d+)?)/i);
+  if (range) {
+    const min = Number(range[1]);
+    const max = Number(range[2]);
+    if (isFinite(min) && isFinite(max) && min > 0 && max >= min) return { min, max };
+  }
+  const single = s.match(/\$\s*(\d+(?:\.\d+)?)/);
+  if (single) {
+    const n = Number(single[1]);
+    if (isFinite(n) && n > 0) return { min: n, max: n };
+  }
+  return null;
 }
 
 function targetCostForCampaign(
@@ -213,6 +249,14 @@ export function computeStrategyBudget(
       const floor = Math.ceil(price * 0.5);
       leanDaily = floor;
       idealDaily = Math.max(idealDaily, floor);
+    }
+
+    // Template-driven floor: a strategy template's budget_suggestion overrides
+    // the generic KPI-derived default so the recommended range wins.
+    const tpl = parseBudgetSuggestion(c.budgetSuggestion);
+    if (tpl) {
+      leanDaily = Math.max(leanDaily, tpl.min);
+      idealDaily = Math.max(idealDaily, tpl.max);
     }
 
     return {

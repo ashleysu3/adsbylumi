@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requirePaidUser } from "../_shared/check-subscription.ts";
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { buildPositioningBriefBlock } from '../_shared/positioning-brief.ts';
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -16,7 +17,8 @@ serve(async (req) => {
     const gate = await requirePaidUser(req, corsHeaders);
     if (gate.blocked) return gate.blocked;
 
-    const { angles, brandInfo, offerData, audiencePsychology, brandId, offerId, offerAudiencePsychology, feedback, neverUseWords, perspectiveRole } = await req.json();
+    const { angles, brandInfo, offerData, audiencePsychology, brandId, offerId, offerAudiencePsychology, feedback, neverUseWords, perspectiveRole, positioningBrief } = await req.json();
+    const positioningBlock = buildPositioningBriefBlock(positioningBrief);
 
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -150,6 +152,7 @@ testimonial quote from the content assets above.
     }
 
     const systemPrompt = `You are an expert Meta Ads copywriter specializing in creating multiple high-converting copy variations for ${brandInfo?.name || 'this brand'}.
+${positioningBlock}
 
 ## CRITICAL PERSPECTIVE RULE
 ${perspectiveRole === 'buyer' 
