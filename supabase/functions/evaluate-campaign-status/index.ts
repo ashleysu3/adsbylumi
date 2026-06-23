@@ -615,6 +615,45 @@ function detectAudienceTemp(name?: string | null, targeting?: any): 'cold' | 'wa
 // Classification — the heart of the engine. Implements every rule in §6.
 // ---------------------------------------------------------------------------
 
+interface GoalConfig {
+  kpi: string;
+  label: string;
+  goal: number;
+  direction: 'less_than' | 'greater_than';
+  isDefault: boolean;
+}
+
+function buildGoalsConfig(
+  primaryKpi: string,
+  primaryGoal: number,
+  primaryDirection: 'less_than' | 'greater_than',
+  storedGoals: any,
+): GoalConfig[] {
+  const out: GoalConfig[] = [];
+  out.push({
+    kpi: primaryKpi,
+    label: storedGoals?.primary_kpi_label || KPI_LABELS[primaryKpi] || primaryKpi.toUpperCase(),
+    goal: primaryGoal,
+    direction: primaryDirection,
+    isDefault: !storedGoals?.primary_kpi_threshold,
+  });
+  for (const slot of ['secondary', 'tertiary'] as const) {
+    const k = storedGoals?.[`${slot}_kpi`];
+    const t = storedGoals?.[`${slot}_kpi_threshold`];
+    if (k && t != null) {
+      const dir = storedGoals?.[`${slot}_kpi_goal_type`] === 'greater_than' ? 'greater_than' : (KPI_DEFAULT_DIRECTION[k] || 'less_than');
+      out.push({
+        kpi: String(k),
+        label: storedGoals?.[`${slot}_kpi_label`] || KPI_LABELS[k] || String(k).toUpperCase(),
+        goal: Number(t),
+        direction: dir as any,
+        isDefault: false,
+      });
+    }
+  }
+  return out;
+}
+
 interface ClassifyArgs {
   id: string;
   name: string;
@@ -622,6 +661,7 @@ interface ClassifyArgs {
   primaryKpi: string;
   primaryGoal: number;
   primaryDirection: 'less_than' | 'greater_than';
+  goalsConfig: GoalConfig[];
   secondaryKpi: string | null;
   meta3: any; meta7: any; meta30: any; metaFatigueRef: any;
   adsetType: 'testing' | 'scaling' | 'unknown';
