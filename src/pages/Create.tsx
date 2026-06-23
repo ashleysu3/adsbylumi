@@ -246,6 +246,10 @@ export default function Create() {
   const [newOfferName, setNewOfferName] = useState("");
   const [newOfferUrl, setNewOfferUrl] = useState("");
 
+  // Access-code redemption (unlocks a specialized strategy)
+  const [accessCode, setAccessCode] = useState("");
+  const [redeemingCode, setRedeemingCode] = useState(false);
+
   // Social growth flow state
   const [showSocialGrowthFlow, setShowSocialGrowthFlow] = useState(false);
   
