@@ -1182,10 +1182,12 @@ export default function Performance() {
                 );
               }
               if (!row.rec) {
+                const cRec = row.result.campaign?.recommendation;
+                const why = cRec?.diagnosis?.why || cRec?.reasoning || "Holding steady — no recommendation right now.";
                 return (
                   <li key={row.result.workspaceId || name} className="rounded-lg border p-3 space-y-1">
                     <div className="font-medium text-sm">{name}</div>
-                    <p className="text-xs text-muted-foreground">Holding steady — no recommendation right now.</p>
+                    <p className="text-xs text-muted-foreground">{why}</p>
                   </li>
                 );
               }
