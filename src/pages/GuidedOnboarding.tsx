@@ -1035,6 +1035,7 @@ function RevealRow({ label, value }: { label: string; value: any }) {
 function ReviewDesignCard({ brand, onSave }: { brand: any; onSave: (p: any) => Promise<void> }) {
   const kitColors: string[] = brand?._kit?.colors || [];
   const kitFonts: string[] = brand?._kit?.fonts || [];
+  const [editing, setEditing] = useState(false);
   const [colors, setColors] = useState<string>(kitColors.join(", "));
   const [fonts, setFonts] = useState<string>(kitFonts.join(", "));
   const [saving, setSaving] = useState(false);
@@ -1043,7 +1044,8 @@ function ReviewDesignCard({ brand, onSave }: { brand: any; onSave: (p: any) => P
     setFonts((brand?._kit?.fonts || []).join(", "));
   }, [brand?._kit?.colors, brand?._kit?.fonts]);
 
-  const parsedColors = colors.split(",").map((s) => s.trim()).filter(Boolean);
+  const parsedColors = (editing ? colors.split(",").map((s) => s.trim()).filter(Boolean) : kitColors);
+  const parsedFonts = (editing ? fonts.split(",").map((s) => s.trim()).filter(Boolean) : kitFonts);
 
   const save = async () => {
     if (!brand?.id || !brand?.user_id) return;
@@ -1052,7 +1054,7 @@ function ReviewDesignCard({ brand, onSave }: { brand: any; onSave: (p: any) => P
       const patch: any = {
         user_id: brand.user_id,
         brand_id: brand.id,
-        colors: parsedColors,
+        colors: colors.split(",").map((s) => s.trim()).filter(Boolean),
         fonts: fonts.split(",").map((s) => s.trim()).filter(Boolean),
         status: "confirmed",
       };
@@ -1060,8 +1062,8 @@ function ReviewDesignCard({ brand, onSave }: { brand: any; onSave: (p: any) => P
         .from("brand_kits" as any)
         .upsert(patch, { onConflict: "user_id,brand_id" });
       if (error) throw error;
-      // Mirror locally
       await onSave({ _kit: { ...(brand?._kit || {}), colors: patch.colors, fonts: patch.fonts } });
+      setEditing(false);
     } finally {
       setSaving(false);
     }
@@ -1069,31 +1071,75 @@ function ReviewDesignCard({ brand, onSave }: { brand: any; onSave: (p: any) => P
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base"><Palette className="h-4 w-4" /> Design guide</CardTitle>
-        <CardDescription className="text-xs">Pulled from your website — edit anything that's off.</CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between space-y-0">
+        <div>
+          <CardTitle className="flex items-center gap-2 text-base"><Palette className="h-4 w-4" /> Design guide</CardTitle>
+          <CardDescription className="text-xs">Pulled from your website — edit anything that's off.</CardDescription>
+        </div>
+        {!editing && (
+          <Button size="sm" variant="ghost" onClick={() => setEditing(true)} className="h-7">
+            <Pencil className="h-3 w-3 mr-1" /> Edit
+          </Button>
+        )}
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div>
-          <Label className="text-xs">Brand colors (comma-separated hex)</Label>
-          <Input value={colors} onChange={(e) => setColors(e.target.value)} placeholder="#000000, #FFFFFF" />
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            {parsedColors.slice(0, 12).map((c, i) => (
-              <div key={i} className="h-7 w-7 rounded border" style={{ background: c }} title={c} />
-            ))}
-            {parsedColors.length === 0 && (
-              <span className="text-xs text-muted-foreground">No colors yet — we couldn't read them off the page.</span>
-            )}
+      <CardContent className="space-y-5">
+        {/* Colors */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <Palette className="h-3 w-3" /> Brand colors
           </div>
+          {parsedColors.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {parsedColors.slice(0, 12).map((c, i) => (
+                <div key={i} className="flex items-center gap-2 rounded-md border bg-card p-2">
+                  <div className="h-8 w-8 rounded shrink-0 border" style={{ background: c }} />
+                  <span className="text-xs font-mono uppercase truncate">{c}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">No colors found — add your own below.</p>
+          )}
+          {editing && (
+            <Input value={colors} onChange={(e) => setColors(e.target.value)} placeholder="#000000, #FFFFFF" className="mt-2" />
+          )}
         </div>
-        <div>
-          <Label className="text-xs">Brand fonts</Label>
-          <Input value={fonts} onChange={(e) => setFonts(e.target.value)} placeholder="Inter, Playfair Display" />
+
+        {/* Fonts */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <Type className="h-3 w-3" /> Brand fonts
+          </div>
+          {parsedFonts.length > 0 ? (
+            <div className="space-y-2">
+              {parsedFonts.slice(0, 4).map((f, i) => (
+                <div key={i} className="rounded-md border bg-card px-3 py-2">
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{f}</div>
+                  <div className="text-xl leading-tight" style={{ fontFamily: `'${f}', system-ui, sans-serif` }}>
+                    The quick brown fox
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">No fonts detected — add your own below.</p>
+          )}
+          {editing && (
+            <Input value={fonts} onChange={(e) => setFonts(e.target.value)} placeholder="Inter, Playfair Display" className="mt-2" />
+          )}
         </div>
-        <Button size="sm" variant="outline" onClick={save} disabled={saving}>
-          {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-          Save
-        </Button>
+
+        {editing && (
+          <div className="flex gap-2">
+            <Button size="sm" variant="lumi" onClick={save} disabled={saving}>
+              {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+              Save
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setColors(kitColors.join(", ")); setFonts(kitFonts.join(", ")); }}>
+              Cancel
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
