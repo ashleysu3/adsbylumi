@@ -152,6 +152,7 @@ testimonial quote from the content assets above.
     }
 
     const systemPrompt = `You are an expert Meta Ads copywriter specializing in creating multiple high-converting copy variations for ${brandInfo?.name || 'this brand'}.
+${positioningBlock}
 
 ## CRITICAL PERSPECTIVE RULE
 ${perspectiveRole === 'buyer' 
