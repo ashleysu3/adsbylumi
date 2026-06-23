@@ -316,7 +316,7 @@ export default function AdStrategy() {
           id: `offer-noc-${o.id}`,
           title: `${o.name} has no campaign running yet.`,
           cta: "Create campaign",
-          onCta: () => navigate("/create"),
+          onCta: () => navigate(`/create?from=strategy&goal=promote_offer&offerId=${o.id}`),
         });
     });
     // Funnels missing stages
@@ -329,14 +329,20 @@ export default function AdStrategy() {
             id: `gap-convert-${f.key}`,
             title: `${f.offerName}: no conversion campaign — there's no campaign closing the sale.`,
             cta: "Add convert campaign",
-            onCta: () => navigate("/create"),
+            onCta: () =>
+              navigate(
+                `/create?from=strategy&goal=promote_offer${f.offerId ? `&offerId=${f.offerId}` : ""}`,
+              ),
           });
         if (!stages.has("grow") && stages.has("convert"))
           moves.push({
             id: `gap-grow-${f.key}`,
             title: `${f.offerName}: no cold-traffic campaign — you may run out of new leads.`,
             cta: "Add cold campaign",
-            onCta: () => navigate("/create"),
+            onCta: () =>
+              navigate(
+                `/create?from=strategy&goal=grow_social${f.offerId ? `&offerId=${f.offerId}` : ""}`,
+              ),
           });
       });
     // Bottlenecks → tasks
@@ -415,7 +421,7 @@ export default function AdStrategy() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => navigate("/create")}
+                  onClick={() => navigate("/create?from=strategy")}
                   className="gap-1.5"
                 >
                   <Plus className="h-3.5 w-3.5" /> Add a funnel
@@ -451,7 +457,7 @@ export default function AdStrategy() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => navigate("/create")}
+                              onClick={() => navigate(`/create?from=strategy&goal=promote_offer&offerId=${f.offerId}`)}
                               className="gap-1.5"
                             >
                               <Plus className="h-3.5 w-3.5" /> Build a campaign
@@ -546,7 +552,7 @@ export default function AdStrategy() {
                   title="No campaigns to set goals on yet"
                   description="Once you launch a campaign, set a business goal here and LUMI will reality-check it against your budget."
                   ctaLabel="Create campaign"
-                  onCta={() => navigate("/create")}
+                  onCta={() => navigate("/create?from=strategy")}
                 />
               ) : (
                 <div className="space-y-2">

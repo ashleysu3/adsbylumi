@@ -156,7 +156,15 @@ interface WizardProgress {
 export default function Create() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const fromStrategy = searchParams.get("from") === "strategy";
+  // Treat onboarding hand-offs and AdStrategy "build" hand-offs the same as a
+  // Strategy-Plan entry — the user has already chosen a direction elsewhere,
+  // so Create must skip its own "recommend a strategy" landing step.
+  const fromStrategy =
+    searchParams.get("from") === "strategy" ||
+    searchParams.get("onboarding") === "1" ||
+    !!searchParams.get("goal") ||
+    !!searchParams.get("strategy_id") ||
+    !!searchParams.get("strategy");
   const strategyPlan = fromStrategy ? loadStrategyPlan() : null;
   const strategyCampaignIdx = Number(searchParams.get("campaignIdx") ?? strategyPlan?.activeIndex ?? 0);
   const strategyCampaign = Number.isFinite(strategyCampaignIdx)
@@ -165,7 +173,7 @@ export default function Create() {
   const strategyGoal = searchParams.get("goal") || strategyCampaign?.goal || "";
   const strategyObjective = searchParams.get("objective") || strategyCampaign?.objective || "";
   const strategyCampaignName = searchParams.get("campaignName") || strategyCampaign?.name || "";
-  const strategyOfferId = searchParams.get("offerId") || strategyPlan?.offer_id || "";
+  const strategyOfferId = searchParams.get("offerId") || searchParams.get("offer_id") || strategyPlan?.offer_id || "";
   const VALID_GOALS = ["promote_offer", "grow_social", "get_leads", "book_calls", "dm_leads", "local", "event_location"];
   const initialGoal = fromStrategy && VALID_GOALS.includes(strategyGoal) ? strategyGoal : (fromStrategy ? "promote_offer" : "");
 
@@ -477,6 +485,16 @@ export default function Create() {
     handleGenerateAndNavigate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromStrategy, currentStep, selectedOfferId, selectedTemplateId]);
+
+  // Also skip the "What would you like to do?" entry card whenever the user
+  // arrived with an intent (onboarding hand-off, AdStrategy build action, or
+  // a saved strategy plan). The choice was already made.
+  useEffect(() => {
+    if (fromStrategy && currentStep === 0) {
+      setCurrentStep(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromStrategy, currentStep]);
 
   const handleNext = async () => {
     if (currentStep === 2) {
@@ -915,7 +933,7 @@ export default function Create() {
             <div className="space-y-4">
               {/* LUMI Recommends */}
               <button
-                onClick={() => navigate("/recommended-strategy")}
+                onClick={() => navigate("/strategy")}
                 className="group text-left w-full"
               >
                 <Card variant="gradient" className="p-6 hover:shadow-lumi transition-all cursor-pointer relative overflow-hidden">
@@ -1021,7 +1039,7 @@ export default function Create() {
                           };
                           sessionStorage.setItem("lumi_strategy_plan", JSON.stringify(stored));
                           toast.success(`Unlocked: ${strat.name}`);
-                          navigate("/strategy-plan");
+                          navigate("/strategy");
                         } catch (err: any) {
                           console.error(err);
                           toast.error(err?.message || "Couldn't redeem that code");
