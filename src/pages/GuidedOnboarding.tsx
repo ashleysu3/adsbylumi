@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,8 @@ function domainName(url: string): string {
 
 export default function GuidedOnboarding() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const addBrandMode = searchParams.get("mode") === "add-brand";
   const { refreshBrands, setActiveBrand } = useBrand();
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [step, setStep] = useState(1);
@@ -86,20 +88,23 @@ export default function GuidedOnboarding() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { navigate("/auth"); return; }
-      const { data: existing } = await supabase
-        .from("brands").select("*").eq("user_id", user.id)
-        .order("created_at", { ascending: false }).limit(1);
-      const latest = existing?.[0];
-      if (latest && !latest.onboarding_completed_at) {
-        setBrandId(latest.id);
-        setBrand(latest);
-        setWebsiteUrl(latest.website_url || "");
-        const resumeStep = Math.max(1, Math.min(TOTAL, latest.onboarding_step || 1));
-        setStep(resumeStep);
+      // When user explicitly asked to add a new brand, do NOT resume an in-progress one.
+      if (!addBrandMode) {
+        const { data: existing } = await supabase
+          .from("brands").select("*").eq("user_id", user.id)
+          .order("created_at", { ascending: false }).limit(1);
+        const latest = existing?.[0];
+        if (latest && !latest.onboarding_completed_at) {
+          setBrandId(latest.id);
+          setBrand(latest);
+          setWebsiteUrl(latest.website_url || "");
+          const resumeStep = Math.max(1, Math.min(TOTAL, latest.onboarding_step || 1));
+          setStep(resumeStep);
+        }
       }
       setCheckingAuth(false);
     })();
-  }, [navigate]);
+  }, [navigate, addBrandMode]);
 
   const persistStep = useCallback(async (id: string, n: number) => {
     await supabase.from("brands").update({ onboarding_step: n }).eq("id", id);
@@ -137,8 +142,20 @@ export default function GuidedOnboarding() {
         id = data.id; row = data;
         setBrandId(id!); setBrand(row);
       } else if (row?.website_url !== normalized) {
-        await supabase.from("brands").update({ website_url: normalized }).eq("id", id);
-        row = { ...row, website_url: normalized };
+        // Website changed → reset brand identity so old name/colors/etc don't bleed through.
+        const placeholder = domainName(normalized);
+        await supabase.from("brands").update({
+          website_url: normalized,
+          name: placeholder,
+          brand_colors: null,
+          brand_fonts: null,
+          value_proposition: null,
+          target_audience: null,
+          brand_voice: null,
+          voice_profile: null,
+          social_proof: null,
+        }).eq("id", id);
+        row = { ...row, website_url: normalized, name: placeholder };
         setBrand(row);
       }
       setStep1Reveal({ brandName: row?.name });
@@ -162,7 +179,7 @@ export default function GuidedOnboarding() {
         const brandPatch: any = {};
         if (d.colors?.length) brandPatch.brand_colors = d.colors;
         if (d.fonts?.length) brandPatch.brand_fonts = d.fonts;
-        if (d.name && (!row?.name || row.name === domainName(websiteForCall))) brandPatch.name = d.name;
+        if (d.name) brandPatch.name = d.name;
         if (d.description) brandPatch.value_proposition = d.description;
         if (Object.keys(brandPatch).length) {
           await supabase.from("brands").update(brandPatch).eq("id", brandIdLocal);
