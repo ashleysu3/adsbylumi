@@ -440,6 +440,7 @@ ${offerData?.price ? `Price: ${offerData.price}` : ""}
 STRATEGY CONTEXT:
 ${JSON.stringify(strategyData, null, 2)}
 ${intentBlock}
+${positioningBlock}
 ${dmContext}
 
 ${audiencePsychology ? `BRAND-LEVEL AUDIENCE PSYCHOLOGY:\n${JSON.stringify(audiencePsychology, null, 2)}` : ""}
