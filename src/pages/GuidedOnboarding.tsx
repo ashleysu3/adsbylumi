@@ -268,14 +268,19 @@ export default function GuidedOnboarding() {
         .select("*")
         .order("created_at", { ascending: false });
       setAssets((data as any) || []);
-      const { data: ua } = await supabase
+      const { data: uaRaw } = await supabase
         .from("user_assets" as any)
         .select("*")
         .eq("brand_id", brandId);
-      const headshot = (ua || []).find((a: any) => a.kind === "headshot");
+      const ua = (uaRaw as any[]) || [];
+      const headshot = ua.find((a: any) => a.kind === "headshot");
       setHeadshotUrl(headshot?.original_url || headshot?.cutout_url || null);
-      const { data: b } = await supabase.from("brands").select("logo_url").eq("id", brandId).maybeSingle();
-      setLogoUrl(b?.logo_url || null);
+      const { data: kit } = await supabase
+        .from("brand_kits" as any)
+        .select("logo_url")
+        .eq("brand_id", brandId)
+        .maybeSingle();
+      setLogoUrl((kit as any)?.logo_url || null);
     })();
   }, [step, brandId]);
 
