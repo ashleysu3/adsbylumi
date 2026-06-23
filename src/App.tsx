@@ -112,6 +112,7 @@ import Photos from "./pages/Photos";
 import Creative from "./pages/Creative";
 import Launch from "./pages/Launch";
 import Performance from "./pages/Performance";
+import CloserLook from "./pages/CloserLook";
 import {
   AudiencePlaceholder,
   GoalsPlaceholder,
