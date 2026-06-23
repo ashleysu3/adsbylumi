@@ -165,83 +165,103 @@ export function MyCreativeLibrary() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold font-display">My Creative</h2>
-          <p className="text-sm text-muted-foreground">
-            Everything you've created or saved for this brand — ideas, b-roll, graphics, and photos.
-          </p>
-        </div>
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search your creative…"
-            className="pl-9"
-          />
-        </div>
+      <div>
+        <h2 className="text-lg font-semibold font-display">My Creative</h2>
+        <p className="text-sm text-muted-foreground">
+          Finished graphics and b-roll LUMI has made for this brand, plus your saved concepts.
+        </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {KIND_FILTERS.map((k) => {
-          const Icon = k.icon;
-          const active = filter === k.value;
-          const n = counts[k.value] || 0;
-          return (
-            <button
-              key={k.value}
-              type="button"
-              onClick={() => setFilter(k.value)}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all",
-                active
-                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                  : "bg-card hover:bg-muted/60 border-border text-foreground"
-              )}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {k.label}
-              <span
-                className={cn(
-                  "ml-1 rounded-full px-1.5 text-xs",
-                  active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"
-                )}
-              >
-                {n}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <Tabs defaultValue="library" className="w-full">
+        <TabsList>
+          <TabsTrigger value="library" className="gap-2">
+            <Sparkles className="h-3.5 w-3.5" />
+            Library
+          </TabsTrigger>
+          <TabsTrigger value="saved" className="gap-2">
+            <Heart className="h-3.5 w-3.5" />
+            Saved Concepts
+          </TabsTrigger>
+        </TabsList>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" />
-          Loading your creative…
-        </div>
-      ) : filtered.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="py-12 text-center text-muted-foreground space-y-2">
-            <Sparkles className="h-6 w-6 mx-auto text-muted-foreground/70" />
-            <p className="font-medium text-foreground">Nothing here yet</p>
-            <p className="text-sm">
-              {filter === "all"
-                ? "As you save ideas, upload b-roll, harvest brand graphics, or add photos, they'll show up here."
-                : `No ${KIND_FILTERS.find((k) => k.value === filter)?.label.toLowerCase()} yet for this brand.`}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map((it) => (
-            <CreativeCard key={it.id} item={it} />
-          ))}
-        </div>
-      )}
+        <TabsContent value="library" className="space-y-4 mt-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {KIND_FILTERS.map((k) => {
+                const Icon = k.icon;
+                const active = filter === k.value;
+                const n = counts[k.value] || 0;
+                return (
+                  <button
+                    key={k.value}
+                    type="button"
+                    onClick={() => setFilter(k.value)}
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all",
+                      active
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-card hover:bg-muted/60 border-border text-foreground"
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {k.label}
+                    <span
+                      className={cn(
+                        "ml-1 rounded-full px-1.5 text-xs",
+                        active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {n}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search your creative…"
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              Loading your creative…
+            </div>
+          ) : filtered.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="py-12 text-center text-muted-foreground space-y-2">
+                <Sparkles className="h-6 w-6 mx-auto text-muted-foreground/70" />
+                <p className="font-medium text-foreground">Nothing here yet</p>
+                <p className="text-sm">
+                  {filter === "all"
+                    ? "As LUMI generates b-roll and graphics for this brand, they'll show up here."
+                    : `No ${KIND_FILTERS.find((k) => k.value === filter)?.label.toLowerCase()} yet for this brand.`}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filtered.map((it) => (
+                <CreativeCard key={it.id} item={it} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="saved" className="mt-4">
+          <SavedConceptsLibrary />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
+
 
 function CreativeCard({ item }: { item: CreativeItem }) {
   const Icon = item.kind === "broll" ? Film : ImageIcon;
