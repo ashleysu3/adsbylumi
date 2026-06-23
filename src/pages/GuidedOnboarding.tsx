@@ -25,17 +25,24 @@ import { seedDeferredTask, seedFirstCampaignTasks } from "@/lib/onboarding-tasks
 
 const STEPS = [
   "Your website",
-  "Brand basics",
-  "Audience",
-  "Design guide & images",
-  "Social proof",
+  "Here's what we found",
   "Your offer",
   "Connect Meta",
   "Strategy & launch",
 ];
 const TOTAL = STEPS.length;
-// Old → new step mapping for resume (old 6-step flow → new 8-step flow)
-const RESUME_REMAP: Record<number, number> = { 1: 1, 2: 2, 3: 6, 4: 4, 5: 7, 6: 8 };
+// Remap any historical onboarding_step value into the new 5-step flow.
+// Old 8-step flow (1=site, 2=basics, 3=audience, 4=design, 5=proof, 6=offer, 7=meta, 8=strategy)
+// Old 6-step flow (1=site, 2=basics, 3=offer, 4=design, 5=meta, 6=strategy)
+// We can't distinguish 6-step values 3/5/6 from 8-step — prefer the 8-step interpretation
+// since the 6-step variant is older and rarely in-progress now.
+const RESUME_REMAP: Record<number, number> = {
+  1: 1,
+  2: 2, 3: 2, 4: 2, 5: 2,
+  6: 3,
+  7: 4,
+  8: 5,
+};
 
 type AssetRow = { id: string; url: string; role: string | null; kept: boolean; source_url?: string | null; signedUrl?: string };
 
