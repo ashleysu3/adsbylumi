@@ -126,23 +126,37 @@ Deno.serve(async (req) => {
     // Step 0: Detect current budget level (CBO vs ABO) from Meta.
     // We fetch campaign fields + its ad sets once and reason from there.
     // ------------------------------------------------------------
+    // Retry helper for Meta rate-limit / transient errors. Meta surfaces
+    // throttling as `error.code === 17` ("User request limit reached") or
+    // 32 (page-level rate limit) — both clear after a short wait.
+    const fetchMetaJson = async (url: string, label: string): Promise<any> => {
+      const delays = [0, 800, 2000]; // up to 3 attempts
+      let lastErr: any = null;
+      for (const wait of delays) {
+        if (wait) await new Promise((r) => setTimeout(r, wait));
+        const resp = await fetch(url);
+        const json = await resp.json();
+        if (!json.error) return json;
+        lastErr = json.error;
+        const code = json.error?.code;
+        const transient = code === 17 || code === 32 || code === 4 || code === 613;
+        if (!transient) break;
+      }
+      const msg = lastErr?.code === 17 || lastErr?.code === 32
+        ? `Meta is rate-limiting requests right now. Please wait a minute and try again.`
+        : `Failed to read ${label}: ${lastErr?.message || "unknown error"}`;
+      throw new Error(msg);
+    };
+
     const campFieldsUrl =
       `https://graph.facebook.com/v25.0/${campaignId}` +
       `?fields=id,daily_budget,lifetime_budget&access_token=${encodeURIComponent(accessToken)}`;
-    const campFetch = await fetch(campFieldsUrl);
-    const campData = await campFetch.json();
-    if (campData.error) {
-      throw new Error(`Failed to read campaign: ${campData.error.message}`);
-    }
+    const campData = await fetchMetaJson(campFieldsUrl, "campaign");
 
     const adSetsListUrl =
       `https://graph.facebook.com/v25.0/${campaignId}/adsets` +
       `?fields=id,name,daily_budget,lifetime_budget,status&limit=100&access_token=${encodeURIComponent(accessToken)}`;
-    const adSetsResp = await fetch(adSetsListUrl);
-    const adSetsData = await adSetsResp.json();
-    if (adSetsData.error) {
-      throw new Error(`Failed to read ad sets: ${adSetsData.error.message}`);
-    }
+    const adSetsData = await fetchMetaJson(adSetsListUrl, "ad sets");
     const allAdSets: any[] = Array.isArray(adSetsData.data) ? adSetsData.data : [];
     const activeAdSets = allAdSets.filter(
       (as: any) => as.status === "ACTIVE" || as.status === "PAUSED",
