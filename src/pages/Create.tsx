@@ -975,6 +975,76 @@ export default function Create() {
                   </Card>
                 </button>
               </div>
+
+              {/* I have a code! — redeems a specialized strategy */}
+              <Card variant="glow" className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-lumi-purple-1 to-lumi-orange-1 flex items-center justify-center flex-shrink-0">
+                    <Ticket className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-foreground text-sm">I have a code!</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Got a code from a partner or coach? Drop it in to unlock a strategy made just for you.
+                    </p>
+                    <form
+                      className="flex gap-2 mt-3"
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const code = accessCode.trim();
+                        if (!code) {
+                          toast.error("Enter a code first");
+                          return;
+                        }
+                        setRedeemingCode(true);
+                        try {
+                          const { data, error } = await supabase.rpc(
+                            "redeem_strategy_code" as any,
+                            { p_code: code }
+                          );
+                          if (error) throw error;
+                          if (!data) {
+                            toast.error("That code didn't match an active strategy. Double-check it and try again.");
+                            return;
+                          }
+                          const strat: any = data;
+                          const campaigns = Array.isArray(strat.campaigns) ? strat.campaigns : [];
+                          const stored = {
+                            slug: strat.slug,
+                            name: strat.name,
+                            why_it_works: strat.why_it_works ?? "",
+                            intro: strat.description ?? "",
+                            campaigns,
+                            statuses: campaigns.map(() => "todo" as const),
+                            activeIndex: null as number | null,
+                            offer_id: null as string | null,
+                          };
+                          sessionStorage.setItem("lumi_strategy_plan", JSON.stringify(stored));
+                          toast.success(`Unlocked: ${strat.name}`);
+                          navigate("/strategy-plan");
+                        } catch (err: any) {
+                          console.error(err);
+                          toast.error(err?.message || "Couldn't redeem that code");
+                        } finally {
+                          setRedeemingCode(false);
+                        }
+                      }}
+                    >
+                      <Input
+                        value={accessCode}
+                        onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+                        placeholder="Enter your code"
+                        className="font-mono uppercase tracking-wider"
+                        maxLength={32}
+                        disabled={redeemingCode}
+                      />
+                      <Button type="submit" variant="lumi" disabled={redeemingCode || !accessCode.trim()}>
+                        {redeemingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : "Unlock"}
+                      </Button>
+                    </form>
+                  </div>
+                </div>
+              </Card>
             </div>
 
           </motion.div>
