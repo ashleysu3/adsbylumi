@@ -675,6 +675,7 @@ export function GenerateCreativeDialog() {
         : undefined;
 
       const composited: Array<{ aspect: string; url: string; path: string; base64: string; isVertical: boolean }> = [];
+      const compositeErrors: string[] = [];
       await Promise.all(
         backgrounds.map(async (bg, bgIdx) => {
           try {
@@ -691,6 +692,7 @@ export function GenerateCreativeDialog() {
               logoOverlay,
               placements: ["feed", "story"],
             });
+            if (!imgs.length) throw new Error("engine returned no images");
             imgs.forEach((im, j) => {
               const isVertical = (im.placement || "").toLowerCase().includes("story") || im.height > im.width;
               composited.push({
@@ -701,15 +703,43 @@ export function GenerateCreativeDialog() {
                 isVertical,
               });
             });
-          } catch (err) {
+          } catch (err: any) {
             console.error("composite failed for bg", bgIdx, err);
+            compositeErrors.push(err?.message || String(err));
+            // Fallback: keep the raw on-brand background so the user can still proceed.
+            try {
+              const res = await fetch(bg.url);
+              const blob = await res.arrayBuffer();
+              let b64 = "";
+              const bytes = new Uint8Array(blob);
+              for (let i = 0; i < bytes.byteLength; i++) b64 += String.fromCharCode(bytes[i]);
+              const base64 = btoa(b64);
+              composited.push({
+                aspect: "1x1",
+                url: bg.url,
+                path: bg.path || `bg-${bgIdx}-raw`,
+                base64,
+                isVertical: false,
+              });
+            } catch (e2) {
+              console.error("background fallback failed", e2);
+            }
           }
         }),
       );
 
       setBoardResults(composited);
-      if (!composited.length) toast.error("Engine could not composite the design. Try again.");
-      else toast.success(`Generated ${composited.length} finished designs`);
+      if (!composited.length) {
+        toast.error(
+          compositeErrors[0]
+            ? `Engine could not composite: ${compositeErrors[0]}`
+            : "Engine could not composite the design. Try again.",
+        );
+      } else if (compositeErrors.length) {
+        toast.warning(`Showing ${composited.length} backgrounds — text overlay failed (${compositeErrors[0]}).`);
+      } else {
+        toast.success(`Generated ${composited.length} finished designs`);
+      }
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || "Failed to generate ads");
