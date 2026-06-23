@@ -51,7 +51,13 @@ Deno.serve(async (req) => {
 
   // Parse body once so we can detect testMode for the preview page.
   let body: any = {};
-  try { body = await req.clone().json(); } catch { /* no body */ }
+  try {
+    const raw = await req.text();
+    if (raw) body = JSON.parse(raw);
+  } catch (e) {
+    console.warn('[weekly] body parse failed:', (e as any)?.message);
+  }
+  console.log('[weekly] request received, testMode=', body?.testMode === true);
 
   // TEST MODE: lets the in-app preview send a sample of the real email
   // to any address. Requires Authorization header (logged-in user).
