@@ -1028,33 +1028,67 @@ function RevealRow({ label, value }: { label: string; value: any }) {
 }
 
 function ReviewDesignCard({ brand, onSave }: { brand: any; onSave: (p: any) => Promise<void> }) {
-  const [colors, setColors] = useState<string>((brand?.brand_colors || []).join(", "));
-  const [fonts, setFonts] = useState<string>((brand?.brand_fonts || []).join(", "));
+  const kitColors: string[] = brand?._kit?.colors || [];
+  const kitFonts: string[] = brand?._kit?.fonts || [];
+  const [colors, setColors] = useState<string>(kitColors.join(", "));
+  const [fonts, setFonts] = useState<string>(kitFonts.join(", "));
+  const [saving, setSaving] = useState(false);
   useEffect(() => {
-    setColors((brand?.brand_colors || []).join(", "));
-    setFonts((brand?.brand_fonts || []).join(", "));
-  }, [brand?.brand_colors, brand?.brand_fonts]);
+    setColors((brand?._kit?.colors || []).join(", "));
+    setFonts((brand?._kit?.fonts || []).join(", "));
+  }, [brand?._kit?.colors, brand?._kit?.fonts]);
+
+  const parsedColors = colors.split(",").map((s) => s.trim()).filter(Boolean);
+
+  const save = async () => {
+    if (!brand?.id || !brand?.user_id) return;
+    setSaving(true);
+    try {
+      const patch: any = {
+        user_id: brand.user_id,
+        brand_id: brand.id,
+        colors: parsedColors,
+        fonts: fonts.split(",").map((s) => s.trim()).filter(Boolean),
+        status: "confirmed",
+      };
+      const { error } = await supabase
+        .from("brand_kits" as any)
+        .upsert(patch, { onConflict: "user_id,brand_id" });
+      if (error) throw error;
+      // Mirror locally
+      await onSave({ _kit: { ...(brand?._kit || {}), colors: patch.colors, fonts: patch.fonts } });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Palette className="h-4 w-4" /> Design guide</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base"><Palette className="h-4 w-4" /> Design guide</CardTitle>
+        <CardDescription className="text-xs">Pulled from your website — edit anything that's off.</CardDescription>
+      </CardHeader>
       <CardContent className="space-y-3">
         <div>
           <Label className="text-xs">Brand colors (comma-separated hex)</Label>
           <Input value={colors} onChange={(e) => setColors(e.target.value)} placeholder="#000000, #FFFFFF" />
-          <div className="flex gap-1 mt-2">
-            {(brand?.brand_colors || []).slice(0, 8).map((c: string, i: number) => (
-              <div key={i} className="h-6 w-6 rounded border" style={{ background: c }} title={c} />
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {parsedColors.slice(0, 12).map((c, i) => (
+              <div key={i} className="h-7 w-7 rounded border" style={{ background: c }} title={c} />
             ))}
+            {parsedColors.length === 0 && (
+              <span className="text-xs text-muted-foreground">No colors yet — we couldn't read them off the page.</span>
+            )}
           </div>
         </div>
         <div>
           <Label className="text-xs">Brand fonts</Label>
           <Input value={fonts} onChange={(e) => setFonts(e.target.value)} placeholder="Inter, Playfair Display" />
         </div>
-        <Button size="sm" variant="outline" onClick={() => onSave({
-          brand_colors: colors.split(",").map((s) => s.trim()).filter(Boolean),
-          brand_fonts: fonts.split(",").map((s) => s.trim()).filter(Boolean),
-        })}>Save</Button>
+        <Button size="sm" variant="outline" onClick={save} disabled={saving}>
+          {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+          Save
+        </Button>
       </CardContent>
     </Card>
   );
