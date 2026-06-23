@@ -292,16 +292,16 @@ export default function GuidedOnboarding() {
     }
   };
 
-  // =================== STEP review — keep brand_kit in sync ===================
+  // =================== Reveal page — keep brand_kit in sync ===================
   useEffect(() => {
-    if (step < 2 || step > 5 || !brandId) return;
+    if (step !== 2 || !brandId) return;
     let cancelled = false;
     (async () => {
       const [{ data: b }, { data: k }] = await Promise.all([
         supabase.from("brands").select("*").eq("id", brandId).maybeSingle(),
         supabase.from("brand_kits" as any).select("colors, fonts, logo_url").eq("brand_id", brandId).maybeSingle(),
       ]);
-      if (!cancelled && b) setBrand({ ...(b as any), _kit: k || null });
+      if (!cancelled && b) setBrand((prev: any) => ({ ...(b as any), _kit: k || prev?._kit || null }));
     })();
     return () => { cancelled = true; };
   }, [step, brandId]);
@@ -316,9 +316,9 @@ export default function GuidedOnboarding() {
     }
   };
 
-  // =================== STEP 6 — offer ===================
+  // =================== STEP 3 — offer ===================
   useEffect(() => {
-    if (step !== 6 || !brandId) return;
+    if (step !== 3 || !brandId) return;
     (async () => {
       const { data } = await supabase.from("offers").select("*").eq("brand_id", brandId);
       setOffers(data || []);
@@ -330,7 +330,7 @@ export default function GuidedOnboarding() {
     const normalized = normalizeWebsiteUrl(offerUrl);
     if (!normalized) { toast.error("Add your offer's sales page URL"); return; }
     setOfferBusy(true);
-    setGlobalLoaderMsg("LUMI is reading your offer page…");
+    setOfferStatusMsg("LUMI is reading your offer page…");
     try {
       const { data: existing } = await supabase
         .from("offers").select("id").eq("brand_id", brandId).eq("url", normalized).maybeSingle();
