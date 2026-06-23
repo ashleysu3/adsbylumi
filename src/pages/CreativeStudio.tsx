@@ -189,7 +189,10 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
   const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>("");
   const [workspace, setWorkspace] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<WorkflowTab>("angles");
+  const [activeTab, setActiveTab] = useState<WorkflowTab>(() => {
+    const t = searchParams.get("tab");
+    return (t === "saved" || t === "concepts" || t === "copy" || t === "build" || t === "angles") ? t : "angles";
+  });
   const [contentIdeas, setContentIdeas] = useState<any[]>([]);
   const [brandId, setBrandId] = useState<string>("");
   
