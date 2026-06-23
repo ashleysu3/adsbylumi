@@ -676,9 +676,12 @@ export default function GuidedOnboarding() {
 
   const saveShotList = async () => {
     if (!brollIdeas?.length) return;
-    const list = brollIdeas.map((i: any, idx: number) =>
-      `${idx + 1}. ${i.title || i.description || JSON.stringify(i)}`
-    ).join("\n");
+    const list = brollIdeas.map((i: any, idx: number) => {
+      const scene = i.scene || i.title || "Shot idea";
+      const direction = i.direction || i.description || "";
+      const emoji = i.emoji ? `${i.emoji} ` : "";
+      return `${idx + 1}. ${emoji}${scene}${direction ? ` — ${direction}` : ""}`;
+    }).join("\n");
     await seedDeferredTask({
       title: "Film your suggested b-roll shot list",
       description: list.slice(0, 1500),
