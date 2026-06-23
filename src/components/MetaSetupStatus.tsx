@@ -73,6 +73,8 @@ export function MetaSetupStatus({ brandId, onReconnectRequested, onPixelSetupReq
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandDetails, setExpandDetails] = useState(false);
+  const [igFixing, setIgFixing] = useState(false);
+  const [igManualOpen, setIgManualOpen] = useState(false);
 
   const runCheck = async () => {
     setLoading(true);
