@@ -1127,6 +1127,124 @@ export default function Performance() {
         }] : []}
         onGoalsSaved={() => { setGoalModalFor(null); setResults([]); setLoading(true); }}
       />
+
+      <Sheet open={quickListOpen} onOpenChange={setQuickListOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-lumi-pink-1" /> Quick list
+            </SheetTitle>
+            <SheetDescription>
+              One move per campaign this week. Skim, approve, done.
+            </SheetDescription>
+          </SheetHeader>
+
+          {(() => {
+            type Row = { result: EngineResult; rec: AdEval | null; needsGoals: boolean };
+            const rows: Row[] = results.map((r) => ({
+              result: r,
+              rec: r.topRecommendation,
+              needsGoals: r.meta.hasUserGoals === false,
+            }));
+            const needsAttention = rows.filter(
+              (row) => row.needsGoals || (row.rec && row.rec.recommendation.priorityTier <= 3)
+            );
+            const allGood = rows.filter(
+              (row) => !row.needsGoals && (!row.rec || row.rec.recommendation.priorityTier >= 4)
+            );
+
+            const renderRow = (row: Row) => {
+              const name = row.result.workspaceName || row.result.campaign.name;
+              if (row.needsGoals) {
+                return (
+                  <li key={row.result.workspaceId || name} className="rounded-lg border p-3 space-y-2">
+                    <div className="font-medium text-sm">{name}</div>
+                    <p className="text-xs text-muted-foreground">
+                      No goals set — LUMI can't grade this campaign or recommend a move yet.
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() => { setQuickListOpen(false); setGoalModalFor(row.result); }}
+                      className="gap-2"
+                    >
+                      <Target className="h-3.5 w-3.5" /> Set goals
+                    </Button>
+                  </li>
+                );
+              }
+              const rec = row.rec!;
+              const why = rec.recommendation.diagnosis?.why || rec.recommendation.reasoning;
+              const a = rec.recommendation.action;
+              const approveLabel =
+                a === "turn_off" ? "Pause it" :
+                a === "increase_budget" || a === "reduce_budget" ? "Update budget" :
+                a === "refresh_creative" ? "Swap creative" :
+                a === "promote_to_scaling" ? "Set up scaling" :
+                a === "hold" || a === "wait" ? "Got it" :
+                "Do it";
+              const isHold = a === "hold" || a === "wait";
+              return (
+                <li key={rec.id} className="rounded-lg border p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-medium text-sm">{name}</div>
+                    <Badge variant="outline" className={cn("text-[10px]", STATUS_STYLE[rec.status]?.cls)}>
+                      {STATUS_STYLE[rec.status]?.label || rec.status}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{why}</p>
+                  <div className="text-xs font-medium">
+                    {ACTION_VERB[a] || a} <span className="text-muted-foreground">"{rec.name}"</span>
+                  </div>
+                  <div className="flex gap-2">
+                    {!isHold && (
+                      <Button
+                        size="sm"
+                        onClick={() => { setQuickListOpen(false); handleApprove({ result: row.result, rec }); }}
+                        className="gap-2"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" /> {approveLabel}
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => { setQuickListOpen(false); navigate(`/live-ads/${row.result.workspaceId}`); }}
+                    >
+                      Details
+                    </Button>
+                  </div>
+                </li>
+              );
+            };
+
+            return (
+              <div className="mt-4 space-y-6">
+                <section>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                    Needs attention ({needsAttention.length})
+                  </h3>
+                  {needsAttention.length === 0 ? (
+                    <p className="text-sm text-muted-foreground rounded-lg border border-dashed p-3">
+                      Nothing urgent. Nice.
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">{needsAttention.map(renderRow)}</ul>
+                  )}
+                </section>
+
+                {allGood.length > 0 && (
+                  <section>
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                      All good ({allGood.length})
+                    </h3>
+                    <ul className="space-y-2">{allGood.map(renderRow)}</ul>
+                  </section>
+                )}
+              </div>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
     </DashboardLayout>
   );
 }
