@@ -61,6 +61,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     description: string;
   } | null>(null);
   const [createAdModalOpen, setCreateAdModalOpen] = useState(false);
+  const [isPartner, setIsPartner] = useState(false);
 
   // Mobile onboarding tour
   const { showTour, hasSeenTour, startTour, completeTour } = useMobileOnboardingTour();
