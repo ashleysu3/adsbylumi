@@ -887,7 +887,7 @@ export function CampaignInsightDetail({
 
           {/* Lumi Actionable Recommendations — only automatable */}
           <LumiRecommendations
-            recommendations={recommendations.filter((r: any) => AUTOMATABLE_TYPES.has(r.type))}
+            recommendations={recommendations.filter((r: any) => AUTOMATABLE_TYPES.has(r.type) && !isSnoozedRec(r))}
             loading={recsLoading}
             onRefresh={fetchRecommendations}
             onRecommendationExecuted={fetchRecommendations}
