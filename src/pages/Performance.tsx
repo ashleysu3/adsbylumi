@@ -186,6 +186,59 @@ export default function Performance() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pausing, setPausing] = useState(false);
 
+  // Date range — persists in localStorage. "3" | "7" | "14" | "30" (preset days)
+  // or "custom" with a customDateRange. Default: last 7 days.
+  const [dateRange, setDateRange] = useState<string>(() => {
+    try { return localStorage.getItem("liveAdsDateRange") || "7"; } catch { return "7"; }
+  });
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | null>(() => {
+    try {
+      const raw = localStorage.getItem("liveAdsCustomDateRange");
+      if (!raw) return null;
+      const p = JSON.parse(raw);
+      return p?.from && p?.to ? { from: new Date(p.from), to: new Date(p.to) } : null;
+    } catch { return null; }
+  });
+  useEffect(() => { try { localStorage.setItem("liveAdsDateRange", dateRange); } catch { /* noop */ } }, [dateRange]);
+  useEffect(() => {
+    try {
+      if (customDateRange) localStorage.setItem("liveAdsCustomDateRange", JSON.stringify({ from: customDateRange.from.toISOString(), to: customDateRange.to.toISOString() }));
+      else localStorage.removeItem("liveAdsCustomDateRange");
+    } catch { /* noop */ }
+  }, [customDateRange]);
+
+  // Resolve the active display range to { since, until } (UTC date strings)
+  // and a friendly label for the "Showing: …" line.
+  const activeRange = useMemo(() => {
+    const fmtDay = (d: Date) => d.toISOString().slice(0, 10);
+    const fmtLabel = (d: Date) => format(d, "MMM d");
+    if (dateRange === "custom" && customDateRange?.from && customDateRange?.to) {
+      const from = customDateRange.from;
+      const to = customDateRange.to;
+      const days = Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000) + 1);
+      return {
+        since: fmtDay(from),
+        until: fmtDay(to),
+        days,
+        label: `custom (${fmtLabel(from)}–${fmtLabel(to)})`,
+        body: { since: fmtDay(from), until: fmtDay(to) },
+      };
+    }
+    const days = parseInt(dateRange, 10) || 7;
+    const until = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - (days - 1));
+    return {
+      since: fmtDay(from),
+      until: fmtDay(until),
+      days,
+      label: `last ${days} days (${fmtLabel(from)}–${fmtLabel(until)})`,
+      body: { days },
+    };
+  }, [dateRange, customDateRange]);
+
+
+
   // Budget update dialog state
   const [budgetOpen, setBudgetOpen] = useState(false);
   const [budgetLoadingPreview, setBudgetLoadingPreview] = useState(false);
