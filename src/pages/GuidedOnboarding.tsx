@@ -483,11 +483,13 @@ export default function GuidedOnboarding() {
 
   const grouped = useMemo(() => {
     const map: Record<string, AssetRow[]> = {
-      logo: [], headshot: [], background: [], texture: [], graphic: [], product: [], other: [],
+      logo: [], headshot: [], lifestyle: [], full_body: [], product: [], texture: [], graphic: [], background: [], other: [],
     };
     for (const a of assets) {
-      const k = (a.role || "other").toLowerCase();
-      (map[k] || map.other).push(a);
+      let k = (a.role || "other").toLowerCase();
+      // Back-compat: older rows used "background" as a catch-all for lifestyle.
+      if (!(k in map)) k = "other";
+      map[k].push(a);
     }
     return map;
   }, [assets]);
