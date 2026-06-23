@@ -17,7 +17,8 @@ Deno.serve(async (req) => {
     const gate = await requirePaidUser(req, corsHeaders);
     if (gate.blocked) return gate.blocked;
 
-    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext, creativeIntelligence, previouslyUsedAngles, neverUseWords, singleAngleReplacement, maxAngles, campaignObjective, creativeBrief, campaignName } = await req.json();
+    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext, creativeIntelligence, previouslyUsedAngles, neverUseWords, singleAngleReplacement, maxAngles, campaignObjective, creativeBrief, campaignName, positioningBrief } = await req.json();
+    const positioningBlock = buildPositioningBriefBlock(positioningBrief);
 
     // Map the campaign's Meta objective to an angle-shaping intent. Keeps
     // top-of-funnel awareness campaigns from generating webinar-registration
