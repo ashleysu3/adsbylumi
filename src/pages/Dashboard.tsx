@@ -582,24 +582,8 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Inline Progress Checklist */}
-        {calculateBrandProgress().percentage < 100 && (
-          <InlineProgressChecklist 
-            brand={brand}
-            offers={offers}
-            onScrollToSection={scrollToSection}
-          />
-        )}
-
         {/* System Alerts */}
         <AlertsBanner />
-
-        {/* Detailed Onboarding Checklist (collapsible, non-dismissible) */}
-        <OnboardingChecklist
-          brand={brand}
-          offers={offers}
-          onEditBrand={() => setEditDialogOpen(true)}
-        />
 
         {/* Brand Details Card */}
         <Card variant="glow" data-section="brand-details">
@@ -639,45 +623,20 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Offers */}
-        <div data-section="offers">
-          <OfferManager
-            brandId={brand.id}
-            offers={offers}
-            onUpdate={fetchBrandData}
-          />
-        </div>
-
-        {/* Brand Voice */}
-        <BrandVoiceCard
-          brandId={brand.id}
-          brandVoice={brand.brand_voice ?? null}
-          voiceProfile={(brand as any).voice_profile ?? null}
-          voiceGeneratedAt={(brand as any).voice_profile_generated_at ?? null}
-          onUpdate={fetchBrandData}
-        />
-
-
-
-
-
-        {/* Content Library + Psychology */}
-        <div data-section="brand-brain">
-          <ContentAssetsEditor 
-            brandId={brand.id} 
-            offers={offers.map(o => ({ id: o.id, name: o.name }))} 
-          />
-           
-          <div data-section="audience-psychology" className="mt-6">
-            <AudiencePsychology
-              brandId={brand.id}
-              psychology={brand.audience_psychology}
-              status={brand.psychology_status}
-              psychologyContentHash={brand.psychology_content_hash}
-              psychologyGeneratedAt={brand.psychology_generated_at}
-              onUpdate={fetchBrandData}
-            />
-          </div>
+        {/* Quick links to moved sections */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Button variant="outline" className="justify-start h-auto py-3" onClick={() => navigate("/offers")}>
+            <Package className="h-4 w-4 mr-2" /> What you're promoting
+          </Button>
+          <Button variant="outline" className="justify-start h-auto py-3" onClick={() => navigate("/voice")}>
+            <Sparkles className="h-4 w-4 mr-2" /> Voice + Examples
+          </Button>
+          <Button variant="outline" className="justify-start h-auto py-3" onClick={() => navigate("/audience")}>
+            <Brain className="h-4 w-4 mr-2" /> Audience
+          </Button>
+          <Button variant="outline" className="justify-start h-auto py-3" onClick={() => navigate("/initial-setup")}>
+            <CheckCircle2 className="h-4 w-4 mr-2" /> Initial Setup
+          </Button>
         </div>
 
       </div>
