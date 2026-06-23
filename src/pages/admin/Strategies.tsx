@@ -53,6 +53,7 @@ const EMPTY: Partial<Strategy> = {
   campaigns: [],
   is_active: true,
   sort_order: 0,
+  access_code: null,
 };
 
 function arrToStr(a: string[] | undefined) {
