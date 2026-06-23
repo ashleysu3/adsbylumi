@@ -372,11 +372,33 @@ export default function GuidedOnboarding() {
         body: { offerUrl: normalized, offerName: "" },
       });
       if (ex) {
+        const e: any = ex;
         const patch: any = {};
-        if ((ex as any).summary) patch.auto_summary = (ex as any).summary;
-        if ((ex as any).price) patch.price = (ex as any).price;
-        if ((ex as any).name) patch.name = (ex as any).name;
-        if (Object.keys(patch).length) await supabase.from("offers").update(patch).eq("id", offerId);
+        if (e.name) patch.name = e.name;
+        if (e.description) patch.description = e.description;
+        if (e.price_point) patch.price_point = e.price_point;
+        if (e.target_outcome) patch.target_outcome = e.target_outcome;
+        if (e.suggested_page_goal) patch.page_goal = e.suggested_page_goal;
+        // Offer-specific audience psychology — layers on top of brand-level psychology.
+        const oap: any = {};
+        if (Array.isArray(e.pain_points_addressed)) oap.pain_points = e.pain_points_addressed;
+        if (Array.isArray(e.key_benefits)) oap.desires = e.key_benefits;
+        if (Array.isArray(e.objections_addressed)) oap.objections = e.objections_addressed;
+        if (Array.isArray(e.emotional_hooks)) oap.emotional_hooks = e.emotional_hooks;
+        if (e.target_audience_indicators) oap.target_audience = e.target_audience_indicators;
+        if (Object.keys(oap).length) patch.offer_audience_psychology = oap;
+        // Messaging guidelines + product psychology for downstream creative.
+        const mg: any = {};
+        if (Array.isArray(e.unique_selling_points)) mg.unique_selling_points = e.unique_selling_points;
+        if (Array.isArray(e.cta_language)) mg.cta_language = e.cta_language;
+        if (e.tone_and_voice) mg.tone_and_voice = e.tone_and_voice;
+        if (Array.isArray(e.raw_copy_highlights)) mg.raw_copy_highlights = e.raw_copy_highlights;
+        if (Object.keys(mg).length) patch.messaging_guidelines = mg;
+        if (e.social_proof) patch.product_psychology = { social_proof: e.social_proof };
+        if (Object.keys(patch).length) {
+          const { error: upErr } = await supabase.from("offers").update(patch).eq("id", offerId);
+          if (upErr) console.warn("offer update failed", upErr);
+        }
       }
       const { data: refreshed } = await supabase.from("offers").select("*").eq("brand_id", brandId);
       setOffers(refreshed || []);
