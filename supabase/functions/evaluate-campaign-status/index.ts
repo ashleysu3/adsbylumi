@@ -120,6 +120,8 @@ const ARCHETYPE_CONFIG: Record<string, {
       "Don't grade lead-gen on webinar ROAS — judge on opt-in / show-up / live-conversion and LTV from the list.",
       "Weak Day-1 ROAS is normal. The real read is downstream nurture revenue at 30/60/90 days.",
     ],
+    fatigueFrequency: { cold: 3, warm: 5 },
+    refreshEveryDays: { min: 7, max: 14 },
   },
   low_ticket_direct: {
     label: 'Low-Ticket Direct Sales',
@@ -130,6 +132,8 @@ const ARCHETYPE_CONFIG: Record<string, {
       "Don't kill an ad before ~50 conversions — small budgets need patience.",
       "Repeat purchase rate is the real margin lever, not first-sale ROAS.",
     ],
+    fatigueFrequency: { cold: 2.5, warm: 4 },
+    refreshEveryDays: { min: 5, max: 10 },
   },
   high_ticket_consult: {
     label: 'High-Ticket Consultation',
@@ -140,6 +144,8 @@ const ARCHETYPE_CONFIG: Record<string, {
       "Don't grade on raw CPL — a $300 application that closes at $5k is a win.",
       "If app→call is below 30%, the qualifier is too loose, not the ad.",
     ],
+    fatigueFrequency: { cold: 4, warm: 7 },
+    refreshEveryDays: { min: 14, max: 21 },
   },
   ecommerce: {
     label: 'E-Commerce',
@@ -150,6 +156,8 @@ const ARCHETYPE_CONFIG: Record<string, {
       "Judge cold and retargeting separately — blended ROAS hides which layer is failing.",
       "Repeat customer rate compounds — a 2:1 first-purchase ROAS becomes 4:1 with repeats.",
     ],
+    fatigueFrequency: { cold: 3.5, warm: 8 },
+    refreshEveryDays: { min: 21, max: 30 },
   },
   community_membership: {
     label: 'Community / Membership',
@@ -160,6 +168,8 @@ const ARCHETYPE_CONFIG: Record<string, {
       "Cost-per-member only makes sense judged against LTV — a $200 member at $50/mo for a year is fine.",
       "Outside an enrollment window? Don't grade — pause and wait.",
     ],
+    fatigueFrequency: { cold: 4, warm: 8 },
+    refreshEveryDays: { min: 7, max: 7 },
   },
 };
 
