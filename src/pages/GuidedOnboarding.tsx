@@ -193,17 +193,31 @@ export default function GuidedOnboarding() {
         if (d.colors?.length) kitPatch.colors = d.colors;
         if (d.fonts?.length) kitPatch.fonts = d.fonts;
         if (d.logoUrl) kitPatch.logo_url = d.logoUrl;
-        await supabase.from("brand_kits" as any).upsert(kitPatch, { onConflict: "brand_id" });
-        // Mirror to brands so review cards see it
+        // brand_kits unique constraint is (user_id, brand_id) — use both for the conflict target.
+        const { error: kitErr } = await supabase
+          .from("brand_kits" as any)
+          .upsert(kitPatch, { onConflict: "user_id,brand_id" });
+        if (kitErr) console.warn("brand_kits upsert failed", kitErr);
+
+        // Mirror name + tagline onto brands (colors/fonts live on brand_kits, not brands).
         const brandPatch: any = {};
-        if (d.colors?.length) brandPatch.brand_colors = d.colors;
-        if (d.fonts?.length) brandPatch.brand_fonts = d.fonts;
         if (d.name) brandPatch.name = d.name;
         if (d.description) brandPatch.value_proposition = d.description;
         if (Object.keys(brandPatch).length) {
-          await supabase.from("brands").update(brandPatch).eq("id", brandIdLocal);
-          // Mirror locally so Step 2's design/voice cards are pre-filled the moment user arrives.
-          setBrand((prev: any) => ({ ...(prev || {}), ...brandPatch }));
+          const { error: brErr } = await supabase.from("brands").update(brandPatch).eq("id", brandIdLocal);
+          if (brErr) console.warn("brand update failed", brErr);
+          else setBrand((prev: any) => ({ ...(prev || {}), ...brandPatch }));
+        }
+        // Stash kit on local brand state so the design card pre-fills immediately at Step 2.
+        if (kitPatch.colors || kitPatch.fonts || kitPatch.logo_url) {
+          setBrand((prev: any) => ({
+            ...(prev || {}),
+            _kit: {
+              colors: kitPatch.colors || prev?._kit?.colors,
+              fonts: kitPatch.fonts || prev?._kit?.fonts,
+              logo_url: kitPatch.logo_url || prev?._kit?.logo_url,
+            },
+          }));
         }
         setStep1Reveal((p) => ({
           ...p,
@@ -212,6 +226,7 @@ export default function GuidedOnboarding() {
           colors: d.colors || p.colors,
         }));
       }).catch(() => {});
+
 
       // Voice + audience need the brand's value_prop/name to be populated first,
       // otherwise the AI has nothing real to work with and writes generic output.
