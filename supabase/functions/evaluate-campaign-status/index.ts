@@ -1027,15 +1027,17 @@ function applyRules(r: RuleArgs): { status: Status; recommendation: AdEvaluation
     args.primaryDirection === 'less_than' ? args.primaryGoal * m : args.primaryGoal / m;
 
   if (isWorseThan(w3.kpiValue, goalMultiplier(1.5)) && isWorseThan(w7.kpiValue, goalMultiplier(1.5))) {
+    const dx = buildDiagnosis();
     return {
       status: 'underperforming',
       recommendation: {
         action: 'turn_off',
-        reasoning: `Cost is consistently above your target across both 3-day and 7-day windows (${formatKpiValue(w7.kpiValue, args.primaryKpi)} vs target ${formatKpiValue(args.primaryGoal, args.primaryKpi)}). Worth turning off and replacing.`,
+        reasoning: `Cost is consistently well above target (${formatKpiValue(w7.kpiValue, args.primaryKpi)} vs ${formatKpiValue(args.primaryGoal, args.primaryKpi)}). ${dx.why}`,
         confidence: w7.results >= 30 && w3.results >= 30 ? 'high' : 'medium',
         impact: estimateImpact('turn_off', { weeklySpend: w7.spend }),
         impactReasoning: `~$${(w7.spend).toFixed(0)} per week saved if you turn this off`,
         priorityTier: 2,
+        diagnosis: dx,
       },
     };
   }
@@ -1046,19 +1048,45 @@ function applyRules(r: RuleArgs): { status: Status; recommendation: AdEvaluation
     const fatiguePct = ((w7.kpiValue - wFatigueRef.kpiValue) / wFatigueRef.kpiValue) * 100;
     const isFatigueDir = args.primaryDirection === 'less_than' ? fatiguePct >= 30 : fatiguePct <= -30;
     if (isFatigueDir && frequency > freqThreshold) {
+      const dx = buildDiagnosis();
       return {
         status: 'fatigued',
         recommendation: {
           action: 'refresh_creative',
-          reasoning: `${args.primaryKpi.toUpperCase()} has crept up ${Math.abs(fatiguePct).toFixed(0)}% over the last week vs. the week before. Frequency is ${frequency.toFixed(1)}, meaning the same people are seeing this ad repeatedly. Time for fresh creative.`,
+          reasoning: dx.why,
           confidence: 'high',
           impact: estimateImpact('refresh', { weeklySpend: w7.spend }),
           impactReasoning: `${Math.abs(fatiguePct).toFixed(0)}% efficiency drop and rising frequency — replace before it gets worse`,
           priorityTier: 3,
+          diagnosis: dx,
         },
       };
     }
   }
+
+  // Mild underperformer — failing goal across 2-of-3 windows (3d + 7d), but
+  // not catastrophically (under the 1.5x threshold). Past reach floor by
+  // construction (learning guard above). Run deep diagnosis to surface WHY
+  // and recommend a creative/audience/page action instead of a blunt turn-off.
+  if (
+    isWorseThan(w3.kpiValue, args.primaryGoal) &&
+    isWorseThan(w7.kpiValue, args.primaryGoal)
+  ) {
+    const dx = buildDiagnosis();
+    return {
+      status: 'underperforming',
+      recommendation: {
+        action: actionFromDiagnosis(dx),
+        reasoning: `${args.primaryKpi.toUpperCase()} is below target on both 3-day and 7-day (${formatKpiValue(w7.kpiValue, args.primaryKpi)} vs ${formatKpiValue(args.primaryGoal, args.primaryKpi)}). ${dx.why}`,
+        confidence: dx.confidence,
+        impact: estimateImpact('refresh', { weeklySpend: w7.spend }),
+        impactReasoning: `Fixing the root cause is worth more than blanket pausing — ~$${(w7.spend).toFixed(0)}/wk currently in motion`,
+        priorityTier: 2,
+        diagnosis: dx,
+      },
+    };
+  }
+
 
   // §6.2 — Scaling-ready (testing adset only).
   const isBetterOrEq = (val: number | null, threshold: number) => {
