@@ -688,7 +688,7 @@ export default function CloserLook() {
               const hits = [short, medium, long].filter(meets).length;
               const allHit = hits === 3 && valid.length === 3;
               const allMiss = hits === 0;
-              const isFatigued = fatigue.shouldSurface && (fatigue.level === "fatigued" || fatigue.level === "concerning");
+              const isFatigued = fatigue.shouldSurface && (fatigue.level === "high" || fatigue.level === "building");
               // Trend: in less_than goal, lower 3d than 30d = improving
               const improving = short !== null && long !== null && (direction === "less_than" ? short < long : short > long);
               const worsening = short !== null && long !== null && (direction === "less_than" ? short > long * 1.15 : short < long * 0.85);
