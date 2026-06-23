@@ -39,7 +39,10 @@ import {
   Lightbulb,
   Heart,
   History,
+  Target,
 } from "lucide-react";
+import { SetupPrompt } from "@/components/SetupPrompt";
+import { GoalSetupModal } from "@/components/insights/GoalSetupModal";
 
 // ============================================================================
 // /live-ads/:campaignId — Closer Look at one live campaign.
