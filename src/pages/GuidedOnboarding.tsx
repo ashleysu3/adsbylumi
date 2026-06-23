@@ -604,14 +604,6 @@ export default function GuidedOnboarding() {
     navigate("/create?onboarding=1");
   };
 
-  if (checkingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
   // ---------- helpers used by the review steps ----------
   const hasProofVal = (v: any): boolean => {
     if (!v) return false;
@@ -635,6 +627,14 @@ export default function GuidedOnboarding() {
     }
     prevStepRef.current = step;
   }, [step, hasProof, extractionPhase, brandId, persistStep]);
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   // ============ FULL-SCREEN EXTRACTION LOADER ============
   // While LUMI is reading the site, hide the entire onboarding UI and show the loader only.
