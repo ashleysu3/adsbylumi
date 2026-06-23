@@ -772,10 +772,17 @@ export default function Performance() {
                           </div>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                          {/* KPI summary row */}
+                          {/* KPI summary row — reach, frequency, primary KPI, secondary (or days live) */}
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                            <KpiPill label="Reach" value={r.campaign.reach != null ? r.campaign.reach.toLocaleString() : "—"} />
-                            <KpiPill label="Frequency" value={formatKpi("frequency", r.adsets[0]?.primary?.value && r.meta.primaryKpi === "frequency" ? r.adsets[0].primary.value : (r as any).campaign?.frequency ?? null)} fallback={(r.campaign as any).frequency != null ? (r.campaign as any).frequency.toFixed(2) : undefined} />
+                            <KpiPill
+                              label="Reach"
+                              value={r.campaign.reach != null ? r.campaign.reach.toLocaleString() : "—"}
+                            />
+                            <KpiPill
+                              label="Frequency"
+                              value={r.campaign.frequency != null ? r.campaign.frequency.toFixed(2) : "—"}
+                              hint={r.campaign.frequency != null && r.campaign.frequency > 4 ? "high" : undefined}
+                            />
                             <KpiPill
                               label={r.meta.primaryKpiLabel}
                               value={primaryVal}
@@ -788,14 +795,21 @@ export default function Performance() {
                                 />
                               }
                             />
-                            <KpiPill
-                              label={r.campaign.secondary?.label || "—"}
-                              value={
-                                r.campaign.secondary && r.meta.secondaryKpi
-                                  ? formatKpi(r.meta.secondaryKpi, r.campaign.secondary.value)
-                                  : "—"
-                              }
-                            />
+                            {r.campaign.secondary && r.meta.secondaryKpi ? (
+                              <KpiPill
+                                label={r.campaign.secondary.label}
+                                value={
+                                  r.meta.secondaryKpi === "cpp"
+                                    ? (r.campaign.secondary.value ?? 0).toLocaleString()
+                                    : formatKpi(r.meta.secondaryKpi, r.campaign.secondary.value)
+                                }
+                              />
+                            ) : (
+                              <KpiPill
+                                label="Days live"
+                                value={r.campaign.daysLive != null ? String(r.campaign.daysLive) : "—"}
+                              />
+                            )}
                           </div>
                           <p className="text-sm">
                             <span className="text-muted-foreground">Next: </span>
