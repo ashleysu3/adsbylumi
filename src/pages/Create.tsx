@@ -156,7 +156,15 @@ interface WizardProgress {
 export default function Create() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const fromStrategy = searchParams.get("from") === "strategy";
+  // Treat onboarding hand-offs and AdStrategy "build" hand-offs the same as a
+  // Strategy-Plan entry — the user has already chosen a direction elsewhere,
+  // so Create must skip its own "recommend a strategy" landing step.
+  const fromStrategy =
+    searchParams.get("from") === "strategy" ||
+    searchParams.get("onboarding") === "1" ||
+    !!searchParams.get("goal") ||
+    !!searchParams.get("strategy_id") ||
+    !!searchParams.get("strategy");
   const strategyPlan = fromStrategy ? loadStrategyPlan() : null;
   const strategyCampaignIdx = Number(searchParams.get("campaignIdx") ?? strategyPlan?.activeIndex ?? 0);
   const strategyCampaign = Number.isFinite(strategyCampaignIdx)
@@ -165,7 +173,7 @@ export default function Create() {
   const strategyGoal = searchParams.get("goal") || strategyCampaign?.goal || "";
   const strategyObjective = searchParams.get("objective") || strategyCampaign?.objective || "";
   const strategyCampaignName = searchParams.get("campaignName") || strategyCampaign?.name || "";
-  const strategyOfferId = searchParams.get("offerId") || strategyPlan?.offer_id || "";
+  const strategyOfferId = searchParams.get("offerId") || searchParams.get("offer_id") || strategyPlan?.offer_id || "";
   const VALID_GOALS = ["promote_offer", "grow_social", "get_leads", "book_calls", "dm_leads", "local", "event_location"];
   const initialGoal = fromStrategy && VALID_GOALS.includes(strategyGoal) ? strategyGoal : (fromStrategy ? "promote_offer" : "");
 
