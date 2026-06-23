@@ -124,6 +124,7 @@ export default function GuidedOnboarding() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [classifying, setClassifying] = useState(false);
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
   const [brollIdeas, setBrollIdeas] = useState<any[] | null>(null);
   const assetsInitRef = useRef(false);
 
@@ -794,9 +795,18 @@ export default function GuidedOnboarding() {
     <div className="min-h-screen bg-background py-10 px-4">
       <div className="max-w-3xl mx-auto">
         <div className="mb-8">
-          <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-            <span>Step {step} of {TOTAL} — {STEPS[step - 1]}</span>
-            <span>{Math.round((step / TOTAL) * 100)}%</span>
+          <div className="flex items-center justify-between text-sm text-muted-foreground mb-3 gap-3">
+            <span className="truncate">Step {step} of {TOTAL} — {STEPS[step - 1]}</span>
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="tabular-nums">{Math.round((step / TOTAL) * 100)}%</span>
+              <button
+                type="button"
+                onClick={() => finishLater(`Finish your ${STEPS[step - 1].toLowerCase()} setup`, "/brand")}
+                className="text-xs text-muted-foreground/80 underline-offset-2 hover:underline hover:text-foreground transition-colors"
+              >
+                I'll finish setup later
+              </button>
+            </div>
           </div>
           <Progress value={(step / TOTAL) * 100} />
         </div>
@@ -985,34 +995,55 @@ export default function GuidedOnboarding() {
                               <p className="text-xs text-muted-foreground">{hint}</p>
                             </div>
                           </div>
-                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                            {list.map((a) => (
-                              <div key={a.id} className={`group relative rounded-md overflow-hidden border ${a.kept ? "ring-2 ring-lumi-pink-1" : "opacity-60"}`}>
-                                {a.signedUrl ? (
-                                  <img src={a.signedUrl} alt="" className="aspect-square object-cover w-full" loading="lazy" />
-                                ) : (
-                                  <div className="aspect-square bg-muted" />
-                                )}
-                                <div className="absolute top-1 right-1 flex gap-1">
-                                  <button onClick={() => toggleKept(a.id, !a.kept)} className="bg-background/90 rounded-full p-1" title={a.kept ? "Remove from set" : "Keep"}>
-                                    <Check className={`h-3 w-3 ${a.kept ? "" : "text-muted-foreground"}`} />
-                                  </button>
-                                  <button onClick={() => removeAsset(a.id)} className="bg-background/90 rounded-full p-1" title="Delete">
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {list.map((a) => {
+                              const isEditingRole = editingRoleId === a.id;
+                              const currentLabel = ROLE_OPTIONS.find((r) => r.value === (a.role || "other"))?.label || "Other";
+                              return (
+                                <div key={a.id} className={`group relative rounded-lg overflow-hidden border bg-card transition ${a.kept ? "ring-2 ring-lumi-pink-1" : "opacity-70 hover:opacity-100"}`}>
+                                  {a.signedUrl ? (
+                                    <img src={a.signedUrl} alt="" className="aspect-square object-cover w-full" loading="lazy" />
+                                  ) : (
+                                    <div className="aspect-square bg-muted" />
+                                  )}
+                                  <div className="absolute top-2 right-2 flex gap-1">
+                                    <button onClick={() => toggleKept(a.id, !a.kept)} className="bg-background/90 hover:bg-background rounded-full p-1.5 shadow-sm" title={a.kept ? "Remove from set" : "Keep"}>
+                                      <Check className={`h-3.5 w-3.5 ${a.kept ? "" : "text-muted-foreground"}`} />
+                                    </button>
+                                    <button onClick={() => removeAsset(a.id)} className="bg-background/90 hover:bg-background rounded-full p-1.5 shadow-sm" title="Delete">
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                  <div className="px-3 py-2 border-t bg-background/60">
+                                    {isEditingRole ? (
+                                      <Select
+                                        value={a.role || "other"}
+                                        onValueChange={(v) => { setRole(a.id, v); setEditingRoleId(null); }}
+                                        open
+                                        onOpenChange={(o) => { if (!o) setEditingRoleId(null); }}
+                                      >
+                                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                          {ROLE_OPTIONS.map((r) => (
+                                            <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingRoleId(a.id)}
+                                        className="w-full flex items-center justify-between text-xs text-foreground/80 hover:text-foreground group/retag"
+                                        title="Click to retag"
+                                      >
+                                        <span className="truncate">{currentLabel}</span>
+                                        <span className="text-[10px] text-muted-foreground opacity-0 group-hover/retag:opacity-100 transition-opacity ml-2">retag</span>
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="p-1">
-                                  <Select value={a.role || "other"} onValueChange={(v) => setRole(a.id, v)}>
-                                    <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      {ROLE_OPTIONS.map((r) => (
-                                        <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       );
@@ -1073,7 +1104,7 @@ export default function GuidedOnboarding() {
               <div className="flex justify-between pt-2 animate-fade-in">
                 <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => finishLater("Finish your brand review", "/brand")}>Finish later</Button>
+                  
                   <Button
                     onClick={advance}
                     style={brand?._kit?.colors?.[0] ? { backgroundColor: brand._kit.colors[0], color: "#fff", borderColor: brand._kit.colors[0] } : undefined}
@@ -1133,7 +1164,7 @@ export default function GuidedOnboarding() {
               <div className="flex justify-between pt-2">
                 <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => finishLater("Finish your offer setup", "/brand")}>Finish later</Button>
+                  
                   <Button onClick={advance}>Continue <ArrowRight className="h-4 w-4 ml-1" /></Button>
                 </div>
               </div>
@@ -1145,8 +1176,10 @@ export default function GuidedOnboarding() {
         {step === 4 && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" /> Connect Meta</CardTitle>
-              <CardDescription>Last setup step. We'll check your Page + Instagram + ad account so launching is one click.</CardDescription>
+              <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" /> Connect Meta <span className="text-xs font-normal text-muted-foreground ml-1">· optional</span></CardTitle>
+              <CardDescription>
+                Connect now, or later when you launch your first campaign — totally up to you. If you connect now, LUMI will check your Page, Instagram, and ad account so launching is one click.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {brandId && (
@@ -1166,12 +1199,17 @@ export default function GuidedOnboarding() {
               <p className="text-xs text-muted-foreground">
                 If your Instagram is connected to your Page but not added to your ad account, LUMI will detect it and offer a one-click fix.
               </p>
-              <div className="flex justify-between pt-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
                 <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => finishLater("Connect Meta to launch ads", "/brand")}>Finish later</Button>
-                  <Button onClick={advance} disabled={!brand?.meta_account_id}>
-                    Continue <ArrowRight className="h-4 w-4 ml-1" />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => finishLater("Connect Meta when you're ready to launch", "/brand")}
+                  >
+                    Skip for now
+                  </Button>
+                  <Button onClick={advance}>
+                    {brand?.meta_account_id ? "Continue" : "Continue without connecting"} <ArrowRight className="h-4 w-4 ml-1" />
                   </Button>
                 </div>
               </div>
