@@ -614,7 +614,7 @@ export default function CloserLook() {
               Last 3 / 7 / 30 days. (Adding a 14-day window is a small engine change for later.)
             </p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
               {(["short", "medium", "long"] as const).map((win, idx) => {
                 const w = result.campaign.windows?.[win];
@@ -632,7 +632,66 @@ export default function CloserLook() {
                 );
               })}
             </div>
+
+            {(() => {
+              const goal = result.meta.primaryGoal;
+              const direction = result.meta.primaryDirection || "less_than";
+              const label = result.meta.primaryKpiLabel;
+              const wins = (["short", "medium", "long"] as const).map((k, i) => ({
+                key: k,
+                label: i === 0 ? "3-day" : i === 1 ? "7-day" : "30-day",
+                value: result.campaign.windows?.[k]?.kpiValue ?? null,
+                spend: result.campaign.windows?.[k]?.spend ?? 0,
+              }));
+              const hasData = wins.filter(w => w.value !== null && w.value > 0);
+              if (!goal || hasData.length === 0) {
+                return (
+                  <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
+                    Not enough data yet to read trends across windows. Once spend builds up across 3, 7 and 30 days, you'll see a plain-english read here.
+                  </div>
+                );
+              }
+              const meets = (v: number) => direction === "less_than" ? v <= goal : v >= goal;
+              const hitting = hasData.filter(w => meets(w.value as number));
+              const missing = hasData.filter(w => !meets(w.value as number));
+              const allHit = missing.length === 0;
+              const allMiss = hitting.length === 0;
+              const mixed = !allHit && !allMiss;
+              const overUnder = direction === "less_than" ? { good: "under", bad: "over" } : { good: "over", bad: "under" };
+
+              let headline = "";
+              let body = "";
+              let advice = "";
+
+              if (allHit) {
+                headline = `${label} is hitting goal across every window.`;
+                body = `Your 3-day, 7-day, and 30-day ${label} are all ${overUnder.good} your goal of ${formatKpi(primaryKpi, goal)}. That's a strong, consistent signal — performance isn't a fluke of one good day.`;
+                advice = `This is the moment to lean in: scale budget in small steps (15–25%), keep your winning creative running, and start queueing up fresh variations of your top hooks/angles so you have backups ready before fatigue sets in.`;
+              } else if (allMiss) {
+                headline = `${label} is ${overUnder.bad} goal across every window.`;
+                body = `Your 3-day, 7-day, and 30-day ${label} are all ${overUnder.bad} your goal of ${formatKpi(primaryKpi, goal)}. This isn't volatility — it's a consistent pattern that needs action.`;
+                advice = `Refresh your creative with new hooks, angles, and formats. Revisit any past winners and build variations of them. Double-check your offer messaging and audience alignment before adding more budget.`;
+              } else if (mixed) {
+                const hitLabels = hitting.map(w => w.label).join(" and ");
+                const missLabels = missing.map(w => w.label).join(" and ");
+                headline = `Looks volatile — ${hitLabels} ${hitting.length > 1 ? "are" : "is"} hitting goal but ${missLabels} ${missing.length > 1 ? "are" : "is"} ${overUnder.bad}.`;
+                body = `Your ${label} goal is ${formatKpi(primaryKpi, goal)}. The mixed signal across windows usually means normal fluctuation — the market, time of year, day-of-week swings, audience saturation cycles, even what's happening in the news can move CPL around week to week. Don't make big changes off one window.`;
+                advice = `Keep an eye on it for a few more days before pulling levers. If you want to get ahead of the fluctuation, the smartest moves are: add fresh creative and copy variations, test a couple of new hooks or angles, and revisit your past winning creative types and rebuild variations of them. Small, additive moves — not big structural changes.`;
+              }
+
+              return (
+                <div className="rounded-lg border bg-primary/5 border-primary/20 p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Lightbulb className="h-4 w-4 text-primary flex-shrink-0" />
+                    <p className="text-sm font-semibold">{headline}</p>
+                  </div>
+                  <p className="text-sm text-foreground/80 leading-relaxed">{body}</p>
+                  <p className="text-sm text-foreground/80 leading-relaxed"><span className="font-medium">What to do: </span>{advice}</p>
+                </div>
+              );
+            })()}
           </CardContent>
+
         </Card>
 
         {/* Recent actions */}
