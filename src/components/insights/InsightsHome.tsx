@@ -1299,6 +1299,16 @@ export function InsightsHome({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Confirm before any Meta-mutating rec executes */}
+      <ConfirmRecExecuteDialog
+        rec={confirmRec}
+        open={confirmOpen}
+        submitting={confirmRec ? !!recExecuting[confirmRec.id] : false}
+        onOpenChange={(o) => { if (!o) { setConfirmOpen(false); setConfirmRec(null); } }}
+        onConfirm={confirmExecute}
+      />
     </div>
   );
+
 }
