@@ -73,7 +73,7 @@ export default function Auth() {
         if (inviteToken) {
           await acceptInvite(inviteToken);
         }
-        navigate(||, { replace: true });
+        navigate(safeReturnTo || "/home", { replace: true });
       }
     });
   }, [navigate, safeReturnTo, inviteToken]);
