@@ -47,6 +47,7 @@ export default function Style() {
   const [newEmoji, setNewEmoji] = useState("");
   const [overlayStyle, setOverlayStyle] = useState<OverlayStyle>(DEFAULT_OVERLAY_STYLE);
   const [brollClips, setBrollClips] = useState<any[]>([]);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchBrand();
