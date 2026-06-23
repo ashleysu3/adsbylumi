@@ -77,6 +77,7 @@ export default function GuidedOnboarding() {
   const [offerUrl, setOfferUrl] = useState("");
   const [offers, setOffers] = useState<any[]>([]);
   const [offerBusy, setOfferBusy] = useState(false);
+  const [globalLoaderMsg, setGlobalLoaderMsg] = useState<string | null>(null);
 
   // Step 4 — assets
   const [assets, setAssets] = useState<AssetRow[]>([]);
