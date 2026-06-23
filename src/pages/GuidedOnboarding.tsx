@@ -58,7 +58,9 @@ export default function GuidedOnboarding() {
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [step1Busy, setStep1Busy] = useState(false);
   const [step1Reveal, setStep1Reveal] = useState<{
-    brandName?: string; description?: string; colors?: string[]; voice?: string; audience?: string;
+    brandName?: string; description?: string; colors?: string[]; voice?: string;
+    audience?: string;
+    audienceParts?: { pain?: string; wants?: string; doubt?: string };
   }>({});
   const step1Fired = useRef(false);
 
