@@ -1,0 +1,1 @@
+ALTER TABLE public.offers ADD COLUMN IF NOT EXISTS style_overrides jsonb DEFAULT '{}'::jsonb; ALTER TABLE public.offers ALTER COLUMN use_brand_style_defaults SET DEFAULT true; UPDATE public.offers SET use_brand_style_defaults = true WHERE use_brand_style_defaults IS NULL;
