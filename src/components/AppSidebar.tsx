@@ -159,7 +159,7 @@ interface AppSidebarProps {
   brandId?: string;
 }
 
-export function AppSidebar({ isAdmin: _isAdmin, brandId: _brandId }: AppSidebarProps) {
+export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
@@ -169,18 +169,40 @@ export function AppSidebar({ isAdmin: _isAdmin, brandId: _brandId }: AppSidebarP
   const [bugReportOpen, setBugReportOpen] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [intent, setIntent] = useState("");
+  const [hasVipBonuses, setHasVipBonuses] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user?.email) setUserEmail(user.email);
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      if (user.email) setUserEmail(user.email);
+      // VIP = has unused account credits (referral bonuses, comps, etc.)
+      const { data: credits } = await supabase
+        .from("account_credits")
+        .select("id")
+        .eq("user_id", user.id)
+        .is("applied_at", null)
+        .limit(1);
+      setHasVipBonuses((credits?.length || 0) > 0);
     });
     const handler = () => setBugReportOpen(true);
     window.addEventListener("open-bug-report", handler);
     return () => window.removeEventListener("open-bug-report", handler);
   }, []);
 
+  const brandWithVip = useMemo<NavGroup>(() => {
+    const brandGroup = groups.find((g) => g.key === "brand")!;
+    if (!hasVipBonuses) return brandGroup;
+    return {
+      ...brandGroup,
+      items: [
+        ...brandGroup.items,
+        { label: "VIP Offers", to: "/refer", icon: Crown },
+      ],
+    };
+  }, [hasVipBonuses]);
+
   const allGroups: NavGroup[] = [
-    ...groups,
+    ...groups.map((g) => (g.key === "brand" ? brandWithVip : g)),
     ...(isAgencyUser ? [agencyGroup] : []),
     supportGroup,
   ];
