@@ -864,6 +864,9 @@ interface ClassifyArgs {
   adsetDailyBudget: number;
   campaignType: 'ABO' | 'CBO';
   adInfo?: any;
+  // Archetype slug — drives archetype-aware fatigue thresholds (§6.4).
+  // When undefined we fall back to the temp-based default (warm=5, cold=3).
+  archetypeSlug?: string | null;
 }
 
 function classify(args: ClassifyArgs): AdEvaluation {
