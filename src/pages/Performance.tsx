@@ -459,6 +459,7 @@ export default function Performance() {
         return;
       }
       toast.success(`Budget updated to $${newBudget}/day in Meta`);
+      await closeMatchingTasks({ actionType: "budget", entityId: chosen.rec.id });
       await logOverride(budgetActionKind, "modified");
       removeChosenFromQueue();
       setBudgetOpen(false);
