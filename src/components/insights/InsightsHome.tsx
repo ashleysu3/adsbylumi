@@ -1135,8 +1135,10 @@ export function InsightsHome({
                                       } else if (action.kind === 'navigate') {
                                         navigate(action.url);
                                       } else if (action.kind === 'execute') {
-                                        executeRecommendation(rec);
+                                        // Confirm step — these all mutate Meta on real ad spend.
+                                        requestExecute(rec);
                                       }
+
                                       // kind === 'budget' is handled by the
                                       // enclosing Popover; no onClick work here.
                                     }}
