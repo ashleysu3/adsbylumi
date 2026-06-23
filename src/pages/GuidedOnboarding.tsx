@@ -627,7 +627,7 @@ export default function GuidedOnboarding() {
               <CardDescription>A simple plan matched to your offer. We'll drop the steps into your task tray.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {strategyLoading && <LumiThinkingInline label="Thinking through the right play…" />}
+              {strategyLoading && <LumiThinkingInline isOpen={true} customCopy={["Thinking through the right play…", "Matching it to your offer…"]} />}
               {!strategyLoading && strategy && (
                 <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
                   <h3 className="font-semibold">{strategy.name || strategy.title || "Your starting strategy"}</h3>
