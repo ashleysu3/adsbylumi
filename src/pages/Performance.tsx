@@ -878,17 +878,29 @@ export default function Performance() {
                         ? `${r.campaign.secondary.label}: ${formatKpi(r.meta.secondaryKpi, r.campaign.secondary.value)}`
                         : null;
                     const top = r.topRecommendation;
-                    // LUMI recommends always reflects a real recommendation:
-                    // prefer the top (entity-scoped) pick; otherwise fall back
-                    // to the campaign-level recommendation from the engine —
-                    // which the headline guard guarantees is honest (never a
-                    // generic "holding steady" while the primary KPI fails).
                     const campRec = r.campaign?.recommendation;
-                    const topLine = top
-                      ? `${recTitle(top)} — ${top.recommendation.reasoning}`
-                      : campRec?.reasoning
-                      ? campRec.reasoning
-                      : "Holding steady — no changes needed right now.";
+                    const primaryVal2 = r.campaign?.primary?.value;
+                    const goal = r.meta.primaryGoal;
+                    const dir = (r.meta as any).primaryDirection || "less_than";
+                    const primaryMissingGoal =
+                      goal != null && primaryVal2 != null &&
+                      (dir === "less_than" ? primaryVal2 > goal : primaryVal2 < goal);
+                    const primaryIsNull = primaryVal2 == null;
+                    // CLIENT GUARD: a card can never say "around target" / "hold steady"
+                    // while the primary KPI is null or missing its goal.
+                    let topLine: string;
+                    if (primaryIsNull) {
+                      topLine = `${r.meta.primaryKpiLabel || (r.meta.primaryKpi || "Primary KPI").toUpperCase()} has no value yet — can't judge performance. Likely either too early, or conversion tracking isn't set up for this goal.`;
+                    } else if (primaryMissingGoal) {
+                      const why = campRec?.diagnosis?.why || campRec?.reasoning || "Primary KPI is below goal — needs attention.";
+                      topLine = why;
+                    } else if (top) {
+                      topLine = `${recTitle(top)} — ${top.recommendation.reasoning}`;
+                    } else if (campRec?.reasoning) {
+                      topLine = campRec.reasoning;
+                    } else {
+                      topLine = "Holding steady — no changes needed right now.";
+                    }
                     return (
                       <Card
                         key={r.workspaceId}
