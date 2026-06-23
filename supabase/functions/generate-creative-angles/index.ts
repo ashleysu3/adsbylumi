@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requirePaidUser } from "../_shared/check-subscription.ts";
+import { buildPositioningBriefBlock } from "../_shared/positioning-brief.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
