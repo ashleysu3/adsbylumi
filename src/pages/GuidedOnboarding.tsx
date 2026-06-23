@@ -2024,7 +2024,130 @@ function ReviewProofCard({ brand, onSave, loading }: { brand: any; onSave: (p: a
       </CardContent>
     </Card>
   );
+
+function BrandHeroCard({ brand }: { brand: any }) {
+  const logo: string | undefined = brand?._kit?.logo_url || brand?.logo_url || undefined;
+  const colors: string[] = (brand?._kit?.colors || []).slice(0, 6);
+  const fonts: string[] = brand?._kit?.fonts || [];
+  const name: string = brand?.name && brand.name.trim() ? brand.name : "Your brand";
+  const tagline: string = brand?.value_proposition || "";
+  const headingFont = fonts[0] ? `"${fonts[0]}", system-ui, sans-serif` : undefined;
+  const accent = colors[0];
+
+  return (
+    <Card
+      className="relative overflow-hidden border-0"
+      style={{
+        background: accent
+          ? `linear-gradient(135deg, ${accent}14 0%, ${accent}05 60%, transparent 100%)`
+          : undefined,
+      }}
+    >
+      {accent && (
+        <div
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-1"
+          style={{ backgroundColor: accent }}
+        />
+      )}
+      <CardContent className="pt-6 pb-5">
+        <div className="flex items-start gap-4">
+          {logo ? (
+            <div className="shrink-0 h-16 w-16 rounded-xl bg-background border flex items-center justify-center overflow-hidden p-2">
+              <img src={logo} alt={`${name} logo`} className="max-h-full max-w-full object-contain" />
+            </div>
+          ) : (
+            <div
+              className="shrink-0 h-16 w-16 rounded-xl flex items-center justify-center text-xl font-semibold text-white"
+              style={{ backgroundColor: accent || "hsl(var(--primary))" }}
+            >
+              {name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
+              Here's
+            </div>
+            <h2
+              className="text-2xl md:text-3xl font-semibold leading-tight truncate"
+              style={{ fontFamily: headingFont, color: accent || undefined }}
+            >
+              {name}
+            </h2>
+            {tagline && (
+              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{tagline}</p>
+            )}
+          </div>
+        </div>
+
+        {colors.length > 0 && (
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mr-1">Palette</span>
+            {colors.map((c, i) => (
+              <div
+                key={`${c}-${i}`}
+                className="group relative h-8 w-8 rounded-md border shadow-sm"
+                style={{ backgroundColor: c }}
+                title={c}
+              >
+                <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] font-mono text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                  {c}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {fonts.length > 0 && (
+          <div className="mt-5 flex flex-wrap items-baseline gap-3">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Type</span>
+            {fonts.slice(0, 2).map((f, i) => (
+              <span
+                key={`${f}-${i}`}
+                className="text-sm text-foreground/80"
+                style={{ fontFamily: `"${f}", system-ui, sans-serif` }}
+              >
+                {f}
+              </span>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
+
+function PersonaSummary({ demographics, topDesire, topPain }: { demographics?: string; topDesire?: string; topPain?: string }) {
+  if (!demographics && !topDesire && !topPain) return null;
+  const who = (demographics || "").split(/[\n.]/)[0]?.trim();
+  return (
+    <div
+      className="rounded-lg border bg-muted/30 p-4 space-y-2"
+      style={{ borderLeftWidth: 4, borderLeftColor: "var(--brand-accent)" }}
+    >
+      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+        <Users className="h-3 w-3" /> Persona at a glance
+      </div>
+      {who && (
+        <div className="text-sm">
+          <span className="font-medium">Who:</span> <span className="text-foreground/80">{who}</span>
+        </div>
+      )}
+      {topDesire && (
+        <div className="text-sm">
+          <span className="font-medium">Wants:</span> <span className="text-foreground/80">{topDesire}</span>
+        </div>
+      )}
+      {topPain && (
+        <div className="text-sm">
+          <span className="font-medium">Struggles with:</span> <span className="text-foreground/80">{topPain}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 
 
 function UploadBtn({ id, label, onFile, accept = "image/*", multiple = false }: { id: string; label: string; onFile: (f: File) => void; accept?: string; multiple?: boolean }) {
