@@ -1133,6 +1133,64 @@ export default function GuidedOnboarding() {
 
 // ───────────────── small UI helpers ─────────────────
 
+const SKELETON_LABELS: Record<string, { title: string; rows: number }> = {
+  basics: { title: "Brand basics", rows: 3 },
+  design: { title: "Design guide", rows: 2 },
+  audience: { title: "Audience", rows: 4 },
+  proof: { title: "Social proof", rows: 2 },
+  images: { title: "Brand images", rows: 3 },
+};
+
+function RevealGate({ revealed, kind, children }: { revealed: boolean; kind: keyof typeof SKELETON_LABELS; children: React.ReactNode }) {
+  if (revealed) {
+    return <div className="animate-fade-in">{children}</div>;
+  }
+  const meta = SKELETON_LABELS[kind];
+  return (
+    <Card aria-busy="true" className="overflow-hidden">
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2">
+          <div className="h-4 w-4 rounded-full bg-muted shimmer" />
+          <div className="h-4 w-32 rounded bg-muted shimmer" />
+        </div>
+        <div className="text-[11px] text-muted-foreground mt-1">{meta.title}</div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {Array.from({ length: meta.rows }).map((_, i) => (
+          <div key={i} className="space-y-1.5">
+            <div className="h-3 w-20 rounded bg-muted shimmer" />
+            <div className="h-4 w-full rounded bg-muted shimmer" />
+            {i % 2 === 0 && <div className="h-4 w-2/3 rounded bg-muted shimmer" />}
+          </div>
+        ))}
+      </CardContent>
+      <style>{`
+        .shimmer{position:relative;overflow:hidden}
+        .shimmer::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,hsl(var(--foreground)/0.06),transparent);animation:shimmer 1.4s infinite}
+        @keyframes shimmer{100%{transform:translateX(100%)}}
+      `}</style>
+    </Card>
+  );
+}
+
+function Typewriter({ text, speed = 18 }: { text: string; speed?: number }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    setN(0);
+    if (!text) return;
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setN(i);
+      if (i >= text.length) clearInterval(id);
+    }, speed);
+    return () => clearInterval(id);
+  }, [text, speed]);
+  return <>{text.slice(0, n)}{n < text.length && <span className="opacity-60">▍</span>}</>;
+}
+
+
+
 function SectionShell({
   loading,
   loadingMsg,
