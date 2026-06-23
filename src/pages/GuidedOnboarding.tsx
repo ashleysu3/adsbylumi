@@ -138,6 +138,14 @@ export default function GuidedOnboarding() {
     return () => clearInterval(t);
   }, [extractionPhase]);
 
+  // Slow-mode kicks in after ~15s of still-running extraction so a sluggish
+  // network reads as patient, not broken.
+  useEffect(() => {
+    if (extractionPhase !== 'running') { setSlowMode(false); return; }
+    const t = setTimeout(() => setSlowMode(true), 15_000);
+    return () => clearTimeout(t);
+  }, [extractionPhase]);
+
   // Orchestrated reveal: each section waits for (a) its extractor to settle AND
   // (b) the prior section to reveal, plus a stagger, so it always feels paced.
   const markRevealed = useCallback((k: RevealKey) => {
