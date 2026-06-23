@@ -52,6 +52,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { getFatigueStatus } from '@/lib/fatigue';
 import { Flame } from 'lucide-react';
 import { useRecommendationActions, describeRecAction, type Recommendation as RecType } from '@/hooks/useRecommendationActions';
+import { ConfirmRecExecuteDialog } from './ConfirmRecExecuteDialog';
+
 
 // Types intentionally left unfiltered on the home card — every structured rec
 // type is now actionable from here (pause, swap, budget, navigate). This
