@@ -1,0 +1,1 @@
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS snoozed_until timestamptz; CREATE INDEX IF NOT EXISTS tasks_user_open_snoozed_idx ON public.tasks(user_id, status, snoozed_until);

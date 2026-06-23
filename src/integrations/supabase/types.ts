@@ -3110,6 +3110,7 @@ export type Database = {
           description: string | null
           id: string
           link_to: string | null
+          snoozed_until: string | null
           source: string
           status: string
           title: string
@@ -3125,6 +3126,7 @@ export type Database = {
           description?: string | null
           id?: string
           link_to?: string | null
+          snoozed_until?: string | null
           source?: string
           status?: string
           title: string
@@ -3140,6 +3142,7 @@ export type Database = {
           description?: string | null
           id?: string
           link_to?: string | null
+          snoozed_until?: string | null
           source?: string
           status?: string
           title?: string
