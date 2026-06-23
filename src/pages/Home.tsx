@@ -43,6 +43,38 @@ const TYPEWRITER_PROMPTS = [
   "What needs my attention?",
 ];
 
+// Easy to edit: add/remove witty sublines here.
+const SUBLINES = [
+  "Let's turn some scrollers into buyers.",
+  "Today's forecast: high CTR, chance of conversions.",
+  "Let's make some ads they can't scroll past.",
+  "Coffee first. Then we charm the algorithm.",
+  "Your offer + the right humans = magic. Let's go.",
+  "Time to stop the scroll.",
+  "Let's turn ad spend into 'take my money.'",
+  "Another day, another algorithm to win over.",
+  "Big launches start with small daily budgets.",
+  "Let's make the pixel proud.",
+  "Test today, scale tomorrow.",
+  "Warm up that audience like last night's leftovers.",
+  "Less doomscrolling your ad account. More winning.",
+  "Your best ad is the one you haven't tested yet.",
+];
+
+function buildGreeting(name: string): string {
+  const n = name ? `, ${name}` : "";
+  const hour = new Date().getHours();
+  let variants: string[];
+  if (hour < 12) {
+    variants = [`Good morning${n}`, `Morning${n} ☀`, `Howdy${n}`, `Rise and shine${n}`];
+  } else if (hour < 17) {
+    variants = [`Good afternoon${n}`, `Afternoon${n}`, `Howdy${n}`, `Hey${n}`];
+  } else {
+    variants = [`Good evening${n}`, `Evening${n}`, `Howdy${n}`, `Hey${n} 🌙`];
+  }
+  return variants[Math.floor(Math.random() * variants.length)];
+}
+
 export default function Home() {
   const navigate = useNavigate();
   const { activeBrand, brands, loading: brandLoading } = useBrand();
@@ -231,16 +263,19 @@ export default function Home() {
     campaignSuggestions.length === 0 &&
     highPriorityTasks.length === 0;
 
+  const greeting = useMemo(() => buildGreeting(firstName), [firstName]);
+  const subline = useMemo(() => SUBLINES[Math.floor(Math.random() * SUBLINES.length)], []);
+
   return (
     <DashboardLayout>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-16 space-y-10">
         {/* Greeting */}
         <header className="text-center space-y-2">
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-            Hi{firstName ? `, ${firstName}` : ""}!
+            {greeting}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            What do you want to do today?
+          <p className="text-sm text-muted-foreground italic">
+            {subline}
           </p>
         </header>
 
