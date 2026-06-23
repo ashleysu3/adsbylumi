@@ -1039,7 +1039,7 @@ export default function Create() {
                           };
                           sessionStorage.setItem("lumi_strategy_plan", JSON.stringify(stored));
                           toast.success(`Unlocked: ${strat.name}`);
-                          navigate("/strategy-plan");
+                          navigate("/strategy");
                         } catch (err: any) {
                           console.error(err);
                           toast.error(err?.message || "Couldn't redeem that code");
