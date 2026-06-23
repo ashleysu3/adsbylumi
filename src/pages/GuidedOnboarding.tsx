@@ -1208,6 +1208,15 @@ const SKELETON_LABELS: Record<string, { title: string; rows: number }> = {
   images: { title: "Brand images", rows: 3 },
 };
 
+function TimeoutNotice({ label }: { label: string }) {
+  return (
+    <div className="mb-2 rounded-md border border-amber-200/60 bg-amber-50/60 dark:bg-amber-950/20 px-3 py-2 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2 animate-fade-in">
+      <Sparkles className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+      <span>We couldn't grab {label} from your site — no big deal, you can fill it in below. Takes about 10 seconds.</span>
+    </div>
+  );
+}
+
 function RevealGate({ revealed, kind, children }: { revealed: boolean; kind: keyof typeof SKELETON_LABELS; children: React.ReactNode }) {
   if (revealed) {
     return <div className="animate-fade-in">{children}</div>;
