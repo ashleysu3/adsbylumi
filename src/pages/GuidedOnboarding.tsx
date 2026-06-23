@@ -1143,7 +1143,7 @@ export default function GuidedOnboarding() {
               <div className="flex justify-between pt-2">
                 <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => finishLater("Finish your offer setup", "/brand")}>Finish later</Button>
+                  
                   <Button onClick={advance}>Continue <ArrowRight className="h-4 w-4 ml-1" /></Button>
                 </div>
               </div>
