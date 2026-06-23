@@ -984,18 +984,20 @@ function KpiPill({
   hint,
   trend,
   fallback,
+  valueClassName,
 }: {
   label: string;
   value: string;
   hint?: string;
   trend?: React.ReactNode;
   fallback?: string;
+  valueClassName?: string;
 }) {
   const display = value === "—" && fallback ? fallback : value;
   return (
     <div className="rounded-md border bg-background/60 px-2 py-1.5">
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground truncate">{label}</div>
-      <div className="text-sm font-semibold tabular-nums flex items-center gap-1">
+      <div className={cn("text-sm font-semibold tabular-nums flex items-center gap-1", valueClassName)}>
         <span className="truncate">{display}</span>
         {trend}
       </div>
