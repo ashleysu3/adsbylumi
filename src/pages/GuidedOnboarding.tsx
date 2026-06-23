@@ -1242,54 +1242,168 @@ export default function GuidedOnboarding() {
         )}
 
         {/* ============== STEP 8 — Strategy + first campaign ============== */}
-        {step === 5 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-600" /> Your suggested strategy</CardTitle>
-              <CardDescription>A starting plan + the exact steps to launch your first campaign.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {strategyLoading && <LumiThinkingInline isOpen={true} customCopy={["Matching the right play to your offer…"]} />}
-              {!strategyLoading && strategy && (
-                <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
-                  <h3 className="font-semibold">{strategy.name || strategy.title || "Your starting strategy"}</h3>
-                  {strategy.description && <p className="text-sm text-muted-foreground">{strategy.description}</p>}
-                  {strategy.why_it_works && (
-                    <p className="text-sm"><span className="font-medium">Why it works: </span>{strategy.why_it_works}</p>
-                  )}
-                  {Array.isArray(strategy.campaigns) && strategy.campaigns.length > 0 && (
-                    <ul className="text-sm list-disc pl-5 space-y-1">
-                      {strategy.campaigns.slice(0, 5).map((c: any, i: number) => (
-                        <li key={i}>{c.name || c.objective || JSON.stringify(c)}</li>
+        {step === 5 && (() => {
+          const primaryOffer = offers?.[0];
+          const offerName = primaryOffer?.name || "your offer";
+          const GOAL_OPTIONS: { value: string; label: string; hint: string }[] = [
+            { value: "promote_offer", label: "Promote a specific offer", hint: "Course, program, product, package." },
+            { value: "get_leads", label: "Get leads", hint: "Email opt-ins from a freebie or waitlist." },
+            { value: "book_calls", label: "Book sales calls", hint: "Discovery / strategy / consult calls." },
+            { value: "dm_leads", label: "Get DM conversations", hint: "Trigger Instagram/Messenger DMs." },
+            { value: "grow_social", label: "Grow my social following", hint: "Boost reach and follows on IG/FB." },
+            { value: "local", label: "Drive local visits", hint: "Local-business foot traffic and calls." },
+            { value: "event_location", label: "Fill an event or location", hint: "Workshop, retreat, in-person event." },
+          ];
+
+          // ── A) Initial choice screen ─────────────────────────────────
+          if (!strategyChoice && !strategy && !strategyLoading) {
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-lumi-pink-1" /> Ready to build your first campaign?</CardTitle>
+                  <CardDescription>Pick how you want LUMI to plan it. You can change directions anytime.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChosenOfferId(primaryOffer?.id || null);
+                      setChosenGoal("promote_offer");
+                      setStrategyChoice("offer");
+                      runRecommendStrategy({ offer_id: primaryOffer?.id || null, user_goal: "promote_offer" });
+                    }}
+                    disabled={!primaryOffer}
+                    className="w-full text-left rounded-lg border p-4 hover:bg-muted/40 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={primaryOffer ? { borderLeftWidth: 4, borderLeftColor: "var(--brand-accent)" } : undefined}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Recommended</div>
+                        <div className="font-semibold text-base">Build a plan around {offerName}</div>
+                        <p className="text-sm text-muted-foreground mt-1">LUMI will craft a campaign tuned to promote this offer.</p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground mt-1 shrink-0" />
+                    </div>
+                    {!primaryOffer && <p className="text-xs text-muted-foreground mt-2 italic">Add an offer in the previous step to enable this.</p>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPickingGoal(true)}
+                    className="w-full text-left rounded-lg border p-4 hover:bg-muted/40 transition"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-semibold text-base">I have a different goal</div>
+                        <p className="text-sm text-muted-foreground mt-1">Lead with a goal — leads, calls, DMs, local visits, or event fills.</p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground mt-1 shrink-0" />
+                    </div>
+                  </button>
+
+                  {pickingGoal && (
+                    <div className="rounded-lg border bg-muted/30 p-3 space-y-2 animate-fade-in">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 px-1">Pick a goal</div>
+                      {GOAL_OPTIONS.map((g) => (
+                        <button
+                          key={g.value}
+                          type="button"
+                          onClick={() => {
+                            setChosenGoal(g.value);
+                            setChosenOfferId(g.value === "promote_offer" ? (primaryOffer?.id || null) : null);
+                            setStrategyChoice("goal");
+                            setPickingGoal(false);
+                            runRecommendStrategy({
+                              offer_id: g.value === "promote_offer" ? (primaryOffer?.id || null) : null,
+                              user_goal: g.value,
+                            });
+                          }}
+                          className="w-full text-left rounded-md border bg-background p-3 hover:bg-muted/40 transition"
+                        >
+                          <div className="font-medium text-sm">{g.label}</div>
+                          <p className="text-xs text-muted-foreground mt-0.5">{g.hint}</p>
+                        </button>
                       ))}
-                    </ul>
+                    </div>
                   )}
-                </div>
-              )}
 
-              <ul className="text-sm space-y-2">
-                <li className="flex items-start gap-2"><Check className="h-4 w-4 text-green-600 mt-0.5" /> Pick a campaign angle</li>
-                <li className="flex items-start gap-2"><Check className="h-4 w-4 text-green-600 mt-0.5" /> Approve your ad copy</li>
-                <li className="flex items-start gap-2"><Check className="h-4 w-4 text-green-600 mt-0.5" /> Approve your first creative</li>
-                <li className="flex items-start gap-2"><Check className="h-4 w-4 text-green-600 mt-0.5" /> Launch your first campaign</li>
-              </ul>
+                  <div className="flex items-center justify-between pt-2">
+                    <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
+                    <button
+                      type="button"
+                      onClick={skipStrategyForLater}
+                      className="text-xs text-muted-foreground/80 hover:text-foreground underline-offset-2 hover:underline transition-colors"
+                    >
+                      Skip for now — I'll set this up later
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          }
 
-              <div className="flex justify-between pt-2">
-                <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={async () => {
-                    await seedFirstCampaignTasks(brandId);
-                    await seedStrategyTasks();
-                    await completeAndGoHome();
-                  }}>I'll do it later</Button>
-                  <Button onClick={startFirstCampaign}>
+          // ── B) Recommended plan + single CTA ──────────────────────────
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-600" /> Your suggested strategy</CardTitle>
+                <CardDescription>A starting plan + the exact steps to launch your first campaign.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {strategyLoading && <LumiThinkingInline isOpen={true} customCopy={["Matching the right play to your goal…"]} />}
+                {!strategyLoading && strategy && (
+                  <div
+                    className="rounded-lg border bg-muted/30 p-4 space-y-2"
+                    style={{ borderLeftWidth: 4, borderLeftColor: "var(--brand-accent)" }}
+                  >
+                    <h3 className="font-semibold">{strategy.name || strategy.title || "Your starting strategy"}</h3>
+                    {strategy.description && <p className="text-sm text-muted-foreground">{strategy.description}</p>}
+                    {strategy.why_it_works && (
+                      <p className="text-sm"><span className="font-medium">Why it works: </span>{strategy.why_it_works}</p>
+                    )}
+                    {Array.isArray(strategy.campaigns) && strategy.campaigns.length > 0 && (
+                      <ul className="text-sm list-disc pl-5 space-y-1">
+                        {strategy.campaigns.slice(0, 5).map((c: any, i: number) => (
+                          <li key={i}>{c.name || c.objective || JSON.stringify(c)}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+
+                {!strategyLoading && (
+                  <ul className="text-sm space-y-2">
+                    <li className="flex items-start gap-2"><Check className="h-4 w-4 text-green-600 mt-0.5" /> Pick a campaign angle</li>
+                    <li className="flex items-start gap-2"><Check className="h-4 w-4 text-green-600 mt-0.5" /> Approve your ad copy</li>
+                    <li className="flex items-start gap-2"><Check className="h-4 w-4 text-green-600 mt-0.5" /> Approve your first creative</li>
+                    <li className="flex items-start gap-2"><Check className="h-4 w-4 text-green-600 mt-0.5" /> Launch your first campaign</li>
+                  </ul>
+                )}
+
+                <div className="flex items-center justify-between pt-2 gap-2 flex-wrap">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setStrategy(null);
+                      setStrategyChoice(null);
+                      setChosenGoal(null);
+                      setChosenOfferId(null);
+                    }}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" /> Change choice
+                  </Button>
+                  <Button
+                    onClick={startFirstCampaign}
+                    disabled={strategyLoading}
+                    style={brand?._kit?.colors?.[0] ? { backgroundColor: brand._kit.colors[0], color: "#fff", borderColor: brand._kit.colors[0] } : undefined}
+                  >
                     Start my first campaign <ArrowRight className="h-4 w-4 ml-1" />
                   </Button>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
+          );
+        })()}
       </div>
     </div>
   );
