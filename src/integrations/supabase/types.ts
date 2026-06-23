@@ -2749,6 +2749,7 @@ export type Database = {
       }
       recommended_strategies: {
         Row: {
+          access_code: string | null
           business_model: string[]
           campaigns: Json
           created_at: string
@@ -2766,6 +2767,7 @@ export type Database = {
           why_it_works: string
         }
         Insert: {
+          access_code?: string | null
           business_model?: string[]
           campaigns?: Json
           created_at?: string
@@ -2783,6 +2785,7 @@ export type Database = {
           why_it_works?: string
         }
         Update: {
+          access_code?: string | null
           business_model?: string[]
           campaigns?: Json
           created_at?: string
@@ -3720,6 +3723,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      redeem_strategy_code: { Args: { p_code: string }; Returns: Json }
       store_meta_token: {
         Args: { p_brand_id: string; p_token: string }
         Returns: string
