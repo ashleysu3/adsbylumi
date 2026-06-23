@@ -772,7 +772,7 @@ export default function CloserLook() {
                 id: "review_audience",
                 label: "Revisit offer & audience alignment",
                 why: "When every window misses, the message-to-market match is usually the root cause — not the creative.",
-                run: () => navigate("/brand"),
+                run: () => navigate("/dashboard"),
                 tone: "secondary",
               };
 

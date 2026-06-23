@@ -825,7 +825,7 @@ export default function GuidedOnboarding() {
               <span className="tabular-nums">{Math.round((step / TOTAL) * 100)}%</span>
               <button
                 type="button"
-                onClick={() => finishLater(`Finish your ${STEPS[step - 1].toLowerCase()} setup`, "/brand")}
+                onClick={() => finishLater(`Finish your ${STEPS[step - 1].toLowerCase()} setup`, "/dashboard")}
                 className="text-xs text-muted-foreground/80 underline-offset-2 hover:underline hover:text-foreground transition-colors"
               >
                 I'll finish setup later
@@ -967,7 +967,7 @@ export default function GuidedOnboarding() {
                       description="We use it on every ad — even a transparent PNG works."
                       ctaLabel="Upload logo"
                       onCta={() => document.getElementById("upload-any")?.click()}
-                      autoTask={{ title: "Add a brand logo", link_to: "/brand" }}
+                      autoTask={{ title: "Add a brand logo", link_to: "/dashboard" }}
                     />
                   )}
                   {grouped.headshot.length === 0 && (
@@ -976,7 +976,7 @@ export default function GuidedOnboarding() {
                       description="A founder/face photo lifts ad performance a lot. Plain backdrop works best."
                       ctaLabel="Upload headshot"
                       onCta={() => document.getElementById("upload-any")?.click()}
-                      autoTask={{ title: "Add a headshot photo", link_to: "/brand" }}
+                      autoTask={{ title: "Add a headshot photo", link_to: "/dashboard" }}
                     />
                   )}
                   {grouped.lifestyle.length === 0 && grouped.background.length === 0 && (
@@ -985,7 +985,7 @@ export default function GuidedOnboarding() {
                       description="You at work, with clients, behind the scenes — anything that feels like your world."
                       ctaLabel="Upload lifestyle"
                       onCta={() => document.getElementById("upload-any")?.click()}
-                      autoTask={{ title: "Upload a lifestyle photo", link_to: "/brand" }}
+                      autoTask={{ title: "Upload a lifestyle photo", link_to: "/dashboard" }}
                     />
                   )}
 
@@ -1175,7 +1175,7 @@ export default function GuidedOnboarding() {
                   title="No offer yet"
                   description="Add at least one sales page so LUMI can write campaigns that actually convert."
                   ctaLabel="Skip for now"
-                  onCta={() => finishLater("Add your offer's sales page", "/brand")}
+                  onCta={() => finishLater("Add your offer's sales page", "/dashboard")}
                 />
               ) : (
                 <div className="space-y-3">
@@ -1228,7 +1228,7 @@ export default function GuidedOnboarding() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant="outline"
-                    onClick={() => finishLater("Connect Meta when you're ready to launch", "/brand")}
+                    onClick={() => finishLater("Connect Meta when you're ready to launch", "/dashboard")}
                   >
                     Skip for now
                   </Button>
