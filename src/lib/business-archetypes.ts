@@ -201,6 +201,13 @@ export const ARCHETYPES: Record<ArchetypeSlug, Archetype> = {
       "If app-to-call is below 30%, the qualifier is too loose, not the ad.",
     ],
     templateSlugs: ["dm-conversations", "application-booked-call"],
+    cadence: {
+      rotationPace: "Slow rotation",
+      anglesPerTest: { min: 2, max: 4 },
+      refreshEveryDays: { min: 14, max: 21 },
+      fatigueFrequencyThreshold: { cold: 4, warm: 7 },
+      tip: "Quality over quantity. Refresh every 2–3 weeks — high-ticket buyers need repetition to convert.",
+    },
   },
 
   ecommerce: {
