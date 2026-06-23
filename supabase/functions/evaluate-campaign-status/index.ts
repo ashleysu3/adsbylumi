@@ -108,6 +108,17 @@ type Action =
   | 'increase_budget' | 'hold' | 'wait' | 'refresh_creative'
   | 'push_delivery' | 'broaden_audience' | 'reduce_budget';
 
+interface KpiEntry {
+  kpi: string;
+  label: string;
+  value: number | null;
+  goal: number;
+  vsGoalPct: number | null;
+  direction: 'less_than' | 'greater_than';
+  status: 'above' | 'below' | 'at' | 'no_data';
+  isDefault: boolean; // true when no user-set goal — fell back to benchmark
+}
+
 interface AdEvaluation {
   id: string;
   name: string;
@@ -115,6 +126,7 @@ interface AdEvaluation {
   status: Status;
   primary: { value: number | null; vsGoalPct: number | null; trendDirection: 'up' | 'down' | 'flat' };
   secondary: { value: number | null; label: string } | null;
+  kpis: KpiEntry[];
   reach: number;
   frequency: number;
   daysLive: number;
