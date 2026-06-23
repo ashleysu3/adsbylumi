@@ -831,7 +831,16 @@ export default function GuidedOnboarding() {
 
         {/* ============== STEP 2 — Reveal page (streams in live) ============== */}
         {step === 2 && (
-          <div className="space-y-4">
+          <div
+            className="space-y-4"
+            style={{
+              ["--brand-accent" as any]: (brand?._kit?.colors?.[0] as string) || "hsl(var(--primary))",
+              ["--brand-accent-soft" as any]: (brand?._kit?.colors?.[0] as string)
+                ? `${brand._kit.colors[0]}1a`
+                : "hsl(var(--primary) / 0.1)",
+            }}
+          >
+            <BrandHeroCard brand={brand} />
             <Card className="border-primary/20 bg-primary/5 overflow-hidden">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -1065,7 +1074,12 @@ export default function GuidedOnboarding() {
                 <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => finishLater("Finish your brand review", "/brand")}>Finish later</Button>
-                  <Button onClick={advance}>Looks good <ArrowRight className="h-4 w-4 ml-1" /></Button>
+                  <Button
+                    onClick={advance}
+                    style={brand?._kit?.colors?.[0] ? { backgroundColor: brand._kit.colors[0], color: "#fff", borderColor: brand._kit.colors[0] } : undefined}
+                  >
+                    Looks good <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
                 </div>
               </div>
             )}
@@ -1503,6 +1517,11 @@ function ReviewAudienceCard({ brand, onSave }: { brand: any; onSave: (p: any) =>
         <CardDescription className="text-xs">Psychology + demographics. Edit anything that's off — these power every ad LUMI writes.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+        <PersonaSummary
+          demographics={demographics}
+          topDesire={desires.split("\n").map((s) => s.trim()).filter(Boolean)[0]}
+          topPain={pains.split("\n").map((s) => s.trim()).filter(Boolean)[0]}
+        />
         <div>
           <Label className="text-xs uppercase tracking-wide text-muted-foreground">Demographics</Label>
           <Textarea rows={3} value={demographics} onChange={(e) => setDemographics(e.target.value)} placeholder="Women, 30–45, US/Canada, mid-career, $80k+ household income, lives in a metro area…" />
@@ -1603,8 +1622,21 @@ function BrandBasicsCard({ brand, placeholderName, onSave }: { brand: any; place
           <Label className="text-xs uppercase tracking-wide text-muted-foreground">Brand voice</Label>
           {editing ? (
             <Textarea rows={6} value={voice} onChange={(e) => setVoice(e.target.value)} placeholder="Warm, witty, never salesy…" />
+          ) : voice ? (
+            <blockquote
+              className="relative rounded-lg border-l-4 bg-muted/30 px-5 py-4 text-base md:text-lg leading-relaxed italic text-foreground/90 whitespace-pre-wrap"
+              style={{
+                borderLeftColor: "var(--brand-accent)",
+                fontFamily: brand?._kit?.fonts?.[0]
+                  ? `"${brand._kit.fonts[0]}", Georgia, serif`
+                  : 'Georgia, "Times New Roman", serif',
+              }}
+            >
+              <Quote className="absolute -top-2 -left-2 h-5 w-5 opacity-40" style={{ color: "var(--brand-accent)" }} />
+              {voice}
+            </blockquote>
           ) : (
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{voice || <span className="italic text-muted-foreground">Not set</span>}</p>
+            <p className="text-sm leading-relaxed"><span className="italic text-muted-foreground">Not set</span></p>
           )}
         </div>
         {editing && (
@@ -1948,8 +1980,13 @@ function ReviewProofCard({ brand, onSave, loading }: { brand: any; onSave: (p: a
                   <div className="space-y-1.5">
                     {items.map((it, i) => {
                       const { primary, secondary } = renderItem(it);
+                      const usesBrand = key === "testimonials" || key === "case_studies";
                       return (
-                        <div key={i} className={`rounded-md border bg-muted/30 border-l-4 ${tint} px-3 py-2`}>
+                        <div
+                          key={i}
+                          className={`rounded-md border bg-muted/30 border-l-4 ${usesBrand ? "" : tint} px-3 py-2`}
+                          style={usesBrand ? { borderLeftColor: "var(--brand-accent)" } : undefined}
+                        >
                           <div className="text-sm leading-snug">{primary}</div>
                           {secondary && <div className="text-xs text-muted-foreground mt-0.5">{secondary}</div>}
                         </div>
@@ -1988,6 +2025,130 @@ function ReviewProofCard({ brand, onSave, loading }: { brand: any; onSave: (p: a
     </Card>
   );
 }
+
+function BrandHeroCard({ brand }: { brand: any }) {
+  const logo: string | undefined = brand?._kit?.logo_url || brand?.logo_url || undefined;
+  const colors: string[] = (brand?._kit?.colors || []).slice(0, 6);
+  const fonts: string[] = brand?._kit?.fonts || [];
+  const name: string = brand?.name && brand.name.trim() ? brand.name : "Your brand";
+  const tagline: string = brand?.value_proposition || "";
+  const headingFont = fonts[0] ? `"${fonts[0]}", system-ui, sans-serif` : undefined;
+  const accent = colors[0];
+
+  return (
+    <Card
+      className="relative overflow-hidden border-0"
+      style={{
+        background: accent
+          ? `linear-gradient(135deg, ${accent}14 0%, ${accent}05 60%, transparent 100%)`
+          : undefined,
+      }}
+    >
+      {accent && (
+        <div
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-1"
+          style={{ backgroundColor: accent }}
+        />
+      )}
+      <CardContent className="pt-6 pb-5">
+        <div className="flex items-start gap-4">
+          {logo ? (
+            <div className="shrink-0 h-16 w-16 rounded-xl bg-background border flex items-center justify-center overflow-hidden p-2">
+              <img src={logo} alt={`${name} logo`} className="max-h-full max-w-full object-contain" />
+            </div>
+          ) : (
+            <div
+              className="shrink-0 h-16 w-16 rounded-xl flex items-center justify-center text-xl font-semibold text-white"
+              style={{ backgroundColor: accent || "hsl(var(--primary))" }}
+            >
+              {name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
+              Here's
+            </div>
+            <h2
+              className="text-2xl md:text-3xl font-semibold leading-tight truncate"
+              style={{ fontFamily: headingFont, color: accent || undefined }}
+            >
+              {name}
+            </h2>
+            {tagline && (
+              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{tagline}</p>
+            )}
+          </div>
+        </div>
+
+        {colors.length > 0 && (
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mr-1">Palette</span>
+            {colors.map((c, i) => (
+              <div
+                key={`${c}-${i}`}
+                className="group relative h-8 w-8 rounded-md border shadow-sm"
+                style={{ backgroundColor: c }}
+                title={c}
+              >
+                <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] font-mono text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                  {c}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {fonts.length > 0 && (
+          <div className="mt-5 flex flex-wrap items-baseline gap-3">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Type</span>
+            {fonts.slice(0, 2).map((f, i) => (
+              <span
+                key={`${f}-${i}`}
+                className="text-sm text-foreground/80"
+                style={{ fontFamily: `"${f}", system-ui, sans-serif` }}
+              >
+                {f}
+              </span>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PersonaSummary({ demographics, topDesire, topPain }: { demographics?: string; topDesire?: string; topPain?: string }) {
+  if (!demographics && !topDesire && !topPain) return null;
+  const who = (demographics || "").split(/[\n.]/)[0]?.trim();
+  return (
+    <div
+      className="rounded-lg border bg-muted/30 p-4 space-y-2"
+      style={{ borderLeftWidth: 4, borderLeftColor: "var(--brand-accent)" }}
+    >
+      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+        <Users className="h-3 w-3" /> Persona at a glance
+      </div>
+      {who && (
+        <div className="text-sm">
+          <span className="font-medium">Who:</span> <span className="text-foreground/80">{who}</span>
+        </div>
+      )}
+      {topDesire && (
+        <div className="text-sm">
+          <span className="font-medium">Wants:</span> <span className="text-foreground/80">{topDesire}</span>
+        </div>
+      )}
+      {topPain && (
+        <div className="text-sm">
+          <span className="font-medium">Struggles with:</span> <span className="text-foreground/80">{topPain}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 
 
 function UploadBtn({ id, label, onFile, accept = "image/*", multiple = false }: { id: string; label: string; onFile: (f: File) => void; accept?: string; multiple?: boolean }) {
