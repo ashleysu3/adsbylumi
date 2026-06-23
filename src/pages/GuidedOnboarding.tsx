@@ -18,19 +18,24 @@ import {
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { SetupPrompt } from "@/components/SetupPrompt";
 import { LumiThinkingInline } from "@/components/LumiThinking";
+import { LumiPageLoader } from "@/components/LumiLoader";
 import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
 import { useBrand } from "@/contexts/BrandContext";
 import { seedDeferredTask, seedFirstCampaignTasks } from "@/lib/onboarding-tasks";
 
 const STEPS = [
   "Your website",
-  "Brand intelligence",
+  "Brand basics",
+  "Audience",
+  "Design guide & images",
+  "Social proof",
   "Your offer",
-  "Assets",
   "Connect Meta",
   "Strategy & launch",
 ];
 const TOTAL = STEPS.length;
+// Old → new step mapping for resume (old 6-step flow → new 8-step flow)
+const RESUME_REMAP: Record<number, number> = { 1: 1, 2: 2, 3: 6, 4: 4, 5: 7, 6: 8 };
 
 type AssetRow = { id: string; url: string; role: string | null; kept: boolean; source_url?: string | null; signedUrl?: string };
 
