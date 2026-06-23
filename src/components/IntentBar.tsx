@@ -102,10 +102,51 @@ export function IntentBar({
     };
   }, [typewriterPrompts, placeholder, value, focused]);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // TODO: connect to AI intent router + task tray
-    navigate("/create");
+    const text = value.trim();
+    if (!text || submitting) return;
+    setSubmitting(true);
+    try {
+      const res = await callIntentRouter(
+        [{ role: "user", content: text }],
+        activeBrand?.id,
+      );
+      if (res.mode === "route" && res.route) {
+        setValue("");
+        const params = res.routeParams || {};
+        const qs = new URLSearchParams();
+        Object.entries(params).forEach(([k, v]) => {
+          if (v === null || v === undefined) return;
+          qs.set(k, typeof v === "string" ? v : JSON.stringify(v));
+        });
+        const sep = res.route.includes("?") ? "&" : "?";
+        const dest = qs.toString() ? `${res.route}${sep}${qs.toString()}` : res.route;
+        navigate(dest);
+      } else {
+        setConvoSeed({ userText: text, response: res });
+        setConvoOpen(true);
+        setValue("");
+      }
+    } catch (err: any) {
+      console.error("[IntentBar] router failed", err);
+      toast.error("Couldn't reach LUMI — opening chat instead");
+      setConvoSeed({
+        userText: text,
+        response: {
+          mode: "converse",
+          reply: "I couldn't reach the router. Try one of these to get going:",
+          actions: [
+            { label: "Launch a campaign", type: "route", target: "/create" },
+            { label: "Check performance", type: "route", target: "/ad-performance" },
+            { label: "Make creative", type: "route", target: "/creative-studio" },
+          ],
+        },
+      });
+      setConvoOpen(true);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const isLg = size === "lg";
