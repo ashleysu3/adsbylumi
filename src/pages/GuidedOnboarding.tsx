@@ -795,9 +795,18 @@ export default function GuidedOnboarding() {
     <div className="min-h-screen bg-background py-10 px-4">
       <div className="max-w-3xl mx-auto">
         <div className="mb-8">
-          <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-            <span>Step {step} of {TOTAL} — {STEPS[step - 1]}</span>
-            <span>{Math.round((step / TOTAL) * 100)}%</span>
+          <div className="flex items-center justify-between text-sm text-muted-foreground mb-3 gap-3">
+            <span className="truncate">Step {step} of {TOTAL} — {STEPS[step - 1]}</span>
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="tabular-nums">{Math.round((step / TOTAL) * 100)}%</span>
+              <button
+                type="button"
+                onClick={() => finishLater(`Finish your ${STEPS[step - 1].toLowerCase()} setup`, "/brand")}
+                className="text-xs text-muted-foreground/80 underline-offset-2 hover:underline hover:text-foreground transition-colors"
+              >
+                I'll finish setup later
+              </button>
+            </div>
           </div>
           <Progress value={(step / TOTAL) * 100} />
         </div>
