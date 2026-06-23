@@ -2024,6 +2024,7 @@ function ReviewProofCard({ brand, onSave, loading }: { brand: any; onSave: (p: a
       </CardContent>
     </Card>
   );
+}
 
 function BrandHeroCard({ brand }: { brand: any }) {
   const logo: string | undefined = brand?._kit?.logo_url || brand?.logo_url || undefined;
