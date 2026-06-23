@@ -241,17 +241,11 @@ export function MyCreativeLibrary() {
 }
 
 function CreativeCard({ item }: { item: CreativeItem }) {
-  const Icon =
-    item.kind === "idea"
-      ? IDEA_TYPE_ICON[(item.badge || "idea").toLowerCase()] || Lightbulb
-      : item.kind === "broll"
-      ? Film
-      : item.kind === "graphic"
-      ? ImageIcon
-      : Camera;
+  const Icon = item.kind === "broll" ? Film : ImageIcon;
 
-  const isMedia = item.kind === "graphic" || item.kind === "photo";
+  const isMedia = item.kind === "graphic";
   const hasVideo = item.kind === "broll" && item.href && /\.(mp4|webm|mov)(\?|$)/i.test(item.href);
+
 
   return (
     <Card className="overflow-hidden group hover:shadow-md transition-shadow">
