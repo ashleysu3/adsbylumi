@@ -377,6 +377,7 @@ export default function GuidedOnboarding() {
       toast.error(e.message || "Couldn't pull the offer");
     } finally {
       setOfferBusy(false);
+      setGlobalLoaderMsg(null);
     }
   };
 
