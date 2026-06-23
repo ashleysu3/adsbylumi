@@ -71,8 +71,14 @@ Deno.serve(async (req) => {
     const metaToken = brand.meta_access_token;
 
     const actions: string[] = [];
+    let pauseSucceeded = false;
+    let activateSucceeded = false;
+    let pauseError: string | null = null;
+    let activateError: string | null = null;
 
-    // 1. Pause fatigued ad if provided
+    // 1. Pause fatigued ad first. If this fails we MUST NOT activate the
+    //    bench ad — otherwise the account double-spends (old ad still live +
+    //    new ad live). This is real-money safety.
     if (fatigueAdId) {
       try {
         const pauseRes = await fetch(
@@ -87,10 +93,10 @@ Deno.serve(async (req) => {
           }
         );
         const pauseData = await pauseRes.json();
-        if (pauseData.success) {
+        if (pauseRes.ok && pauseData?.success) {
+          pauseSucceeded = true;
           actions.push(`Paused ad ${fatigueAdId}`);
 
-          // Update creative_bench status
           await supabaseAdmin
             .from('creative_bench')
             .update({
@@ -100,17 +106,27 @@ Deno.serve(async (req) => {
             .eq('meta_ad_id', fatigueAdId)
             .eq('workspace_id', workspaceId);
         } else {
+          pauseError =
+            pauseData?.error?.error_user_msg ||
+            pauseData?.error?.message ||
+            `Meta returned ${pauseRes.status}`;
           console.error('Failed to pause ad:', pauseData);
-          actions.push(`Failed to pause ad ${fatigueAdId}: ${JSON.stringify(pauseData.error)}`);
+          actions.push(`Failed to pause ad ${fatigueAdId}: ${pauseError}`);
         }
-      } catch (e) {
+      } catch (e: any) {
+        pauseError = e?.message || 'pause network error';
         console.error('Error pausing ad:', e);
-        actions.push(`Error pausing ad: ${e.message}`);
+        actions.push(`Error pausing ad: ${pauseError}`);
       }
     }
 
-    // 2. Activate bench ad if provided
-    if (benchAdId) {
+    // 2. Activate bench ad — ONLY if no pause was requested, or the pause
+    //    succeeded. Skipping here prevents double-spend on the brand's account.
+    const shouldActivate = !!benchAdId && (!fatigueAdId || pauseSucceeded);
+    if (benchAdId && !shouldActivate) {
+      actions.push(`Skipped activating ad ${benchAdId} because pausing the fatigued ad failed`);
+    }
+    if (shouldActivate) {
       try {
         const activateRes = await fetch(
           `https://graph.facebook.com/v25.0/${benchAdId}`,
@@ -124,7 +140,8 @@ Deno.serve(async (req) => {
           }
         );
         const activateData = await activateRes.json();
-        if (activateData.success) {
+        if (activateRes.ok && activateData?.success) {
+          activateSucceeded = true;
           actions.push(`Activated ad ${benchAdId}`);
 
           await supabaseAdmin
@@ -136,16 +153,21 @@ Deno.serve(async (req) => {
             .eq('meta_ad_id', benchAdId)
             .eq('workspace_id', workspaceId);
         } else {
+          activateError =
+            activateData?.error?.error_user_msg ||
+            activateData?.error?.message ||
+            `Meta returned ${activateRes.status}`;
           console.error('Failed to activate ad:', activateData);
-          actions.push(`Failed to activate ad ${benchAdId}: ${JSON.stringify(activateData.error)}`);
+          actions.push(`Failed to activate ad ${benchAdId}: ${activateError}`);
         }
-      } catch (e) {
+      } catch (e: any) {
+        activateError = e?.message || 'activate network error';
         console.error('Error activating ad:', e);
-        actions.push(`Error activating ad: ${e.message}`);
+        actions.push(`Error activating ad: ${activateError}`);
       }
     }
 
-    // 3. Log rotation event
+    // 3. Log rotation event (audit trail of attempt + outcome).
     await supabaseAdmin.from('creative_rotation_log').insert({
       workspace_id: workspaceId,
       brand_id: brandId,
@@ -155,8 +177,10 @@ Deno.serve(async (req) => {
       reason: reason || 'Manual rotation',
     });
 
-    // 3b. Log to unified ad_action_log
-    if (fatigueAdId) {
+    // 3b. Log to unified ad_action_log — ONLY for legs that actually succeeded.
+    //     This log is read as the source of truth for "Lumi did this in Meta",
+    //     so writing failed legs here would corrupt downstream history.
+    if (pauseSucceeded && fatigueAdId) {
       await supabaseAdmin.from('ad_action_log').insert({
         brand_id: brandId,
         workspace_id: workspaceId,
@@ -166,7 +190,7 @@ Deno.serve(async (req) => {
         meta_entity_id: fatigueAdId,
       });
     }
-    if (benchAdId) {
+    if (activateSucceeded && benchAdId) {
       await supabaseAdmin.from('ad_action_log').insert({
         brand_id: brandId,
         workspace_id: workspaceId,
@@ -177,11 +201,30 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Slack notification disabled — only bug reports and new users go to Slack
+    const overallSuccess =
+      (fatigueAdId ? pauseSucceeded : true) &&
+      (benchAdId ? activateSucceeded : true);
 
-    return new Response(JSON.stringify({ success: true, actions }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        success: overallSuccess,
+        actions,
+        pauseSucceeded,
+        activateSucceeded,
+        error: overallSuccess
+          ? undefined
+          : pauseError ||
+            activateError ||
+            (benchAdId && !shouldActivate
+              ? 'Pause failed — did not activate the bench ad to avoid double-spend.'
+              : 'Rotation did not fully complete.'),
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+
   } catch (error) {
     console.error('rotate-creative error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
