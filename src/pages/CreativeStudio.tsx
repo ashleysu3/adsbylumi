@@ -1160,7 +1160,7 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
     { id: "concepts" as const, label: "Concepts", icon: Lightbulb },
     { id: "copy" as const, label: "Ad Copy", icon: FileText },
     { id: "build" as const, label: "Produce", icon: Rocket },
-    { id: "saved" as const, label: "Saved", icon: Bookmark },
+    { id: "saved" as const, label: "My Creative", icon: Bookmark },
   ];
 
   // Tab progress indicators
