@@ -1512,6 +1512,11 @@ function ReviewAudienceCard({ brand, onSave }: { brand: any; onSave: (p: any) =>
         <CardDescription className="text-xs">Psychology + demographics. Edit anything that's off — these power every ad LUMI writes.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+        <PersonaSummary
+          demographics={demographics}
+          topDesire={desires.split("\n").map((s) => s.trim()).filter(Boolean)[0]}
+          topPain={pains.split("\n").map((s) => s.trim()).filter(Boolean)[0]}
+        />
         <div>
           <Label className="text-xs uppercase tracking-wide text-muted-foreground">Demographics</Label>
           <Textarea rows={3} value={demographics} onChange={(e) => setDemographics(e.target.value)} placeholder="Women, 30–45, US/Canada, mid-career, $80k+ household income, lives in a metro area…" />
