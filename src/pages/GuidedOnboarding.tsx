@@ -1612,8 +1612,21 @@ function BrandBasicsCard({ brand, placeholderName, onSave }: { brand: any; place
           <Label className="text-xs uppercase tracking-wide text-muted-foreground">Brand voice</Label>
           {editing ? (
             <Textarea rows={6} value={voice} onChange={(e) => setVoice(e.target.value)} placeholder="Warm, witty, never salesy…" />
+          ) : voice ? (
+            <blockquote
+              className="relative rounded-lg border-l-4 bg-muted/30 px-5 py-4 text-base md:text-lg leading-relaxed italic text-foreground/90 whitespace-pre-wrap"
+              style={{
+                borderLeftColor: "var(--brand-accent)",
+                fontFamily: brand?._kit?.fonts?.[0]
+                  ? `"${brand._kit.fonts[0]}", Georgia, serif`
+                  : 'Georgia, "Times New Roman", serif',
+              }}
+            >
+              <Quote className="absolute -top-2 -left-2 h-5 w-5 opacity-40" style={{ color: "var(--brand-accent)" }} />
+              {voice}
+            </blockquote>
           ) : (
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{voice || <span className="italic text-muted-foreground">Not set</span>}</p>
+            <p className="text-sm leading-relaxed"><span className="italic text-muted-foreground">Not set</span></p>
           )}
         </div>
         {editing && (
