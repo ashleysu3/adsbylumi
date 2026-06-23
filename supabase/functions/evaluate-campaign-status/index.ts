@@ -796,7 +796,7 @@ function classify(args: ClassifyArgs): AdEvaluation {
   // -- Apply rules in priority order. First match wins.
   // Judgment is ALWAYS based on the 3 / 7 / 30-day windows + fatigue ref —
   // the display range can't make the engine flip-flop.
-  const result = applyRules({
+  let result = applyRules({
     args, reach: Number(args.meta30?.reach || 0), frequency: Number(args.meta30?.frequency || 0), daysLive,
     w3, w7, w30, wFatigueRef,
   });
@@ -807,6 +807,95 @@ function classify(args: ClassifyArgs): AdEvaluation {
   const vsGoalPct = displayPrimary != null && args.primaryGoal > 0
     ? ((displayPrimary - args.primaryGoal) / args.primaryGoal) * 100
     : null;
+
+  // --- PRIMARY-KPI HEADLINE GUARD ---------------------------------------
+  // The headline status MUST follow the primary KPI. A campaign can never
+  // read as "performing/holding steady" while its primary KPI is missing
+  // its goal or is unmeasurable. If the rules above fell into a healthy
+  // bucket but the display-row primary tells a different story, override.
+  const HEALTHY: Status[] = ['performing', 'promising', 'scaling_ready'];
+  const primaryIsFailing = (val: number | null): boolean => {
+    if (val == null || args.primaryGoal <= 0) return false;
+    return args.primaryDirection === 'less_than' ? val > args.primaryGoal : val < args.primaryGoal;
+  };
+  const primaryIsHitting = (val: number | null): boolean => {
+    if (val == null || args.primaryGoal <= 0) return false;
+    return args.primaryDirection === 'less_than' ? val <= args.primaryGoal : val >= args.primaryGoal;
+  };
+
+  if (HEALTHY.includes(result.status)) {
+    if (displayPrimary == null) {
+      // Primary KPI has no value — cannot claim it's performing.
+      // Distinguish: not enough data yet vs spend-with-zero-results vs missing tracking.
+      const conversionKpi = args.primaryKpi === 'roas' || args.primaryKpi === 'cpp';
+      const spendAny = Number(displayRow?.spend || 0) || w7.spend || w30.spend;
+      const longSpend = w30.spend || 0;
+      const longResults = w30.results || 0;
+      if (conversionKpi && longSpend > Math.max(50, args.primaryGoal * 3) && longResults === 0) {
+        // Real spend, no conversions tracked — likely no pixel/tracking.
+        const dx = diagnoseRootCause({
+          primaryKpi: args.primaryKpi, meta7: args.meta7, meta3: args.meta3,
+          metaFatigueRef: args.metaFatigueRef, reach, frequency,
+          audienceTemp: args.audienceTemp, w7KpiValue: w7.kpiValue,
+          wFatigueRefKpiValue: wFatigueRef.kpiValue, primaryDirection: args.primaryDirection,
+        });
+        result = {
+          status: 'underperforming',
+          recommendation: {
+            action: 'hold',
+            reasoning: `No ${args.primaryKpi.toUpperCase()} data coming through after $${longSpend.toFixed(0)} in spend. Either conversion tracking isn't set up (most common) or the ads aren't producing results. Set up the pixel / conversion event so LUMI can measure this — until then we can't tell ad performance from tracking gaps.`,
+            confidence: 'medium', impact: 0,
+            impactReasoning: 'Set up tracking to unlock real diagnosis.',
+            priorityTier: 2,
+            diagnosis: dx,
+          },
+        };
+      } else if (spendAny > 0) {
+        // Some spend, no value yet — call it learning honestly.
+        result = {
+          status: 'learning',
+          recommendation: {
+            action: 'wait',
+            reasoning: `${(KPI_LABELS[args.primaryKpi] || args.primaryKpi.toUpperCase())} hasn't registered a value yet — still gathering data. Too early to judge.`,
+            confidence: 'medium', impact: 0,
+            impactReasoning: 'Gathering data.',
+            priorityTier: 5,
+          },
+        };
+      } else {
+        result = {
+          status: 'learning',
+          recommendation: {
+            action: 'wait',
+            reasoning: `No spend recorded in this window — nothing to measure yet.`,
+            confidence: 'high', impact: 0,
+            impactReasoning: 'No data.',
+            priorityTier: 5,
+          },
+        };
+      }
+    } else if (primaryIsFailing(displayPrimary)) {
+      // Primary KPI has a real value and it's missing the goal — can't be healthy.
+      const dx = diagnoseRootCause({
+        primaryKpi: args.primaryKpi, meta7: args.meta7, meta3: args.meta3,
+        metaFatigueRef: args.metaFatigueRef, reach, frequency,
+        audienceTemp: args.audienceTemp, w7KpiValue: w7.kpiValue,
+        wFatigueRefKpiValue: wFatigueRef.kpiValue, primaryDirection: args.primaryDirection,
+      });
+      result = {
+        status: 'underperforming',
+        recommendation: {
+          action: 'refresh_creative',
+          reasoning: `${(KPI_LABELS[args.primaryKpi] || args.primaryKpi.toUpperCase())} is missing goal (${formatKpiValue(displayPrimary, args.primaryKpi)} vs ${formatKpiValue(args.primaryGoal, args.primaryKpi)}). ${dx.why}`,
+          confidence: dx.confidence,
+          impact: estimateImpact('refresh', { weeklySpend: w7.spend }),
+          impactReasoning: `Primary KPI is off — fix the root cause before scaling.`,
+          priorityTier: 2,
+          diagnosis: dx,
+        },
+      };
+    }
+  }
 
   // Trend direction across long → medium → short (whether KPI is improving).
   const trendDirection = computeTrend(args.primaryDirection, w30.kpiValue, w7.kpiValue, w3.kpiValue);
