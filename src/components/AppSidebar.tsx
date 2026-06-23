@@ -26,6 +26,7 @@ import {
   Settings as SettingsIcon,
   PenLine,
   Sparkles,
+  Heart,
 } from "lucide-react";
 import { LadybugIcon } from "@/components/LadybugIcon";
 import { IntentBar } from "@/components/IntentBar";
@@ -36,6 +37,7 @@ import { RenderQueueBell } from "@/components/RenderQueueBell";
 import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
 import lumiLogo from "@/assets/lumi-logo.png";
+import { cn } from "@/lib/utils";
 import {
   Sidebar,
   SidebarContent,
@@ -301,7 +303,26 @@ export function AppSidebar({ isAdmin: _isAdmin, brandId: _brandId }: AppSidebarP
           })}
         </SidebarContent>
 
-        <SidebarFooter />
+        <SidebarFooter className="p-2">
+          <button
+            type="button"
+            onClick={() => navigate("/review")}
+            className={cn(
+              "group relative w-full overflow-hidden rounded-xl bg-[image:var(--gradient-lumi)] text-white shadow-md transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-ring",
+              state === "collapsed" ? "p-2 flex items-center justify-center" : "px-3 py-2.5 flex items-center gap-2"
+            )}
+            aria-label="loving LUMI?!"
+          >
+            <Heart className="h-4 w-4 fill-white text-white animate-pulse" />
+            {state !== "collapsed" && (
+              <span className="text-sm font-medium tracking-tight">
+                loving LUMI?!
+              </span>
+            )}
+            <span className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/3 -skew-x-12 bg-white/20 blur-md opacity-0 group-hover:opacity-100 group-hover:translate-x-[300%] transition-all duration-700" />
+          </button>
+        </SidebarFooter>
+
       </Sidebar>
       <BugReportModal
         open={bugReportOpen}
