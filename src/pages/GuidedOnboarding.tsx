@@ -64,11 +64,10 @@ export default function GuidedOnboarding() {
   // Step 1
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [step1Busy, setStep1Busy] = useState(false);
-  const [step1Reveal, setStep1Reveal] = useState<{
-    brandName?: string; description?: string; colors?: string[]; voice?: string;
-    audience?: string;
-    audienceParts?: { pain?: string; wants?: string; doubt?: string };
-  }>({});
+  // 'idle' | 'running' | 'done' — when running we show a full-screen Lumi loader
+  // and hide everything else until every extractor settles.
+  const [extractionPhase, setExtractionPhase] = useState<'idle' | 'running' | 'done'>('idle');
+  const [loaderMsg, setLoaderMsg] = useState<string>("");
   const step1Fired = useRef(false);
 
   // Step 2 — review (uses brand state)
