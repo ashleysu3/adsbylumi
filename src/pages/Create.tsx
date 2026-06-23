@@ -486,6 +486,16 @@ export default function Create() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromStrategy, currentStep, selectedOfferId, selectedTemplateId]);
 
+  // Also skip the "What would you like to do?" entry card whenever the user
+  // arrived with an intent (onboarding hand-off, AdStrategy build action, or
+  // a saved strategy plan). The choice was already made.
+  useEffect(() => {
+    if (fromStrategy && currentStep === 0) {
+      setCurrentStep(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromStrategy, currentStep]);
+
   const handleNext = async () => {
     if (currentStep === 2) {
       // After strategy, generate angles and go directly to Creative Studio
