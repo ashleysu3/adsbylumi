@@ -1985,18 +1985,18 @@ function ReviewProofCard({ brand, onSave, loading }: { brand: any; onSave: (p: a
 }
 
 
-function UploadBtn({ id, label, onFile, accept = "image/*" }: { id: string; label: string; onFile: (f: File) => void; accept?: string }) {
+function UploadBtn({ id, label, onFile, accept = "image/*", multiple = false }: { id: string; label: string; onFile: (f: File) => void; accept?: string; multiple?: boolean }) {
   return (
     <label htmlFor={id} className="cursor-pointer">
       <input
-        id={id} type="file" accept={accept} className="hidden"
+        id={id} type="file" accept={accept} multiple={multiple} className="hidden"
         onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) onFile(f);
+          const files = Array.from(e.target.files || []);
+          files.forEach((f) => onFile(f));
           e.target.value = "";
         }}
       />
-      <div className="flex flex-col items-center justify-center gap-1 rounded-md border border-dashed py-3 text-xs hover:bg-muted/50">
+      <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed py-6 text-xs hover:bg-muted/50">
         <Upload className="h-4 w-4" />
         {label}
       </div>
