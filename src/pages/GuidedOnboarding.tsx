@@ -202,6 +202,8 @@ export default function GuidedOnboarding() {
         if (d.description) brandPatch.value_proposition = d.description;
         if (Object.keys(brandPatch).length) {
           await supabase.from("brands").update(brandPatch).eq("id", brandIdLocal);
+          // Mirror locally so Step 2's design/voice cards are pre-filled the moment user arrives.
+          setBrand((prev: any) => ({ ...(prev || {}), ...brandPatch }));
         }
         setStep1Reveal((p) => ({
           ...p,
