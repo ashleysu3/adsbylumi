@@ -1076,6 +1076,16 @@ export default function Performance() {
           </>
         )}
       </div>
+      <GoalSetupModal
+        open={!!goalModalFor}
+        onOpenChange={(o) => { if (!o) setGoalModalFor(null); }}
+        campaigns={goalModalFor ? [{
+          id: goalModalFor.workspaceId || goalModalFor.campaign.id,
+          name: goalModalFor.workspaceName || goalModalFor.campaign.name,
+          brandId: activeBrand?.id,
+        }] : []}
+        onGoalsSaved={() => { setGoalModalFor(null); setResults([]); setLoading(true); }}
+      />
     </DashboardLayout>
   );
 }
