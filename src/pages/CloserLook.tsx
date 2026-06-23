@@ -146,6 +146,7 @@ export default function CloserLook() {
 
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<EngineResult | null>(null);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [workspaceName, setWorkspaceName] = useState<string>("");
   const [actions, setActions] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -164,6 +165,7 @@ export default function CloserLook() {
       setLoading(true);
       setError(null);
       setResult(null);
+      setWorkspaceId(null);
       try {
         const { data: workspaceRows, error: wsErr } = await supabase
           .from("campaign_workspaces")
@@ -184,6 +186,7 @@ export default function CloserLook() {
           setError("This campaign hasn't been pushed to Meta yet.");
           return;
         }
+        setWorkspaceId(ws.id);
         setWorkspaceName(ws.name || "Campaign");
 
         const { data, error: evalErr } = await supabase.functions.invoke("evaluate-campaign-status", {
@@ -229,8 +232,7 @@ export default function CloserLook() {
   // also appears in the tray.
   // -------------------------------------------------------------------------
   async function openExecuteFor(rec: AdEval) {
-    if (!result || !activeBrand) return;
-    const workspaceId = await resolveWorkspaceId();
+    if (!result || !activeBrand || !workspaceId) return;
     if (!workspaceId) return;
     const action = rec.recommendation.action;
     let actionType: "pause" | "budget" | "rotate" | null = null;
@@ -608,18 +610,15 @@ export default function CloserLook() {
           onOpenChange={setTaskOpen}
           onDone={() => {
             // Refresh recent actions after a successful execution.
-            if (!activeBrand) return;
-            resolveWorkspaceId().then((workspaceId) => {
-              if (!workspaceId) return;
-              supabase
-                .from("ad_action_log")
-                .select("id, action_type, action_detail, source, created_at, meta_entity_id")
-                .eq("brand_id", activeBrand.id)
-                .eq("workspace_id", workspaceId)
-                .order("created_at", { ascending: false })
-                .limit(8)
-                .then(({ data }) => setActions(data || []));
-            });
+            if (!activeBrand || !workspaceId) return;
+            supabase
+              .from("ad_action_log")
+              .select("id, action_type, action_detail, source, created_at, meta_entity_id")
+              .eq("brand_id", activeBrand.id)
+              .eq("workspace_id", workspaceId)
+              .order("created_at", { ascending: false })
+              .limit(8)
+              .then(({ data }) => setActions(data || []));
           }}
         />
 
