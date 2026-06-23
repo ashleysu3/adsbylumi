@@ -29,6 +29,7 @@ import { OverlayStylePicker } from "@/components/OverlayStylePicker";
 import type { OverlayStyle } from "@/components/VideoTextPreview";
 import { DEFAULT_OVERLAY_STYLE } from "@/components/VideoTextPreview";
 import { BrandOnboardingWizard } from "@/components/BrandOnboardingWizard";
+import { ArchetypeDiagnosisCard } from "@/components/ArchetypeDiagnosisCard";
 import { Building2, Globe, Target, Edit, CheckCircle2, Brain, Package, Link, Smile, X, Loader2, Clock, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -584,6 +585,25 @@ export default function Dashboard() {
 
         {/* System Alerts */}
         <AlertsBanner />
+
+        {/* Business-model archetype — sits above templates and sets budget +
+            success-metric defaults. Shown after at least one offer exists so
+            we can diagnose from price + type. */}
+        {offers.length > 0 && (
+          <ArchetypeDiagnosisCard
+            brandId={brand.id}
+            currentSlug={(brand as any)?.business_model ?? null}
+            diagnosisInput={{
+              pricePoint: offers[0]?.price_point ?? null,
+              offerType: offers[0]?.target_outcome ?? null,
+              offerName: offers[0]?.name ?? null,
+              goal: null,
+            }}
+            onChanged={() => fetchBrandData()}
+            variant={(brand as any)?.business_model ? "inline" : "card"}
+          />
+        )}
+
 
         {/* Brand Details Card */}
         <Card variant="glow" data-section="brand-details">

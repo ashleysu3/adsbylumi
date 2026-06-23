@@ -1,6 +1,8 @@
 // Shared KPI options + goal suggestion logic.
 // Used by both GoalSetupModal (insights) and PostLaunchWalkthrough.
 
+import { getArchetypeKpiSuggestions } from "./business-archetypes";
+
 export const KPI_OPTIONS = [
   { value: 'cplpv', label: 'Cost per Landing Page View (CPLPV)', goalType: 'less_than' as const },
   { value: 'cpc', label: 'Cost per Click (CPC)', goalType: 'less_than' as const },
@@ -21,7 +23,27 @@ export interface GoalSuggestion {
   note: string;
 }
 
-export function suggestGoals(offerPrice: string | null, templateSlug: string | null): GoalSuggestion {
+export function suggestGoals(
+  offerPrice: string | null,
+  templateSlug: string | null,
+  archetypeSlug?: string | null,
+): GoalSuggestion {
+  // Archetype-driven suggestions win when present — the business model
+  // sets what success looks like before the template does.
+  const arch = getArchetypeKpiSuggestions(archetypeSlug);
+  if (arch?.primary) {
+    const primaryLabel = KPI_OPTIONS.find((o) => o.value === arch.primary!.kpi)?.label || arch.primary.kpi;
+    const secondaryLabel = arch.secondary
+      ? KPI_OPTIONS.find((o) => o.value === arch.secondary!.kpi)?.label || arch.secondary.kpi
+      : null;
+    return {
+      primary: { ...arch.primary, label: primaryLabel },
+      secondary: arch.secondary && secondaryLabel
+        ? { ...arch.secondary, label: secondaryLabel }
+        : null,
+      note: arch.note,
+    };
+  }
   const price = parseFloat((offerPrice || '0').replace(/[^0-9.]/g, ''));
   const slug = templateSlug || '';
 
