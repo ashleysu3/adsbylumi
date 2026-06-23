@@ -932,7 +932,7 @@ export default function GuidedOnboarding() {
                       title="Add a headshot"
                       description="A founder/face photo lifts ad performance a lot. Plain backdrop works best."
                       ctaLabel="Upload headshot"
-                      onCta={() => document.getElementById("upload-headshot")?.click()}
+                      onCta={() => document.getElementById("upload-any")?.click()}
                       autoTask={{ title: "Add a headshot photo", link_to: "/brand" }}
                     />
                   )}
