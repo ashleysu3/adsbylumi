@@ -123,6 +123,13 @@ export const ARCHETYPES: Record<ArchetypeSlug, Archetype> = {
       "Weak Day-1 ROAS is normal. The real read is downstream nurture revenue at 30/60/90 days.",
     ],
     templateSlugs: ["webinar-cold", "paid-challenge-cold", "lead-magnet-cold"],
+    cadence: {
+      rotationPace: "Weekly rotation",
+      anglesPerTest: { min: 3, max: 5 },
+      refreshEveryDays: { min: 7, max: 14 },
+      fatigueFrequencyThreshold: { cold: 3, warm: 5 },
+      tip: "Ship 3–5 angles, refresh every 1–2 weeks. Hooks fatigue fast on cold lead-gen.",
+    },
   },
 
   low_ticket_direct: {
