@@ -25,6 +25,7 @@ import Reactivate from "./pages/Reactivate";
 import WelcomeBack from "./pages/WelcomeBack";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
+import Home from "./pages/Home";
 import Start from "./pages/Start";
 import Create from "./pages/Create";
 import AdPerformance from "./pages/Data";
@@ -172,6 +173,7 @@ const App = () => {
                   <Route path="/create" element={<Create />} />
                   <Route path="/recommended-strategy" element={<RecommendedStrategy />} />
                   <Route path="/strategy-plan" element={<StrategyPlan />} />
+                  <Route path="/home" element={<Home />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/planning" element={<Navigate to="/campaigns" replace />} />
                   <Route path="/strategy" element={<Strategy />} />

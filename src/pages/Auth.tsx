@@ -73,7 +73,7 @@ export default function Auth() {
         if (inviteToken) {
           await acceptInvite(inviteToken);
         }
-        navigate(safeReturnTo || "/start", { replace: true });
+        navigate(safeReturnTo || "/home", { replace: true });
       }
     });
   }, [navigate, safeReturnTo, inviteToken]);
@@ -119,7 +119,7 @@ export default function Auth() {
         
         toast.success("Welcome back!");
         if (inviteToken) await acceptInvite(inviteToken);
-        navigate(safeReturnTo || "/start");
+        navigate(safeReturnTo || "/home");
       } else {
         const { data, error } = await supabase.auth.signUp({
           email,

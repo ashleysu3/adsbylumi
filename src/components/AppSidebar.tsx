@@ -28,6 +28,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { LadybugIcon } from "@/components/LadybugIcon";
+import { IntentBar } from "@/components/IntentBar";
 import { BugReportModal } from "@/components/BugReportModal";
 import { NavLink } from "@/components/NavLink";
 import { BrandSelector } from "@/components/BrandSelector";
@@ -98,6 +99,7 @@ const groups: NavGroup[] = [
     icon: Tag,
     emoji: "🏷️",
     items: [
+      { label: "Brand Dashboard", to: "/dashboard", icon: LayoutGrid },
       { label: "Design Guide", to: "/style", icon: Paintbrush },
       // TODO: dedicated voice page — currently routes to placeholder.
       { label: "Voice + Examples", to: "/voice", icon: Mic },
@@ -241,7 +243,7 @@ export function AppSidebar({ isAdmin: _isAdmin, brandId: _brandId }: AppSidebarP
               alt="Lumi"
               className="h-8 w-auto object-contain flex-shrink-0 cursor-pointer"
               src={lumiLogo}
-              onClick={() => navigate("/start")}
+              onClick={() => navigate("/home")}
             />
             {!collapsed && (
               <>
@@ -251,30 +253,11 @@ export function AppSidebar({ isAdmin: _isAdmin, brandId: _brandId }: AppSidebarP
             )}
           </div>
 
-          {/* "What do you want to do?" intent input */}
+          {/* "How can LUMI help today?" intent input */}
           {!collapsed && (
-            <form onSubmit={handleIntentSubmit} className="mt-3">
-              <div className="relative rounded-xl p-[1.5px] overflow-hidden">
-                {/* Animated gradient border */}
-                <span
-                  aria-hidden
-                  className="absolute inset-0 rounded-xl bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1"
-                />
-                <span
-                  aria-hidden
-                  className="absolute inset-0 rounded-xl before:absolute before:inset-0 before:rounded-xl before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent before:animate-shimmer"
-                />
-                <div className="relative flex items-center gap-2 rounded-[10px] bg-sidebar px-2.5 py-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-lumi-pink-1 flex-shrink-0" />
-                  <input
-                    value={intent}
-                    onChange={(e) => setIntent(e.target.value)}
-                    placeholder="What do you want to do?"
-                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
-                  />
-                </div>
-              </div>
-            </form>
+            <div className="mt-3">
+              <IntentBar size="sm" innerBgClassName="bg-sidebar" />
+            </div>
           )}
         </SidebarHeader>
 
