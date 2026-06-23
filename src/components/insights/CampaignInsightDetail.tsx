@@ -40,6 +40,8 @@ import {
   getLumiStatusLabel,
 } from '@/lib/lumi-kpi-config';
 import { useRecommendationActions, describeRecAction, type Recommendation as RecType } from '@/hooks/useRecommendationActions';
+import { ConfirmRecExecuteDialog } from './ConfirmRecExecuteDialog';
+
 import { Eye, Pause, Play, Rocket, Hourglass, Flame } from 'lucide-react';
 import { getFatigueStatus } from '@/lib/fatigue';
 import { FatigueGauge } from './FatigueGauge';
@@ -306,6 +308,48 @@ export function CampaignInsightDetail({
   // onClick logic that used to sit on the Creative Actions buttons.
   const { executeRecommendation, executing: recExecuting, completed: recCompleted } =
     useRecommendationActions({ onExecuted: () => { fetchRecommendations(); } });
+
+  // Snoozed ad IDs from recommendation_overrides — mirrors Performance.
+  // Recs targeting a snoozed ad are filtered out of executable surfaces.
+  const [snoozedAdIds, setSnoozedAdIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!campaign.brandId) { setSnoozedAdIds(new Set()); return; }
+    let cancelled = false;
+    (async () => {
+      const nowIso = new Date().toISOString();
+      const { data } = await supabase
+        .from('recommendation_overrides')
+        .select('ad_id, snooze_until')
+        .eq('brand_id', campaign.brandId)
+        .eq('user_action', 'snoozed')
+        .gt('snooze_until', nowIso);
+      if (cancelled) return;
+      setSnoozedAdIds(new Set((data || []).map((o: any) => o.ad_id).filter(Boolean)));
+    })();
+    return () => { cancelled = true; };
+  }, [campaign.brandId]);
+
+  const isSnoozedRec = (rec: any): boolean => {
+    if (snoozedAdIds.size === 0) return false;
+    const ap = rec?.actionPayload || {};
+    return (
+      (ap.adId && snoozedAdIds.has(ap.adId)) ||
+      (ap.fatigueAdId && snoozedAdIds.has(ap.fatigueAdId)) ||
+      (ap.sourceAdId && snoozedAdIds.has(ap.sourceAdId))
+    );
+  };
+
+  // Confirm-before-execute. Real Meta spend moves the moment we hit the API.
+  const [confirmRec, setConfirmRec] = useState<RecType | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const requestExecute = (rec: RecType) => { setConfirmRec(rec); setConfirmOpen(true); };
+  const confirmExecute = async () => {
+    if (!confirmRec) return;
+    await executeRecommendation(confirmRec);
+    setConfirmOpen(false);
+    setConfirmRec(null);
+  };
+
 
   useEffect(() => {
     if (campaign.id) {
@@ -753,8 +797,9 @@ export function CampaignInsightDetail({
             // we keep them out of Creative Actions to avoid duplication.
             // Drop completed + info-only recs for cleanliness.
             const userRecs = recommendations.filter(
-              (r: any) => !AUTOMATABLE_TYPES.has(r.type) && !recCompleted.has(r.id),
+              (r: any) => !AUTOMATABLE_TYPES.has(r.type) && !recCompleted.has(r.id) && !isSnoozedRec(r),
             );
+
             if (userRecs.length === 0) return null;
             return (
               <Card className="rounded-2xl border-[hsl(var(--lumi-orange-1)/0.2)]">
@@ -788,7 +833,7 @@ export function CampaignInsightDetail({
                         onClick={() => {
                           if (action.kind === 'add_posts') openPostPicker();
                           else if (action.kind === 'navigate') navigate(action.url);
-                          else if (action.kind === 'execute') executeRecommendation(rec);
+                          else if (action.kind === 'execute') requestExecute(rec);
                           // kind === 'budget' is handled by the wrapping Popover
                         }}
                       >
@@ -844,7 +889,7 @@ export function CampaignInsightDetail({
 
           {/* Lumi Actionable Recommendations — only automatable */}
           <LumiRecommendations
-            recommendations={recommendations.filter((r: any) => AUTOMATABLE_TYPES.has(r.type))}
+            recommendations={recommendations.filter((r: any) => AUTOMATABLE_TYPES.has(r.type) && !isSnoozedRec(r))}
             loading={recsLoading}
             onRefresh={fetchRecommendations}
             onRecommendationExecuted={fetchRecommendations}
@@ -1083,6 +1128,16 @@ export function CampaignInsightDetail({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Confirm before any Meta-mutating rec executes */}
+      <ConfirmRecExecuteDialog
+        rec={confirmRec}
+        open={confirmOpen}
+        submitting={confirmRec ? !!recExecuting[confirmRec.id] : false}
+        onOpenChange={(o) => { if (!o) { setConfirmOpen(false); setConfirmRec(null); } }}
+        onConfirm={confirmExecute}
+      />
     </>
   );
 }
+

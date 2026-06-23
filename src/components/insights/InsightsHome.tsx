@@ -52,6 +52,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { getFatigueStatus } from '@/lib/fatigue';
 import { Flame } from 'lucide-react';
 import { useRecommendationActions, describeRecAction, type Recommendation as RecType } from '@/hooks/useRecommendationActions';
+import { ConfirmRecExecuteDialog } from './ConfirmRecExecuteDialog';
+
 
 // Types intentionally left unfiltered on the home card — every structured rec
 // type is now actionable from here (pause, swap, budget, navigate). This
@@ -299,6 +301,59 @@ export function InsightsHome({
   const [postPickerCampaignId, setPostPickerCampaignId] = useState<string | null>(null);
   const [postPickerBrand, setPostPickerBrand] = useState<any>(null);
   const [addingPosts, setAddingPosts] = useState(false);
+
+  // Snoozed ad IDs from recommendation_overrides — same filter Performance
+  // uses. Recs that target a snoozed ad must NOT render as executable, and
+  // must NOT trigger task creation downstream.
+  const [snoozedAdIds, setSnoozedAdIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!brandId) {
+      setSnoozedAdIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const nowIso = new Date().toISOString();
+      const { data } = await supabase
+        .from('recommendation_overrides')
+        .select('ad_id, snooze_until')
+        .eq('brand_id', brandId)
+        .eq('user_action', 'snoozed')
+        .gt('snooze_until', nowIso);
+      if (cancelled) return;
+      setSnoozedAdIds(new Set((data || []).map((o: any) => o.ad_id).filter(Boolean)));
+    })();
+    return () => { cancelled = true; };
+  }, [brandId]);
+
+  // Confirm-before-execute gating. Without this, a single click on Pause /
+  // Swap / Promote fires a Meta mutation against the user's real ad spend.
+  const [confirmRec, setConfirmRec] = useState<RecType | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const requestExecute = (rec: RecType) => {
+    setConfirmRec(rec);
+    setConfirmOpen(true);
+  };
+  const confirmExecute = async () => {
+    if (!confirmRec) return;
+    await executeRecommendation(confirmRec);
+    setConfirmOpen(false);
+    setConfirmRec(null);
+  };
+
+  // True if a rec references an ad the user has snoozed. Pulls from any of
+  // the action-payload shapes the recs use (pause/resume/swap/promote).
+  const isSnoozedRec = (rec: any): boolean => {
+    if (snoozedAdIds.size === 0) return false;
+    const ap = rec?.actionPayload || {};
+    return (
+      (ap.adId && snoozedAdIds.has(ap.adId)) ||
+      (ap.fatigueAdId && snoozedAdIds.has(ap.fatigueAdId)) ||
+      (ap.sourceAdId && snoozedAdIds.has(ap.sourceAdId))
+    );
+  };
+
+
 
   // Fetch campaign goals for all campaigns (and silently auto-heal any whose
   // primary_kpi disagrees with the objective-aware kpiConfig).
@@ -1042,9 +1097,10 @@ export function InsightsHome({
                           // the previously-filtered pause_ad / swap_creative / budget
                           // types. Drops any the user has already executed in-session.
                           const userRecs = recommendations.filter(
-                            r => r.campaignId === campaign.id && !recCompleted.has(r.id)
+                            r => r.campaignId === campaign.id && !recCompleted.has(r.id) && !isSnoozedRec(r)
                           );
                           if (userRecs.length === 0) return null;
+
 
                           return (
                             <div className="space-y-1.5 pl-5">
@@ -1081,8 +1137,10 @@ export function InsightsHome({
                                       } else if (action.kind === 'navigate') {
                                         navigate(action.url);
                                       } else if (action.kind === 'execute') {
-                                        executeRecommendation(rec);
+                                        // Confirm step — these all mutate Meta on real ad spend.
+                                        requestExecute(rec);
                                       }
+
                                       // kind === 'budget' is handled by the
                                       // enclosing Popover; no onClick work here.
                                     }}
@@ -1243,6 +1301,16 @@ export function InsightsHome({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Confirm before any Meta-mutating rec executes */}
+      <ConfirmRecExecuteDialog
+        rec={confirmRec}
+        open={confirmOpen}
+        submitting={confirmRec ? !!recExecuting[confirmRec.id] : false}
+        onOpenChange={(o) => { if (!o) { setConfirmOpen(false); setConfirmRec(null); } }}
+        onConfirm={confirmExecute}
+      />
     </div>
   );
+
 }

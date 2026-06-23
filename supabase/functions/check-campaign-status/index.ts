@@ -40,15 +40,39 @@ serve(async (req) => {
 
     console.log('Request:', { workspaceId, action, entityId, entityType });
 
-    // Initialize Supabase client
+    // Initialize Supabase clients — admin for data ops, user for auth.
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Authenticate caller (signing-keys: getClaims). Ownership is then
+    // enforced below against brand.user_id. Without this, any logged-in
+    // user could pause / resume another user's ads by passing IDs.
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const userId = claimsData.claims.sub;
+
     // Fetch workspace and brand data
     const { data: workspace, error: workspaceError } = await supabase
       .from('campaign_workspaces')
-      .select('*, brand:brands(id, meta_account_id, meta_access_token)')
+      .select('*, brand:brands(id, user_id, meta_account_id, meta_access_token)')
       .eq('id', workspaceId)
       .single();
 
@@ -61,12 +85,22 @@ serve(async (req) => {
       throw new Error('Meta account not connected');
     }
 
+    // Ownership check — mirror pause-meta-entity.
+    if (brand.user_id !== userId) {
+      console.log('Ownership check failed:', { brandUserId: brand.user_id, requestUserId: userId });
+      return new Response(
+        JSON.stringify({ success: false, error: 'Access denied' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Read token directly (service-role context can't use get_meta_token RPC which requires auth.uid())
     const metaAccessToken = brand.meta_access_token;
 
     if (!metaAccessToken) {
       throw new Error('Meta access token not found. Please reconnect your Meta account.');
     }
+
 
     const metaCampaignIds = workspace.meta_campaign_ids;
 
@@ -119,20 +153,37 @@ serve(async (req) => {
         `https://graph.facebook.com/v25.0/${targetId}?fields=status,effective_status&access_token=${metaAccessToken}`
       );
       const verifyResult = await verifyResponse.json();
-      const verifiedStatus = verifyResult.effective_status || verifyResult.status || newStatus;
-      
-      console.log(`Verification: requested=${newStatus}, verified=${verifiedStatus}`);
+      const verifiedConfigStatus: string = verifyResult.status || '';
+      const verifiedEffectiveStatus: string = verifyResult.effective_status || verifiedConfigStatus || newStatus;
+      const matched = verifiedConfigStatus === newStatus;
 
-      // Update workspace with verified status (not just what we requested)
+      console.log(`Verification: requested=${newStatus}, status=${verifiedConfigStatus}, effective=${verifiedEffectiveStatus}, matched=${matched}`);
+
+      // Always sync the workspace with Meta's truth (even on mismatch).
       await supabase
         .from('campaign_workspaces')
-        .update({ 
-          meta_campaign_status: verifiedStatus.toLowerCase(),
+        .update({
+          meta_campaign_status: (verifiedEffectiveStatus || verifiedConfigStatus || '').toLowerCase(),
           updated_at: new Date().toISOString()
         })
         .eq('id', workspaceId);
 
-      // Log to unified ad_action_log
+      if (!matched) {
+        // DO NOT write ad_action_log on a failed/unverified change — that
+        // log is the source of truth for "Lumi actually did this in Meta".
+        return new Response(
+          JSON.stringify({
+            success: false,
+            newStatus: verifiedEffectiveStatus,
+            requestedStatus: newStatus,
+            verified: false,
+            error: `Meta did not apply the change. Current status is ${verifiedEffectiveStatus || 'unknown'} (requested ${newStatus}).`,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Log to unified ad_action_log — only on a verified successful change.
       await supabase.from('ad_action_log').insert({
         brand_id: brand.id,
         workspace_id: workspaceId,
@@ -141,25 +192,24 @@ serve(async (req) => {
           entity_id: targetId,
           entity_type: targetType,
           requested_status: newStatus,
-          verified_status: verifiedStatus,
+          verified_status: verifiedEffectiveStatus,
         },
         source: 'user',
         meta_entity_id: targetId,
       });
 
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          newStatus: verifiedStatus,
+        JSON.stringify({
+          success: true,
+          newStatus: verifiedEffectiveStatus,
           requestedStatus: newStatus,
-          verified: verifiedStatus === newStatus,
-          message: verifiedStatus === newStatus 
-            ? `Campaign ${action}d successfully` 
-            : `Campaign status is ${verifiedStatus} (requested ${newStatus})`
+          verified: true,
+          message: `Campaign ${action}d successfully`,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
 
     // Fetch campaign status from Meta
     console.log('Fetching campaign status for:', campaignId);
