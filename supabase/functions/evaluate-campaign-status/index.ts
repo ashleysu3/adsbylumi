@@ -142,7 +142,34 @@ interface AdEvaluation {
     impact: number;
     impactReasoning: string;
     priorityTier: 1 | 2 | 3 | 4 | 5; // 1 = spend_starved, 2 = underperformer, 3 = fatigue, 4 = scaling_ready, 5 = no-priority (learning/performing/promising)
+    diagnosis?: Diagnosis;
   };
+}
+
+export type RootCause =
+  | 'delivery'
+  | 'creative_ctr'
+  | 'message_mismatch'
+  | 'fatigue'
+  | 'offer_economics'
+  | 'auction'
+  | 'unknown';
+
+export interface Diagnosis {
+  rootCause: RootCause;
+  why: string;
+  signals: string[];
+  primaryAction:
+    | 'test_new_creative'
+    | 'rotate_bench'
+    | 'broaden_audience'
+    | 'raise_budget'
+    | 'fix_landing_page'
+    | 'fix_offer_economics'
+    | 'consolidate_adsets'
+    | 'wait';
+  confidence: 'high' | 'medium' | 'low';
+  needsConversionTracking?: boolean;
 }
 
 interface WindowSnapshot {
