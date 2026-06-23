@@ -1,7 +1,14 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBrand } from "@/contexts/BrandContext";
+import { toast } from "sonner";
+import {
+  IntentConversation,
+  callIntentRouter,
+  type IntentResponse,
+} from "@/components/IntentConversation";
 
 interface IntentBarProps {
   /**
