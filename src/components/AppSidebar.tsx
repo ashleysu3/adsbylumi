@@ -37,6 +37,7 @@ import { RenderQueueBell } from "@/components/RenderQueueBell";
 import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
 import lumiLogo from "@/assets/lumi-logo.png";
+import { cn } from "@/lib/utils";
 import {
   Sidebar,
   SidebarContent,
