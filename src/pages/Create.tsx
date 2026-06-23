@@ -933,7 +933,7 @@ export default function Create() {
             <div className="space-y-4">
               {/* LUMI Recommends */}
               <button
-                onClick={() => navigate("/recommended-strategy")}
+                onClick={() => navigate("/strategy")}
                 className="group text-left w-full"
               >
                 <Card variant="gradient" className="p-6 hover:shadow-lumi transition-all cursor-pointer relative overflow-hidden">
