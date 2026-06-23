@@ -290,10 +290,7 @@ serve(async (req) => {
 
     // Fetch site meta (title, og:site_name, description) in parallel with branding
     const [fc, meta] = await Promise.all([firecrawlBranding(url), fetchSiteMeta(url)]);
-    console.log("[XBR-V2] meta:", JSON.stringify(meta), "fcOk:", !!fc);
 
-    // Sentinel so we can confirm the deployed code version
-    const debugMarker = "XBR-V2";
 
     if (fc && (fc.suggested.colors?.background || (fc.suggested.colors?.pops?.length ?? 0) > 0)) {
       // Normalize into the flat shape the client reads (name, description, colors, fonts, logoUrl)
