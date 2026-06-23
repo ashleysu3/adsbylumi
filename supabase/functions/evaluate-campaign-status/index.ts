@@ -373,6 +373,7 @@ Deno.serve(async req => {
         goals: goalsConfig.map(g => ({ ...g, isDefaultGoal: g.isDefault })),
         hasUserGoals,
         campaignType,
+        objective: meta.objective || null,
         asOf: asOfDate.toISOString(),
         displayRange: { since: displayWindow.since, until: displayWindow.until, days: displayWindow.days, label: displayWindow.label },
       },
