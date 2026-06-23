@@ -532,6 +532,7 @@ export default function Performance() {
         return;
       }
       toast.success("Creative swapped in Meta");
+      await closeMatchingTasks({ actionType: "rotate", entityId: chosen.rec.id });
       await logOverride("refresh_creative", "modified");
       removeChosenFromQueue();
       setRefreshOpen(false);
