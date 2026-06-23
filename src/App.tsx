@@ -116,13 +116,14 @@ import Launch from "./pages/Launch";
 import Performance from "./pages/Performance";
 import CloserLook from "./pages/CloserLook";
 import {
-  AudiencePlaceholder,
   GoalsPlaceholder,
-  VoicePlaceholder,
   TroubleshootingPlaceholder,
   CloserLookPlaceholder,
 } from "./pages/Placeholder";
 import Tasks from "./pages/Tasks";
+import Voice from "./pages/Voice";
+import Audience from "./pages/Audience";
+import InitialSetup from "./pages/InitialSetup";
 
 
 const queryClient = new QueryClient();
