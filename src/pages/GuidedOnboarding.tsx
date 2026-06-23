@@ -71,10 +71,14 @@ export default function GuidedOnboarding() {
   // Step 1
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [step1Busy, setStep1Busy] = useState(false);
-  // 'idle' | 'running' | 'done' — when running we show a full-screen Lumi loader
-  // and hide everything else until every extractor settles.
+  // Per-section streaming flags. Each one flips false the moment its extractor settles,
+  // so the reveal page can show inline shimmers and swap to real content as data arrives.
   const [extractionPhase, setExtractionPhase] = useState<'idle' | 'running' | 'done'>('idle');
-  const [loaderMsg, setLoaderMsg] = useState<string>("");
+  const [loadingBrandBasics, setLoadingBrandBasics] = useState(false);
+  const [loadingVoice, setLoadingVoice] = useState(false);
+  const [loadingAudience, setLoadingAudience] = useState(false);
+  const [loadingProof, setLoadingProof] = useState(false);
+  const [loadingAssets, setLoadingAssetsHarvest] = useState(false);
   const step1Fired = useRef(false);
 
   // Step 2 — review (uses brand state)
@@ -84,9 +88,9 @@ export default function GuidedOnboarding() {
   const [offerUrl, setOfferUrl] = useState("");
   const [offers, setOffers] = useState<any[]>([]);
   const [offerBusy, setOfferBusy] = useState(false);
-  const [globalLoaderMsg, setGlobalLoaderMsg] = useState<string | null>(null);
+  const [offerStatusMsg, setOfferStatusMsg] = useState<string | null>(null);
 
-  // Step 4 — assets
+  // Reveal — assets
   const [assets, setAssets] = useState<AssetRow[]>([]);
   const [headshotUrl, setHeadshotUrl] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -95,7 +99,7 @@ export default function GuidedOnboarding() {
   const [brollIdeas, setBrollIdeas] = useState<any[] | null>(null);
   const assetsInitRef = useRef(false);
 
-  // Step 6 — strategy
+  // Strategy
   const [strategy, setStrategy] = useState<any>(null);
   const [strategyLoading, setStrategyLoading] = useState(false);
 
