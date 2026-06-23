@@ -176,6 +176,16 @@ export function BudgetAdjustmentPanel({
   };
 
   const handleSaveBudget = async () => {
+    // Guard: the edge function requires a positive daily budget. When the
+    // current budget is unknown, `newBudget` can still be 0 — bail with an
+    // inline error instead of letting Meta return a 400.
+    if (!Number.isFinite(newBudget) || newBudget < 1) {
+      setErrorState({
+        message: "Enter a daily budget of at least $1 before saving.",
+      });
+      toast.error("Enter a daily budget of at least $1.");
+      return;
+    }
     setUpdating(true);
     setErrorState(null);
     try {
