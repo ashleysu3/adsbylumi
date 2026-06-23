@@ -664,6 +664,16 @@ export default function GuidedOnboarding() {
         {/* ============== STEP 2 — Confirm brand intelligence ============== */}
         {step === 2 && (
           <div className="space-y-4">
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Sparkles className="h-4 w-4 text-primary" /> Here's what we gathered ✨
+                </CardTitle>
+                <CardDescription>
+                  We pulled this straight from your website{brand?.website_url ? ` (${brand.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "")})` : ""} and ran it through our brand knowledge base. Skim it, tweak anything that's off, and we'll use it everywhere — voice, audiences, ads. You can always edit later in My Brand.
+                </CardDescription>
+              </CardHeader>
+            </Card>
             <ReviewDesignCard brand={brand} onSave={updateBrand} />
             <ReviewVoiceCard brand={brand} onSave={updateBrand} />
             <ReviewAudienceCard brand={brand} onSave={updateBrand} />
