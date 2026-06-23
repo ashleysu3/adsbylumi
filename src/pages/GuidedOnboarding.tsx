@@ -1012,27 +1012,24 @@ export default function GuidedOnboarding() {
 
                   <div className="pt-3 border-t space-y-2">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Add more</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      <UploadBtn id="upload-logo" label="+ Logo" onFile={(f) => uploadFile(f, "logo")} />
-                      <UploadBtn id="upload-headshot" label="+ Headshot" onFile={(f) => uploadFile(f, "headshot")} />
-                      <UploadBtn id="upload-fullbody" label="+ Full body" onFile={(f) => uploadFile(f, "full_body")} />
-                      <UploadBtn id="upload-lifestyle" label="+ Lifestyle" onFile={(f) => uploadFile(f, "lifestyle")} />
-                      <UploadBtn id="upload-product" label="+ Product" onFile={(f) => uploadFile(f, "product")} />
-                      <UploadBtn id="upload-graphic" label="+ Graphic" onFile={(f) => uploadFile(f, "graphic")} />
-                      <UploadBtn id="upload-texture" label="+ Texture" onFile={(f) => uploadFile(f, "texture")} />
-                      <UploadBtn id="upload-bg" label="+ Background" onFile={(f) => uploadFile(f, "background")} />
-                    </div>
+                    <UploadBtn
+                      id="upload-any"
+                      label="Drop in photos or video — sort them after"
+                      accept="image/*,video/*"
+                      multiple
+                      onFile={uploadAny}
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Upload anything (logo, headshot, lifestyle, product, b-roll…). You'll tag each one with the dropdown on its tile.
+                    </p>
                   </div>
 
                   {/* B-roll */}
                   <div className="pt-4 border-t space-y-3">
                     <h3 className="text-sm font-semibold flex items-center gap-2"><Film className="h-4 w-4" /> B-roll</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <UploadBtn id="upload-broll" label="Upload b-roll (mp4)" accept="video/*" onFile={uploadBroll} />
-                      <Button variant="outline" size="sm" onClick={saveShotList} disabled={!brollIdeas?.length}>
-                        <ListChecks className="h-3 w-3 mr-1" /> Save suggested shot list
-                      </Button>
-                    </div>
+                    <Button variant="outline" size="sm" onClick={saveShotList} disabled={!brollIdeas?.length}>
+                      <ListChecks className="h-3 w-3 mr-1" /> Save suggested shot list
+                    </Button>
                     {brollIdeas?.length ? (
                       <div className="rounded-md border bg-muted/30 p-3 space-y-2 max-h-60 overflow-auto">
                         <p className="text-xs font-medium mb-1">Suggested shots</p>
