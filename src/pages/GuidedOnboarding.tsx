@@ -551,9 +551,9 @@ export default function GuidedOnboarding() {
     toast.success("Shot list saved to your tasks");
   };
 
-  // =================== STEP 8 — strategy ===================
+  // =================== STEP 5 — strategy ===================
   useEffect(() => {
-    if (step !== 8 || !brandId || strategy || strategyLoading) return;
+    if (step !== 5 || !brandId || strategy || strategyLoading) return;
     (async () => {
       setStrategyLoading(true);
       try {
