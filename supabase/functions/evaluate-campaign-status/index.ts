@@ -95,6 +95,69 @@ const LEAD_ACTION_TYPES = ['lead', 'offsite_conversion.fb_pixel_lead', 'onsite_c
 const PURCHASE_ACTION_TYPES = ['purchase', 'offsite_conversion.fb_pixel_purchase', 'onsite_conversion.purchase', 'omni_purchase'];
 const VIDEO_VIEW_ACTION_TYPES = ['video_view', 'video_thruplay_watched_actions'];
 
+// Business-model archetype framework — mirrors src/lib/business-archetypes.ts.
+// Each archetype sets the FALLBACK primary KPI used when the user hasn't set
+// a goal, plus grading notes the UI surfaces so generic ROAS-led judgments
+// don't get applied where they shouldn't (e.g. webinar funnels).
+const ARCHETYPE_CONFIG: Record<string, {
+  label: string;
+  fallbackPrimaryKpi: string;
+  fallbackPrimaryGoal: number;
+  fallbackPrimaryDirection: 'less_than' | 'greater_than';
+  gradingNotes: string[];
+}> = {
+  lead_gen_funnels: {
+    label: 'Lead Generation Funnel',
+    fallbackPrimaryKpi: 'cpl',
+    fallbackPrimaryGoal: 8,
+    fallbackPrimaryDirection: 'less_than',
+    gradingNotes: [
+      "Don't grade lead-gen on webinar ROAS — judge on opt-in / show-up / live-conversion and LTV from the list.",
+      "Weak Day-1 ROAS is normal. The real read is downstream nurture revenue at 30/60/90 days.",
+    ],
+  },
+  low_ticket_direct: {
+    label: 'Low-Ticket Direct Sales',
+    fallbackPrimaryKpi: 'roas',
+    fallbackPrimaryGoal: 3,
+    fallbackPrimaryDirection: 'greater_than',
+    gradingNotes: [
+      "Don't kill an ad before ~50 conversions — small budgets need patience.",
+      "Repeat purchase rate is the real margin lever, not first-sale ROAS.",
+    ],
+  },
+  high_ticket_consult: {
+    label: 'High-Ticket Consultation',
+    fallbackPrimaryKpi: 'cpl',
+    fallbackPrimaryGoal: 150,
+    fallbackPrimaryDirection: 'less_than',
+    gradingNotes: [
+      "Don't grade on raw CPL — a $300 application that closes at $5k is a win.",
+      "If app→call is below 30%, the qualifier is too loose, not the ad.",
+    ],
+  },
+  ecommerce: {
+    label: 'E-Commerce',
+    fallbackPrimaryKpi: 'roas',
+    fallbackPrimaryGoal: 2,
+    fallbackPrimaryDirection: 'greater_than',
+    gradingNotes: [
+      "Judge cold and retargeting separately — blended ROAS hides which layer is failing.",
+      "Repeat customer rate compounds — a 2:1 first-purchase ROAS becomes 4:1 with repeats.",
+    ],
+  },
+  community_membership: {
+    label: 'Community / Membership',
+    fallbackPrimaryKpi: 'cpl',
+    fallbackPrimaryGoal: 80,
+    fallbackPrimaryDirection: 'less_than',
+    gradingNotes: [
+      "Cost-per-member only makes sense judged against LTV — a $200 member at $50/mo for a year is fine.",
+      "Outside an enrollment window? Don't grade — pause and wait.",
+    ],
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Types — mirror of playbook §7.
 // ---------------------------------------------------------------------------
@@ -216,7 +279,22 @@ Deno.serve(async req => {
     const meta = await fetchCampaignMeta(metaCampaignId, accessToken);
     const campaignType: 'ABO' | 'CBO' = meta.daily_budget || meta.lifetime_budget ? 'CBO' : 'ABO';
 
-    // Resolve primary KPI: input override > stored goal > inferred from objective.
+    // Resolve brand's business-model archetype (advisory layer above templates).
+    // User-set goals always win — archetype only fills in fallbacks and
+    // surfaces grading guidance ("don't grade lead-gen on webinar ROAS").
+    let archetypeSlug: string | null = (body?.archetypeSlug as string | null) ?? null;
+    if (!archetypeSlug && brandId) {
+      const { data: brandRow } = await sb
+        .from('brands')
+        .select('business_model')
+        .eq('id', brandId)
+        .maybeSingle();
+      archetypeSlug = (brandRow?.business_model as string | null) ?? null;
+    }
+    const archetype = archetypeSlug ? ARCHETYPE_CONFIG[archetypeSlug] ?? null : null;
+
+    // Resolve primary KPI: input override > stored goal > archetype fallback >
+    // generic objective-based default.
     let primaryKpi: string;
     let primaryGoal: number;
     let primaryDirection: 'less_than' | 'greater_than';
@@ -235,12 +313,22 @@ Deno.serve(async req => {
         primaryGoal = Number(goalRow.primary_kpi_threshold);
         primaryDirection = goalRow.primary_kpi_goal_type === 'greater_than' ? 'greater_than' : 'less_than';
         (globalThis as any).__lumi_goal_row = goalRow;
+      } else if (archetype) {
+        primaryKpi = archetype.fallbackPrimaryKpi;
+        primaryGoal = archetype.fallbackPrimaryGoal;
+        primaryDirection = archetype.fallbackPrimaryDirection;
+        (globalThis as any).__lumi_goal_row = null;
       } else {
         primaryKpi = LUMI_KPI_FROM_OBJECTIVE[meta.objective || ''] || 'cpl';
         primaryGoal = KPI_DEFAULT_GOAL[primaryKpi] ?? 15;
         primaryDirection = KPI_DEFAULT_DIRECTION[primaryKpi] ?? 'less_than';
         (globalThis as any).__lumi_goal_row = null;
       }
+    } else if (archetype) {
+      primaryKpi = archetype.fallbackPrimaryKpi;
+      primaryGoal = archetype.fallbackPrimaryGoal;
+      primaryDirection = archetype.fallbackPrimaryDirection;
+      (globalThis as any).__lumi_goal_row = null;
     } else {
       primaryKpi = LUMI_KPI_FROM_OBJECTIVE[meta.objective || ''] || 'cpl';
       primaryGoal = KPI_DEFAULT_GOAL[primaryKpi] ?? 15;
@@ -376,6 +464,9 @@ Deno.serve(async req => {
         objective: meta.objective || null,
         asOf: asOfDate.toISOString(),
         displayRange: { since: displayWindow.since, until: displayWindow.until, days: displayWindow.days, label: displayWindow.label },
+        archetype: archetype
+          ? { slug: archetypeSlug, label: archetype.label, gradingNotes: archetype.gradingNotes }
+          : null,
       },
       campaign: campaignEvaluation,
       adsets: adsetEvaluations,

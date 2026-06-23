@@ -707,6 +707,8 @@ export type Database = {
           brand_voice: string | null
           broll_library: Json | null
           bullet_emoji: string | null
+          business_model: string | null
+          business_model_confirmed_at: string | null
           copy_perspective: string
           created_at: string | null
           flodesk_api_key: string | null
@@ -756,6 +758,8 @@ export type Database = {
           brand_voice?: string | null
           broll_library?: Json | null
           bullet_emoji?: string | null
+          business_model?: string | null
+          business_model_confirmed_at?: string | null
           copy_perspective?: string
           created_at?: string | null
           flodesk_api_key?: string | null
@@ -805,6 +809,8 @@ export type Database = {
           brand_voice?: string | null
           broll_library?: Json | null
           bullet_emoji?: string | null
+          business_model?: string | null
+          business_model_confirmed_at?: string | null
           copy_perspective?: string
           created_at?: string | null
           flodesk_api_key?: string | null

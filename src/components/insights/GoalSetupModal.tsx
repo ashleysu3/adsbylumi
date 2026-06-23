@@ -17,6 +17,9 @@ interface CampaignForGoals {
   brandId?: string;
   offerPrice?: string | null;
   templateSlug?: string | null;
+  // Brand's business-model archetype — when present, drives KPI pre-fill
+  // ahead of the generic price/template-based rules.
+  archetypeSlug?: string | null;
 }
 
 interface GoalSetupModalProps {
@@ -55,7 +58,13 @@ export function GoalSetupModal({ open, onOpenChange, campaigns, onGoalsSaved }: 
   const [forms, setForms] = useState<Record<string, CampaignForm>>({});
 
   const currentCampaign = campaigns[currentIndex];
-  const suggestion = currentCampaign ? suggestGoals(currentCampaign.offerPrice || null, currentCampaign.templateSlug || null) : null;
+  const suggestion = currentCampaign
+    ? suggestGoals(
+        currentCampaign.offerPrice || null,
+        currentCampaign.templateSlug || null,
+        currentCampaign.archetypeSlug || null,
+      )
+    : null;
 
   useEffect(() => {
     if (!currentCampaign || forms[currentCampaign.id]) return;

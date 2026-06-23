@@ -2,8 +2,14 @@
 // "main" conversion campaign (the only one that's required) plus optional
 // supplemental campaigns (top-of-funnel + retargeting) that lift results
 // at a small fraction of the main spend.
+//
+// The brand's business-model archetype (see business-archetypes.ts) sets
+// the FLOOR for the main campaign's daily spend, the retargeting multiplier
+// (ecommerce runs warm at 2-3× cold instead of 15%), and an advisory note
+// for launch-window-only models (community/membership).
 
 import { getLumiKPIConfig } from "./lumi-kpi-config";
+import { getArchetype, type ArchetypeSlug } from "./business-archetypes";
 
 export type CampaignTier = "main" | "supplemental";
 
@@ -56,6 +62,12 @@ export type StrategyBudgetInput = {
   pricePoint?: string | null;
   monthlyBudget?: number | null;
   goalCount?: number | null;
+  // Brand's business-model archetype (lead_gen_funnels, low_ticket_direct,
+  // high_ticket_consult, ecommerce, community_membership). When present, the
+  // archetype's test-daily range sets the floor for the primary main campaign,
+  // the retarget multiplier (ecommerce) reshapes supplemental allocation, and
+  // launch-window models surface a launch-only advisory in the rationale.
+  archetypeSlug?: ArchetypeSlug | string | null;
 };
 
 export function parsePricePoint(price?: string | null): number | null {
@@ -209,16 +221,18 @@ function allocateSupplementalBudgets<T extends { leanDaily: number; idealDaily: 
   mainDaily: number,
   supplementalStages: T[],
   targetKey: "leanDaily" | "idealDaily",
+  // Archetype override: ecommerce runs retargeting at 2-3× cold spend,
+  // not 15%. When set, the cap and per-stage target use the multiplier
+  // range (min for per-stage, max for total cap).
+  override?: { perStagePct?: number; totalCapPct?: number },
 ) {
-  // Supplemental layers are useful, but the main campaign must always carry
-  // the majority of spend. This caps the entire supplemental layer, not each
-  // individual campaign, so multiple TOF/warm-up campaigns cannot add up to
-  // more than the main campaign.
-  let remainingSupplementalCap = Math.floor(mainDaily * SUPPLEMENTAL_MAX_PCT);
+  const perStagePct = override?.perStagePct ?? SUPPLEMENTAL_PCT;
+  const totalCapPct = override?.totalCapPct ?? SUPPLEMENTAL_MAX_PCT;
+  let remainingSupplementalCap = Math.floor(mainDaily * totalCapPct);
   return supplementalStages.map((stage) => {
     const target = Math.min(
       stage[targetKey],
-      Math.max(SUPPLEMENTAL_MIN_DAILY, Math.round(mainDaily * SUPPLEMENTAL_PCT)),
+      Math.max(SUPPLEMENTAL_MIN_DAILY, Math.round(mainDaily * perStagePct)),
     );
     const amount = Math.min(target, remainingSupplementalCap);
     if (amount < SUPPLEMENTAL_MIN_DAILY) return 0;
@@ -232,6 +246,14 @@ export function computeStrategyBudget(
 ): StrategyBudgetResult {
   const price = parsePricePoint(input.pricePoint);
   const campaigns = input.campaigns || [];
+  const archetype = getArchetype(input.archetypeSlug ?? null);
+  const archetypeSupplementalOverride = archetype?.budgetApproach.retargetMultiplier
+    ? {
+        // Per-stage warm spend = min multiplier × main; total cap = max × main.
+        perStagePct: archetype.budgetApproach.retargetMultiplier.min,
+        totalCapPct: archetype.budgetApproach.retargetMultiplier.max,
+      }
+    : undefined;
 
   const enriched = campaigns.map((c, i) => {
     const { cost, kpiLabel, kpiPrimary } = targetCostForCampaign(
@@ -311,7 +333,19 @@ export function computeStrategyBudget(
     required: idx === primaryMainIdx,
   }));
 
-  // Range totals: main(s) at lean/ideal + supplemental at ~15% of main ideal.
+  // Archetype floor on the primary main: the brand's business model sets
+  // a test-daily range that beats the KPI-derived default (template-level
+  // budget_suggestion already applied per-stage in `enriched`).
+  if (archetype && stages[primaryMainIdx]) {
+    const a = archetype.budgetApproach.testDaily;
+    const main = stages[primaryMainIdx];
+    main.leanDaily = Math.max(main.leanDaily, a.min);
+    main.idealDaily = Math.max(main.idealDaily, a.max);
+    main.dailyBudget = Math.max(main.dailyBudget, main.idealDaily);
+  }
+
+  // Range totals: main(s) at lean/ideal + supplemental at archetype-aware
+  // share of main ideal (ecommerce: 2-3× cold; else ~15%).
   const mainStages = stages.filter((s) => s.tier === "main");
   const supplementalStages = stages.filter((s) => s.tier === "supplemental");
   const primaryMain = stages[primaryMainIdx] ?? null;
@@ -322,11 +356,13 @@ export function computeStrategyBudget(
     primaryMainLean,
     supplementalStages,
     "leanDaily",
+    archetypeSupplementalOverride,
   ).reduce((s, x) => s + x, 0);
   const supplementalIdealTotal = allocateSupplementalBudgets(
     primaryMainIdeal,
     supplementalStages,
     "idealDaily",
+    archetypeSupplementalOverride,
   ).reduce((s, x) => s + x, 0);
   const leanTotalDaily =
     mainStages.reduce((s, x) => s + x.leanDaily, 0) + supplementalLeanTotal;
@@ -386,6 +422,7 @@ export function computeStrategyBudget(
       primarySpend,
       supplementalCandidates,
       "idealDaily",
+      archetypeSupplementalOverride,
     );
     supplementalCandidates.forEach((s, index) => {
       const target = supplementalAllocations[index] ?? 0;
@@ -473,6 +510,15 @@ export function computeStrategyBudget(
   const supplementalDaily = stages
     .filter((s) => s.tier === "supplemental" && s.included)
     .reduce((s, x) => s + x.dailyBudget, 0);
+
+  // Append archetype guidance to rationale so the budget panel surfaces
+  // the brand's framework (scaling rule, launch-window-only, etc).
+  if (archetype) {
+    const launchNote = archetype.budgetApproach.launchWindowOnly
+      ? ` ${archetype.label} model — run only during open-enrollment windows (2-4/year), not always-on.`
+      : "";
+    rationale = `${rationale}${launchNote} ${archetype.label} framework: ${archetype.budgetApproach.scalingRule}`.trim();
+  }
 
   return {
     stages,

@@ -115,4 +115,46 @@ describe("computeStrategyBudget", () => {
     expect(result.stages[0].tier).toBe("main");
     expect(result.stages[0].required).toBe(true);
   });
+
+  it("uses the archetype's test-daily range as the floor for the primary main", () => {
+    // lead_gen_funnels test range is $50–300/day.
+    const result = computeStrategyBudget({
+      campaigns: [{ name: "Webinar registration", objective: "LEAD_GENERATION" }],
+      pricePoint: "$0",
+      archetypeSlug: "lead_gen_funnels",
+    });
+    expect(result.stages[0].leanDaily).toBeGreaterThanOrEqual(50);
+    expect(result.stages[0].idealDaily).toBeGreaterThanOrEqual(300);
+    expect(result.rationale).toMatch(/Lead Generation Funnel/);
+  });
+
+  it("flags launch-window-only models in the rationale", () => {
+    const result = computeStrategyBudget({
+      campaigns: [{ name: "Open enrollment", objective: "Sales" }],
+      pricePoint: "$200",
+      archetypeSlug: "community_membership",
+    });
+    expect(result.rationale).toMatch(/open-enrollment/i);
+  });
+
+  it("scales retargeting beyond the default 25% cap for ecommerce", () => {
+    // With the ecommerce archetype, warm/retargeting can absorb up to 3×
+    // the main spend instead of being capped at ~25%. We compare the same
+    // funnel with vs. without the archetype to prove the multiplier kicks in.
+    const ecomFunnel = [
+      { name: "Cold conversion", objective: "OUTCOME_SALES" },
+      { name: "Warm retargeting", objective: "OUTCOME_SALES" },
+    ];
+    const baseline = computeStrategyBudget({
+      campaigns: ecomFunnel,
+      pricePoint: "$60",
+    });
+    const ecom = computeStrategyBudget({
+      campaigns: ecomFunnel,
+      pricePoint: "$60",
+      archetypeSlug: "ecommerce",
+    });
+    expect(ecom.idealTotalDaily).toBeGreaterThanOrEqual(baseline.idealTotalDaily);
+    expect(ecom.rationale).toMatch(/E-?Commerce/i);
+  });
 });

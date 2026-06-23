@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { clearStrategyPlan } from "./StrategyPlan";
 import { StrategyChatPanel } from "@/components/StrategyChatPanel";
 import { computeStrategyBudget, type StrategyBudgetResult } from "@/lib/strategy-budget";
+import { ArchetypeDiagnosisCard } from "@/components/ArchetypeDiagnosisCard";
 import { useMemo } from "react";
 
 type CampaignPlan = {
@@ -173,8 +174,9 @@ export default function Strategy() {
       pricePoint: selectedOffer?.price_point ?? null,
       monthlyBudget: monthly > 0 ? monthly : null,
       goalCount: goal > 0 ? goal : null,
+      archetypeSlug: (activeBrand as any)?.business_model ?? null,
     });
-  }, [matched, selectedOffer, monthlyBudgetInput, goalCountInput]);
+  }, [matched, selectedOffer, monthlyBudgetInput, goalCountInput, activeBrand]);
 
   useEffect(() => {
     if (!brandsLoading && !activeBrand) {
@@ -324,6 +326,23 @@ export default function Strategy() {
             </p>
           )}
         </div>
+
+        {activeBrand && (
+          <div className="mb-6">
+            <ArchetypeDiagnosisCard
+              brandId={activeBrand.id}
+              currentSlug={(activeBrand as any)?.business_model ?? null}
+              diagnosisInput={{
+                pricePoint: selectedOffer?.price_point ?? null,
+                offerType: selectedOffer?.target_outcome ?? null,
+                offerName: selectedOffer?.name ?? null,
+                goal: matched?.name ?? null,
+              }}
+              variant={(activeBrand as any)?.business_model ? "inline" : "card"}
+            />
+          </div>
+        )}
+
 
         {step === "pick_offer" && (
           <motion.div
