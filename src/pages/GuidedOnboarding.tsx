@@ -193,17 +193,31 @@ export default function GuidedOnboarding() {
         if (d.colors?.length) kitPatch.colors = d.colors;
         if (d.fonts?.length) kitPatch.fonts = d.fonts;
         if (d.logoUrl) kitPatch.logo_url = d.logoUrl;
-        await supabase.from("brand_kits" as any).upsert(kitPatch, { onConflict: "brand_id" });
-        // Mirror to brands so review cards see it
+        // brand_kits unique constraint is (user_id, brand_id) — use both for the conflict target.
+        const { error: kitErr } = await supabase
+          .from("brand_kits" as any)
+          .upsert(kitPatch, { onConflict: "user_id,brand_id" });
+        if (kitErr) console.warn("brand_kits upsert failed", kitErr);
+
+        // Mirror name + tagline onto brands (colors/fonts live on brand_kits, not brands).
         const brandPatch: any = {};
-        if (d.colors?.length) brandPatch.brand_colors = d.colors;
-        if (d.fonts?.length) brandPatch.brand_fonts = d.fonts;
         if (d.name) brandPatch.name = d.name;
         if (d.description) brandPatch.value_proposition = d.description;
         if (Object.keys(brandPatch).length) {
-          await supabase.from("brands").update(brandPatch).eq("id", brandIdLocal);
-          // Mirror locally so Step 2's design/voice cards are pre-filled the moment user arrives.
-          setBrand((prev: any) => ({ ...(prev || {}), ...brandPatch }));
+          const { error: brErr } = await supabase.from("brands").update(brandPatch).eq("id", brandIdLocal);
+          if (brErr) console.warn("brand update failed", brErr);
+          else setBrand((prev: any) => ({ ...(prev || {}), ...brandPatch }));
+        }
+        // Stash kit on local brand state so the design card pre-fills immediately at Step 2.
+        if (kitPatch.colors || kitPatch.fonts || kitPatch.logo_url) {
+          setBrand((prev: any) => ({
+            ...(prev || {}),
+            _kit: {
+              colors: kitPatch.colors || prev?._kit?.colors,
+              fonts: kitPatch.fonts || prev?._kit?.fonts,
+              logo_url: kitPatch.logo_url || prev?._kit?.logo_url,
+            },
+          }));
         }
         setStep1Reveal((p) => ({
           ...p,
@@ -212,6 +226,7 @@ export default function GuidedOnboarding() {
           colors: d.colors || p.colors,
         }));
       }).catch(() => {});
+
 
       // Voice + audience need the brand's value_prop/name to be populated first,
       // otherwise the AI has nothing real to work with and writes generic output.
@@ -266,54 +281,50 @@ export default function GuidedOnboarding() {
     }
   };
 
-  // =================== STEP 2 — auto-extract social proof ===================
+  // =================== STEP 2 — auto-extract social proof + load brand kit ===================
   useEffect(() => {
     if (step !== 2 || !brandId) return;
     let cancelled = false;
     (async () => {
-      // refresh brand
-      const { data } = await supabase.from("brands").select("*").eq("id", brandId).maybeSingle();
-      if (!cancelled && data) setBrand(data);
+      // refresh brand + brand_kit together
+      const loadAll = async () => {
+        const [{ data: b }, { data: k }] = await Promise.all([
+          supabase.from("brands").select("*").eq("id", brandId).maybeSingle(),
+          supabase.from("brand_kits" as any).select("colors, fonts, logo_url").eq("brand_id", brandId).maybeSingle(),
+        ]);
+        return { b: b as any, k: k as any };
+      };
 
-      // If colors/fonts haven't landed yet, try the brand_kits row, then poll briefly.
-      const hasDesign = (b: any) => (b?.brand_colors?.length || 0) > 0 || (b?.brand_fonts?.length || 0) > 0;
-      if (!hasDesign(data)) {
-        const { data: kit } = await supabase
-          .from("brand_kits" as any)
-          .select("colors, fonts, logo_url")
-          .eq("brand_id", brandId)
-          .maybeSingle();
-        const k: any = kit;
-        if (k && (k.colors?.length || k.fonts?.length)) {
-          const patch: any = {};
-          if (k.colors?.length) patch.brand_colors = k.colors;
-          if (k.fonts?.length) patch.brand_fonts = k.fonts;
-          await supabase.from("brands").update(patch).eq("id", brandId);
-          if (!cancelled) setBrand((prev: any) => ({ ...(prev || {}), ...patch }));
-        } else {
-          // Extraction may still be running — poll a few times.
-          for (let i = 0; i < 6 && !cancelled; i++) {
-            await new Promise((r) => setTimeout(r, 1500));
-            const { data: again } = await supabase.from("brands").select("*").eq("id", brandId).maybeSingle();
-            if (again && hasDesign(again)) {
-              if (!cancelled) setBrand(again);
-              break;
-            }
+      let { b, k } = await loadAll();
+      if (!cancelled && b) {
+        setBrand({ ...b, _kit: k || null });
+      }
+
+      // Poll briefly for colors/fonts if extraction is still landing
+      const kitHasDesign = (kit: any) => (kit?.colors?.length || 0) > 0 || (kit?.fonts?.length || 0) > 0;
+      if (!kitHasDesign(k)) {
+        for (let i = 0; i < 6 && !cancelled; i++) {
+          await new Promise((r) => setTimeout(r, 1500));
+          const next = await loadAll();
+          if (kitHasDesign(next.k)) {
+            if (!cancelled) setBrand({ ...next.b, _kit: next.k });
+            k = next.k;
+            break;
           }
         }
       }
 
       // Auto-pull social proof if missing
-      const sp = (data as any)?.social_proof;
-      const hasProof = Array.isArray(sp) ? sp.length > 0 : !!sp;
-      if (!hasProof && (data as any)?.website_url) {
+      const sp = b?.social_proof;
+      const hasProof = Array.isArray(sp) ? sp.length > 0 : (sp && typeof sp === "object" ? Object.values(sp).some((v: any) => Array.isArray(v) ? v.length : !!v) : !!sp);
+      if (!hasProof && b?.website_url) {
         setProofExtracting(true);
         try {
           await supabase.functions.invoke("extract-social-proof", {
-            body: { brandId, url: (data as any).website_url },
+            body: { brandId, url: b.website_url },
           });
           const { data: refreshed } = await supabase.from("brands").select("*").eq("id", brandId).maybeSingle();
-          if (!cancelled && refreshed) setBrand(refreshed);
+          if (!cancelled && refreshed) setBrand((prev: any) => ({ ...(refreshed as any), _kit: prev?._kit }));
         } catch (e) { console.warn("social proof failed", e); }
         finally { if (!cancelled) setProofExtracting(false); }
       }
@@ -324,7 +335,11 @@ export default function GuidedOnboarding() {
   const updateBrand = async (patch: Record<string, any>) => {
     if (!brandId) return;
     setBrand((prev: any) => ({ ...(prev || {}), ...patch }));
-    await supabase.from("brands").update(patch).eq("id", brandId);
+    // _kit is local-only state (mirrors brand_kits) — never push it to the brands table.
+    const { _kit, ...dbPatch } = patch as any;
+    if (Object.keys(dbPatch).length) {
+      await supabase.from("brands").update(dbPatch).eq("id", brandId);
+    }
   };
 
   // =================== STEP 3 — offer ===================
@@ -712,8 +727,13 @@ export default function GuidedOnboarding() {
             <ReviewAudienceCard brand={brand} onSave={updateBrand} />
             {(() => {
               const sp = (brand as any)?.social_proof;
-              const hasProof = Array.isArray(sp) ? sp.length > 0 : !!sp;
-              // Only show the card if we actually found something, OR extraction is still running.
+              const hasProofVal = (v: any): boolean => {
+                if (!v) return false;
+                if (Array.isArray(v)) return v.length > 0;
+                if (typeof v === "object") return Object.values(v).some((x) => hasProofVal(x));
+                return String(v).trim().length > 0;
+              };
+              const hasProof = hasProofVal(sp);
               return (hasProof || proofExtracting) ? (
                 <ReviewProofCard brand={brand} onSave={updateBrand} loading={proofExtracting} />
               ) : null;
@@ -1012,33 +1032,67 @@ function RevealRow({ label, value }: { label: string; value: any }) {
 }
 
 function ReviewDesignCard({ brand, onSave }: { brand: any; onSave: (p: any) => Promise<void> }) {
-  const [colors, setColors] = useState<string>((brand?.brand_colors || []).join(", "));
-  const [fonts, setFonts] = useState<string>((brand?.brand_fonts || []).join(", "));
+  const kitColors: string[] = brand?._kit?.colors || [];
+  const kitFonts: string[] = brand?._kit?.fonts || [];
+  const [colors, setColors] = useState<string>(kitColors.join(", "));
+  const [fonts, setFonts] = useState<string>(kitFonts.join(", "));
+  const [saving, setSaving] = useState(false);
   useEffect(() => {
-    setColors((brand?.brand_colors || []).join(", "));
-    setFonts((brand?.brand_fonts || []).join(", "));
-  }, [brand?.brand_colors, brand?.brand_fonts]);
+    setColors((brand?._kit?.colors || []).join(", "));
+    setFonts((brand?._kit?.fonts || []).join(", "));
+  }, [brand?._kit?.colors, brand?._kit?.fonts]);
+
+  const parsedColors = colors.split(",").map((s) => s.trim()).filter(Boolean);
+
+  const save = async () => {
+    if (!brand?.id || !brand?.user_id) return;
+    setSaving(true);
+    try {
+      const patch: any = {
+        user_id: brand.user_id,
+        brand_id: brand.id,
+        colors: parsedColors,
+        fonts: fonts.split(",").map((s) => s.trim()).filter(Boolean),
+        status: "confirmed",
+      };
+      const { error } = await supabase
+        .from("brand_kits" as any)
+        .upsert(patch, { onConflict: "user_id,brand_id" });
+      if (error) throw error;
+      // Mirror locally
+      await onSave({ _kit: { ...(brand?._kit || {}), colors: patch.colors, fonts: patch.fonts } });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Palette className="h-4 w-4" /> Design guide</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base"><Palette className="h-4 w-4" /> Design guide</CardTitle>
+        <CardDescription className="text-xs">Pulled from your website — edit anything that's off.</CardDescription>
+      </CardHeader>
       <CardContent className="space-y-3">
         <div>
           <Label className="text-xs">Brand colors (comma-separated hex)</Label>
           <Input value={colors} onChange={(e) => setColors(e.target.value)} placeholder="#000000, #FFFFFF" />
-          <div className="flex gap-1 mt-2">
-            {(brand?.brand_colors || []).slice(0, 8).map((c: string, i: number) => (
-              <div key={i} className="h-6 w-6 rounded border" style={{ background: c }} title={c} />
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {parsedColors.slice(0, 12).map((c, i) => (
+              <div key={i} className="h-7 w-7 rounded border" style={{ background: c }} title={c} />
             ))}
+            {parsedColors.length === 0 && (
+              <span className="text-xs text-muted-foreground">No colors yet — we couldn't read them off the page.</span>
+            )}
           </div>
         </div>
         <div>
           <Label className="text-xs">Brand fonts</Label>
           <Input value={fonts} onChange={(e) => setFonts(e.target.value)} placeholder="Inter, Playfair Display" />
         </div>
-        <Button size="sm" variant="outline" onClick={() => onSave({
-          brand_colors: colors.split(",").map((s) => s.trim()).filter(Boolean),
-          brand_fonts: fonts.split(",").map((s) => s.trim()).filter(Boolean),
-        })}>Save</Button>
+        <Button size="sm" variant="outline" onClick={save} disabled={saving}>
+          {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+          Save
+        </Button>
       </CardContent>
     </Card>
   );
@@ -1124,25 +1178,51 @@ function OfferRowEditor({ offer, onSave }: { offer: any; onSave: (p: any) => Pro
 }
 
 function ReviewProofCard({ brand, onSave, loading }: { brand: any; onSave: (p: any) => Promise<void>; loading?: boolean }) {
-  const initial = Array.isArray(brand?.social_proof) ? brand.social_proof.join("\n") : (brand?.social_proof || "");
-  const [proof, setProof] = useState<string>(initial);
+  // social_proof can be: string, string[], or an object like {testimonials, stats, awards, credentials, press_features, case_studies, notable_clients}
+  const flattenProof = (sp: any): string => {
+    if (!sp) return "";
+    if (typeof sp === "string") return sp;
+    if (Array.isArray(sp)) return sp.filter(Boolean).map((x) => typeof x === "string" ? x : (x?.quote || x?.title || JSON.stringify(x))).join("\n");
+    if (typeof sp === "object") {
+      const lines: string[] = [];
+      const push = (label: string, items: any[]) => {
+        items.filter(Boolean).forEach((it) => {
+          if (typeof it === "string") lines.push(`${label}: ${it}`);
+          else if (it?.quote) lines.push(`${label}: "${it.quote}"${it.attribution ? ` — ${it.attribution}` : ""}${it.result ? ` (${it.result})` : ""}`);
+          else if (it?.outlet) lines.push(`${label}: ${it.outlet}${it.context ? ` — ${it.context}` : ""}`);
+          else if (it?.title) lines.push(`${label}: ${it.title}`);
+        });
+      };
+      if (Array.isArray(sp.testimonials)) push("Testimonial", sp.testimonials);
+      if (Array.isArray(sp.case_studies)) push("Case study", sp.case_studies);
+      if (Array.isArray(sp.stats)) push("Stat", sp.stats);
+      if (Array.isArray(sp.awards)) push("Award", sp.awards);
+      if (Array.isArray(sp.press_features)) push("Press", sp.press_features);
+      if (Array.isArray(sp.credentials)) push("Credential", sp.credentials);
+      if (Array.isArray(sp.notable_clients)) push("Client", sp.notable_clients);
+      return lines.join("\n");
+    }
+    return "";
+  };
+
+  const [proof, setProof] = useState<string>(flattenProof(brand?.social_proof));
   useEffect(() => {
-    const next = Array.isArray(brand?.social_proof) ? brand.social_proof.join("\n") : (brand?.social_proof || "");
-    setProof(next);
+    setProof(flattenProof(brand?.social_proof));
   }, [brand?.social_proof]);
+
   return (
     <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Quote className="h-4 w-4" /> Social proof</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base"><Quote className="h-4 w-4" /> Social proof</CardTitle>
+        <CardDescription className="text-xs">Pulled from your website — testimonials, press, stats and awards we could find.</CardDescription>
+      </CardHeader>
       <CardContent className="space-y-3">
         {loading && (
           <div className="text-xs text-muted-foreground flex items-center gap-2">
             <Loader2 className="h-3 w-3 animate-spin" /> Pulling testimonials, press and stats from your site…
           </div>
         )}
-        {!loading && !proof && (
-          <p className="text-xs text-muted-foreground">We didn't find any on your site — paste a few yourself. One per line.</p>
-        )}
-        <Textarea rows={5} value={proof} onChange={(e) => setProof(e.target.value)} placeholder="“This program changed everything.” — Sarah" />
+        <Textarea rows={Math.min(12, Math.max(5, proof.split("\n").length + 1))} value={proof} onChange={(e) => setProof(e.target.value)} placeholder="“This program changed everything.” — Sarah" />
         <Button size="sm" variant="outline" onClick={() => onSave({ social_proof: proof.split("\n").map((s) => s.trim()).filter(Boolean) })}>Save</Button>
       </CardContent>
     </Card>
