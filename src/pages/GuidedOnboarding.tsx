@@ -58,7 +58,9 @@ export default function GuidedOnboarding() {
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [step1Busy, setStep1Busy] = useState(false);
   const [step1Reveal, setStep1Reveal] = useState<{
-    brandName?: string; description?: string; colors?: string[]; voice?: string; audience?: string;
+    brandName?: string; description?: string; colors?: string[]; voice?: string;
+    audience?: string;
+    audienceParts?: { pain?: string; wants?: string; doubt?: string };
   }>({});
   const step1Fired = useRef(false);
 
@@ -226,13 +228,19 @@ export default function GuidedOnboarding() {
           .then(async () => {
             const { data: refreshed } = await supabase.from("brands").select("audience_psychology").eq("id", brandIdLocal).maybeSingle();
             const ap: any = refreshed?.audience_psychology;
-            // Build a richer snapshot from the structured psychology
-            const bits: string[] = [];
-            if (ap?.pain_points?.[0]) bits.push(`Pain: ${ap.pain_points[0]}`);
-            if (ap?.desires?.[0]) bits.push(`Wants: ${ap.desires[0]}`);
-            if (ap?.objections?.[0]) bits.push(`Doubt: ${ap.objections[0]}`);
-            const snap = bits.length ? bits.join(" · ") : (ap?.summary || ap?.demographics);
-            if (snap) setStep1Reveal((p) => ({ ...p, audience: String(snap).slice(0, 320) }));
+            const parts = {
+              pain: ap?.pain_points?.[0],
+              wants: ap?.desires?.[0],
+              doubt: ap?.objections?.[0],
+            };
+            const fallback = ap?.summary || ap?.demographics;
+            if (parts.pain || parts.wants || parts.doubt || fallback) {
+              setStep1Reveal((p) => ({
+                ...p,
+                audienceParts: parts,
+                audience: !parts.pain && !parts.wants && !parts.doubt ? String(fallback).slice(0, 320) : undefined,
+              }));
+            }
           })
       ).catch(() => {});
 
@@ -614,7 +622,33 @@ export default function GuidedOnboarding() {
                     ) : undefined}
                   />
                   <RevealRow label="Brand voice" value={step1Reveal.voice} />
-                  <RevealRow label="Audience snapshot" value={step1Reveal.audience} />
+                  <RevealRow
+                    label="Audience snapshot"
+                    value={
+                      step1Reveal.audienceParts && (step1Reveal.audienceParts.pain || step1Reveal.audienceParts.wants || step1Reveal.audienceParts.doubt) ? (
+                        <div className="space-y-2">
+                          {step1Reveal.audienceParts.pain && (
+                            <div>
+                              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Pain</div>
+                              <div className="text-sm leading-snug">{step1Reveal.audienceParts.pain}</div>
+                            </div>
+                          )}
+                          {step1Reveal.audienceParts.wants && (
+                            <div>
+                              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Wants</div>
+                              <div className="text-sm leading-snug">{step1Reveal.audienceParts.wants}</div>
+                            </div>
+                          )}
+                          {step1Reveal.audienceParts.doubt && (
+                            <div>
+                              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Doubt</div>
+                              <div className="text-sm leading-snug">{step1Reveal.audienceParts.doubt}</div>
+                            </div>
+                          )}
+                        </div>
+                      ) : step1Reveal.audience
+                    }
+                  />
                 </div>
               )}
 
