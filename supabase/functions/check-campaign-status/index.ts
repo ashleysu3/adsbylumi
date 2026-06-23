@@ -40,15 +40,39 @@ serve(async (req) => {
 
     console.log('Request:', { workspaceId, action, entityId, entityType });
 
-    // Initialize Supabase client
+    // Initialize Supabase clients — admin for data ops, user for auth.
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Authenticate caller (signing-keys: getClaims). Ownership is then
+    // enforced below against brand.user_id. Without this, any logged-in
+    // user could pause / resume another user's ads by passing IDs.
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const userId = claimsData.claims.sub;
+
     // Fetch workspace and brand data
     const { data: workspace, error: workspaceError } = await supabase
       .from('campaign_workspaces')
-      .select('*, brand:brands(id, meta_account_id, meta_access_token)')
+      .select('*, brand:brands(id, user_id, meta_account_id, meta_access_token)')
       .eq('id', workspaceId)
       .single();
 
@@ -61,12 +85,22 @@ serve(async (req) => {
       throw new Error('Meta account not connected');
     }
 
+    // Ownership check — mirror pause-meta-entity.
+    if (brand.user_id !== userId) {
+      console.log('Ownership check failed:', { brandUserId: brand.user_id, requestUserId: userId });
+      return new Response(
+        JSON.stringify({ success: false, error: 'Access denied' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Read token directly (service-role context can't use get_meta_token RPC which requires auth.uid())
     const metaAccessToken = brand.meta_access_token;
 
     if (!metaAccessToken) {
       throw new Error('Meta access token not found. Please reconnect your Meta account.');
     }
+
 
     const metaCampaignIds = workspace.meta_campaign_ids;
 
