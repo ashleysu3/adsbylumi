@@ -307,6 +307,48 @@ export function CampaignInsightDetail({
   const { executeRecommendation, executing: recExecuting, completed: recCompleted } =
     useRecommendationActions({ onExecuted: () => { fetchRecommendations(); } });
 
+  // Snoozed ad IDs from recommendation_overrides — mirrors Performance.
+  // Recs targeting a snoozed ad are filtered out of executable surfaces.
+  const [snoozedAdIds, setSnoozedAdIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!campaign.brandId) { setSnoozedAdIds(new Set()); return; }
+    let cancelled = false;
+    (async () => {
+      const nowIso = new Date().toISOString();
+      const { data } = await supabase
+        .from('recommendation_overrides')
+        .select('ad_id, snooze_until')
+        .eq('brand_id', campaign.brandId)
+        .eq('user_action', 'snoozed')
+        .gt('snooze_until', nowIso);
+      if (cancelled) return;
+      setSnoozedAdIds(new Set((data || []).map((o: any) => o.ad_id).filter(Boolean)));
+    })();
+    return () => { cancelled = true; };
+  }, [campaign.brandId]);
+
+  const isSnoozedRec = (rec: any): boolean => {
+    if (snoozedAdIds.size === 0) return false;
+    const ap = rec?.actionPayload || {};
+    return (
+      (ap.adId && snoozedAdIds.has(ap.adId)) ||
+      (ap.fatigueAdId && snoozedAdIds.has(ap.fatigueAdId)) ||
+      (ap.sourceAdId && snoozedAdIds.has(ap.sourceAdId))
+    );
+  };
+
+  // Confirm-before-execute. Real Meta spend moves the moment we hit the API.
+  const [confirmRec, setConfirmRec] = useState<RecType | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const requestExecute = (rec: RecType) => { setConfirmRec(rec); setConfirmOpen(true); };
+  const confirmExecute = async () => {
+    if (!confirmRec) return;
+    await executeRecommendation(confirmRec);
+    setConfirmOpen(false);
+    setConfirmRec(null);
+  };
+
+
   useEffect(() => {
     if (campaign.id) {
       supabase
