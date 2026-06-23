@@ -716,15 +716,77 @@ function classify(args: ClassifyArgs): AdEvaluation {
   // Trend direction across long → medium → short (whether KPI is improving).
   const trendDirection = computeTrend(args.primaryDirection, w30.kpiValue, w7.kpiValue, w3.kpiValue);
 
+  // Build the kpis[] array — one entry per configured goal KPI. Uses the
+  // medium (7-day) window as the headline value, computed from meta7.
+  const kpis: KpiEntry[] = (args.goalsConfig || []).map(g => {
+    const value = computeKpiValueFromRow(args.meta7, g.kpi, { reach, frequency });
+    const vsGoalPct = value != null && g.goal > 0 ? ((value - g.goal) / g.goal) * 100 : null;
+    let status: KpiEntry['status'] = 'no_data';
+    if (value != null) {
+      if (Math.abs((value - g.goal) / (g.goal || 1)) < 0.01) status = 'at';
+      else if (g.direction === 'less_than') status = value <= g.goal ? 'above' : 'below';
+      else status = value >= g.goal ? 'above' : 'below';
+      // 'above' means hitting/beating the goal; 'below' means missing it.
+    }
+    return { kpi: g.kpi, label: g.label, value, goal: g.goal, vsGoalPct, direction: g.direction, status, isDefault: g.isDefault };
+  });
+
   return {
     id: args.id, name: args.name, level: args.level,
     status: result.status,
     primary: { value: w7.kpiValue, vsGoalPct, trendDirection },
     secondary,
+    kpis,
     reach, frequency, daysLive,
     windows: { short: w3, medium: w7, long: w30 },
     recommendation: result.recommendation,
   };
+}
+
+// Computes any KPI value from a single insights row. Generalizes
+// rollupRowForKpi to cover frequency, purchases, and CTR-style metrics
+// regardless of which KPI was used for window rollups.
+function computeKpiValueFromRow(
+  row: any,
+  kpi: string,
+  ctx: { reach: number; frequency: number },
+): number | null {
+  if (kpi === 'frequency') return ctx.frequency || null;
+  if (kpi === 'reach') return ctx.reach || null;
+  if (!row) return null;
+  const actions = Array.isArray(row.actions) ? row.actions : [];
+  const cpa = Array.isArray(row.cost_per_action_type) ? row.cost_per_action_type : [];
+  const spend = Number(row.spend || 0);
+  const impressions = Number(row.impressions || 0);
+  const clicks = Number(row.clicks || 0);
+  const leads = sumActions(actions, LEAD_ACTION_TYPES);
+  const purchases = sumActions(actions, PURCHASE_ACTION_TYPES);
+  const videoViews = sumActions(actions, VIDEO_VIEW_ACTION_TYPES);
+  switch (kpi) {
+    case 'cpl': return firstCpa(cpa, LEAD_ACTION_TYPES) ?? (leads > 0 ? spend / leads : null);
+    case 'cpp': return firstCpa(cpa, PURCHASE_ACTION_TYPES) ?? (purchases > 0 ? spend / purchases : null);
+    case 'cpc': return numberish(row.cpc) ?? (clicks > 0 ? spend / clicks : null);
+    case 'cpm': return numberish(row.cpm);
+    case 'ctr': return numberish(row.ctr);
+    case 'roas': {
+      const pr = Array.isArray(row.purchase_roas) && row.purchase_roas.length
+        ? Number(row.purchase_roas[0]?.value || 0) || null : null;
+      return pr;
+    }
+    case 'costPerThruPlay':
+    case 'cp2sc':
+      return firstCpa(cpa, VIDEO_VIEW_ACTION_TYPES) ?? (videoViews > 0 ? spend / videoViews : null);
+    case 'cplpv': {
+      const lpv = sumActions(actions, ['landing_page_view', 'offsite_conversion.fb_pixel_view_content']);
+      return firstCpa(cpa, ['landing_page_view']) ?? (lpv > 0 ? spend / lpv : null);
+    }
+    case 'cppv': {
+      const visits = sumActions(actions, ['onsite_conversion.profile_visit', 'profile_visit']);
+      return visits > 0 ? spend / visits : null;
+    }
+    case 'purchases': return purchases || 0;
+    default: return null;
+  }
 }
 
 function computeTrend(
