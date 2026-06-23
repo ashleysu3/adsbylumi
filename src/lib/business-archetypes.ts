@@ -241,6 +241,13 @@ export const ARCHETYPES: Record<ArchetypeSlug, Archetype> = {
       "Repeat customer rate compounds — a 2:1 first-purchase ROAS becomes 4:1 with repeats.",
     ],
     templateSlugs: [],
+    cadence: {
+      rotationPace: "Monthly refresh",
+      anglesPerTest: { min: 5, max: 10 },
+      refreshEveryDays: { min: 21, max: 30 },
+      fatigueFrequencyThreshold: { cold: 3.5, warm: 8 },
+      tip: "Plan 5–10 angles per product line. Retargeting tolerates much higher frequency than cold.",
+    },
   },
 
   community_membership: {
