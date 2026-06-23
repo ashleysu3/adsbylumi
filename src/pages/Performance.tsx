@@ -43,6 +43,8 @@ import { Info, Target } from "lucide-react";
 import { format } from "date-fns";
 import { SetupPrompt } from "@/components/SetupPrompt";
 import { GoalSetupModal } from "@/components/insights/GoalSetupModal";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Zap } from "lucide-react";
 
 
 // ============================================================================
