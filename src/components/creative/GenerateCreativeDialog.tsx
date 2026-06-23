@@ -630,16 +630,86 @@ export function GenerateCreativeDialog() {
           boardId: selectedBoardId,
           brandId: activeBrand?.id,
           copy: boardCopy,
-          count: 4,
+          count: 2,
           selectedImageUrls,
         },
       });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Generation failed");
-      const images = (data.images || []) as Array<{ aspect: string; url: string; path: string }>;
-      setBoardResults(images);
-      if (!images.length) toast.error("Recraft returned no images. Try again.");
-      else toast.success(`Generated ${images.length} visuals`);
+      const backgrounds = (data.images || []) as Array<{ aspect: string; url: string; path: string }>;
+      if (!backgrounds.length) {
+        toast.error("Recraft returned no images. Try again.");
+        return;
+      }
+
+      // Composite each background through the engine (overlay template) so
+      // headline / subhead / CTA / logo render as real text on the background.
+      const effectiveLogoUrl = (placeLogo && brandLogoAsset?.url) || logoUrl || undefined;
+      const colorsForEngine = {
+        ...colors,
+        primary: colors.accent,
+        secondary: colors.pop,
+        cta: colors.accent,
+        ctaBg: colors.accent,
+        ctaText: colors.bg,
+        button: colors.accent,
+        buttonBg: colors.accent,
+        buttonText: colors.bg,
+        badge: colors.accent,
+        badgeBg: colors.accent,
+        badgeText: colors.bg,
+      };
+      const brandKit = {
+        colors: colorsForEngine,
+        palette: colorsForEngine,
+        fonts: {
+          displayUrl: fontUrl || undefined,
+          displayItalicUrl: fontUrl || undefined,
+          displayFamily: displayFamily || undefined,
+          bodyFamily: bodyFamily || undefined,
+        },
+        logoUrl: effectiveLogoUrl,
+      };
+      const logoOverlay = placeLogo && brandLogoAsset?.url
+        ? { url: brandLogoAsset.url, corner: logoCorner }
+        : undefined;
+
+      const composited: Array<{ aspect: string; url: string; path: string; base64: string; isVertical: boolean }> = [];
+      await Promise.all(
+        backgrounds.map(async (bg, bgIdx) => {
+          try {
+            const imgs = await callRender({
+              template: "overlay",
+              brandKit,
+              copy: {
+                headline: boardCopy.headline,
+                subhead: boardCopy.subhead,
+                cta: boardCopy.cta,
+              },
+              photo: { url: bg.url },
+              backgroundUrl: bg.url,
+              logoOverlay,
+              placements: ["feed", "story"],
+            });
+            imgs.forEach((im, j) => {
+              const isVertical = (im.placement || "").toLowerCase().includes("story") || im.height > im.width;
+              composited.push({
+                aspect: isVertical ? "4x5" : "1x1",
+                url: `data:image/png;base64,${im.base64}`,
+                path: `${bg.path || `bg-${bgIdx}`}-${im.placement || j}`,
+                base64: im.base64,
+                isVertical,
+              });
+            });
+          } catch (err) {
+            console.error("composite failed for bg", bgIdx, err);
+          }
+        }),
+      );
+
+      setBoardResults(composited);
+      if (!composited.length) toast.error("Engine could not composite the design. Try again.");
+      else toast.success(`Generated ${composited.length} finished designs`);
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || "Failed to generate ads");
