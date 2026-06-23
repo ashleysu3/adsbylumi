@@ -384,7 +384,7 @@ export default function Performance() {
     return () => {
       cancelled = true;
     };
-  }, [activeBrand, brandLoading]);
+  }, [activeBrand, brandLoading, activeRange.since, activeRange.until]);
 
   // Top 3 across all campaigns, sorted by impact, excluding snoozed.
   const topThree = useMemo(() => {
