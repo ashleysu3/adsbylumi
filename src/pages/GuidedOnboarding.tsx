@@ -124,6 +124,7 @@ export default function GuidedOnboarding() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [classifying, setClassifying] = useState(false);
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
   const [brollIdeas, setBrollIdeas] = useState<any[] | null>(null);
   const assetsInitRef = useRef(false);
 
