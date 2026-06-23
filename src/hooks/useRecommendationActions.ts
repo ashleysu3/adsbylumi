@@ -106,7 +106,7 @@ export function useRecommendationActions(options?: {
           }
 
           case 'swap_creative': {
-            const { error } = await supabase.functions.invoke(
+            const { data, error } = await supabase.functions.invoke(
               'rotate-creative',
               {
                 body: {
@@ -119,10 +119,18 @@ export function useRecommendationActions(options?: {
                 },
               },
             );
+            // The edge function returns 200 with { success: false } when the
+            // pause leg fails (we don't activate the bench ad in that case
+            // to prevent double-spend). Treat that as a real failure, not a
+            // success, so the toast and completed-state reflect reality.
             if (error) throw error;
+            if (!data?.success) {
+              throw new Error(data?.error || 'Creative swap did not complete');
+            }
             toast.success('Creative swapped from bench');
             break;
           }
+
 
           case 'promote_to_scaling': {
             // Duplicates the source ad into the target (Scaling) ad set,
