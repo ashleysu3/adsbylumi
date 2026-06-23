@@ -27,6 +27,7 @@ type Strategy = {
   campaigns: any[];
   is_active: boolean;
   sort_order: number;
+  access_code: string | null;
 };
 
 type RequestRow = {
