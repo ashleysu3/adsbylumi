@@ -261,6 +261,7 @@ Reminder: ground every claim in the source. Be specific. Skip the clichés.`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
+        response_format: { type: 'json_object' },
       }),
     });
 
