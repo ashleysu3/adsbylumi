@@ -696,6 +696,15 @@ export default function Performance() {
               onDateRangeChange={setDateRange}
               onCustomDateRangeChange={setCustomDateRange}
             />
+            {hasActive && !loading && (
+              <Button
+                onClick={() => setQuickListOpen(true)}
+                className="gap-2 bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white hover:opacity-90"
+              >
+                <Zap className="h-4 w-4" />
+                Short on time? See LUMI's recs
+              </Button>
+            )}
             <Button variant="outline" onClick={() => navigate("/retrospectives")} className="gap-2">
               <History className="h-4 w-4" />
               History
