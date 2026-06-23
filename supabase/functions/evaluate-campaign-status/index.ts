@@ -734,9 +734,13 @@ function classify(args: ClassifyArgs): AdEvaluation {
   const w30 = rollupRowForKpi(args.meta30, args.primaryKpi);
   const wFatigueRef = rollupRowForKpi(args.metaFatigueRef, args.primaryKpi);
 
-  // Pull reach + frequency from the LONG window — most stable.
-  const reach = Number(args.meta30?.reach || 0);
-  const frequency = Number(args.meta30?.frequency || 0);
+  // Display row — what the UI shows. Falls back to the medium (7-day)
+  // window for backwards compatibility when no display range was passed in.
+  // The judgment rules below NEVER read from this — they only use
+  // w3 / w7 / w30 / wFatigueRef.
+  const displayRow = args.metaDisplay ?? args.meta7;
+  const reach = Number(displayRow?.reach || 0);
+  const frequency = Number(displayRow?.frequency || 0);
 
   // Days live: prefer Meta's date_start on the ad, fall back to LONG window's date_start.
   const createdTime = args.adInfo?.created_time;
@@ -748,45 +752,48 @@ function classify(args: ClassifyArgs): AdEvaluation {
   // Secondary KPI value — show purchases / ROAS regardless of primary, when applicable.
   let secondary: AdEvaluation['secondary'] = null;
   if (args.secondaryKpi === 'cpp') {
-    const purchases = sumActions(args.meta30?.actions || [], PURCHASE_ACTION_TYPES);
-    secondary = { value: purchases || 0, label: 'Purchases (lifetime)' };
+    const purchases = sumActions(displayRow?.actions || [], PURCHASE_ACTION_TYPES);
+    secondary = { value: purchases || 0, label: 'Purchases' };
   } else if (args.secondaryKpi === 'roas') {
-    const r = Array.isArray(args.meta30?.purchase_roas) && args.meta30.purchase_roas.length
-      ? Number(args.meta30.purchase_roas[0]?.value || 0) || null : null;
+    const r = Array.isArray(displayRow?.purchase_roas) && displayRow.purchase_roas.length
+      ? Number(displayRow.purchase_roas[0]?.value || 0) || null : null;
     secondary = { value: r, label: 'ROAS' };
   } else if (args.secondaryKpi === 'cvr_proxy') {
     secondary = { value: null, label: 'On-site conversion rate (set up pixel to see)' };
   }
 
   // -- Apply rules in priority order. First match wins.
+  // Judgment is ALWAYS based on the 3 / 7 / 30-day windows + fatigue ref —
+  // the display range can't make the engine flip-flop.
   const result = applyRules({
-    args, reach, frequency, daysLive,
+    args, reach: Number(args.meta30?.reach || 0), frequency: Number(args.meta30?.frequency || 0), daysLive,
     w3, w7, w30, wFatigueRef,
   });
 
-  // vsGoalPct — using the medium window as the headline.
-  const headlineKpi = w7.kpiValue;
-  const vsGoalPct = headlineKpi != null && args.primaryGoal > 0
-    ? ((headlineKpi - args.primaryGoal) / args.primaryGoal) * 100
+  // Headline primary KPI value — uses the DISPLAY row so the card shows
+  // the value for the timeframe the user selected.
+  const displayPrimary = computeKpiValueFromRow(displayRow, args.primaryKpi, { reach, frequency });
+  const vsGoalPct = displayPrimary != null && args.primaryGoal > 0
+    ? ((displayPrimary - args.primaryGoal) / args.primaryGoal) * 100
     : null;
 
   // Trend direction across long → medium → short (whether KPI is improving).
   const trendDirection = computeTrend(args.primaryDirection, w30.kpiValue, w7.kpiValue, w3.kpiValue);
 
-  // Build the kpis[] array — one entry per configured goal KPI. Uses the
-  // medium (7-day) window as the headline value, computed from meta7.
+  // Build the kpis[] array — one entry per configured goal KPI, computed
+  // from the DISPLAY row so the colored pills match what's on screen.
   const kpis: KpiEntry[] = (args.goalsConfig || []).map(g => {
-    const value = computeKpiValueFromRow(args.meta7, g.kpi, { reach, frequency });
+    const value = computeKpiValueFromRow(displayRow, g.kpi, { reach, frequency });
     const vsGoalPct = value != null && g.goal > 0 ? ((value - g.goal) / g.goal) * 100 : null;
     let status: KpiEntry['status'] = 'no_data';
     if (value != null) {
       if (Math.abs((value - g.goal) / (g.goal || 1)) < 0.01) status = 'at';
       else if (g.direction === 'less_than') status = value <= g.goal ? 'above' : 'below';
       else status = value >= g.goal ? 'above' : 'below';
-      // 'above' means hitting/beating the goal; 'below' means missing it.
     }
     return { kpi: g.kpi, label: g.label, value, goal: g.goal, vsGoalPct, direction: g.direction, status, isDefault: g.isDefault };
   });
+
 
   return {
     id: args.id, name: args.name, level: args.level,
