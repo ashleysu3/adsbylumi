@@ -1241,8 +1241,15 @@ function applyRules(r: RuleArgs): { status: Status; recommendation: AdEvaluation
     };
   }
 
-  // §6.4 — Fatigue. CPL up 30%+ vs prior 14d AND frequency over the temp threshold.
-  const freqThreshold = args.audienceTemp === 'warm' ? 5 : 3;
+  // §6.4 — Fatigue. CPL up 30%+ vs prior 14d AND frequency over threshold.
+  // Threshold is archetype-aware: low-ticket rotates sooner, high-ticket later.
+  const archetypeFreq = args.archetypeSlug
+    ? ARCHETYPE_CONFIG[args.archetypeSlug]?.fatigueFrequency
+    : null;
+  const tempKey: 'cold' | 'warm' = args.audienceTemp === 'warm' ? 'warm' : 'cold';
+  const freqThreshold = archetypeFreq
+    ? archetypeFreq[tempKey]
+    : (args.audienceTemp === 'warm' ? 5 : 3);
   if (w7.kpiValue != null && wFatigueRef.kpiValue != null && wFatigueRef.kpiValue > 0) {
     const fatiguePct = ((w7.kpiValue - wFatigueRef.kpiValue) / wFatigueRef.kpiValue) * 100;
     const isFatigueDir = args.primaryDirection === 'less_than' ? fatiguePct >= 30 : fatiguePct <= -30;
