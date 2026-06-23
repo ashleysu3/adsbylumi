@@ -387,6 +387,11 @@ export default function AdminStrategies() {
                         {!s.is_active && (
                           <Badge variant="outline">Inactive</Badge>
                         )}
+                        {s.access_code && (
+                          <Badge variant="secondary" className="font-mono text-[10px]">
+                            🎟 {s.access_code}
+                          </Badge>
+                        )}
                       </CardTitle>
                       <p className="text-xs text-muted-foreground">{s.slug}</p>
                     </div>
