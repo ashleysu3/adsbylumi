@@ -442,3 +442,116 @@ export function getArchetypeKpiSuggestions(slug: string | null | undefined): {
     note,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Creative cadence helpers — surfaced in Creative Studio + fatigue engine.
+// ---------------------------------------------------------------------------
+
+export function getArchetypeCadence(
+  slug: string | null | undefined,
+): ArchetypeCadence | null {
+  const a = getArchetype(slug);
+  return a?.cadence ?? null;
+}
+
+export type RefreshStatus =
+  | { state: "no-archetype" }
+  | { state: "never-refreshed"; tip: string }
+  | { state: "fresh"; daysSince: number; daysUntilDue: number; tip: string }
+  | { state: "due-soon"; daysSince: number; daysUntilDue: number; tip: string }
+  | { state: "overdue"; daysSince: number; daysOverdue: number; tip: string };
+
+/**
+ * Compare the last refresh date against the archetype's cadence and return a
+ * surfaced state for the Studio nudge.
+ *
+ * - fresh:     well within the refresh window
+ * - due-soon:  inside the cadence min, but past 70%
+ * - overdue:   past the cadence max
+ */
+export function getRefreshStatus(
+  slug: string | null | undefined,
+  lastRefreshAt: string | Date | null | undefined,
+): RefreshStatus {
+  const cadence = getArchetypeCadence(slug);
+  if (!cadence) return { state: "no-archetype" };
+
+  if (!lastRefreshAt) {
+    return {
+      state: "never-refreshed",
+      tip: `No creative refreshes logged yet. ${cadence.tip}`,
+    };
+  }
+
+  const last =
+    lastRefreshAt instanceof Date ? lastRefreshAt : new Date(lastRefreshAt);
+  if (isNaN(last.getTime())) return { state: "no-archetype" };
+
+  const daysSince = Math.floor(
+    (Date.now() - last.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  const { min, max } = cadence.refreshEveryDays;
+  const dueSoonThreshold = Math.round(min * 0.7);
+
+  if (daysSince >= max) {
+    return {
+      state: "overdue",
+      daysSince,
+      daysOverdue: daysSince - max,
+      tip: `${cadence.rotationPace.toLowerCase()} is overdue. ${cadence.tip}`,
+    };
+  }
+  if (daysSince >= dueSoonThreshold) {
+    return {
+      state: "due-soon",
+      daysSince,
+      daysUntilDue: Math.max(0, max - daysSince),
+      tip: `Refresh window opens soon. ${cadence.tip}`,
+    };
+  }
+  return {
+    state: "fresh",
+    daysSince,
+    daysUntilDue: max - daysSince,
+    tip: cadence.tip,
+  };
+}
+
+/**
+ * Suggested test size for a new round of creative — used by the Studio
+ * "how many should I make?" nudge.
+ */
+export function getTestSizeSuggestion(slug: string | null | undefined): {
+  min: number;
+  max: number;
+  label: string;
+  pace: string;
+} | null {
+  const c = getArchetypeCadence(slug);
+  if (!c) return null;
+  return {
+    min: c.anglesPerTest.min,
+    max: c.anglesPerTest.max,
+    label: `${c.anglesPerTest.min}–${c.anglesPerTest.max} angles per test`,
+    pace: c.rotationPace,
+  };
+}
+
+/**
+ * Archetype-aware frequency threshold for the fatigue engine.
+ * Falls back to the temp-based default when no override is configured.
+ */
+export function getFatigueFrequencyThreshold(
+  slug: string | null | undefined,
+  temp: "cold" | "warm",
+): number {
+  const c = getArchetypeCadence(slug);
+  if (c?.fatigueFrequencyThreshold) {
+    return temp === "warm"
+      ? c.fatigueFrequencyThreshold.warm
+      : c.fatigueFrequencyThreshold.cold;
+  }
+  // Default mirrors evaluate-campaign-status §6.4.
+  return temp === "warm" ? 5 : 3;
+}
