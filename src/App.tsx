@@ -245,6 +245,7 @@ const App = () => {
                   <Route path="/admin/coupons" element={<AdminCoupons />} />
                   <Route path="/admin/email-logs" element={<AdminEmailLogs />} />
                   <Route path="/admin/emails" element={<AdminEmails />} />
+                  <Route path="/admin/test-reports" element={<AdminTestReports />} />
                   <Route path="/admin/cancellations" element={<AdminCancellations />} />
                   <Route path="/admin/dispute-evidence" element={<AdminDisputeEvidence />} />
                   <Route path="/client-portal/:portalId" element={<ClientPortal />} />
