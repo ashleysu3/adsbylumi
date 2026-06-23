@@ -228,6 +228,43 @@ export default function Performance() {
         });
         setResults(ok);
 
+        // Mirror actionable topRecommendations into the task system so the
+        // tray surfaces them. Dedupe is handled inside upsertRecommendationTasks.
+        try {
+          const recsForTasks: RecForTask[] = [];
+          for (const r of ok) {
+            const t = r.topRecommendation;
+            if (!t) continue;
+            if (snoozedIds.has(t.id)) continue;
+            const action = t.recommendation?.action;
+            if (!action) continue;
+            let hasBench = false;
+            if (action === "refresh_creative") {
+              const { count } = await supabase
+                .from("creative_bench")
+                .select("id", { count: "exact", head: true })
+                .eq("brand_id", activeBrand.id)
+                .eq("workspace_id", r.workspaceId!)
+                .in("status", ["bench", "paused", "retesting"])
+                .not("meta_ad_id", "is", null);
+              hasBench = (count || 0) > 0;
+            }
+            recsForTasks.push({
+              entityId: t.id,
+              entityName: t.name,
+              entityLevel: t.level,
+              workspaceId: r.workspaceId!,
+              brandId: activeBrand.id,
+              action,
+              reasoning: t.recommendation?.reasoning || "",
+              hasBench,
+            });
+          }
+          await upsertRecommendationTasks(recsForTasks);
+        } catch (e) {
+          console.warn("[performance] task upsert failed", e);
+        }
+
         let best: { result: EngineResult; rec: AdEval } | null = null;
         for (const r of ok) {
           const t = r.topRecommendation;
