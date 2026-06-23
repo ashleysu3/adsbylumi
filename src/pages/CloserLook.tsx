@@ -423,6 +423,22 @@ export default function CloserLook() {
             </p>
 
           </div>
+          {result.meta.hasUserGoals === false && (
+            <div className="w-full">
+              <SetupPrompt
+                icon={Target}
+                title="Set goals for this campaign"
+                description="So LUMI can measure success against your targets (we're showing benchmark defaults for now)."
+                ctaLabel="Set goals"
+                tone="warning"
+                onCta={() => setGoalModalOpen(true)}
+                autoTask={{
+                  title: `Set goals for ${workspaceName || result.campaign.name}`,
+                  link_to: `/live-ads/${campaignId}`,
+                }}
+              />
+            </div>
+          )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
