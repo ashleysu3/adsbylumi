@@ -923,7 +923,7 @@ export default function GuidedOnboarding() {
                       title="Add a logo"
                       description="We use it on every ad — even a transparent PNG works."
                       ctaLabel="Upload logo"
-                      onCta={() => document.getElementById("upload-logo")?.click()}
+                      onCta={() => document.getElementById("upload-any")?.click()}
                       autoTask={{ title: "Add a brand logo", link_to: "/brand" }}
                     />
                   )}
