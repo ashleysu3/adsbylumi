@@ -510,6 +510,25 @@ export default function CloserLook() {
                   {ACTION_VERB[top.recommendation.action] || top.recommendation.action} "{top.name}"
                 </div>
                 <p className="text-sm text-muted-foreground">{top.recommendation.reasoning}</p>
+                {top.recommendation.diagnosis && (
+                  <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-xs space-y-1">
+                    <div className="font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wide text-[10px]">
+                      Root cause: {top.recommendation.diagnosis.rootCause.replace(/_/g, ' ')}
+                    </div>
+                    {top.recommendation.diagnosis.signals?.length > 0 && (
+                      <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+                        {top.recommendation.diagnosis.signals.map((s, i) => (
+                          <li key={i}>{s}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {top.recommendation.diagnosis.needsConversionTracking && (
+                      <div className="text-amber-700 dark:text-amber-300 italic">
+                        Conversion tracking isn't reporting — set it up for a sharper read.
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" onClick={() => openExecuteFor(top)} className="gap-2">
                     <CheckCircle2 className="h-3.5 w-3.5" />
