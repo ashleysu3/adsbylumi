@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import {
   Loader2, ArrowRight, ChevronLeft, CheckCircle2, Sparkles,
-  Upload, Image as ImageIcon, Palette, MessageSquare, Brain, Target, Quote, ListChecks, Trash2, Check, Film
+  Upload, Image as ImageIcon, Palette, MessageSquare, Brain, Target, Quote, ListChecks, Trash2, Check, Film,
+  Pencil, Type, Award, BarChart3, Newspaper, GraduationCap, Users, Briefcase
 } from "lucide-react";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { SetupPrompt } from "@/components/SetupPrompt";
@@ -1034,6 +1035,7 @@ function RevealRow({ label, value }: { label: string; value: any }) {
 function ReviewDesignCard({ brand, onSave }: { brand: any; onSave: (p: any) => Promise<void> }) {
   const kitColors: string[] = brand?._kit?.colors || [];
   const kitFonts: string[] = brand?._kit?.fonts || [];
+  const [editing, setEditing] = useState(false);
   const [colors, setColors] = useState<string>(kitColors.join(", "));
   const [fonts, setFonts] = useState<string>(kitFonts.join(", "));
   const [saving, setSaving] = useState(false);
@@ -1042,7 +1044,8 @@ function ReviewDesignCard({ brand, onSave }: { brand: any; onSave: (p: any) => P
     setFonts((brand?._kit?.fonts || []).join(", "));
   }, [brand?._kit?.colors, brand?._kit?.fonts]);
 
-  const parsedColors = colors.split(",").map((s) => s.trim()).filter(Boolean);
+  const parsedColors = (editing ? colors.split(",").map((s) => s.trim()).filter(Boolean) : kitColors);
+  const parsedFonts = (editing ? fonts.split(",").map((s) => s.trim()).filter(Boolean) : kitFonts);
 
   const save = async () => {
     if (!brand?.id || !brand?.user_id) return;
@@ -1051,7 +1054,7 @@ function ReviewDesignCard({ brand, onSave }: { brand: any; onSave: (p: any) => P
       const patch: any = {
         user_id: brand.user_id,
         brand_id: brand.id,
-        colors: parsedColors,
+        colors: colors.split(",").map((s) => s.trim()).filter(Boolean),
         fonts: fonts.split(",").map((s) => s.trim()).filter(Boolean),
         status: "confirmed",
       };
@@ -1059,8 +1062,8 @@ function ReviewDesignCard({ brand, onSave }: { brand: any; onSave: (p: any) => P
         .from("brand_kits" as any)
         .upsert(patch, { onConflict: "user_id,brand_id" });
       if (error) throw error;
-      // Mirror locally
       await onSave({ _kit: { ...(brand?._kit || {}), colors: patch.colors, fonts: patch.fonts } });
+      setEditing(false);
     } finally {
       setSaving(false);
     }
@@ -1068,31 +1071,75 @@ function ReviewDesignCard({ brand, onSave }: { brand: any; onSave: (p: any) => P
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base"><Palette className="h-4 w-4" /> Design guide</CardTitle>
-        <CardDescription className="text-xs">Pulled from your website — edit anything that's off.</CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between space-y-0">
+        <div>
+          <CardTitle className="flex items-center gap-2 text-base"><Palette className="h-4 w-4" /> Design guide</CardTitle>
+          <CardDescription className="text-xs">Pulled from your website — edit anything that's off.</CardDescription>
+        </div>
+        {!editing && (
+          <Button size="sm" variant="ghost" onClick={() => setEditing(true)} className="h-7">
+            <Pencil className="h-3 w-3 mr-1" /> Edit
+          </Button>
+        )}
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div>
-          <Label className="text-xs">Brand colors (comma-separated hex)</Label>
-          <Input value={colors} onChange={(e) => setColors(e.target.value)} placeholder="#000000, #FFFFFF" />
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            {parsedColors.slice(0, 12).map((c, i) => (
-              <div key={i} className="h-7 w-7 rounded border" style={{ background: c }} title={c} />
-            ))}
-            {parsedColors.length === 0 && (
-              <span className="text-xs text-muted-foreground">No colors yet — we couldn't read them off the page.</span>
-            )}
+      <CardContent className="space-y-5">
+        {/* Colors */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <Palette className="h-3 w-3" /> Brand colors
           </div>
+          {parsedColors.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {parsedColors.slice(0, 12).map((c, i) => (
+                <div key={i} className="flex items-center gap-2 rounded-md border bg-card p-2">
+                  <div className="h-8 w-8 rounded shrink-0 border" style={{ background: c }} />
+                  <span className="text-xs font-mono uppercase truncate">{c}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">No colors found — add your own below.</p>
+          )}
+          {editing && (
+            <Input value={colors} onChange={(e) => setColors(e.target.value)} placeholder="#000000, #FFFFFF" className="mt-2" />
+          )}
         </div>
-        <div>
-          <Label className="text-xs">Brand fonts</Label>
-          <Input value={fonts} onChange={(e) => setFonts(e.target.value)} placeholder="Inter, Playfair Display" />
+
+        {/* Fonts */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <Type className="h-3 w-3" /> Brand fonts
+          </div>
+          {parsedFonts.length > 0 ? (
+            <div className="space-y-2">
+              {parsedFonts.slice(0, 4).map((f, i) => (
+                <div key={i} className="rounded-md border bg-card px-3 py-2">
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{f}</div>
+                  <div className="text-xl leading-tight" style={{ fontFamily: `'${f}', system-ui, sans-serif` }}>
+                    The quick brown fox
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">No fonts detected — add your own below.</p>
+          )}
+          {editing && (
+            <Input value={fonts} onChange={(e) => setFonts(e.target.value)} placeholder="Inter, Playfair Display" className="mt-2" />
+          )}
         </div>
-        <Button size="sm" variant="outline" onClick={save} disabled={saving}>
-          {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-          Save
-        </Button>
+
+        {editing && (
+          <div className="flex gap-2">
+            <Button size="sm" variant="lumi" onClick={save} disabled={saving}>
+              {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+              Save
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setColors(kitColors.join(", ")); setFonts(kitFonts.join(", ")); }}>
+              Cancel
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -1178,56 +1225,149 @@ function OfferRowEditor({ offer, onSave }: { offer: any; onSave: (p: any) => Pro
 }
 
 function ReviewProofCard({ brand, onSave, loading }: { brand: any; onSave: (p: any) => Promise<void>; loading?: boolean }) {
-  // social_proof can be: string, string[], or an object like {testimonials, stats, awards, credentials, press_features, case_studies, notable_clients}
-  const flattenProof = (sp: any): string => {
+  const sp = brand?.social_proof;
+  const [editing, setEditing] = useState(false);
+
+  // Normalize into grouped sections
+  const groups = useMemo(() => {
+    const g: Record<string, any[]> = {
+      testimonials: [], case_studies: [], stats: [], awards: [], press_features: [], credentials: [], notable_clients: [],
+    };
+    if (!sp) return g;
+    if (typeof sp === "string") { g.testimonials = [sp]; return g; }
+    if (Array.isArray(sp)) { g.testimonials = sp.filter(Boolean); return g; }
+    if (typeof sp === "object") {
+      for (const k of Object.keys(g)) {
+        if (Array.isArray((sp as any)[k])) g[k] = (sp as any)[k].filter(Boolean);
+      }
+    }
+    return g;
+  }, [sp]);
+
+  const flatten = (sp: any): string => {
     if (!sp) return "";
     if (typeof sp === "string") return sp;
     if (Array.isArray(sp)) return sp.filter(Boolean).map((x) => typeof x === "string" ? x : (x?.quote || x?.title || JSON.stringify(x))).join("\n");
-    if (typeof sp === "object") {
-      const lines: string[] = [];
-      const push = (label: string, items: any[]) => {
-        items.filter(Boolean).forEach((it) => {
-          if (typeof it === "string") lines.push(`${label}: ${it}`);
-          else if (it?.quote) lines.push(`${label}: "${it.quote}"${it.attribution ? ` — ${it.attribution}` : ""}${it.result ? ` (${it.result})` : ""}`);
-          else if (it?.outlet) lines.push(`${label}: ${it.outlet}${it.context ? ` — ${it.context}` : ""}`);
-          else if (it?.title) lines.push(`${label}: ${it.title}`);
-        });
-      };
-      if (Array.isArray(sp.testimonials)) push("Testimonial", sp.testimonials);
-      if (Array.isArray(sp.case_studies)) push("Case study", sp.case_studies);
-      if (Array.isArray(sp.stats)) push("Stat", sp.stats);
-      if (Array.isArray(sp.awards)) push("Award", sp.awards);
-      if (Array.isArray(sp.press_features)) push("Press", sp.press_features);
-      if (Array.isArray(sp.credentials)) push("Credential", sp.credentials);
-      if (Array.isArray(sp.notable_clients)) push("Client", sp.notable_clients);
-      return lines.join("\n");
-    }
-    return "";
+    const lines: string[] = [];
+    const push = (label: string, items: any[]) => {
+      items.filter(Boolean).forEach((it) => {
+        if (typeof it === "string") lines.push(`${label}: ${it}`);
+        else if (it?.quote) lines.push(`${label}: "${it.quote}"${it.attribution ? ` — ${it.attribution}` : ""}${it.result ? ` (${it.result})` : ""}`);
+        else if (it?.outlet) lines.push(`${label}: ${it.outlet}${it.context ? ` — ${it.context}` : ""}`);
+        else if (it?.title) lines.push(`${label}: ${it.title}`);
+        else if (it?.name) lines.push(`${label}: ${it.name}`);
+      });
+    };
+    push("Testimonial", groups.testimonials);
+    push("Case study", groups.case_studies);
+    push("Stat", groups.stats);
+    push("Award", groups.awards);
+    push("Press", groups.press_features);
+    push("Credential", groups.credentials);
+    push("Client", groups.notable_clients);
+    return lines.join("\n");
   };
 
-  const [proof, setProof] = useState<string>(flattenProof(brand?.social_proof));
-  useEffect(() => {
-    setProof(flattenProof(brand?.social_proof));
-  }, [brand?.social_proof]);
+  const [proof, setProof] = useState<string>(flatten(sp));
+  useEffect(() => { setProof(flatten(sp)); }, [sp]);
+
+  const renderItem = (it: any): { primary: string; secondary?: string } => {
+    if (typeof it === "string") return { primary: it };
+    if (it?.quote) return { primary: `"${it.quote}"`, secondary: [it.attribution, it.result].filter(Boolean).join(" • ") };
+    if (it?.outlet) return { primary: it.outlet, secondary: it.context };
+    if (it?.title) return { primary: it.title, secondary: it.detail };
+    if (it?.name) return { primary: it.name, secondary: it.detail };
+    if (it?.value) return { primary: it.value, secondary: it.label };
+    return { primary: String(it) };
+  };
+
+  const sections: { key: keyof typeof groups; label: string; icon: any; tint: string }[] = [
+    { key: "testimonials", label: "Testimonials", icon: Quote, tint: "border-l-primary" },
+    { key: "case_studies", label: "Case studies", icon: Briefcase, tint: "border-l-primary" },
+    { key: "stats", label: "Stats & results", icon: BarChart3, tint: "border-l-emerald-500" },
+    { key: "awards", label: "Awards", icon: Award, tint: "border-l-amber-500" },
+    { key: "press_features", label: "Press features", icon: Newspaper, tint: "border-l-sky-500" },
+    { key: "credentials", label: "Credentials", icon: GraduationCap, tint: "border-l-violet-500" },
+    { key: "notable_clients", label: "Notable clients", icon: Users, tint: "border-l-rose-500" },
+  ];
+
+  const totalItems = sections.reduce((n, s) => n + (groups[s.key]?.length || 0), 0);
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base"><Quote className="h-4 w-4" /> Social proof</CardTitle>
-        <CardDescription className="text-xs">Pulled from your website — testimonials, press, stats and awards we could find.</CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between space-y-0">
+        <div>
+          <CardTitle className="flex items-center gap-2 text-base"><Quote className="h-4 w-4" /> Social proof</CardTitle>
+          <CardDescription className="text-xs">Pulled from your website — testimonials, press, stats and awards we could find.</CardDescription>
+        </div>
+        {!editing && totalItems > 0 && (
+          <Button size="sm" variant="ghost" onClick={() => setEditing(true)} className="h-7">
+            <Pencil className="h-3 w-3 mr-1" /> Edit
+          </Button>
+        )}
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {loading && (
           <div className="text-xs text-muted-foreground flex items-center gap-2">
             <Loader2 className="h-3 w-3 animate-spin" /> Pulling testimonials, press and stats from your site…
           </div>
         )}
-        <Textarea rows={Math.min(12, Math.max(5, proof.split("\n").length + 1))} value={proof} onChange={(e) => setProof(e.target.value)} placeholder="“This program changed everything.” — Sarah" />
-        <Button size="sm" variant="outline" onClick={() => onSave({ social_proof: proof.split("\n").map((s) => s.trim()).filter(Boolean) })}>Save</Button>
+
+        {!editing && totalItems > 0 && (
+          <div className="space-y-4">
+            {sections.map(({ key, label, icon: Icon, tint }) => {
+              const items = groups[key] || [];
+              if (items.length === 0) return null;
+              return (
+                <div key={key} className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    <Icon className="h-3 w-3" /> {label}
+                    <span className="text-muted-foreground/60">· {items.length}</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {items.map((it, i) => {
+                      const { primary, secondary } = renderItem(it);
+                      return (
+                        <div key={i} className={`rounded-md border bg-muted/30 border-l-4 ${tint} px-3 py-2`}>
+                          <div className="text-sm leading-snug">{primary}</div>
+                          {secondary && <div className="text-xs text-muted-foreground mt-0.5">{secondary}</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {!editing && totalItems === 0 && !loading && (
+          <p className="text-xs text-muted-foreground italic">Nothing yet — click Edit to add testimonials, stats, or press.</p>
+        )}
+
+        {editing && (
+          <>
+            <p className="text-xs text-muted-foreground">One per line. Prefix with a category if you'd like (e.g. <span className="font-mono">Testimonial: …</span>).</p>
+            <Textarea
+              rows={Math.min(14, Math.max(6, proof.split("\n").length + 1))}
+              value={proof}
+              onChange={(e) => setProof(e.target.value)}
+              placeholder={'"This program changed everything." — Sarah'}
+            />
+            <div className="flex gap-2">
+              <Button size="sm" variant="lumi" onClick={async () => {
+                await onSave({ social_proof: proof.split("\n").map((s) => s.trim()).filter(Boolean) });
+                setEditing(false);
+              }}>Save</Button>
+              <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setProof(flatten(sp)); }}>Cancel</Button>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
 }
+
 
 function UploadBtn({ id, label, onFile, accept = "image/*" }: { id: string; label: string; onFile: (f: File) => void; accept?: string }) {
   return (
