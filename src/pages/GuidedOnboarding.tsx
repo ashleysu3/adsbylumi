@@ -752,7 +752,7 @@ export default function GuidedOnboarding() {
                     autoTask={{ title: "Add a brand logo", link_to: "/brand" }}
                   />
                 )}
-                {!headshotUrl && grouped.headshot.length === 0 && (
+                {grouped.headshot.length === 0 && (
                   <SetupPrompt
                     title="Add a headshot"
                     description="A founder/face photo lifts ad performance a lot. Plain backdrop works best."
