@@ -100,6 +100,15 @@ Deno.serve(async (req) => {
     }
   }
 
+  // ADMIN TEST MODE: send a real engine-driven report for a specific brand to
+  // any recipient, for a chosen rolling window. Bypasses Monday/last-sent
+  // gating. Does NOT update last_report_sent_at.
+  if (body?.adminTestMode === true) {
+    const adminResult = await handleAdminTestMode(req, body, corsHeaders);
+    return adminResult;
+  }
+
+
   if (!isServiceRoleRequest(req)) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
@@ -340,7 +349,178 @@ Deno.serve(async (req) => {
   }
 });
 
+// ===================== ADMIN TEST MODE =====================
+
+async function handleAdminTestMode(
+  req: Request,
+  body: any,
+  corsHeaders: Record<string, string>,
+): Promise<Response> {
+  const json = (status: number, payload: any) =>
+    new Response(JSON.stringify(payload), {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return json(401, { error: 'Auth required (admin)' });
+  }
+
+  const brandId = String(body.brandId || '').trim();
+  const recipientEmail = String(body.recipientEmail || '').trim();
+  const daysWindow = Math.max(1, Math.min(90, Number(body.daysWindow) || 7));
+
+  if (!brandId) return json(200, { error: 'brandId required' });
+  if (!recipientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
+    return json(200, { error: 'Valid recipientEmail required' });
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+  // Verify admin via user-context client.
+  const userClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: claims } = await userClient.auth.getClaims(authHeader.replace('Bearer ', ''));
+  const userId = claims?.claims?.sub;
+  if (!userId) return json(200, { error: 'Not authenticated' });
+
+  const { data: roleRow } = await userClient
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', 'admin')
+    .maybeSingle();
+  if (!roleRow) return json(200, { error: 'Admin only' });
+
+  // Service-role client for the actual fetch + send.
+  const supabase = createClient(supabaseUrl, serviceKey);
+
+  const { data: workspaces, error: wsError } = await supabase
+    .from('campaign_workspaces')
+    .select(`
+      id, name, brand_id, meta_campaign_ids, performance_history, offer_name,
+      brands!inner(id, user_id, name, notification_preferences),
+      campaign_goals(primary_kpi, primary_kpi_label, primary_kpi_threshold, primary_kpi_goal_type, secondary_kpi, secondary_kpi_label, secondary_kpi_threshold, secondary_kpi_goal_type)
+    `)
+    .eq('brand_id', brandId)
+    .not('meta_campaign_ids', 'is', null)
+    .eq('archived', false);
+
+  if (wsError) return json(200, { error: wsError.message });
+
+  const brand = (workspaces?.[0] as any)?.brands;
+  if (!brand) {
+    return json(200, { error: 'No published campaigns for that brand', campaignCount: 0 });
+  }
+
+  const cutoff = Date.now() - daysWindow * 24 * 60 * 60 * 1000;
+  const frequencyLabel = `Last ${daysWindow}d`;
+  const campaigns: CampaignRow[] = [];
+
+  for (const ws of workspaces || []) {
+    const history: any[] = (ws as any).performance_history || [];
+    // Snapshots within the chosen rolling window.
+    const inWindow = history.filter((h) => {
+      const t = h?.date ? Date.parse(h.date) : h?.timestamp ? Date.parse(h.timestamp) : null;
+      return t && t >= cutoff;
+    });
+    if (inWindow.length === 0) continue;
+
+    const latestSnapshot = inWindow[inWindow.length - 1];
+    const metrics = latestSnapshot?.metrics || {};
+    const goals = ((ws as any).campaign_goals as any)?.[0] || null;
+
+    // Sum delivery over the window to decide "had activity".
+    const winSpend = inWindow.reduce((s, h) => s + Number(h?.metrics?.spend || 0), 0);
+    const winReach = inWindow.reduce((s, h) => s + Number(h?.metrics?.reach || 0), 0);
+    const winImpr = inWindow.reduce((s, h) => s + Number(h?.metrics?.impressions || 0), 0);
+    if (winSpend <= 0 && winReach <= 0 && winImpr <= 0) continue;
+
+    let cardDisplay: CampaignRow['cardDisplay'] | null = null;
+    let changeContext: CampaignRow['changeContext'] | undefined;
+    let recs: any[] = [];
+    try {
+      const { data: recsResp } = await supabase.functions.invoke('generate-recommendations', {
+        body: {
+          workspaceId: (ws as any).id,
+          brandId: brand.id,
+          metrics,
+          ads: latestSnapshot?.adMetrics || [],
+          goals,
+        },
+      });
+      if (!recsResp) continue;
+      cardDisplay = recsResp.cardDisplay || null;
+      if (recsResp.changeContext) {
+        changeContext = {
+          recentEventsCount: recsResp.changeContext.recentEventsCount,
+          summary: recsResp.changeContext.summary,
+        };
+      }
+      recs = Array.isArray(recsResp.recommendations) ? recsResp.recommendations : [];
+    } catch (e) {
+      console.warn('[admin-test] rec engine threw:', e);
+      continue;
+    }
+    if (!cardDisplay) continue;
+
+    const topRecs = recs
+      .filter((r) => r && r.title && r.type !== 'keep_running' && r.type !== 'hold_for_data')
+      .sort((a, b) => (a.priority ?? 99) - (b.priority ?? 99))
+      .slice(0, 3)
+      .map((r) => ({
+        title: String(r.title),
+        description: String(r.description || ''),
+        impact: String(r.impact || ''),
+        confidence: (r.confidence || 'medium') as 'high' | 'medium' | 'low',
+        priority: Number(r.priority ?? 99),
+        type: String(r.type || ''),
+      }));
+
+    campaigns.push({
+      workspaceId: (ws as any).id,
+      name: (ws as any).offer_name || (ws as any).name,
+      spend: winSpend,
+      reach: winReach,
+      cardDisplay,
+      changeContext,
+      topRecs,
+    });
+  }
+
+  const userName = 'there';
+  const html = campaigns.length === 0
+    ? buildQuietWeekEmail({ userName, brandName: brand.name, frequencyLabel })
+    : buildBigPictureEmail({ userName, brandName: brand.name, frequencyLabel, campaigns });
+
+  const subject = campaigns.length === 0
+    ? `[TEST] 📭 ${frequencyLabel} Ad Report: ${brand.name} — quiet window`
+    : `[TEST] 📊 ${frequencyLabel} Ad Report: ${brand.name} — ${campaigns.length} campaign${campaigns.length !== 1 ? 's' : ''} with data`;
+
+  const { error: sendErr } = await resend.emails.send({
+    from: 'Lumi <reports@adsbylumi.com>',
+    to: [recipientEmail],
+    subject,
+    html,
+  });
+  if (sendErr) return json(200, { error: (sendErr as any).message || 'Send failed' });
+
+  return json(200, {
+    success: true,
+    sentTo: recipientEmail,
+    brandName: brand.name,
+    campaignCount: campaigns.length,
+    daysWindow,
+    status: campaigns.length === 0 ? 'quiet-window' : 'sent',
+  });
+}
+
 // ===================== EMAIL TEMPLATES =====================
+
 
 const APP_BIG_PICTURE_URL = 'https://adsbylumi.com/live-ads';
 
