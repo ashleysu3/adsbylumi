@@ -37,6 +37,11 @@ const logStep = (step: string, details?: any) => {
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(origin);
+  const jsonResponse = (body: Record<string, unknown>, status = 200) =>
+    new Response(JSON.stringify(body), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status,
+    });
 
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -56,10 +61,7 @@ Deno.serve(async (req) => {
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Authorization required" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
-      );
+      return jsonResponse({ success: false, error: "Authorization required" });
     }
 
     const supabaseAuth = createClient(
@@ -70,10 +72,7 @@ Deno.serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: authError } = await supabaseAuth.auth.getUser(token);
     if (authError || !userData.user) {
-      return new Response(
-        JSON.stringify({ error: "Invalid or expired token" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
-      );
+      return jsonResponse({ success: false, error: "Invalid or expired token" });
     }
 
     const user = userData.user;
@@ -102,10 +101,7 @@ Deno.serve(async (req) => {
         .eq("role", "admin")
         .maybeSingle();
       if (!roleData) {
-        return new Response(
-          JSON.stringify({ error: "Access denied" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
-        );
+        return jsonResponse({ success: false, error: "Access denied" });
       }
     }
 
@@ -153,6 +149,80 @@ Deno.serve(async (req) => {
       `?fields=id,daily_budget,lifetime_budget&access_token=${encodeURIComponent(accessToken)}`;
     const campData = await fetchMetaJson(campFieldsUrl, "campaign");
 
+    // A campaign is CBO when it has a campaign-level budget. Meta ensures
+    // that CBO campaigns cannot also have ad-set-level budgets, and vice
+    // versa — so this flag is authoritative.
+    const isCBO = !!(campData.daily_budget || campData.lifetime_budget);
+
+    // Fast path for CBO campaigns. Reading ad sets is unnecessary here and is
+    // the call most likely to hit Meta's user-level rate limit. This keeps the
+    // approve flow safe while cutting one Marketing API read from the hot path.
+    if (isCBO) {
+      logStep("Detected budget level", {
+        campaignId,
+        isCBO,
+        adSetCount: null,
+        activeAdSetCount: null,
+        adSetIdRequested: adSetId || null,
+      });
+
+      if (preview) {
+        return jsonResponse({
+          success: true,
+          preview: true,
+          isCBO,
+          level: "campaign",
+          current_daily_budget: campData.daily_budget ? parseFloat(campData.daily_budget) / 100 : null,
+          ad_set_id: null,
+          active_ad_sets: [],
+        });
+      }
+
+      if (adSetId) {
+        return jsonResponse({
+          success: false,
+          error:
+            `This campaign uses Campaign Budget Optimization (CBO), so individual ad sets don't have their own budgets. ` +
+            `To change the budget, update the campaign budget without specifying an ad set.`,
+        });
+      }
+
+      const campaignUrl = `https://graph.facebook.com/v25.0/${campaignId}`;
+      const resp = await fetch(campaignUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          access_token: accessToken,
+          daily_budget: budgetCents,
+        }),
+      });
+      const result = await resp.json();
+      if (!result.success) {
+        throw new Error(
+          `Failed to update campaign budget: ${result.error?.message || "unknown error"}`,
+        );
+      }
+
+      await supabase.from("ad_action_log").insert({
+        brand_id: brand.id,
+        workspace_id: workspaceId,
+        action_type: "budget_update",
+        action_detail: {
+          level: "campaign",
+          campaign_id: campaignId,
+          new_budget: newBudget,
+        },
+        source: "user",
+      });
+
+      return jsonResponse({
+        success: true,
+        level: "campaign",
+        new_budget: newBudget,
+        message: `Budget updated to $${newBudget}/day on Meta`,
+      });
+    }
+
     const adSetsListUrl =
       `https://graph.facebook.com/v25.0/${campaignId}/adsets` +
       `?fields=id,name,daily_budget,lifetime_budget,status&limit=100&access_token=${encodeURIComponent(accessToken)}`;
@@ -161,11 +231,6 @@ Deno.serve(async (req) => {
     const activeAdSets = allAdSets.filter(
       (as: any) => as.status === "ACTIVE" || as.status === "PAUSED",
     );
-
-    // A campaign is CBO when it has a campaign-level budget. Meta ensures
-    // that CBO campaigns cannot also have ad-set-level budgets, and vice
-    // versa — so this flag is authoritative.
-    const isCBO = !!(campData.daily_budget || campData.lifetime_budget);
 
     logStep("Detected budget level", {
       campaignId,
@@ -198,8 +263,8 @@ Deno.serve(async (req) => {
       } else {
         level = "ambiguous";
       }
-      return new Response(
-        JSON.stringify({
+      return jsonResponse(
+        {
           success: true,
           preview: true,
           isCBO,
@@ -212,8 +277,7 @@ Deno.serve(async (req) => {
             status: as.status,
             dailyBudget: as.daily_budget ? parseFloat(as.daily_budget) / 100 : null,
           })),
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        }
       );
     }
 
@@ -225,14 +289,13 @@ Deno.serve(async (req) => {
       // Guard: if the campaign is CBO, updating a single ad set's budget
       // would either fail or (worse) flip the campaign to ABO. Refuse.
       if (isCBO) {
-        return new Response(
-          JSON.stringify({
+        return jsonResponse(
+          {
             success: false,
             error:
               `This campaign uses Campaign Budget Optimization (CBO), so individual ad sets don't have their own budgets. ` +
               `To change the budget, either (a) update the campaign budget without specifying an ad set, or (b) switch the campaign to Ad Set Budgets in Meta Ads Manager first.`,
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+          }
         );
       }
 
@@ -271,64 +334,19 @@ Deno.serve(async (req) => {
         meta_entity_id: adSetId,
       });
 
-      return new Response(
-        JSON.stringify({
+      return jsonResponse(
+        {
           success: true,
           level: "adset_targeted",
           ad_set_id: adSetId,
           new_budget: newBudget,
           message: `Budget updated to $${newBudget}/day on the target ad set`,
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        }
       );
     }
 
     // ------------------------------------------------------------
-    // Case B — no ad set specified, campaign is CBO.
-    // Safe to update campaign-level daily_budget.
-    // ------------------------------------------------------------
-    if (isCBO) {
-      const campaignUrl = `https://graph.facebook.com/v25.0/${campaignId}`;
-      const resp = await fetch(campaignUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          access_token: accessToken,
-          daily_budget: budgetCents,
-        }),
-      });
-      const result = await resp.json();
-      if (!result.success) {
-        throw new Error(
-          `Failed to update campaign budget: ${result.error?.message || "unknown error"}`,
-        );
-      }
-
-      await supabase.from("ad_action_log").insert({
-        brand_id: brand.id,
-        workspace_id: workspaceId,
-        action_type: "budget_update",
-        action_detail: {
-          level: "campaign",
-          campaign_id: campaignId,
-          new_budget: newBudget,
-        },
-        source: "user",
-      });
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          level: "campaign",
-          new_budget: newBudget,
-          message: `Budget updated to $${newBudget}/day on Meta`,
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-      );
-    }
-
-    // ------------------------------------------------------------
-    // Case C — no ad set specified, campaign is ABO.
+    // Case B — no ad set specified, campaign is ABO.
     // Never distribute + never flip. If there's exactly one ad set we
     // can safely target it; otherwise we error out and ask the caller
     // to pick. This replaces the old "divide evenly across all sets"
@@ -369,22 +387,21 @@ Deno.serve(async (req) => {
         meta_entity_id: only.id,
       });
 
-      return new Response(
-        JSON.stringify({
+      return jsonResponse(
+        {
           success: true,
           level: "adset_single",
           ad_set_id: only.id,
           new_budget: newBudget,
           message: `Budget updated to $${newBudget}/day on the only active ad set`,
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        }
       );
     }
 
     // Multiple active ad sets — ambiguous. Refuse to act. This is the
     // case that caused the damage to Lindsay's Masterclass on 2026-04-23.
-    return new Response(
-      JSON.stringify({
+    return jsonResponse(
+      {
         success: false,
         error:
           `This campaign uses Ad Set Budgets (ABO) with ${activeAdSets.length} active ad sets. ` +
@@ -396,15 +413,11 @@ Deno.serve(async (req) => {
           status: as.status,
           dailyBudget: as.daily_budget ? parseFloat(as.daily_budget) / 100 : null,
         })),
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      }
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message });
-    return new Response(
-      JSON.stringify({ success: false, error: message }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-    );
+    return jsonResponse({ success: false, error: message });
   }
 });

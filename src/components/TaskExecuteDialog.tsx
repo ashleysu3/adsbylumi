@@ -79,6 +79,9 @@ export function TaskExecuteDialog({ task, open, onOpenChange, onDone }: Props) {
             : kind === "increase_budget" ? 25 : 10;
           setPreview({ isCBO: res.isCBO, level: res.level, current, adSetId: res.adSetId });
           setNewBudgetInput(String(proposed));
+        } catch (e: any) {
+          toast.error("Couldn't read current budget", { description: e?.message || "Unknown error" });
+          onOpenChange(false);
         } finally {
           setLoadingPreview(false);
         }
@@ -167,6 +170,8 @@ export function TaskExecuteDialog({ task, open, onOpenChange, onDone }: Props) {
       await closeMatchingTasks({ actionType: task.action_type, entityId: task.action_payload.entityId });
       onDone?.();
       onOpenChange(false);
+    } catch (e: any) {
+      toast.error("LUMI couldn't complete this", { description: e?.message || "Unknown error" });
     } finally {
       setSubmitting(false);
     }
