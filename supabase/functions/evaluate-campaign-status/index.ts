@@ -861,6 +861,26 @@ function applyRules(r: RuleArgs): { status: Status; recommendation: AdEvaluation
     }
   }
 
+  // No-results guard — past learning phase with meaningful spend but the primary
+  // KPI has zero recorded results (e.g. ROAS/CPP with no purchases). Without this
+  // the default "performing" branch falsely greenlights a campaign that hasn't
+  // produced the outcome it was built for.
+  if (w7.kpiValue == null && w7.spend > 0 && w7.results === 0) {
+    return {
+      status: 'underperforming',
+      recommendation: {
+        action: 'turn_off',
+        reasoning: `No ${args.primaryKpi.toUpperCase()} results recorded in the last 7 days despite $${w7.spend.toFixed(0)} in spend. Pause and replace — something upstream (offer, creative, or tracking) isn't converting.`,
+        confidence: w7.spend >= (args.primaryGoal || 0) ? 'high' : 'medium',
+        impact: estimateImpact('turn_off', { weeklySpend: w7.spend }),
+        impactReasoning: `~$${w7.spend.toFixed(0)} per week spent with zero results`,
+        priorityTier: 2,
+      },
+    };
+  }
+
+
+
   // §6.1 — Underperformer. Both 3-day and 7-day need to be > goal × 1.5.
   const isWorseThan = (val: number | null, threshold: number) => {
     if (val == null) return false;

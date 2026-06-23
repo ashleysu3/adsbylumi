@@ -819,10 +819,6 @@ export default function Performance() {
                             <span className="text-foreground">{topLine}</span>
                           </p>
 
-                          <p className="text-sm">
-                            <span className="text-muted-foreground">Next: </span>
-                            <span className="text-foreground">{topLine}</span>
-                          </p>
                         </CardContent>
                       </Card>
                     );
