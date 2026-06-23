@@ -710,7 +710,14 @@ export default function GuidedOnboarding() {
             <ReviewDesignCard brand={brand} onSave={updateBrand} />
             <ReviewVoiceCard brand={brand} onSave={updateBrand} />
             <ReviewAudienceCard brand={brand} onSave={updateBrand} />
-            <ReviewProofCard brand={brand} onSave={updateBrand} loading={proofExtracting} />
+            {(() => {
+              const sp = (brand as any)?.social_proof;
+              const hasProof = Array.isArray(sp) ? sp.length > 0 : !!sp;
+              // Only show the card if we actually found something, OR extraction is still running.
+              return (hasProof || proofExtracting) ? (
+                <ReviewProofCard brand={brand} onSave={updateBrand} loading={proofExtracting} />
+              ) : null;
+            })()}
             <div className="flex justify-between pt-2">
               <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
               <div className="flex gap-2">
