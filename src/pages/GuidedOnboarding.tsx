@@ -674,6 +674,14 @@ export default function GuidedOnboarding() {
     toast.success("B-roll uploaded");
   };
 
+  const uploadAny = async (file: File) => {
+    if (file.type.startsWith("video/")) {
+      await uploadBroll(file);
+    } else {
+      await uploadFile(file, "other");
+    }
+  };
+
   const saveShotList = async () => {
     if (!brollIdeas?.length) return;
     const list = brollIdeas.map((i: any, idx: number) => {
