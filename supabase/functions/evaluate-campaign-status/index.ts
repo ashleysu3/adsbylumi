@@ -798,7 +798,7 @@ function classify(args: ClassifyArgs): AdEvaluation {
   return {
     id: args.id, name: args.name, level: args.level,
     status: result.status,
-    primary: { value: w7.kpiValue, vsGoalPct, trendDirection },
+    primary: { value: displayPrimary, vsGoalPct, trendDirection },
     secondary,
     kpis,
     reach, frequency, daysLive,
