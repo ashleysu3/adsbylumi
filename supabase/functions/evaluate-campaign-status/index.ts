@@ -177,8 +177,9 @@ Deno.serve(async req => {
     );
 
     // Resolve campaign + brand + ownership.
-    const { brandId, metaCampaignId, workspaceId, accessToken, primaryKpiOverride, primaryGoal: goalIn, primaryDirection: directionIn, attributionWindow, asOf } =
+    const { brandId, metaCampaignId, workspaceId, accessToken, primaryKpiOverride, primaryGoal: goalIn, primaryDirection: directionIn, attributionWindow, asOf, displayRange } =
       await resolveContext(body, sb, user.id);
+
 
     if (!metaCampaignId || !accessToken) {
       return json({ error: 'Could not resolve a connected Meta campaign for this request' }, 400);
