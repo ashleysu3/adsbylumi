@@ -36,6 +36,7 @@ import { ProductionManager } from "@/components/creative/ProductionManager";
 import { AngleCopyEditor } from "@/components/creative/AngleCopyEditor";
 
 import { BrandLearningsPanel } from "@/components/creative/BrandLearningsPanel";
+import { CadenceNudge } from "@/components/creative/CadenceNudge";
  import { CreativeContextInput, CreativeContext } from "@/components/creative/CreativeContextInput";
 import { CreativeStudioExplainer, useCreativeStudioExplainer } from "@/components/creative/CreativeStudioExplainer";
 import { Json } from "@/integrations/supabase/types";
