@@ -282,6 +282,19 @@ export const ARCHETYPES: Record<ArchetypeSlug, Archetype> = {
       "Outside an enrollment window? Don't grade — pause and wait.",
     ],
     templateSlugs: ["launch-window-membership"],
+    cadence: {
+      rotationPace: "Launch-window narrative arc",
+      anglesPerTest: { min: 4, max: 6 },
+      refreshEveryDays: { min: 7, max: 7 },
+      fatigueFrequencyThreshold: { cold: 4, warm: 8 },
+      narrativeArc: [
+        "Wk 1 — Problem / awareness",
+        "Wk 2 — Community / belonging",
+        "Wk 3 — Social proof / transformation",
+        "Wk 4 — Urgency / doors closing",
+      ],
+      tip: "Run a 4-week narrative arc across the launch window — one creative theme per week.",
+    },
   },
 };
 
