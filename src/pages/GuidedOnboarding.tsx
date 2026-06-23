@@ -625,7 +625,7 @@ export default function GuidedOnboarding() {
     navigate("/create?onboarding=1");
   };
 
-  // ---------- helpers used by the review steps ----------
+  // ---------- helpers used by the reveal page ----------
   const hasProofVal = (v: any): boolean => {
     if (!v) return false;
     if (Array.isArray(v)) return v.length > 0;
@@ -634,36 +634,12 @@ export default function GuidedOnboarding() {
   };
   const hasProof = hasProofVal((brand as any)?.social_proof);
 
-  // Auto-skip social proof step (5) when nothing was found, in whichever direction
-  // the user is travelling. We compare to the previous step to figure out direction.
-  const prevStepRef = useRef(step);
-  useEffect(() => {
-    if (step === 5 && !hasProof && extractionPhase !== 'running') {
-      const goingForward = step >= prevStepRef.current;
-      const target = goingForward ? 6 : 4;
-      setStep(target);
-      if (brandId) persistStep(brandId, target);
-      prevStepRef.current = target;
-      return;
-    }
-    prevStepRef.current = step;
-  }, [step, hasProof, extractionPhase, brandId, persistStep]);
-
   if (checkingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
-  }
-
-  // ============ FULL-SCREEN EXTRACTION LOADER ============
-  // While LUMI is reading the site, hide the entire onboarding UI and show the loader only.
-  if (extractionPhase === 'running') {
-    return <LumiPageLoader message={loaderMsg || "LUMI is reading your site…"} />;
-  }
-  if (globalLoaderMsg) {
-    return <LumiPageLoader message={globalLoaderMsg} />;
   }
 
   return (
