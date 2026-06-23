@@ -857,19 +857,29 @@ export default function GuidedOnboarding() {
             </Card>
 
             <RevealGate revealed={revealed.basics} kind="basics">
+              {failed.basics && <TimeoutNotice label="brand basics" />}
               <BrandBasicsCard brand={brand} placeholderName={placeholderNameRef.current} onSave={updateBrand} />
             </RevealGate>
 
             <RevealGate revealed={revealed.design} kind="design">
+              {failed.design && <TimeoutNotice label="your design guide" />}
               <ReviewDesignCard brand={brand} onSave={updateBrand} />
             </RevealGate>
 
             <RevealGate revealed={revealed.audience} kind="audience">
+              {failed.audience && <TimeoutNotice label="your audience" />}
               <ReviewAudienceCard brand={brand} onSave={updateBrand} />
             </RevealGate>
 
             <RevealGate revealed={revealed.proof} kind="proof">
-              {hasProof ? (
+              {failed.proof ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base"><Quote className="h-4 w-4" /> Social proof</CardTitle>
+                    <CardDescription className="text-xs">We couldn't grab this one — add a testimonial or stat in a sec, it takes 10 seconds.</CardDescription>
+                  </CardHeader>
+                </Card>
+              ) : hasProof ? (
                 <ReviewProofCard brand={brand} onSave={updateBrand} loading={proofExtracting} />
               ) : (
                 <Card>
@@ -880,6 +890,7 @@ export default function GuidedOnboarding() {
                 </Card>
               )}
             </RevealGate>
+
 
             <RevealGate revealed={revealed.images} kind="images">
               <Card>
