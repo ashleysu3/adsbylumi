@@ -46,6 +46,28 @@ export type ArchetypeBudgetApproach = {
   scaleTrigger?: string;
 };
 
+// Creative cadence — how often to refresh creative, how many angles per
+// test, and (for community launches) the narrative arc across the window.
+// Surfaced in Creative Studio nudges and used by the fatigue engine to
+// pick archetype-appropriate frequency thresholds.
+export type ArchetypeCadence = {
+  // Plain-language pace shown in the nudge ("Weekly rotation", "Slow").
+  rotationPace: string;
+  // How many distinct angles/variations to ship per test cycle.
+  anglesPerTest: { min: number; max: number };
+  // Days between scheduled refreshes (lower bound = "due soon" trigger).
+  refreshEveryDays: { min: number; max: number };
+  // Override fatigue threshold — frequency at which the evaluator should
+  // call this audience fatigued. Low-ticket rotates sooner (lower threshold),
+  // high-ticket tolerates more repetition. Falls back to the temp-based
+  // default (warm=5, cold=3) when undefined.
+  fatigueFrequencyThreshold?: { cold: number; warm: number };
+  // For launch-window archetypes — the week-by-week narrative arc.
+  narrativeArc?: string[];
+  // One-line tip surfaced in the nudge body.
+  tip: string;
+};
+
 export type Archetype = {
   slug: ArchetypeSlug;
   label: string;
@@ -60,6 +82,8 @@ export type Archetype = {
   // intentionally empty (ecommerce) — the framework is seeded even if
   // templates come later.
   templateSlugs: string[];
+  // Creative cadence — drives Studio nudges + fatigue thresholds.
+  cadence: ArchetypeCadence;
 };
 
 export const ARCHETYPES: Record<ArchetypeSlug, Archetype> = {
