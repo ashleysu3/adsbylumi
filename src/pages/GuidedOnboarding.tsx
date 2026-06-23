@@ -831,7 +831,16 @@ export default function GuidedOnboarding() {
 
         {/* ============== STEP 2 — Reveal page (streams in live) ============== */}
         {step === 2 && (
-          <div className="space-y-4">
+          <div
+            className="space-y-4"
+            style={{
+              ["--brand-accent" as any]: (brand?._kit?.colors?.[0] as string) || "hsl(var(--primary))",
+              ["--brand-accent-soft" as any]: (brand?._kit?.colors?.[0] as string)
+                ? `${brand._kit.colors[0]}1a`
+                : "hsl(var(--primary) / 0.1)",
+            }}
+          >
+            <BrandHeroCard brand={brand} />
             <Card className="border-primary/20 bg-primary/5 overflow-hidden">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
