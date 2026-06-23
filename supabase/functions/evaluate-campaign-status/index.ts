@@ -956,6 +956,45 @@ function applyRules(r: RuleArgs): { status: Status; recommendation: AdEvaluation
     }
   }
 
+  // Helper to attach a root-cause diagnosis to any failing recommendation.
+  // Runs the diagnostic tree against the medium-window row so the WHY is
+  // grounded in the same data the rules use.
+  const buildDiagnosis = (): Diagnosis => diagnoseRootCause({
+    primaryKpi: args.primaryKpi,
+    meta7: args.meta7,
+    meta3: args.meta3,
+    metaFatigueRef: args.metaFatigueRef,
+    reach,
+    frequency,
+    audienceTemp: args.audienceTemp,
+    w7KpiValue: w7.kpiValue,
+    wFatigueRefKpiValue: wFatigueRef.kpiValue,
+    primaryDirection: args.primaryDirection,
+  });
+
+  // Map a diagnostic primaryAction to an existing engine Action verb.
+  const actionFromDiagnosis = (d: Diagnosis): Action => {
+    switch (d.primaryAction) {
+      case 'test_new_creative':
+      case 'rotate_bench':
+        return 'refresh_creative';
+      case 'broaden_audience':
+        return 'broaden_audience';
+      case 'raise_budget':
+        return 'increase_budget';
+      case 'consolidate_adsets':
+        return 'broaden_audience';
+      case 'fix_landing_page':
+      case 'fix_offer_economics':
+        return 'hold'; // creative-side action isn't the fix — surface diagnosis instead
+      case 'wait':
+        return 'wait';
+      default:
+        return 'refresh_creative';
+    }
+  };
+
+
   // No-results guard — past learning phase with meaningful spend but the primary
   // KPI has zero recorded results (e.g. ROAS/CPP with no purchases). Without this
   // the default "performing" branch falsely greenlights a campaign that hasn't
