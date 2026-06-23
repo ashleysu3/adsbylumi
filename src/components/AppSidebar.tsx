@@ -26,6 +26,7 @@ import {
   Settings as SettingsIcon,
   PenLine,
   Sparkles,
+  Heart,
 } from "lucide-react";
 import { LadybugIcon } from "@/components/LadybugIcon";
 import { IntentBar } from "@/components/IntentBar";
