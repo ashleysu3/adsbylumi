@@ -1,56 +1,66 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
-import { useBrand } from '@/contexts/BrandContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { parseReportSections, ReportSectionRenderer } from '@/components/insights/ReportSectionRenderer';
-import { ArrowLeft, Loader2, Send, FileText } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, ExternalLink, Mail } from 'lucide-react';
+
+// Sample data mirrors what send-weekly-reports puts in the email — Big
+// Picture rows + Quick List items, both drawn from the engine.
+const SAMPLE_CAMPAIGNS = [
+  {
+    name: 'Free Workshop Registration',
+    status: 'attention' as const,
+    statusLabel: 'Watch closely',
+    primaryLabel: 'CPL',
+    primaryValue: '$32.40',
+    primaryGoal: '< $25',
+    secondaryLabel: 'Leads',
+    secondaryValue: '14',
+    secondaryGoal: '> 20',
+    spend: '$298.10',
+    actionRec: 'Refresh creative before scaling',
+    changeNote: '2 recent changes — data still settling',
+  },
+  {
+    name: 'Client Success Stories — Video',
+    status: 'healthy' as const,
+    statusLabel: 'On track',
+    primaryLabel: 'CPL',
+    primaryValue: '$18.50',
+    primaryGoal: '< $30',
+    secondaryLabel: 'Leads',
+    secondaryValue: '21',
+    secondaryGoal: '> 15',
+    spend: '$312.40',
+    actionRec: 'Increase budget',
+    changeNote: '',
+  },
+];
+
+const SAMPLE_QUICK_LIST = [
+  {
+    campaign: 'Free Workshop Registration',
+    title: 'CPL is $32 — each lead is costing $7 over target',
+    description: "Your goal is under $25 but you're at $32.40. CTR is 0.82% — people aren't clicking, so the hook and creative aren't grabbing attention. Meta can't optimize delivery to your goal when the click signal is weak.",
+    impact: 'Better creative signals help Meta find the right people faster.',
+  },
+  {
+    campaign: 'Client Success Stories — Video',
+    title: 'Scale budget 20% — hitting your goal',
+    description: "Your CPL is $18.50, which beats your goal of under $30. This campaign is ready to scale at its current efficiency.",
+    impact: 'Capture more results at the same cost per lead.',
+  },
+];
 
 export default function WeeklyDigestPreview() {
   const navigate = useNavigate();
-  const { isAgencyUser } = useBrand();
   const [sendingTest, setSendingTest] = useState(false);
   const [testEmail, setTestEmail] = useState('');
-
-  // Fake sample report data
-  const sampleReportText = `## 📊 What's Happening
-
-Your campaigns reached **24,582 people** this week, generating **347 link clicks** and **12 conversions**. Overall spend was **$312.40** across 3 active campaigns.
-
-| Metric | This Week | Previous Week | Trend |
-|--------|-----------|---------------|-------|
-| Spend | $312.40 | $298.10 | ⬆️ +4.8% |
-| Link Clicks | 347 | 312 | ✅ +11.2% |
-| CTR | 1.41% | 1.22% | ✅ +15.6% |
-| CPC | $0.90 | $0.96 | ✅ -6.3% |
-| Conversions | 12 | 9 | ✅ +33.3% |
-| CPL | $26.03 | $33.12 | ✅ -21.4% |
-| ROAS | 3.2x | 2.7x | ✅ +18.5% |
-
-**Top Performer:** "Client Success Stories – Video" campaign is crushing it with a 2.1% CTR and $18.50 CPL — well below your $30 target.
-
-**Needs Attention:** "Free Workshop Registration" campaign frequency is at 3.8 — approaching the creative fatigue threshold.
-
-## ✦ LUMI Recommends
-
-- ✅ **Scale "Client Success Stories" budget by 20%** — This campaign is performing well above benchmarks. We recommend increasing the daily budget from $25 to $30 to capture more conversions at this efficient rate.
-
-- ⚠️ **Refresh creative for "Free Workshop Registration"** — Frequency is approaching 4.0, which typically signals audience fatigue. We recommend introducing 2–3 new ad variations with fresh hooks to maintain engagement.
-
-- ✅ **Continue monitoring "Brand Awareness" campaign** — CTR is steady at 1.3% and CPC is within target. No changes needed this week.
-
-## 🤝 Approve These Changes
-
-The following optimizations are ready for your approval:
-
-1. **Increase "Client Success Stories" daily budget from $25 → $30** — Expected to generate 3–4 additional conversions per week at the current CPL.
-
-2. **Pause lowest-performing ad in "Free Workshop Registration"** — The "Testimonial Carousel" variant has a 0.6% CTR vs. the campaign average of 1.2%. We recommend pausing it and redirecting budget to better performers.`;
 
   const handleSendTestEmail = async () => {
     if (!testEmail.trim()) {
@@ -59,18 +69,14 @@ The following optimizations are ready for your approval:
     }
     setSendingTest(true);
     try {
-      // Simulate sending — in production this would call an edge function
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 1200));
       toast.success(`Test email sent to ${testEmail}!`);
     } catch (error: any) {
-      console.error('Error sending test:', error);
       toast.error(error.message || 'Failed to send test email');
     } finally {
       setSendingTest(false);
     }
   };
-
-  const parsed = parseReportSections(sampleReportText);
 
   return (
     <DashboardLayout>
@@ -82,10 +88,10 @@ The following optimizations are ready for your approval:
           </Button>
           <div className="flex-1">
             <h1 className="text-3xl font-bold tracking-tight">
-              <span className="text-gradient-lumi">Performance Report Preview</span>
+              <span className="text-gradient-lumi">Weekly Report Preview</span>
             </h1>
             <p className="text-muted-foreground mt-1">
-              Preview what your performance report looks like with sample data
+              The Big Picture + Quick List your subscribers actually receive — based on the same engine the in-app view uses.
             </p>
           </div>
         </div>
@@ -117,27 +123,107 @@ The following optimizations are ready for your approval:
           </CardContent>
         </Card>
 
-        {/* Report content */}
-        {parsed && (
-          <Card className="overflow-hidden border-2">
-            <CardHeader className="bg-gradient-to-r from-slate-900 to-slate-800 text-white pb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <FileText className="h-5 w-5" />
-                <Badge variant="outline" className="text-white border-white/30">Sample Report</Badge>
-              </div>
-              <CardTitle className="text-2xl">📊 Performance Report</CardTitle>
-              <p className="text-slate-300 text-sm mt-1">
-                Sample Brand · Jan 13 — Jan 20, 2025
+        {/* Email preview */}
+        <Card className="overflow-hidden border-2">
+          <CardHeader className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-400 text-white pb-5">
+            <div className="flex items-center gap-2 mb-2">
+              <Mail className="h-5 w-5" />
+              <Badge variant="outline" className="text-white border-white/30">Sample</Badge>
+            </div>
+            <CardTitle className="text-2xl">📊 Weekly Ad Report</CardTitle>
+            <p className="text-white/90 text-sm mt-1">
+              Sample Brand · {SAMPLE_CAMPAIGNS.length} campaigns with data this week
+            </p>
+          </CardHeader>
+          <CardContent className="p-6 space-y-6">
+            <div>
+              <p className="font-semibold">Hey there 👋</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Here's the big picture across the campaigns that actually ran this week, plus the few moves worth making.{' '}
+                <span className="text-foreground font-medium">1 needs attention · 1 on track</span>.
               </p>
-            </CardHeader>
-            <CardContent className="p-6">
-              <ReportSectionRenderer
-                sections={parsed.sections}
-                mode={isAgencyUser ? 'agency' : 'self-serve'}
-              />
-            </CardContent>
-          </Card>
-        )}
+            </div>
+
+            {/* Big Picture */}
+            <div>
+              <p className="text-[11px] font-bold tracking-wider uppercase text-muted-foreground mb-3">The Big Picture</p>
+              <div className="border rounded-xl divide-y bg-muted/30">
+                {SAMPLE_CAMPAIGNS.map((c) => (
+                  <div key={c.name} className="p-4 flex flex-wrap justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-sm">{c.name}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                        <Badge
+                          variant="outline"
+                          className={
+                            c.status === 'healthy'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              : c.status === 'attention'
+                                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                : 'bg-red-50 text-red-800 border-red-200'
+                          }
+                        >
+                          {c.statusLabel}
+                        </Badge>
+                        <span className="text-foreground">
+                          {c.primaryLabel}: <strong>{c.primaryValue}</strong>{' '}
+                          <span className="text-muted-foreground">(goal {c.primaryGoal})</span>
+                        </span>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-foreground">
+                          {c.secondaryLabel}: <strong>{c.secondaryValue}</strong>{' '}
+                          <span className="text-muted-foreground">(goal {c.secondaryGoal})</span>
+                        </span>
+                      </div>
+                      {c.changeNote && (
+                        <div className="mt-2 inline-block text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                          ⏳ {c.changeNote}
+                        </div>
+                      )}
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        <strong className="text-foreground">LUMI says:</strong> {c.actionRec}
+                      </div>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground whitespace-nowrap">
+                      Spend {c.spend}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick List */}
+            <div>
+              <p className="text-[11px] font-bold tracking-wider uppercase text-muted-foreground mb-3">
+                Quick List — this week's moves
+              </p>
+              <div className="space-y-3">
+                {SAMPLE_QUICK_LIST.map((q, i) => (
+                  <div key={i} className="border rounded-xl p-4 bg-card">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {q.campaign}
+                    </div>
+                    <div className="mt-1 font-bold text-sm">{q.title}</div>
+                    <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{q.description}</p>
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      <strong className="text-foreground/80">Why it matters:</strong> {q.impact}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div className="text-center pt-2">
+              <Button variant="lumi" className="gap-2" onClick={() => navigate('/live-ads')}>
+                Open the Big Picture <ExternalLink className="h-4 w-4" />
+              </Button>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Approve, snooze, or skip each move in the app.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );
