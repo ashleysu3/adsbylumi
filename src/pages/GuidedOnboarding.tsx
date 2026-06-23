@@ -1373,21 +1373,27 @@ function ReviewAudienceCard({ brand, onSave }: { brand: any; onSave: (p: any) =>
   );
 }
 
-function BrandBasicsCard({ brand, onSave }: { brand: any; onSave: (p: any) => Promise<void> }) {
+function BrandBasicsCard({ brand, placeholderName, onSave }: { brand: any; placeholderName?: string; onSave: (p: any) => Promise<void> }) {
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState<string>(brand?.name || "");
+  // Treat the domain-slug placeholder as "no name yet" — never show it to the user.
+  const rawName: string = brand?.name || "";
+  const isPlaceholderName = !!placeholderName && rawName.trim().toLowerCase() === placeholderName.trim().toLowerCase();
+  const realName = isPlaceholderName ? "" : rawName;
+
+  const [name, setName] = useState<string>(realName);
   const [desc, setDesc] = useState<string>(brand?.value_proposition || "");
   const [voice, setVoice] = useState<string>(brand?.brand_voice || "");
   const [saving, setSaving] = useState(false);
   useEffect(() => {
-    setName(brand?.name || "");
+    setName(realName);
     setDesc(brand?.value_proposition || "");
     setVoice(brand?.brand_voice || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brand?.id, brand?.name, brand?.value_proposition, brand?.brand_voice]);
 
   const cancel = () => {
     setEditing(false);
-    setName(brand?.name || "");
+    setName(realName);
     setDesc(brand?.value_proposition || "");
     setVoice(brand?.brand_voice || "");
   };
@@ -1419,9 +1425,23 @@ function BrandBasicsCard({ brand, onSave }: { brand: any; onSave: (p: any) => Pr
         <div className="space-y-1">
           <Label className="text-xs uppercase tracking-wide text-muted-foreground">Brand name</Label>
           {editing ? (
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your brand" />
+          ) : realName ? (
+            <div className="text-base font-medium animate-fade-in"><Typewriter text={realName} /></div>
           ) : (
-            <div className="text-base font-medium">{name || <span className="italic text-muted-foreground font-normal">Not set</span>}</div>
+            <div className="text-base font-medium text-muted-foreground italic">
+              Your brand <button type="button" onClick={() => setEditing(true)} className="not-italic text-xs ml-2 underline text-primary">add a name</button>
+            </div>
+          )}
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">What you do</Label>
+          {editing ? (
+            <Textarea rows={3} value={desc} onChange={(e) => setDesc(e.target.value)} />
+          ) : desc ? (
+            <p className="text-sm leading-relaxed animate-fade-in"><Typewriter text={desc} /></p>
+          ) : (
+            <p className="text-sm leading-relaxed"><span className="italic text-muted-foreground">Not set</span></p>
           )}
         </div>
         <div className="space-y-1">
