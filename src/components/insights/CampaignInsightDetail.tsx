@@ -795,8 +795,9 @@ export function CampaignInsightDetail({
             // we keep them out of Creative Actions to avoid duplication.
             // Drop completed + info-only recs for cleanliness.
             const userRecs = recommendations.filter(
-              (r: any) => !AUTOMATABLE_TYPES.has(r.type) && !recCompleted.has(r.id),
+              (r: any) => !AUTOMATABLE_TYPES.has(r.type) && !recCompleted.has(r.id) && !isSnoozedRec(r),
             );
+
             if (userRecs.length === 0) return null;
             return (
               <Card className="rounded-2xl border-[hsl(var(--lumi-orange-1)/0.2)]">
