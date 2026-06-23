@@ -18,19 +18,24 @@ import {
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { SetupPrompt } from "@/components/SetupPrompt";
 import { LumiThinkingInline } from "@/components/LumiThinking";
+import { LumiPageLoader } from "@/components/LumiLoader";
 import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
 import { useBrand } from "@/contexts/BrandContext";
 import { seedDeferredTask, seedFirstCampaignTasks } from "@/lib/onboarding-tasks";
 
 const STEPS = [
   "Your website",
-  "Brand intelligence",
+  "Brand basics",
+  "Audience",
+  "Design guide & images",
+  "Social proof",
   "Your offer",
-  "Assets",
   "Connect Meta",
   "Strategy & launch",
 ];
 const TOTAL = STEPS.length;
+// Old → new step mapping for resume (old 6-step flow → new 8-step flow)
+const RESUME_REMAP: Record<number, number> = { 1: 1, 2: 2, 3: 6, 4: 4, 5: 7, 6: 8 };
 
 type AssetRow = { id: string; url: string; role: string | null; kept: boolean; source_url?: string | null; signedUrl?: string };
 
@@ -59,11 +64,10 @@ export default function GuidedOnboarding() {
   // Step 1
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [step1Busy, setStep1Busy] = useState(false);
-  const [step1Reveal, setStep1Reveal] = useState<{
-    brandName?: string; description?: string; colors?: string[]; voice?: string;
-    audience?: string;
-    audienceParts?: { pain?: string; wants?: string; doubt?: string };
-  }>({});
+  // 'idle' | 'running' | 'done' — when running we show a full-screen Lumi loader
+  // and hide everything else until every extractor settles.
+  const [extractionPhase, setExtractionPhase] = useState<'idle' | 'running' | 'done'>('idle');
+  const [loaderMsg, setLoaderMsg] = useState<string>("");
   const step1Fired = useRef(false);
 
   // Step 2 — review (uses brand state)
@@ -102,7 +106,9 @@ export default function GuidedOnboarding() {
           setBrandId(latest.id);
           setBrand(latest);
           setWebsiteUrl(latest.website_url || "");
-          const resumeStep = Math.max(1, Math.min(TOTAL, latest.onboarding_step || 1));
+          const stored = latest.onboarding_step || 1;
+          const remapped = stored <= 6 && stored in RESUME_REMAP ? RESUME_REMAP[stored] : stored;
+          const resumeStep = Math.max(1, Math.min(TOTAL, remapped));
           setStep(resumeStep);
         }
       }
@@ -162,13 +168,11 @@ export default function GuidedOnboarding() {
         row = { ...row, website_url: normalized, name: placeholder };
         setBrand(row);
       }
-      setStep1Reveal({ brandName: row?.name });
 
-      // Kick off parallel extractors and stream reveal
       const websiteForCall = normalized;
       const brandIdLocal = id!;
 
-      // Witty rotating loading toast so the user knows LUMI is working, not stalled
+      // Flip to full-screen loader — hide everything else.
       const wittyLines = [
         "🔍 Snooping through your website (politely)…",
         "🎨 Stealing your color palette — for science…",
@@ -178,11 +182,12 @@ export default function GuidedOnboarding() {
         "💬 Reading every testimonial out loud…",
         "✨ Doing our homework so you don't have to…",
       ];
-      const loadingId = toast.loading(wittyLines[0], { duration: Infinity });
+      setLoaderMsg(wittyLines[0]);
+      setExtractionPhase('running');
       let lineIdx = 0;
       const rotator = setInterval(() => {
         lineIdx = (lineIdx + 1) % wittyLines.length;
-        toast.loading(wittyLines[lineIdx], { id: loadingId, duration: Infinity });
+        setLoaderMsg(wittyLines[lineIdx]);
       }, 2800);
 
       // extract-brand → colors/logo/fonts/description
@@ -195,13 +200,11 @@ export default function GuidedOnboarding() {
         if (d.colors?.length) kitPatch.colors = d.colors;
         if (d.fonts?.length) kitPatch.fonts = d.fonts;
         if (d.logoUrl) kitPatch.logo_url = d.logoUrl;
-        // brand_kits unique constraint is (user_id, brand_id) — use both for the conflict target.
         const { error: kitErr } = await supabase
           .from("brand_kits" as any)
           .upsert(kitPatch, { onConflict: "user_id,brand_id" });
         if (kitErr) console.warn("brand_kits upsert failed", kitErr);
 
-        // Mirror name + tagline onto brands (colors/fonts live on brand_kits, not brands).
         const brandPatch: any = {};
         if (d.name) brandPatch.name = d.name;
         if (d.description) brandPatch.value_proposition = d.description;
@@ -210,7 +213,6 @@ export default function GuidedOnboarding() {
           if (brErr) console.warn("brand update failed", brErr);
           else setBrand((prev: any) => ({ ...(prev || {}), ...brandPatch }));
         }
-        // Stash kit on local brand state so the design card pre-fills immediately at Step 2.
         if (kitPatch.colors || kitPatch.fonts || kitPatch.logo_url) {
           setBrand((prev: any) => ({
             ...(prev || {}),
@@ -221,23 +223,14 @@ export default function GuidedOnboarding() {
             },
           }));
         }
-        setStep1Reveal((p) => ({
-          ...p,
-          brandName: brandPatch.name || p.brandName,
-          description: d.description || p.description,
-          colors: d.colors || p.colors,
-        }));
       }).catch(() => {});
 
-
-      // Voice + audience need the brand's value_prop/name to be populated first,
-      // otherwise the AI has nothing real to work with and writes generic output.
       const pVoice = pBrand.then(() =>
         supabase.functions.invoke("analyze-brand-voice", { body: { brandId: brandIdLocal } })
           .then(async () => {
             const { data: refreshed } = await supabase.from("brands").select("brand_voice").eq("id", brandIdLocal).maybeSingle();
             if (refreshed?.brand_voice) {
-              setStep1Reveal((p) => ({ ...p, voice: (refreshed as any).brand_voice.slice(0, 260) }));
+              setBrand((prev: any) => ({ ...(prev || {}), brand_voice: (refreshed as any).brand_voice }));
             }
           })
       ).catch(() => {});
@@ -246,31 +239,40 @@ export default function GuidedOnboarding() {
         supabase.functions.invoke("generate-audience-psychology", { body: { brandId: brandIdLocal } })
           .then(async () => {
             const { data: refreshed } = await supabase.from("brands").select("audience_psychology").eq("id", brandIdLocal).maybeSingle();
-            const ap: any = refreshed?.audience_psychology;
-            const parts = {
-              pain: ap?.pain_points?.[0],
-              wants: ap?.desires?.[0],
-              doubt: ap?.objections?.[0],
-            };
-            const fallback = ap?.summary || ap?.demographics;
-            if (parts.pain || parts.wants || parts.doubt || fallback) {
-              setStep1Reveal((p) => ({
-                ...p,
-                audienceParts: parts,
-                audience: !parts.pain && !parts.wants && !parts.doubt ? String(fallback).slice(0, 320) : undefined,
-              }));
+            if (refreshed) {
+              setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: (refreshed as any).audience_psychology }));
             }
           })
       ).catch(() => {});
 
-      // harvest assets in the background (used in step 4)
+      // Social proof — runs in parallel with the rest so the user lands on a fully-populated review.
+      const pProof = pBrand.then(() =>
+        supabase.functions.invoke("extract-social-proof", { body: { brandId: brandIdLocal, url: websiteForCall } })
+          .then(async () => {
+            const { data: refreshed } = await supabase.from("brands").select("social_proof").eq("id", brandIdLocal).maybeSingle();
+            if (refreshed) {
+              setBrand((prev: any) => ({ ...(prev || {}), social_proof: (refreshed as any).social_proof }));
+            }
+          })
+      ).catch(() => {});
+
       const pAssets = supabase.functions.invoke("harvest-brand-assets", { body: { url: websiteForCall, brandId: brandIdLocal } })
         .catch(() => {});
 
-      // When all extractors settle, dismiss the witty loader with a success note
-      Promise.allSettled([pBrand, pVoice, pAud, pAssets]).then(() => {
+      // When everything settles, dismiss the loader and auto-advance to the review.
+      Promise.allSettled([pBrand, pVoice, pAud, pProof, pAssets]).then(async () => {
         clearInterval(rotator);
-        toast.success("All done — take a look ✨", { id: loadingId, duration: 3500 });
+        // Refresh brand once more so the review screens see latest server state.
+        try {
+          const [{ data: b }, { data: k }] = await Promise.all([
+            supabase.from("brands").select("*").eq("id", brandIdLocal).maybeSingle(),
+            supabase.from("brand_kits" as any).select("colors, fonts, logo_url").eq("brand_id", brandIdLocal).maybeSingle(),
+          ]);
+          if (b) setBrand({ ...(b as any), _kit: k || null });
+        } catch { /* ignore */ }
+        setExtractionPhase('done');
+        setStep(2);
+        if (brandIdLocal) await persistStep(brandIdLocal, 2);
       });
 
       await refreshBrands();
@@ -278,58 +280,22 @@ export default function GuidedOnboarding() {
       console.error(e);
       toast.error(e.message || "Could not save");
       step1Fired.current = false;
+      setExtractionPhase('idle');
     } finally {
       setStep1Busy(false);
     }
   };
 
-  // =================== STEP 2 — auto-extract social proof + load brand kit ===================
+  // =================== STEP review — keep brand_kit in sync ===================
   useEffect(() => {
-    if (step !== 2 || !brandId) return;
+    if (step < 2 || step > 5 || !brandId) return;
     let cancelled = false;
     (async () => {
-      // refresh brand + brand_kit together
-      const loadAll = async () => {
-        const [{ data: b }, { data: k }] = await Promise.all([
-          supabase.from("brands").select("*").eq("id", brandId).maybeSingle(),
-          supabase.from("brand_kits" as any).select("colors, fonts, logo_url").eq("brand_id", brandId).maybeSingle(),
-        ]);
-        return { b: b as any, k: k as any };
-      };
-
-      let { b, k } = await loadAll();
-      if (!cancelled && b) {
-        setBrand({ ...b, _kit: k || null });
-      }
-
-      // Poll briefly for colors/fonts if extraction is still landing
-      const kitHasDesign = (kit: any) => (kit?.colors?.length || 0) > 0 || (kit?.fonts?.length || 0) > 0;
-      if (!kitHasDesign(k)) {
-        for (let i = 0; i < 6 && !cancelled; i++) {
-          await new Promise((r) => setTimeout(r, 1500));
-          const next = await loadAll();
-          if (kitHasDesign(next.k)) {
-            if (!cancelled) setBrand({ ...next.b, _kit: next.k });
-            k = next.k;
-            break;
-          }
-        }
-      }
-
-      // Auto-pull social proof if missing
-      const sp = b?.social_proof;
-      const hasProof = Array.isArray(sp) ? sp.length > 0 : (sp && typeof sp === "object" ? Object.values(sp).some((v: any) => Array.isArray(v) ? v.length : !!v) : !!sp);
-      if (!hasProof && b?.website_url) {
-        setProofExtracting(true);
-        try {
-          await supabase.functions.invoke("extract-social-proof", {
-            body: { brandId, url: b.website_url },
-          });
-          const { data: refreshed } = await supabase.from("brands").select("*").eq("id", brandId).maybeSingle();
-          if (!cancelled && refreshed) setBrand((prev: any) => ({ ...(refreshed as any), _kit: prev?._kit }));
-        } catch (e) { console.warn("social proof failed", e); }
-        finally { if (!cancelled) setProofExtracting(false); }
-      }
+      const [{ data: b }, { data: k }] = await Promise.all([
+        supabase.from("brands").select("*").eq("id", brandId).maybeSingle(),
+        supabase.from("brand_kits" as any).select("colors, fonts, logo_url").eq("brand_id", brandId).maybeSingle(),
+      ]);
+      if (!cancelled && b) setBrand({ ...(b as any), _kit: k || null });
     })();
     return () => { cancelled = true; };
   }, [step, brandId]);
@@ -344,9 +310,9 @@ export default function GuidedOnboarding() {
     }
   };
 
-  // =================== STEP 3 — offer ===================
+  // =================== STEP 6 — offer ===================
   useEffect(() => {
-    if (step !== 3 || !brandId) return;
+    if (step !== 6 || !brandId) return;
     (async () => {
       const { data } = await supabase.from("offers").select("*").eq("brand_id", brandId);
       setOffers(data || []);
@@ -568,9 +534,9 @@ export default function GuidedOnboarding() {
     toast.success("Shot list saved to your tasks");
   };
 
-  // =================== STEP 6 — strategy ===================
+  // =================== STEP 8 — strategy ===================
   useEffect(() => {
-    if (step !== 6 || !brandId || strategy || strategyLoading) return;
+    if (step !== 8 || !brandId || strategy || strategyLoading) return;
     (async () => {
       setStrategyLoading(true);
       try {
@@ -643,8 +609,35 @@ export default function GuidedOnboarding() {
     );
   }
 
-  const revealCount = Object.values(step1Reveal).filter(Boolean).length;
-  const canStep1Continue = !!brandId && revealCount >= 1;
+  // ---------- helpers used by the review steps ----------
+  const hasProofVal = (v: any): boolean => {
+    if (!v) return false;
+    if (Array.isArray(v)) return v.length > 0;
+    if (typeof v === "object") return Object.values(v).some((x) => hasProofVal(x));
+    return String(v).trim().length > 0;
+  };
+  const hasProof = hasProofVal((brand as any)?.social_proof);
+
+  // Auto-skip social proof step (5) when nothing was found, in whichever direction
+  // the user is travelling. We compare to the previous step to figure out direction.
+  const prevStepRef = useRef(step);
+  useEffect(() => {
+    if (step === 5 && !hasProof && extractionPhase !== 'running') {
+      const goingForward = step >= prevStepRef.current;
+      const target = goingForward ? 6 : 4;
+      setStep(target);
+      if (brandId) persistStep(brandId, target);
+      prevStepRef.current = target;
+      return;
+    }
+    prevStepRef.current = step;
+  }, [step, hasProof, extractionPhase, brandId, persistStep]);
+
+  // ============ FULL-SCREEN EXTRACTION LOADER ============
+  // While LUMI is reading the site, hide the entire onboarding UI and show the loader only.
+  if (extractionPhase === 'running') {
+    return <LumiPageLoader message={loaderMsg || "LUMI is reading your site…"} />;
+  }
 
   return (
     <div className="min-h-screen bg-background py-10 px-4">
@@ -662,7 +655,7 @@ export default function GuidedOnboarding() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-lumi-pink-1" /> Drop your website</CardTitle>
-              <CardDescription>One field. LUMI reads it instantly and pulls your brand.</CardDescription>
+              <CardDescription>One field. LUMI reads it instantly and pulls your brand — voice, audience, colors, the works.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="space-y-2">
@@ -673,109 +666,234 @@ export default function GuidedOnboarding() {
                     onChange={(e) => setWebsiteUrl(e.target.value)}
                     placeholder="https://yourbrand.com"
                     onKeyDown={(e) => { if (e.key === "Enter") startStep1(); }}
-                    disabled={step1Fired.current}
+                    disabled={step1Busy}
                   />
-                  <Button onClick={startStep1} disabled={step1Busy || step1Fired.current}>
+                  <Button onClick={startStep1} disabled={step1Busy}>
                     {step1Busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Read my site"}
                   </Button>
                 </div>
-              </div>
-
-              {step1Fired.current && (
-                <div className="space-y-3">
-                  <RevealRow label="Brand name" value={step1Reveal.brandName} />
-                  <RevealRow label="What you do" value={step1Reveal.description} />
-                  <RevealRow
-                    label="Brand colors"
-                    value={step1Reveal.colors?.length ? (
-                      <div className="flex gap-1.5">
-                        {step1Reveal.colors.slice(0, 8).map((c, i) => (
-                          <div key={i} className="h-6 w-6 rounded border" style={{ background: c }} title={c} />
-                        ))}
-                      </div>
-                    ) : undefined}
-                  />
-                  <RevealRow label="Brand voice" value={step1Reveal.voice} />
-                  <RevealRow
-                    label="Audience snapshot"
-                    value={
-                      step1Reveal.audienceParts && (step1Reveal.audienceParts.pain || step1Reveal.audienceParts.wants || step1Reveal.audienceParts.doubt) ? (
-                        <div className="space-y-2">
-                          {step1Reveal.audienceParts.pain && (
-                            <div>
-                              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Pain</div>
-                              <div className="text-sm leading-snug">{step1Reveal.audienceParts.pain}</div>
-                            </div>
-                          )}
-                          {step1Reveal.audienceParts.wants && (
-                            <div>
-                              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Wants</div>
-                              <div className="text-sm leading-snug">{step1Reveal.audienceParts.wants}</div>
-                            </div>
-                          )}
-                          {step1Reveal.audienceParts.doubt && (
-                            <div>
-                              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Doubt</div>
-                              <div className="text-sm leading-snug">{step1Reveal.audienceParts.doubt}</div>
-                            </div>
-                          )}
-                        </div>
-                      ) : step1Reveal.audience
-                    }
-                  />
-                </div>
-              )}
-
-              <div className="flex justify-end pt-3">
-                <Button onClick={advance} disabled={!canStep1Continue}>
-                  Continue <ArrowRight className="h-4 w-4 ml-1" />
-                </Button>
+                <p className="text-xs text-muted-foreground">We'll pull everything and show you the full picture next — you'll be able to edit anything that's off.</p>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* ============== STEP 2 — Confirm brand intelligence ============== */}
+        {/* ============== Shared review-step intro banner ============== */}
+        {step >= 2 && step <= 5 && (
+          <Card className="border-primary/20 bg-primary/5 mb-4">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Sparkles className="h-4 w-4 text-primary" /> Here's what we gathered ✨
+              </CardTitle>
+              <CardDescription>
+                Pulled straight from your website{brand?.website_url ? ` (${brand.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "")})` : ""}. Edit anything that's off — rebrand, outdated copy, new audience — and we'll use the updated version everywhere.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        )}
+
+        {/* ============== STEP 2 — Brand basics ============== */}
         {step === 2 && (
           <div className="space-y-4">
-            <Card className="border-primary/20 bg-primary/5">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Sparkles className="h-4 w-4 text-primary" /> Here's what we gathered ✨
-                </CardTitle>
-                <CardDescription>
-                  We pulled this straight from your website{brand?.website_url ? ` (${brand.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "")})` : ""} and ran it through our brand knowledge base. Skim it, tweak anything that's off, and we'll use it everywhere — voice, audiences, ads. You can always edit later in My Brand.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            <ReviewDesignCard brand={brand} onSave={updateBrand} />
-            <ReviewVoiceCard brand={brand} onSave={updateBrand} />
-            <ReviewAudienceCard brand={brand} onSave={updateBrand} />
-            {(() => {
-              const sp = (brand as any)?.social_proof;
-              const hasProofVal = (v: any): boolean => {
-                if (!v) return false;
-                if (Array.isArray(v)) return v.length > 0;
-                if (typeof v === "object") return Object.values(v).some((x) => hasProofVal(x));
-                return String(v).trim().length > 0;
-              };
-              const hasProof = hasProofVal(sp);
-              return (hasProof || proofExtracting) ? (
-                <ReviewProofCard brand={brand} onSave={updateBrand} loading={proofExtracting} />
-              ) : null;
-            })()}
+            <BrandBasicsCard brand={brand} onSave={updateBrand} />
             <div className="flex justify-between pt-2">
               <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => finishLater("Review your brand intelligence", "/brand")}>Finish later</Button>
+                <Button variant="outline" onClick={() => finishLater("Review your brand basics", "/brand")}>Finish later</Button>
                 <Button onClick={advance}>Looks good <ArrowRight className="h-4 w-4 ml-1" /></Button>
               </div>
             </div>
           </div>
         )}
 
-        {/* ============== STEP 3 — Offer sales page ============== */}
+        {/* ============== STEP 3 — Audience ============== */}
         {step === 3 && (
+          <div className="space-y-4">
+            <ReviewAudienceCard brand={brand} onSave={updateBrand} />
+            <div className="flex justify-between pt-2">
+              <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => finishLater("Review your audience", "/brand")}>Finish later</Button>
+                <Button onClick={advance}>Looks good <ArrowRight className="h-4 w-4 ml-1" /></Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============== STEP 4 — Design guide & images ============== */}
+        {step === 4 && (
+          <div className="space-y-4">
+            <ReviewDesignCard brand={brand} onSave={updateBrand} />
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base"><ImageIcon className="h-4 w-4" /> Brand images</CardTitle>
+                <CardDescription>Keep what looks like your brand. Toss what doesn't. Add the missing pieces.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {classifying && (
+                  <div className="text-xs text-muted-foreground flex items-center gap-2">
+                    <Loader2 className="h-3 w-3 animate-spin" /> LUMI is sorting your images by type…
+                  </div>
+                )}
+
+                {!logoUrl && (
+                  <SetupPrompt
+                    title="Add a logo"
+                    description="We use it on every ad — even a transparent PNG works."
+                    ctaLabel="Upload logo"
+                    onCta={() => document.getElementById("upload-logo")?.click()}
+                    autoTask={{ title: "Add a brand logo", link_to: "/brand" }}
+                  />
+                )}
+                {!headshotUrl && grouped.headshot.length === 0 && (
+                  <SetupPrompt
+                    title="Add a headshot"
+                    description="A founder/face photo lifts ad performance a lot. Plain backdrop works best."
+                    ctaLabel="Upload headshot"
+                    onCta={() => document.getElementById("upload-headshot")?.click()}
+                    autoTask={{ title: "Add a headshot photo", link_to: "/brand" }}
+                  />
+                )}
+                {grouped.lifestyle.length === 0 && grouped.background.length === 0 && (
+                  <SetupPrompt
+                    title="Upload a lifestyle photo or backdrop"
+                    description="You at work, with clients, behind the scenes — anything that feels like your world."
+                    ctaLabel="Upload lifestyle"
+                    onCta={() => document.getElementById("upload-lifestyle")?.click()}
+                    autoTask={{ title: "Upload a lifestyle photo", link_to: "/brand" }}
+                  />
+                )}
+
+                {assetsLoading && (
+                  <div className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading your library…
+                  </div>
+                )}
+
+                {(() => {
+                  const ASSET_CATEGORIES: { key: keyof typeof grouped; label: string; hint: string }[] = [
+                    { key: "logo", label: "Logo", hint: "Wordmarks and brand marks. Transparent PNG preferred." },
+                    { key: "headshot", label: "Headshot", hint: "Close-up of a face — founder, coach, team." },
+                    { key: "full_body", label: "Full body", hint: "Head-to-toe photos. Great for hero shots." },
+                    { key: "lifestyle", label: "Lifestyle", hint: "You in context — working, teaching, with clients." },
+                    { key: "product", label: "Product", hint: "Physical products, packaging, mockups." },
+                    { key: "graphic", label: "Graphics", hint: "Icons, illustrations, charts, UI screenshots." },
+                    { key: "texture", label: "Textures", hint: "Abstract surfaces and patterns." },
+                    { key: "background", label: "Backgrounds", hint: "Empty scenes — rooms, landscapes — to layer on." },
+                    { key: "other", label: "Other", hint: "Anything else we couldn't auto-sort." },
+                  ];
+                  const ROLE_OPTIONS = ASSET_CATEGORIES.map((c) => ({ value: c.key as string, label: c.label }));
+                  return ASSET_CATEGORIES.map(({ key, label, hint }) => {
+                    const list = grouped[key];
+                    if (!list || list.length === 0) return null;
+                    return (
+                      <div key={key} className="space-y-2">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <div>
+                            <h3 className="text-sm font-semibold">{label} <span className="text-muted-foreground font-normal">· {list.length}</span></h3>
+                            <p className="text-xs text-muted-foreground">{hint}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                          {list.map((a) => (
+                            <div key={a.id} className={`group relative rounded-md overflow-hidden border ${a.kept ? "ring-2 ring-lumi-pink-1" : "opacity-60"}`}>
+                              {a.signedUrl ? (
+                                <img src={a.signedUrl} alt="" className="aspect-square object-cover w-full" loading="lazy" />
+                              ) : (
+                                <div className="aspect-square bg-muted" />
+                              )}
+                              <div className="absolute top-1 right-1 flex gap-1">
+                                <button onClick={() => toggleKept(a.id, !a.kept)} className="bg-background/90 rounded-full p-1" title={a.kept ? "Remove from set" : "Keep"}>
+                                  <Check className={`h-3 w-3 ${a.kept ? "" : "text-muted-foreground"}`} />
+                                </button>
+                                <button onClick={() => removeAsset(a.id)} className="bg-background/90 rounded-full p-1" title="Delete">
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </div>
+                              <div className="p-1">
+                                <Select value={a.role || "other"} onValueChange={(v) => setRole(a.id, v)}>
+                                  <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    {ROLE_OPTIONS.map((r) => (
+                                      <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+
+                <div className="pt-3 border-t space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Add more</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <UploadBtn id="upload-logo" label="+ Logo" onFile={(f) => uploadFile(f, "logo")} />
+                    <UploadBtn id="upload-headshot" label="+ Headshot" onFile={(f) => uploadFile(f, "headshot")} />
+                    <UploadBtn id="upload-fullbody" label="+ Full body" onFile={(f) => uploadFile(f, "full_body")} />
+                    <UploadBtn id="upload-lifestyle" label="+ Lifestyle" onFile={(f) => uploadFile(f, "lifestyle")} />
+                    <UploadBtn id="upload-product" label="+ Product" onFile={(f) => uploadFile(f, "product")} />
+                    <UploadBtn id="upload-graphic" label="+ Graphic" onFile={(f) => uploadFile(f, "graphic")} />
+                    <UploadBtn id="upload-texture" label="+ Texture" onFile={(f) => uploadFile(f, "texture")} />
+                    <UploadBtn id="upload-bg" label="+ Background" onFile={(f) => uploadFile(f, "background")} />
+                  </div>
+                </div>
+
+                {/* B-roll */}
+                <div className="pt-4 border-t space-y-3">
+                  <h3 className="text-sm font-semibold flex items-center gap-2"><Film className="h-4 w-4" /> B-roll</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <UploadBtn id="upload-broll" label="Upload b-roll (mp4)" accept="video/*" onFile={uploadBroll} />
+                    <Button variant="outline" size="sm" onClick={saveShotList} disabled={!brollIdeas?.length}>
+                      <ListChecks className="h-3 w-3 mr-1" /> Save suggested shot list
+                    </Button>
+                  </div>
+                  {brollIdeas?.length ? (
+                    <div className="rounded-md border bg-muted/30 p-3 space-y-1 max-h-44 overflow-auto">
+                      <p className="text-xs font-medium mb-1">Suggested shots</p>
+                      {brollIdeas.slice(0, 8).map((i: any, idx: number) => (
+                        <p key={idx} className="text-xs text-muted-foreground">
+                          • {i.title || i.description || JSON.stringify(i)}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">LUMI is brewing custom b-roll ideas for you…</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-between pt-2">
+              <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => finishLater("Finish your design guide", "/brand")}>Finish later</Button>
+                <Button onClick={advance}>Continue <ArrowRight className="h-4 w-4 ml-1" /></Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============== STEP 5 — Social proof (auto-skips when empty) ============== */}
+        {step === 5 && (
+          <div className="space-y-4">
+            <ReviewProofCard brand={brand} onSave={updateBrand} loading={proofExtracting} />
+            <div className="flex justify-between pt-2">
+              <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => finishLater("Review your social proof", "/brand")}>Finish later</Button>
+                <Button onClick={advance}>Looks good <ArrowRight className="h-4 w-4 ml-1" /></Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============== STEP 6 — Offer sales page ============== */}
+        {step === 6 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5" /> Your offer</CardTitle>
@@ -822,163 +940,8 @@ export default function GuidedOnboarding() {
           </Card>
         )}
 
-        {/* ============== STEP 4 — Assets ============== */}
-        {step === 4 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><ImageIcon className="h-5 w-5" /> Approve your assets</CardTitle>
-              <CardDescription>Keep what looks like your brand. Toss what doesn't. Add the missing pieces.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {classifying && (
-                <div className="text-xs text-muted-foreground flex items-center gap-2">
-                  <Loader2 className="h-3 w-3 animate-spin" /> LUMI is sorting your images by type…
-                </div>
-              )}
-
-              {!logoUrl && (
-                <SetupPrompt
-                  title="Add a logo"
-                  description="We use it on every ad — even a transparent PNG works."
-                  ctaLabel="Upload logo"
-                  onCta={() => document.getElementById("upload-logo")?.click()}
-                  autoTask={{ title: "Add a brand logo", link_to: "/brand" }}
-                />
-              )}
-              {!headshotUrl && grouped.headshot.length === 0 && (
-                <SetupPrompt
-                  title="Add a headshot"
-                  description="A founder/face photo lifts ad performance a lot. Plain backdrop works best."
-                  ctaLabel="Upload headshot"
-                  onCta={() => document.getElementById("upload-headshot")?.click()}
-                  autoTask={{ title: "Add a headshot photo", link_to: "/brand" }}
-                />
-              )}
-              {grouped.lifestyle.length === 0 && grouped.background.length === 0 && (
-                <SetupPrompt
-                  title="Upload a lifestyle photo or backdrop"
-                  description="You at work, with clients, behind the scenes — anything that feels like your world."
-                  ctaLabel="Upload lifestyle"
-                  onCta={() => document.getElementById("upload-lifestyle")?.click()}
-                  autoTask={{ title: "Upload a lifestyle photo", link_to: "/brand" }}
-                />
-              )}
-
-              {assetsLoading && (
-                <div className="text-sm text-muted-foreground flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Loading your library…
-                </div>
-              )}
-
-              {(() => {
-                const ASSET_CATEGORIES: { key: keyof typeof grouped; label: string; hint: string }[] = [
-                  { key: "logo", label: "Logo", hint: "Wordmarks and brand marks. Transparent PNG preferred." },
-                  { key: "headshot", label: "Headshot", hint: "Close-up of a face — founder, coach, team." },
-                  { key: "full_body", label: "Full body", hint: "Head-to-toe photos. Great for hero shots." },
-                  { key: "lifestyle", label: "Lifestyle", hint: "You in context — working, teaching, with clients." },
-                  { key: "product", label: "Product", hint: "Physical products, packaging, mockups." },
-                  { key: "graphic", label: "Graphics", hint: "Icons, illustrations, charts, UI screenshots." },
-                  { key: "texture", label: "Textures", hint: "Abstract surfaces and patterns." },
-                  { key: "background", label: "Backgrounds", hint: "Empty scenes — rooms, landscapes — to layer on." },
-                  { key: "other", label: "Other", hint: "Anything else we couldn't auto-sort." },
-                ];
-                const ROLE_OPTIONS = ASSET_CATEGORIES.map((c) => ({ value: c.key as string, label: c.label }));
-                return ASSET_CATEGORIES.map(({ key, label, hint }) => {
-                  const list = grouped[key];
-                  if (!list || list.length === 0) return null;
-                  return (
-                    <div key={key} className="space-y-2">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <div>
-                          <h3 className="text-sm font-semibold">{label} <span className="text-muted-foreground font-normal">· {list.length}</span></h3>
-                          <p className="text-xs text-muted-foreground">{hint}</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                        {list.map((a) => (
-                          <div key={a.id} className={`group relative rounded-md overflow-hidden border ${a.kept ? "ring-2 ring-lumi-pink-1" : "opacity-60"}`}>
-                            {a.signedUrl ? (
-                              <img src={a.signedUrl} alt="" className="aspect-square object-cover w-full" loading="lazy" />
-                            ) : (
-                              <div className="aspect-square bg-muted" />
-                            )}
-                            <div className="absolute top-1 right-1 flex gap-1">
-                              <button onClick={() => toggleKept(a.id, !a.kept)} className="bg-background/90 rounded-full p-1" title={a.kept ? "Remove from set" : "Keep"}>
-                                <Check className={`h-3 w-3 ${a.kept ? "" : "text-muted-foreground"}`} />
-                              </button>
-                              <button onClick={() => removeAsset(a.id)} className="bg-background/90 rounded-full p-1" title="Delete">
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
-                            <div className="p-1">
-                              <Select value={a.role || "other"} onValueChange={(v) => setRole(a.id, v)}>
-                                <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {ROLE_OPTIONS.map((r) => (
-                                    <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                });
-              })()}
-
-              <div className="pt-3 border-t space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Add more</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <UploadBtn id="upload-logo" label="+ Logo" onFile={(f) => uploadFile(f, "logo")} />
-                  <UploadBtn id="upload-headshot" label="+ Headshot" onFile={(f) => uploadFile(f, "headshot")} />
-                  <UploadBtn id="upload-fullbody" label="+ Full body" onFile={(f) => uploadFile(f, "full_body")} />
-                  <UploadBtn id="upload-lifestyle" label="+ Lifestyle" onFile={(f) => uploadFile(f, "lifestyle")} />
-                  <UploadBtn id="upload-product" label="+ Product" onFile={(f) => uploadFile(f, "product")} />
-                  <UploadBtn id="upload-graphic" label="+ Graphic" onFile={(f) => uploadFile(f, "graphic")} />
-                  <UploadBtn id="upload-texture" label="+ Texture" onFile={(f) => uploadFile(f, "texture")} />
-                  <UploadBtn id="upload-bg" label="+ Background" onFile={(f) => uploadFile(f, "background")} />
-                </div>
-              </div>
-
-
-              {/* B-roll */}
-              <div className="pt-4 border-t space-y-3">
-                <h3 className="text-sm font-semibold flex items-center gap-2"><Film className="h-4 w-4" /> B-roll</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <UploadBtn id="upload-broll" label="Upload b-roll (mp4)" accept="video/*" onFile={uploadBroll} />
-                  <Button variant="outline" size="sm" onClick={saveShotList} disabled={!brollIdeas?.length}>
-                    <ListChecks className="h-3 w-3 mr-1" /> Save suggested shot list
-                  </Button>
-                </div>
-                {brollIdeas?.length ? (
-                  <div className="rounded-md border bg-muted/30 p-3 space-y-1 max-h-44 overflow-auto">
-                    <p className="text-xs font-medium mb-1">Suggested shots</p>
-                    {brollIdeas.slice(0, 8).map((i: any, idx: number) => (
-                      <p key={idx} className="text-xs text-muted-foreground">
-                        • {i.title || i.description || JSON.stringify(i)}
-                      </p>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">LUMI is brewing custom b-roll ideas for you…</p>
-                )}
-              </div>
-
-              <div className="flex justify-between pt-2">
-                <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => finishLater("Finish approving brand assets", "/brand")}>Finish later</Button>
-                  <Button onClick={advance}>Continue <ArrowRight className="h-4 w-4 ml-1" /></Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ============== STEP 5 — Connect Meta ============== */}
-        {step === 5 && (
+        {/* ============== STEP 7 — Connect Meta ============== */}
+        {step === 7 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" /> Connect Meta</CardTitle>
@@ -1015,8 +978,8 @@ export default function GuidedOnboarding() {
           </Card>
         )}
 
-        {/* ============== STEP 6 — Strategy + first campaign ============== */}
-        {step === 6 && (
+        {/* ============== STEP 8 — Strategy + first campaign ============== */}
+        {step === 8 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-600" /> Your suggested strategy</CardTitle>
@@ -1219,36 +1182,150 @@ function ReviewAudienceCard({ brand, onSave }: { brand: any; onSave: (p: any) =>
   const [pains, setPains] = useState<string>((p.pain_points || []).join("\n"));
   const [desires, setDesires] = useState<string>((p.desires || []).join("\n"));
   const [objections, setObjections] = useState<string>((p.objections || []).join("\n"));
+  const [demographics, setDemographics] = useState<string>(
+    typeof p.demographics === "string"
+      ? p.demographics
+      : (p.demographics ? JSON.stringify(p.demographics, null, 2) : "")
+  );
+  const [saving, setSaving] = useState(false);
   useEffect(() => {
     const q = brand?.audience_psychology || {};
     setPains((q.pain_points || []).join("\n"));
     setDesires((q.desires || []).join("\n"));
     setObjections((q.objections || []).join("\n"));
+    setDemographics(
+      typeof q.demographics === "string"
+        ? q.demographics
+        : (q.demographics ? JSON.stringify(q.demographics, null, 2) : "")
+    );
   }, [brand?.audience_psychology]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await onSave({
+        audience_psychology: {
+          ...p,
+          pain_points: pains.split("\n").map((s) => s.trim()).filter(Boolean),
+          desires: desires.split("\n").map((s) => s.trim()).filter(Boolean),
+          objections: objections.split("\n").map((s) => s.trim()).filter(Boolean),
+          demographics: demographics.trim() || null,
+        },
+      });
+      toast.success("Saved");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Brain className="h-4 w-4" /> Audience psychology</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base"><Brain className="h-4 w-4" /> Audience</CardTitle>
+        <CardDescription className="text-xs">Psychology + demographics. Edit anything that's off — these power every ad LUMI writes.</CardDescription>
+      </CardHeader>
       <CardContent className="space-y-3">
         <div>
-          <Label className="text-xs">Pain points (one per line)</Label>
-          <Textarea rows={3} value={pains} onChange={(e) => setPains(e.target.value)} />
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Demographics</Label>
+          <Textarea rows={3} value={demographics} onChange={(e) => setDemographics(e.target.value)} placeholder="Women, 30–45, US/Canada, mid-career, $80k+ household income, lives in a metro area…" />
         </div>
         <div>
-          <Label className="text-xs">Desires</Label>
-          <Textarea rows={3} value={desires} onChange={(e) => setDesires(e.target.value)} />
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Pain points (one per line)</Label>
+          <Textarea rows={4} value={pains} onChange={(e) => setPains(e.target.value)} />
         </div>
         <div>
-          <Label className="text-xs">Objections</Label>
-          <Textarea rows={3} value={objections} onChange={(e) => setObjections(e.target.value)} />
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Desires</Label>
+          <Textarea rows={4} value={desires} onChange={(e) => setDesires(e.target.value)} />
         </div>
-        <Button size="sm" variant="outline" onClick={() => onSave({
-          audience_psychology: {
-            ...p,
-            pain_points: pains.split("\n").map((s) => s.trim()).filter(Boolean),
-            desires: desires.split("\n").map((s) => s.trim()).filter(Boolean),
-            objections: objections.split("\n").map((s) => s.trim()).filter(Boolean),
-          },
-        })}>Save</Button>
+        <div>
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Objections</Label>
+          <Textarea rows={4} value={objections} onChange={(e) => setObjections(e.target.value)} />
+        </div>
+        <Button size="sm" variant="lumi" onClick={save} disabled={saving}>
+          {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+          Save
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function BrandBasicsCard({ brand, onSave }: { brand: any; onSave: (p: any) => Promise<void> }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState<string>(brand?.name || "");
+  const [desc, setDesc] = useState<string>(brand?.value_proposition || "");
+  const [voice, setVoice] = useState<string>(brand?.brand_voice || "");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    setName(brand?.name || "");
+    setDesc(brand?.value_proposition || "");
+    setVoice(brand?.brand_voice || "");
+  }, [brand?.id, brand?.name, brand?.value_proposition, brand?.brand_voice]);
+
+  const cancel = () => {
+    setEditing(false);
+    setName(brand?.name || "");
+    setDesc(brand?.value_proposition || "");
+    setVoice(brand?.brand_voice || "");
+  };
+  const save = async () => {
+    setSaving(true);
+    try {
+      await onSave({ name, value_proposition: desc, brand_voice: voice });
+      toast.success("Saved");
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-start justify-between space-y-0">
+        <div>
+          <CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4" /> Brand basics</CardTitle>
+          <CardDescription className="text-xs">Name, what you do, and how you sound.</CardDescription>
+        </div>
+        {!editing && (
+          <Button size="sm" variant="ghost" onClick={() => setEditing(true)} className="h-7">
+            <Pencil className="h-3 w-3 mr-1" /> Edit
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-1">
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Brand name</Label>
+          {editing ? (
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          ) : (
+            <div className="text-base font-medium">{name || <span className="italic text-muted-foreground font-normal">Not set</span>}</div>
+          )}
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">What you do</Label>
+          {editing ? (
+            <Textarea rows={3} value={desc} onChange={(e) => setDesc(e.target.value)} />
+          ) : (
+            <p className="text-sm leading-relaxed">{desc || <span className="italic text-muted-foreground">Not set</span>}</p>
+          )}
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Brand voice</Label>
+          {editing ? (
+            <Textarea rows={6} value={voice} onChange={(e) => setVoice(e.target.value)} placeholder="Warm, witty, never salesy…" />
+          ) : (
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">{voice || <span className="italic text-muted-foreground">Not set</span>}</p>
+          )}
+        </div>
+        {editing && (
+          <div className="flex gap-2">
+            <Button size="sm" variant="lumi" onClick={save} disabled={saving}>
+              {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+              Save
+            </Button>
+            <Button size="sm" variant="ghost" onClick={cancel}>Cancel</Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
