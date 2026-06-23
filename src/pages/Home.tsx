@@ -263,16 +263,19 @@ export default function Home() {
     campaignSuggestions.length === 0 &&
     highPriorityTasks.length === 0;
 
+  const greeting = useMemo(() => buildGreeting(firstName), [firstName]);
+  const subline = useMemo(() => SUBLINES[Math.floor(Math.random() * SUBLINES.length)], []);
+
   return (
     <DashboardLayout>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-16 space-y-10">
         {/* Greeting */}
         <header className="text-center space-y-2">
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-            Hi{firstName ? `, ${firstName}` : ""}!
+            {greeting}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            What do you want to do today?
+          <p className="text-sm text-muted-foreground italic">
+            {subline}
           </p>
         </header>
 
