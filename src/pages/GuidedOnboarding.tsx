@@ -483,11 +483,13 @@ export default function GuidedOnboarding() {
 
   const grouped = useMemo(() => {
     const map: Record<string, AssetRow[]> = {
-      logo: [], headshot: [], background: [], texture: [], graphic: [], product: [], other: [],
+      logo: [], headshot: [], lifestyle: [], full_body: [], product: [], texture: [], graphic: [], background: [], other: [],
     };
     for (const a of assets) {
-      const k = (a.role || "other").toLowerCase();
-      (map[k] || map.other).push(a);
+      let k = (a.role || "other").toLowerCase();
+      // Back-compat: older rows used "background" as a catch-all for lifestyle.
+      if (!(k in map)) k = "other";
+      map[k].push(a);
     }
     return map;
   }, [assets]);
@@ -507,7 +509,7 @@ export default function GuidedOnboarding() {
 
   const uploadFile = async (
     file: File,
-    role: "logo" | "background" | "headshot" | "graphic" | "product" | "texture"
+    role: "logo" | "headshot" | "lifestyle" | "full_body" | "product" | "texture" | "graphic" | "background" | "other"
   ) => {
     if (!brandId) return;
     const { data: { user } } = await supabase.auth.getUser();
@@ -852,13 +854,13 @@ export default function GuidedOnboarding() {
                   autoTask={{ title: "Add a headshot photo", link_to: "/brand" }}
                 />
               )}
-              {grouped.background.length === 0 && (
+              {grouped.lifestyle.length === 0 && grouped.background.length === 0 && (
                 <SetupPrompt
-                  title="Upload a background or two"
-                  description="Lifestyle photos, room shots, anything that feels like your world."
-                  ctaLabel="Upload background"
-                  onCta={() => document.getElementById("upload-bg")?.click()}
-                  autoTask={{ title: "Upload a background image", link_to: "/brand" }}
+                  title="Upload a lifestyle photo or backdrop"
+                  description="You at work, with clients, behind the scenes — anything that feels like your world."
+                  ctaLabel="Upload lifestyle"
+                  onCta={() => document.getElementById("upload-lifestyle")?.click()}
+                  autoTask={{ title: "Upload a lifestyle photo", link_to: "/brand" }}
                 />
               )}
 
@@ -868,51 +870,78 @@ export default function GuidedOnboarding() {
                 </div>
               )}
 
-              {(["logo","headshot","background","texture","graphic","product","other"] as const).map((role) => {
-                const list = grouped[role];
-                if (!list || list.length === 0) return null;
-                return (
-                  <div key={role}>
-                    <h3 className="text-sm font-semibold capitalize mb-2">{role}</h3>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                      {list.map((a) => (
-                        <div key={a.id} className={`group relative rounded-md overflow-hidden border ${a.kept ? "ring-2 ring-lumi-pink-1" : "opacity-60"}`}>
-                          {a.signedUrl ? (
-                            <img src={a.signedUrl} alt="" className="aspect-square object-cover w-full" loading="lazy" />
-                          ) : (
-                            <div className="aspect-square bg-muted" />
-                          )}
-                          <div className="absolute top-1 right-1 flex gap-1">
-                            <button onClick={() => toggleKept(a.id, !a.kept)} className="bg-background/90 rounded-full p-1" title={a.kept ? "Remove from set" : "Keep"}>
-                              <Check className={`h-3 w-3 ${a.kept ? "" : "text-muted-foreground"}`} />
-                            </button>
-                            <button onClick={() => removeAsset(a.id)} className="bg-background/90 rounded-full p-1" title="Delete">
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
-                          <div className="p-1">
-                            <Select value={a.role || "other"} onValueChange={(v) => setRole(a.id, v)}>
-                              <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {["logo","headshot","background","texture","graphic","product","other"].map((r) => (
-                                  <SelectItem key={r} value={r} className="text-xs capitalize">{r}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
+              {(() => {
+                const ASSET_CATEGORIES: { key: keyof typeof grouped; label: string; hint: string }[] = [
+                  { key: "logo", label: "Logo", hint: "Wordmarks and brand marks. Transparent PNG preferred." },
+                  { key: "headshot", label: "Headshot", hint: "Close-up of a face — founder, coach, team." },
+                  { key: "full_body", label: "Full body", hint: "Head-to-toe photos. Great for hero shots." },
+                  { key: "lifestyle", label: "Lifestyle", hint: "You in context — working, teaching, with clients." },
+                  { key: "product", label: "Product", hint: "Physical products, packaging, mockups." },
+                  { key: "graphic", label: "Graphics", hint: "Icons, illustrations, charts, UI screenshots." },
+                  { key: "texture", label: "Textures", hint: "Abstract surfaces and patterns." },
+                  { key: "background", label: "Backgrounds", hint: "Empty scenes — rooms, landscapes — to layer on." },
+                  { key: "other", label: "Other", hint: "Anything else we couldn't auto-sort." },
+                ];
+                const ROLE_OPTIONS = ASSET_CATEGORIES.map((c) => ({ value: c.key as string, label: c.label }));
+                return ASSET_CATEGORIES.map(({ key, label, hint }) => {
+                  const list = grouped[key];
+                  if (!list || list.length === 0) return null;
+                  return (
+                    <div key={key} className="space-y-2">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <div>
+                          <h3 className="text-sm font-semibold">{label} <span className="text-muted-foreground font-normal">· {list.length}</span></h3>
+                          <p className="text-xs text-muted-foreground">{hint}</p>
                         </div>
-                      ))}
+                      </div>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                        {list.map((a) => (
+                          <div key={a.id} className={`group relative rounded-md overflow-hidden border ${a.kept ? "ring-2 ring-lumi-pink-1" : "opacity-60"}`}>
+                            {a.signedUrl ? (
+                              <img src={a.signedUrl} alt="" className="aspect-square object-cover w-full" loading="lazy" />
+                            ) : (
+                              <div className="aspect-square bg-muted" />
+                            )}
+                            <div className="absolute top-1 right-1 flex gap-1">
+                              <button onClick={() => toggleKept(a.id, !a.kept)} className="bg-background/90 rounded-full p-1" title={a.kept ? "Remove from set" : "Keep"}>
+                                <Check className={`h-3 w-3 ${a.kept ? "" : "text-muted-foreground"}`} />
+                              </button>
+                              <button onClick={() => removeAsset(a.id)} className="bg-background/90 rounded-full p-1" title="Delete">
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                            <div className="p-1">
+                              <Select value={a.role || "other"} onValueChange={(v) => setRole(a.id, v)}>
+                                <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {ROLE_OPTIONS.map((r) => (
+                                    <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t">
-                <UploadBtn id="upload-logo" label="Logo" onFile={(f) => uploadFile(f, "logo")} />
-                <UploadBtn id="upload-headshot" label="Headshot" onFile={(f) => uploadFile(f, "headshot")} />
-                <UploadBtn id="upload-bg" label="Background" onFile={(f) => uploadFile(f, "background")} />
-                <UploadBtn id="upload-product" label="Product" onFile={(f) => uploadFile(f, "product")} />
+              <div className="pt-3 border-t space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Add more</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <UploadBtn id="upload-logo" label="+ Logo" onFile={(f) => uploadFile(f, "logo")} />
+                  <UploadBtn id="upload-headshot" label="+ Headshot" onFile={(f) => uploadFile(f, "headshot")} />
+                  <UploadBtn id="upload-fullbody" label="+ Full body" onFile={(f) => uploadFile(f, "full_body")} />
+                  <UploadBtn id="upload-lifestyle" label="+ Lifestyle" onFile={(f) => uploadFile(f, "lifestyle")} />
+                  <UploadBtn id="upload-product" label="+ Product" onFile={(f) => uploadFile(f, "product")} />
+                  <UploadBtn id="upload-graphic" label="+ Graphic" onFile={(f) => uploadFile(f, "graphic")} />
+                  <UploadBtn id="upload-texture" label="+ Texture" onFile={(f) => uploadFile(f, "texture")} />
+                  <UploadBtn id="upload-bg" label="+ Background" onFile={(f) => uploadFile(f, "background")} />
+                </div>
               </div>
+
 
               {/* B-roll */}
               <div className="pt-4 border-t space-y-3">

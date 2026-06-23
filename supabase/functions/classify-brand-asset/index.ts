@@ -13,7 +13,7 @@ const cors = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const ROLES = ["logo", "headshot", "background", "texture", "graphic", "product"] as const;
+const ROLES = ["logo", "headshot", "lifestyle", "full_body", "product", "texture", "graphic", "background", "other"] as const;
 
 function pathFromUrl(url: string): string | null {
   const m = url.match(/\/storage\/v1\/object\/(?:public|sign)\/brand-assets\/([^?]+)/);
@@ -34,7 +34,7 @@ async function classifyOne(imageUrl: string): Promise<string | null> {
           {
             role: "system",
             content:
-              "You classify brand image assets for an ad-creation tool. Reply with exactly ONE word from this list: logo, headshot, background, texture, graphic, product. logo=brand mark or wordmark. headshot=photo of a person's face. background=lifestyle/scene photo usable as a backdrop. texture=abstract surface/pattern. graphic=icon/illustration/UI element. product=physical product shot.",
+              "You classify brand image assets for an ad-creation tool. Reply with EXACTLY ONE word from this list: logo, headshot, lifestyle, full_body, product, texture, graphic, background, other. Definitions: logo=brand mark/wordmark/icon-logo. headshot=close-up photo of a person's face/shoulders. full_body=photo showing a full person head-to-toe (posed or candid). lifestyle=person(s) in context doing something real (working, teaching, with clients, behind the scenes) — not a posed headshot. product=physical product/packaging shot. texture=abstract surface/pattern/material close-up with no subject. graphic=icon, illustration, chart, UI screenshot, or designed graphic. background=empty scene/room/landscape usable as a backdrop with no clear subject. other=anything that doesn't fit. Prefer the most specific match.",
           },
           {
             role: "user",
