@@ -92,6 +92,14 @@ interface AdEval {
     confidence: "high" | "medium" | "low";
     impact: number;
     impactReasoning: string;
+    diagnosis?: {
+      rootCause: string;
+      why: string;
+      signals: string[];
+      primaryAction: string;
+      confidence: "high" | "medium" | "low";
+      needsConversionTracking?: boolean;
+    };
   };
 }
 
