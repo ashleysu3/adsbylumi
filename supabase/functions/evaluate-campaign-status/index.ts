@@ -446,6 +446,7 @@ Deno.serve(async req => {
         audienceTemp: detectAudienceTemp(adsetInfo?.name, adsetInfo?.targeting),
         adsetDailyBudget: dollarsFromMetaBudget(adsetInfo),
         campaignType,
+        archetypeSlug,
       });
     });
 
