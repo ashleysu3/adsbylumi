@@ -1182,36 +1182,150 @@ function ReviewAudienceCard({ brand, onSave }: { brand: any; onSave: (p: any) =>
   const [pains, setPains] = useState<string>((p.pain_points || []).join("\n"));
   const [desires, setDesires] = useState<string>((p.desires || []).join("\n"));
   const [objections, setObjections] = useState<string>((p.objections || []).join("\n"));
+  const [demographics, setDemographics] = useState<string>(
+    typeof p.demographics === "string"
+      ? p.demographics
+      : (p.demographics ? JSON.stringify(p.demographics, null, 2) : "")
+  );
+  const [saving, setSaving] = useState(false);
   useEffect(() => {
     const q = brand?.audience_psychology || {};
     setPains((q.pain_points || []).join("\n"));
     setDesires((q.desires || []).join("\n"));
     setObjections((q.objections || []).join("\n"));
+    setDemographics(
+      typeof q.demographics === "string"
+        ? q.demographics
+        : (q.demographics ? JSON.stringify(q.demographics, null, 2) : "")
+    );
   }, [brand?.audience_psychology]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await onSave({
+        audience_psychology: {
+          ...p,
+          pain_points: pains.split("\n").map((s) => s.trim()).filter(Boolean),
+          desires: desires.split("\n").map((s) => s.trim()).filter(Boolean),
+          objections: objections.split("\n").map((s) => s.trim()).filter(Boolean),
+          demographics: demographics.trim() || null,
+        },
+      });
+      toast.success("Saved");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Brain className="h-4 w-4" /> Audience psychology</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base"><Brain className="h-4 w-4" /> Audience</CardTitle>
+        <CardDescription className="text-xs">Psychology + demographics. Edit anything that's off — these power every ad LUMI writes.</CardDescription>
+      </CardHeader>
       <CardContent className="space-y-3">
         <div>
-          <Label className="text-xs">Pain points (one per line)</Label>
-          <Textarea rows={3} value={pains} onChange={(e) => setPains(e.target.value)} />
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Demographics</Label>
+          <Textarea rows={3} value={demographics} onChange={(e) => setDemographics(e.target.value)} placeholder="Women, 30–45, US/Canada, mid-career, $80k+ household income, lives in a metro area…" />
         </div>
         <div>
-          <Label className="text-xs">Desires</Label>
-          <Textarea rows={3} value={desires} onChange={(e) => setDesires(e.target.value)} />
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Pain points (one per line)</Label>
+          <Textarea rows={4} value={pains} onChange={(e) => setPains(e.target.value)} />
         </div>
         <div>
-          <Label className="text-xs">Objections</Label>
-          <Textarea rows={3} value={objections} onChange={(e) => setObjections(e.target.value)} />
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Desires</Label>
+          <Textarea rows={4} value={desires} onChange={(e) => setDesires(e.target.value)} />
         </div>
-        <Button size="sm" variant="outline" onClick={() => onSave({
-          audience_psychology: {
-            ...p,
-            pain_points: pains.split("\n").map((s) => s.trim()).filter(Boolean),
-            desires: desires.split("\n").map((s) => s.trim()).filter(Boolean),
-            objections: objections.split("\n").map((s) => s.trim()).filter(Boolean),
-          },
-        })}>Save</Button>
+        <div>
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Objections</Label>
+          <Textarea rows={4} value={objections} onChange={(e) => setObjections(e.target.value)} />
+        </div>
+        <Button size="sm" variant="lumi" onClick={save} disabled={saving}>
+          {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+          Save
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function BrandBasicsCard({ brand, onSave }: { brand: any; onSave: (p: any) => Promise<void> }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState<string>(brand?.name || "");
+  const [desc, setDesc] = useState<string>(brand?.value_proposition || "");
+  const [voice, setVoice] = useState<string>(brand?.brand_voice || "");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    setName(brand?.name || "");
+    setDesc(brand?.value_proposition || "");
+    setVoice(brand?.brand_voice || "");
+  }, [brand?.id, brand?.name, brand?.value_proposition, brand?.brand_voice]);
+
+  const cancel = () => {
+    setEditing(false);
+    setName(brand?.name || "");
+    setDesc(brand?.value_proposition || "");
+    setVoice(brand?.brand_voice || "");
+  };
+  const save = async () => {
+    setSaving(true);
+    try {
+      await onSave({ name, value_proposition: desc, brand_voice: voice });
+      toast.success("Saved");
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-start justify-between space-y-0">
+        <div>
+          <CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4" /> Brand basics</CardTitle>
+          <CardDescription className="text-xs">Name, what you do, and how you sound.</CardDescription>
+        </div>
+        {!editing && (
+          <Button size="sm" variant="ghost" onClick={() => setEditing(true)} className="h-7">
+            <Pencil className="h-3 w-3 mr-1" /> Edit
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-1">
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Brand name</Label>
+          {editing ? (
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          ) : (
+            <div className="text-base font-medium">{name || <span className="italic text-muted-foreground font-normal">Not set</span>}</div>
+          )}
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">What you do</Label>
+          {editing ? (
+            <Textarea rows={3} value={desc} onChange={(e) => setDesc(e.target.value)} />
+          ) : (
+            <p className="text-sm leading-relaxed">{desc || <span className="italic text-muted-foreground">Not set</span>}</p>
+          )}
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Brand voice</Label>
+          {editing ? (
+            <Textarea rows={6} value={voice} onChange={(e) => setVoice(e.target.value)} placeholder="Warm, witty, never salesy…" />
+          ) : (
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">{voice || <span className="italic text-muted-foreground">Not set</span>}</p>
+          )}
+        </div>
+        {editing && (
+          <div className="flex gap-2">
+            <Button size="sm" variant="lumi" onClick={save} disabled={saving}>
+              {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+              Save
+            </Button>
+            <Button size="sm" variant="ghost" onClick={cancel}>Cancel</Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
