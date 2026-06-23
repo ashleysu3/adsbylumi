@@ -785,8 +785,8 @@ export default function Performance() {
                           </div>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                          {/* KPI summary row — reach, frequency, primary KPI, secondary (or days live) */}
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                          {/* KPI summary row — reach, frequency, then one cell per configured goal KPI */}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 text-xs">
                             <KpiPill
                               label="Reach"
                               value={r.campaign.reach != null ? r.campaign.reach.toLocaleString() : "—"}
@@ -796,34 +796,29 @@ export default function Performance() {
                               value={r.campaign.frequency != null ? r.campaign.frequency.toFixed(2) : "—"}
                               hint={r.campaign.frequency != null && r.campaign.frequency > 4 ? "high" : undefined}
                             />
-                            <KpiPill
-                              label={r.meta.primaryKpiLabel}
-                              value={primaryVal}
-                              hint={goalStr || undefined}
-                              trend={
-                                <TrendArrow
-                                  kpi={r.meta.primaryKpi}
-                                  vsGoalPct={r.campaign.primary.vsGoalPct}
-                                  direction={r.campaign.primary.trendDirection}
+                            {(r.campaign.kpis || []).map(k => {
+                              const valStr = formatKpi(k.kpi, k.value);
+                              const goalStr = `goal ${formatKpi(k.kpi, k.goal)}`;
+                              const hitting = k.status === "above" || k.status === "at";
+                              const cls = k.status === "no_data"
+                                ? "text-muted-foreground"
+                                : hitting ? "text-emerald-700" : "text-amber-700";
+                              return (
+                                <KpiPill
+                                  key={k.kpi}
+                                  label={k.label + (k.isDefault ? " (default)" : "")}
+                                  value={valStr}
+                                  hint={`${goalStr} ${hitting && k.status !== "no_data" ? "✓" : k.status === "below" ? "✗" : ""}`.trim()}
+                                  valueClassName={cls}
                                 />
-                              }
-                            />
-                            {r.campaign.secondary && r.meta.secondaryKpi ? (
-                              <KpiPill
-                                label={r.campaign.secondary.label}
-                                value={
-                                  r.meta.secondaryKpi === "cpp"
-                                    ? (r.campaign.secondary.value ?? 0).toLocaleString()
-                                    : formatKpi(r.meta.secondaryKpi, r.campaign.secondary.value)
-                                }
-                              />
-                            ) : (
-                              <KpiPill
-                                label="Days live"
-                                value={r.campaign.daysLive != null ? String(r.campaign.daysLive) : "—"}
-                              />
-                            )}
+                              );
+                            })}
                           </div>
+                          <p className="text-sm">
+                            <span className="text-muted-foreground">Next: </span>
+                            <span className="text-foreground">{topLine}</span>
+                          </p>
+
                           <p className="text-sm">
                             <span className="text-muted-foreground">Next: </span>
                             <span className="text-foreground">{topLine}</span>
