@@ -1083,7 +1083,7 @@ export default function GuidedOnboarding() {
               <div className="flex justify-between pt-2 animate-fade-in">
                 <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => finishLater("Finish your brand review", "/brand")}>Finish later</Button>
+                  
                   <Button
                     onClick={advance}
                     style={brand?._kit?.colors?.[0] ? { backgroundColor: brand._kit.colors[0], color: "#fff", borderColor: brand._kit.colors[0] } : undefined}
