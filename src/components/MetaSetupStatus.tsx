@@ -175,9 +175,10 @@ export function MetaSetupStatus({ brandId, onReconnectRequested, onPixelSetupReq
 
   if (!result) return null;
 
-  const { overallStatus, summary, checks, primaryAction } = result;
+  const { overallStatus, summary, checks, primaryAction, meta } = result;
   const tone = TONE[overallStatus];
   const Icon = tone.icon;
+  const igMismatch = meta?.igMismatch as { pageIgId: string; pageIgUsername: string | null } | undefined;
 
   return (
     <Card className={cn('border', tone.border)}>
