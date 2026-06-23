@@ -229,10 +229,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <DropdownMenuItem onClick={() => navigate("/refer")}>
                     <Gift className="mr-2 h-4 w-4" /> refer & earn
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/review")}>
-                    <Heart className="mr-2 h-4 w-4" /> loving LUMI?!
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/settings")}>
+
                     <CreditCard className="mr-2 h-4 w-4" /> billing & plan
                   </DropdownMenuItem>
                   {/* TODO: gate VIP bonuses / Partner Dashboard on real flags (hasReferralBonuses, isPartner). */}
