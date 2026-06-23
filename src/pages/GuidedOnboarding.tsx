@@ -995,34 +995,55 @@ export default function GuidedOnboarding() {
                               <p className="text-xs text-muted-foreground">{hint}</p>
                             </div>
                           </div>
-                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                            {list.map((a) => (
-                              <div key={a.id} className={`group relative rounded-md overflow-hidden border ${a.kept ? "ring-2 ring-lumi-pink-1" : "opacity-60"}`}>
-                                {a.signedUrl ? (
-                                  <img src={a.signedUrl} alt="" className="aspect-square object-cover w-full" loading="lazy" />
-                                ) : (
-                                  <div className="aspect-square bg-muted" />
-                                )}
-                                <div className="absolute top-1 right-1 flex gap-1">
-                                  <button onClick={() => toggleKept(a.id, !a.kept)} className="bg-background/90 rounded-full p-1" title={a.kept ? "Remove from set" : "Keep"}>
-                                    <Check className={`h-3 w-3 ${a.kept ? "" : "text-muted-foreground"}`} />
-                                  </button>
-                                  <button onClick={() => removeAsset(a.id)} className="bg-background/90 rounded-full p-1" title="Delete">
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {list.map((a) => {
+                              const isEditingRole = editingRoleId === a.id;
+                              const currentLabel = ROLE_OPTIONS.find((r) => r.value === (a.role || "other"))?.label || "Other";
+                              return (
+                                <div key={a.id} className={`group relative rounded-lg overflow-hidden border bg-card transition ${a.kept ? "ring-2 ring-lumi-pink-1" : "opacity-70 hover:opacity-100"}`}>
+                                  {a.signedUrl ? (
+                                    <img src={a.signedUrl} alt="" className="aspect-square object-cover w-full" loading="lazy" />
+                                  ) : (
+                                    <div className="aspect-square bg-muted" />
+                                  )}
+                                  <div className="absolute top-2 right-2 flex gap-1">
+                                    <button onClick={() => toggleKept(a.id, !a.kept)} className="bg-background/90 hover:bg-background rounded-full p-1.5 shadow-sm" title={a.kept ? "Remove from set" : "Keep"}>
+                                      <Check className={`h-3.5 w-3.5 ${a.kept ? "" : "text-muted-foreground"}`} />
+                                    </button>
+                                    <button onClick={() => removeAsset(a.id)} className="bg-background/90 hover:bg-background rounded-full p-1.5 shadow-sm" title="Delete">
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                  <div className="px-3 py-2 border-t bg-background/60">
+                                    {isEditingRole ? (
+                                      <Select
+                                        value={a.role || "other"}
+                                        onValueChange={(v) => { setRole(a.id, v); setEditingRoleId(null); }}
+                                        open
+                                        onOpenChange={(o) => { if (!o) setEditingRoleId(null); }}
+                                      >
+                                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                          {ROLE_OPTIONS.map((r) => (
+                                            <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingRoleId(a.id)}
+                                        className="w-full flex items-center justify-between text-xs text-foreground/80 hover:text-foreground group/retag"
+                                        title="Click to retag"
+                                      >
+                                        <span className="truncate">{currentLabel}</span>
+                                        <span className="text-[10px] text-muted-foreground opacity-0 group-hover/retag:opacity-100 transition-opacity ml-2">retag</span>
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="p-1">
-                                  <Select value={a.role || "other"} onValueChange={(v) => setRole(a.id, v)}>
-                                    <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      {ROLE_OPTIONS.map((r) => (
-                                        <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       );
