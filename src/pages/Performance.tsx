@@ -672,11 +672,39 @@ export default function Performance() {
               The big picture across every active campaign — and the next moves worth making.
             </p>
           </div>
-          <Button variant="outline" onClick={() => navigate("/retrospectives")} className="gap-2">
-            <History className="h-4 w-4" />
-            History
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <DateRangePicker
+              dateRange={dateRange}
+              customDateRange={customDateRange}
+              onDateRangeChange={setDateRange}
+              onCustomDateRangeChange={setCustomDateRange}
+            />
+            <Button variant="outline" onClick={() => navigate("/retrospectives")} className="gap-2">
+              <History className="h-4 w-4" />
+              History
+            </Button>
+          </div>
         </div>
+
+        <div className="flex items-center gap-2 text-sm text-muted-foreground -mt-3 flex-wrap">
+          <span>
+            <span className="font-medium text-foreground">Showing:</span> {activeRange.label}
+          </span>
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" className="inline-flex items-center gap-1 text-xs underline-offset-2 hover:underline">
+                  <Info className="h-3 w-3" />
+                  How LUMI decides
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs">
+                Recommendations are based on LUMI's 3 / 7 / 30-day analysis, not this view's date range. The picker only changes which numbers are displayed.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
 
         {loading && (
           <Card>
