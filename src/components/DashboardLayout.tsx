@@ -15,7 +15,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useLumiAssistant } from "@/components/LumiAssistant";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { ArrowRight, X, CheckSquare, Sparkles, Gift, Heart, CreditCard, Star, Briefcase, Shield, LogOut } from "lucide-react";
+import { ArrowRight, X, Sparkles, Shield, Briefcase, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { SubscriptionBanner } from "@/components/SubscriptionGate";
 import { DashboardFooter } from "@/components/DashboardFooter";
 import { PartnerPortalBanner } from "@/components/PartnerPortalBanner";
@@ -60,6 +61,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     description: string;
   } | null>(null);
   const [createAdModalOpen, setCreateAdModalOpen] = useState(false);
+  const [isPartner, setIsPartner] = useState(false);
 
   // Mobile onboarding tour
   const { showTour, hasSeenTour, startTour, completeTour } = useMobileOnboardingTour();
@@ -87,6 +89,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       supabase.from("profiles").select("*").eq("id", effectiveUserId).single().then(({ data }) => setProfile(data));
       supabase.from("brands").select("*").eq("user_id", effectiveUserId).order("created_at", { ascending: false }).limit(1).single().then(({ data }) => setBrand(data));
       supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").single().then(({ data }) => setIsAdmin(!!data));
+      supabase
+        .from("partner_access_tokens")
+        .select("id")
+        .eq("partner_user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle()
+        .then(({ data }) => setIsPartner(!!data));
     };
     fetchData();
   }, [navigate, getEffectiveUserId]);
@@ -196,67 +205,44 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   ? (agencyName || profile?.full_name || 'Agency')
                   : isAgencyUser && activeBrand ? activeBrand.name : (profile?.full_name || user?.email)}
               </span>
-              <TasksTray />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                        {location.pathname.startsWith('/admin')
-                          ? 'A'
-                          : location.pathname === '/ads-manager' && isAgencyUser
-                          ? (agencyName || profile?.full_name || 'A').charAt(0).toUpperCase()
-                          : isAgencyUser && activeBrand ? activeBrand.name.charAt(0).toUpperCase() : (profile?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase())}
-                      </AvatarFallback>
-                    </Avatar>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-card z-50">
-                  <DropdownMenuLabel>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium">{profile?.full_name || "User"}</span>
-                      <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate("/tasks")}>
-                    <CheckSquare className="mr-2 h-4 w-4" /> my tasks
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/strategy")}>
-                    <Sparkles className="mr-2 h-4 w-4" /> my ad strategy
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate("/refer")}>
-                    <Gift className="mr-2 h-4 w-4" /> refer & earn
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/settings")}>
-
-                    <CreditCard className="mr-2 h-4 w-4" /> billing & plan
-                  </DropdownMenuItem>
-                  {/* TODO: gate VIP bonuses / Partner Dashboard on real flags (hasReferralBonuses, isPartner). */}
-                  {isAdmin && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => navigate("/admin/users")} className="text-amber-600">
-                        <Shield className="mr-2 h-4 w-4" /> Admin Dashboard
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={async () => {
-                      await supabase.auth.signOut();
-                      sonnerToast.success("Signed out");
-                      navigate("/auth");
-                    }}
-                    className="text-destructive"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" /> Sign out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {isPartner && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => navigate("/partner-portal")}
+                >
+                  <Briefcase className="h-4 w-4" />
+                  <span className="hidden sm:inline">Partner Dashboard</span>
+                </Button>
+              )}
+              {isAdmin && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5 text-amber-600 border-amber-300 hover:text-amber-700"
+                  onClick={() => navigate("/admin/users")}
+                >
+                  <Shield className="h-4 w-4" />
+                  <span className="hidden sm:inline">Admin Dashboard</span>
+                </Button>
+              )}
+              <button
+                type="button"
+                aria-label="Sign out"
+                title="Sign out"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  sonnerToast.success("Signed out");
+                  navigate("/auth");
+                }}
+                className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
             </div>
           </header>
+
 
 
           <SubscriptionBanner />

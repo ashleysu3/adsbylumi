@@ -1,4 +1,4 @@
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useMemo, useState, FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Target,
@@ -27,6 +27,11 @@ import {
   PenLine,
   Sparkles,
   Heart,
+  CheckSquare,
+  Gift,
+  CreditCard,
+  Crown,
+  Shield,
 } from "lucide-react";
 import { LadybugIcon } from "@/components/LadybugIcon";
 import { IntentBar } from "@/components/IntentBar";
@@ -154,7 +159,7 @@ interface AppSidebarProps {
   brandId?: string;
 }
 
-export function AppSidebar({ isAdmin: _isAdmin, brandId: _brandId }: AppSidebarProps) {
+export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
@@ -164,18 +169,40 @@ export function AppSidebar({ isAdmin: _isAdmin, brandId: _brandId }: AppSidebarP
   const [bugReportOpen, setBugReportOpen] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [intent, setIntent] = useState("");
+  const [hasVipBonuses, setHasVipBonuses] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user?.email) setUserEmail(user.email);
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      if (user.email) setUserEmail(user.email);
+      // VIP = has unused account credits (referral bonuses, comps, etc.)
+      const { data: credits } = await supabase
+        .from("account_credits")
+        .select("id")
+        .eq("user_id", user.id)
+        .is("applied_at", null)
+        .limit(1);
+      setHasVipBonuses((credits?.length || 0) > 0);
     });
     const handler = () => setBugReportOpen(true);
     window.addEventListener("open-bug-report", handler);
     return () => window.removeEventListener("open-bug-report", handler);
   }, []);
 
+  const brandWithVip = useMemo<NavGroup>(() => {
+    const brandGroup = groups.find((g) => g.key === "brand")!;
+    if (!hasVipBonuses) return brandGroup;
+    return {
+      ...brandGroup,
+      items: [
+        ...brandGroup.items,
+        { label: "VIP Offers", to: "/refer", icon: Crown },
+      ],
+    };
+  }, [hasVipBonuses]);
+
   const allGroups: NavGroup[] = [
-    ...groups,
+    ...groups.map((g) => (g.key === "brand" ? brandWithVip : g)),
     ...(isAgencyUser ? [agencyGroup] : []),
     supportGroup,
   ];
@@ -259,11 +286,20 @@ export function AppSidebar({ isAdmin: _isAdmin, brandId: _brandId }: AppSidebarP
 
           {/* "How can LUMI help today?" intent input */}
           {!collapsed && (
-            <div className="mt-3">
+            <div className="mt-3 space-y-2">
               <IntentBar size="sm" innerBgClassName="bg-sidebar" />
+              <button
+                type="button"
+                onClick={() => navigate("/tasks")}
+                className="group relative w-full overflow-hidden rounded-lg bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-sm transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-ring px-3 py-2 flex items-center gap-2"
+              >
+                <span className="text-base leading-none">✅</span>
+                <span className="text-sm font-medium tracking-tight">My Tasks</span>
+              </button>
             </div>
           )}
         </SidebarHeader>
+
 
         <SidebarSeparator />
 
@@ -303,7 +339,25 @@ export function AppSidebar({ isAdmin: _isAdmin, brandId: _brandId }: AppSidebarP
           })}
         </SidebarContent>
 
-        <SidebarFooter className="p-2">
+        <SidebarFooter className="p-2 space-y-2">
+          {!collapsed && (
+            <div className="flex items-center justify-between gap-2 px-1 text-[11px] text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => navigate("/refer")}
+                className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+              >
+                <Gift className="h-3 w-3" /> refer & earn
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/settings")}
+                className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+              >
+                <CreditCard className="h-3 w-3" /> billing & plan
+              </button>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => navigate("/review")}
@@ -322,6 +376,7 @@ export function AppSidebar({ isAdmin: _isAdmin, brandId: _brandId }: AppSidebarP
             <span className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/3 -skew-x-12 bg-white/20 blur-md opacity-0 group-hover:opacity-100 group-hover:translate-x-[300%] transition-all duration-700" />
           </button>
         </SidebarFooter>
+
 
       </Sidebar>
       <BugReportModal
