@@ -200,24 +200,34 @@ Deno.serve(async req => {
     } else if (workspaceId) {
       const { data: goalRow } = await sb
         .from('campaign_goals')
-        .select('primary_kpi, primary_kpi_threshold, primary_kpi_goal_type')
+        .select('primary_kpi, primary_kpi_threshold, primary_kpi_goal_type, primary_kpi_label, secondary_kpi, secondary_kpi_threshold, secondary_kpi_goal_type, secondary_kpi_label, tertiary_kpi, tertiary_kpi_threshold, tertiary_kpi_goal_type, tertiary_kpi_label')
         .eq('workspace_id', workspaceId).maybeSingle();
       if (goalRow?.primary_kpi && goalRow.primary_kpi_threshold != null) {
         primaryKpi = String(goalRow.primary_kpi);
         primaryGoal = Number(goalRow.primary_kpi_threshold);
         primaryDirection = goalRow.primary_kpi_goal_type === 'greater_than' ? 'greater_than' : 'less_than';
+        (globalThis as any).__lumi_goal_row = goalRow;
       } else {
         primaryKpi = LUMI_KPI_FROM_OBJECTIVE[meta.objective || ''] || 'cpl';
         primaryGoal = KPI_DEFAULT_GOAL[primaryKpi] ?? 15;
         primaryDirection = KPI_DEFAULT_DIRECTION[primaryKpi] ?? 'less_than';
+        (globalThis as any).__lumi_goal_row = null;
       }
     } else {
       primaryKpi = LUMI_KPI_FROM_OBJECTIVE[meta.objective || ''] || 'cpl';
       primaryGoal = KPI_DEFAULT_GOAL[primaryKpi] ?? 15;
       primaryDirection = KPI_DEFAULT_DIRECTION[primaryKpi] ?? 'less_than';
+      (globalThis as any).__lumi_goal_row = null;
     }
 
     const secondaryKpi = SECONDARY_KPI_FOR[primaryKpi] || null;
+
+    // Build the full goals[] list (primary + optional secondary + optional tertiary)
+    // that the engine will compute per-entity KPIs for. Falls back to benchmark
+    // when the user hasn't set a goal so the UI always has SOMETHING to show.
+    const storedGoals = (globalThis as any).__lumi_goal_row as any;
+    const goalsConfig: GoalConfig[] = buildGoalsConfig(primaryKpi, primaryGoal, primaryDirection, storedGoals);
+
 
     // Compute the four windows (3-day, 7-day, 30-day, fatigue-ref = prior 14 days).
     const asOfDate = asOf ? new Date(asOf) : new Date();
