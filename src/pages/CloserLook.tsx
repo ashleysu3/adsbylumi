@@ -512,7 +512,7 @@ export default function CloserLook() {
           </Card>
         )}
 
-        {/* KPI table: campaign → adsets → ads */}
+        {/* KPI table: campaign → adsets → ads. One column per configured KPI. */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Performance breakdown</CardTitle>
@@ -525,24 +525,27 @@ export default function CloserLook() {
                   <th className="py-2 px-2 font-medium">Status</th>
                   <th className="py-2 px-2 font-medium text-right">Reach</th>
                   <th className="py-2 px-2 font-medium text-right">Freq</th>
-                  <th className="py-2 px-2 font-medium text-right">
-                    {result.meta.primaryKpiLabel}
-                  </th>
-                  <th className="py-2 pl-2 font-medium text-right">
-                    {result.campaign.secondary?.label || (secondaryKpi ? secondaryKpi.toUpperCase() : "—")}
-                  </th>
+                  {goalKpis.map(g => (
+                    <th key={g.kpi} className="py-2 px-2 font-medium text-right">
+                      {g.label}
+                      <div className="text-[10px] text-muted-foreground font-normal">
+                        goal {formatKpi(g.kpi, g.goal)}
+                      </div>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                <KpiRow row={result.campaign} primaryKpi={primaryKpi} secondaryKpi={secondaryKpi} depth={0} />
+                <KpiRow row={result.campaign} goalKpis={goalKpis} depth={0} />
                 {result.adsets.map((as) => (
-                  <KpiRow key={as.id} row={as} primaryKpi={primaryKpi} secondaryKpi={secondaryKpi} depth={1} />
+                  <KpiRow key={as.id} row={as} goalKpis={goalKpis} depth={1} />
                 ))}
                 {result.ads.map((ad) => (
-                  <KpiRow key={ad.id} row={ad} primaryKpi={primaryKpi} secondaryKpi={secondaryKpi} depth={2} />
+                  <KpiRow key={ad.id} row={ad} goalKpis={goalKpis} depth={2} />
                 ))}
               </tbody>
             </table>
+
           </CardContent>
         </Card>
 
