@@ -265,7 +265,7 @@ export function GenerateCreativeDialog() {
     headline: "", subhead: "", cta: "Learn more",
   });
   const [boardGenerating, setBoardGenerating] = useState(false);
-  const [boardResults, setBoardResults] = useState<Array<{ aspect: string; url: string; path: string }>>([]);
+  const [boardResults, setBoardResults] = useState<Array<{ aspect: string; url: string; path: string; base64: string; isVertical: boolean }>>([]);
   const [boardApprovingIdx, setBoardApprovingIdx] = useState<number | null>(null);
   const [boardApprovedIdxs, setBoardApprovedIdxs] = useState<Set<number>>(new Set());
   const boardResultsRef = useRef<HTMLDivElement | null>(null);
@@ -630,16 +630,86 @@ export function GenerateCreativeDialog() {
           boardId: selectedBoardId,
           brandId: activeBrand?.id,
           copy: boardCopy,
-          count: 4,
+          count: 2,
           selectedImageUrls,
         },
       });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Generation failed");
-      const images = (data.images || []) as Array<{ aspect: string; url: string; path: string }>;
-      setBoardResults(images);
-      if (!images.length) toast.error("Recraft returned no images. Try again.");
-      else toast.success(`Generated ${images.length} visuals`);
+      const backgrounds = (data.images || []) as Array<{ aspect: string; url: string; path: string }>;
+      if (!backgrounds.length) {
+        toast.error("Recraft returned no images. Try again.");
+        return;
+      }
+
+      // Composite each background through the engine (overlay template) so
+      // headline / subhead / CTA / logo render as real text on the background.
+      const effectiveLogoUrl = (placeLogo && brandLogoAsset?.url) || logoUrl || undefined;
+      const colorsForEngine = {
+        ...colors,
+        primary: colors.accent,
+        secondary: colors.pop,
+        cta: colors.accent,
+        ctaBg: colors.accent,
+        ctaText: colors.bg,
+        button: colors.accent,
+        buttonBg: colors.accent,
+        buttonText: colors.bg,
+        badge: colors.accent,
+        badgeBg: colors.accent,
+        badgeText: colors.bg,
+      };
+      const brandKit = {
+        colors: colorsForEngine,
+        palette: colorsForEngine,
+        fonts: {
+          displayUrl: fontUrl || undefined,
+          displayItalicUrl: fontUrl || undefined,
+          displayFamily: displayFamily || undefined,
+          bodyFamily: bodyFamily || undefined,
+        },
+        logoUrl: effectiveLogoUrl,
+      };
+      const logoOverlay = placeLogo && brandLogoAsset?.url
+        ? { url: brandLogoAsset.url, corner: logoCorner }
+        : undefined;
+
+      const composited: Array<{ aspect: string; url: string; path: string; base64: string; isVertical: boolean }> = [];
+      await Promise.all(
+        backgrounds.map(async (bg, bgIdx) => {
+          try {
+            const imgs = await callRender({
+              template: "overlay",
+              brandKit,
+              copy: {
+                headline: boardCopy.headline,
+                subhead: boardCopy.subhead,
+                cta: boardCopy.cta,
+              },
+              photo: { url: bg.url },
+              backgroundUrl: bg.url,
+              logoOverlay,
+              placements: ["feed", "story"],
+            });
+            imgs.forEach((im, j) => {
+              const isVertical = (im.placement || "").toLowerCase().includes("story") || im.height > im.width;
+              composited.push({
+                aspect: isVertical ? "4x5" : "1x1",
+                url: `data:image/png;base64,${im.base64}`,
+                path: `${bg.path || `bg-${bgIdx}`}-${im.placement || j}`,
+                base64: im.base64,
+                isVertical,
+              });
+            });
+          } catch (err) {
+            console.error("composite failed for bg", bgIdx, err);
+          }
+        }),
+      );
+
+      setBoardResults(composited);
+      if (!composited.length) toast.error("Engine could not composite the design. Try again.");
+      else toast.success(`Generated ${composited.length} finished designs`);
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || "Failed to generate ads");
@@ -649,7 +719,7 @@ export function GenerateCreativeDialog() {
   };
 
   const approveBoardResult = async (
-    r: { aspect: string; url: string; path: string },
+    r: { aspect: string; url: string; path: string; base64: string; isVertical: boolean },
     idx: number,
   ) => {
     if (!itemId) {
@@ -658,13 +728,8 @@ export function GenerateCreativeDialog() {
     }
     setBoardApprovingIdx(idx);
     try {
-      const imgRes = await fetch(r.url);
-      if (!imgRes.ok) throw new Error("Could not fetch generated image");
-      const buf = new Uint8Array(await imgRes.arrayBuffer());
-      let bin = "";
-      for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-      const base64 = btoa(bin);
-      const isVertical = r.aspect === "4x5" || r.aspect.includes("9x16");
+      const base64 = r.base64;
+      const isVertical = r.isVertical;
       await new Promise<void>((resolve, reject) => {
         const reqId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const onDone = (e: Event) => {
