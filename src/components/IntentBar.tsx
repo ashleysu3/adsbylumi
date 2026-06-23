@@ -44,9 +44,13 @@ export function IntentBar({
   className,
 }: IntentBarProps) {
   const navigate = useNavigate();
+  const { activeBrand } = useBrand();
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
   const [animatedPlaceholder, setAnimatedPlaceholder] = useState(placeholder);
+  const [submitting, setSubmitting] = useState(false);
+  const [convoOpen, setConvoOpen] = useState(false);
+  const [convoSeed, setConvoSeed] = useState<{ userText: string; response: IntentResponse } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Typewriter cycling through example prompts. Disabled while the user is
