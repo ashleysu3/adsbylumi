@@ -1379,6 +1379,37 @@ function OfferRowEditor({ offer, brand, onSave, setGlobalLoader }: { offer: any;
   const parsedColors = colors.split(",").map((s) => s.trim()).filter(Boolean);
   const parsedFonts = fonts.split(",").map((s) => s.trim()).filter(Boolean);
 
+  const pullOfferDesign = async () => {
+    if (!offer.url) { toast.error("This offer has no URL to pull from"); return; }
+    setGlobalLoader?.("LUMI is pulling this offer's design guide…");
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-brand", { body: { url: offer.url } });
+      if (error) throw error;
+      const d: any = data || {};
+      const pulledColors: string[] = Array.isArray(d.colors) ? d.colors.filter(Boolean) : [];
+      const pulledFonts: string[] = Array.isArray(d.fonts) ? d.fonts.filter(Boolean) : [];
+      if (pulledColors.length) setColors(pulledColors.join(", "));
+      if (pulledFonts.length) setFonts(pulledFonts.join(", "));
+      setDesignPulled(true);
+      if (pulledColors.length || pulledFonts.length) {
+        toast.success("Pulled this offer's design guide");
+      } else {
+        toast.message("Couldn't detect colors or fonts on that page");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Couldn't pull design from this page");
+    } finally {
+      setGlobalLoader?.(null);
+    }
+  };
+
+  const onToggleStyle = (next: boolean) => {
+    setStyleOverride(next);
+    if (next && !designPulled && !colors.trim() && !fonts.trim() && offer.url) {
+      pullOfferDesign();
+    }
+  };
+
   const save = async () => {
     setSaving(true);
     try {
