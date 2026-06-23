@@ -832,6 +832,10 @@ export default function GuidedOnboarding() {
                 <CardDescription className="min-h-[20px]">
                   {allRevealed ? (
                     <>Edit anything that's off — rebrand, outdated copy, new audience — and we'll use the updated version everywhere.</>
+                  ) : slowMode ? (
+                    <span className="inline-block animate-fade-in text-foreground/80">
+                      This one's taking a little longer than usual — hang tight, almost there.
+                    </span>
                   ) : (
                     <span key={narrationIdx} className="inline-block animate-fade-in text-foreground/80">
                       {WITTY_LINES[narrationIdx]}
