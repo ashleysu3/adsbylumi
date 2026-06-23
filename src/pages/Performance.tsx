@@ -66,6 +66,12 @@ type Status =
   | "fatigued"
   | "spend_starved";
 
+interface WindowSnapshot {
+  spend: number;
+  results: number;
+  kpiValue: number | null;
+}
+
 interface KpiEntry {
   kpi: string;
   label: string;
