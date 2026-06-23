@@ -2292,6 +2292,7 @@ export type Database = {
           recommendation_confidence: string | null
           recommendation_reason: string | null
           recommended_template_id: string | null
+          style_overrides: Json | null
           target_outcome: string | null
           url: string | null
           use_brand_style_defaults: boolean
@@ -2315,6 +2316,7 @@ export type Database = {
           recommendation_confidence?: string | null
           recommendation_reason?: string | null
           recommended_template_id?: string | null
+          style_overrides?: Json | null
           target_outcome?: string | null
           url?: string | null
           use_brand_style_defaults?: boolean
@@ -2338,6 +2340,7 @@ export type Database = {
           recommendation_confidence?: string | null
           recommendation_reason?: string | null
           recommended_template_id?: string | null
+          style_overrides?: Json | null
           target_outcome?: string | null
           url?: string | null
           use_brand_style_defaults?: boolean
