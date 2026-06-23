@@ -49,6 +49,54 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Parse body once so we can detect testMode for the preview page.
+  let body: any = {};
+  try { body = await req.clone().json(); } catch { /* no body */ }
+
+  // TEST MODE: lets the in-app preview send a sample of the real email
+  // to any address. Requires Authorization header (logged-in user).
+  if (body?.testMode === true) {
+    const testEmail = String(body.testEmail || '').trim();
+    if (!testEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(testEmail)) {
+      return new Response(JSON.stringify({ error: 'Valid testEmail required' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (!req.headers.get('Authorization')) {
+      return new Response(JSON.stringify({ error: 'Auth required' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    try {
+      const html = buildBigPictureEmail({
+        userName: 'there',
+        brandName: 'Sample Brand',
+        frequencyLabel: 'Weekly',
+        campaigns: buildSampleCampaigns(),
+      });
+      const { error: sendErr } = await resend.emails.send({
+        from: 'Lumi <reports@adsbylumi.com>',
+        to: [testEmail],
+        subject: '📊 Sample Weekly Ad Report — preview from Lumi',
+        html,
+      });
+      if (sendErr) {
+        console.error('[weekly test] send failed:', sendErr);
+        return new Response(JSON.stringify({ error: (sendErr as any).message || 'Send failed' }), {
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ success: true, sentTo: testEmail }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } catch (e: any) {
+      console.error('[weekly test] error:', e);
+      return new Response(JSON.stringify({ error: e.message || 'Failed' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
   if (!isServiceRoleRequest(req)) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
