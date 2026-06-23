@@ -257,24 +257,60 @@ Deno.serve(async req => {
     }
 
     // ----- 6. Instagram account -----
-    if (brand.instagram_account_id) {
+    // Detect the #1 hangup: IG is connected to the Page but NOT added to the
+    // ad account, so ads can't use it.
+    let pageIg: { id: string; username: string | null } | null = null;
+    if (brand.page_id) {
       try {
-        const r = await fetch(`https://graph.facebook.com/v25.0/${brand.instagram_account_id}?fields=id,username&access_token=${token}`);
+        const r = await fetch(`https://graph.facebook.com/v25.0/${brand.page_id}?fields=instagram_business_account{id,username}&access_token=${token}`);
         const d = await r.json();
-        if (r.ok && d?.id) {
-          checks.push({ id: 'instagram', label: 'Instagram account', status: 'pass', detail: d.username ? `@${d.username}` : (brand.instagram_account_name || 'Linked') });
-        } else {
-          checks.push({
-            id: 'instagram',
-            label: 'Instagram account',
-            status: 'warn',
-            detail: 'Stored Instagram account is unreachable. Reconnecting Meta usually fixes this.',
-            fix: { kind: 'reconnect', label: 'Reconnect Meta' },
-          });
+        if (r.ok && d?.instagram_business_account?.id) {
+          pageIg = {
+            id: d.instagram_business_account.id,
+            username: d.instagram_business_account.username || null,
+          };
         }
-      } catch {
-        checks.push({ id: 'instagram', label: 'Instagram account', status: 'warn', detail: 'Could not verify Instagram account.' });
-      }
+      } catch { /* non-fatal */ }
+    }
+
+    let adAccountIgs: Array<{ id: string; username: string | null }> = [];
+    if (brand.meta_account_id) {
+      try {
+        const adId = String(brand.meta_account_id).startsWith('act_')
+          ? brand.meta_account_id
+          : `act_${brand.meta_account_id}`;
+        const r = await fetch(`https://graph.facebook.com/v25.0/${adId}/instagram_accounts?fields=id,username&access_token=${token}`);
+        const d = await r.json();
+        if (r.ok && Array.isArray(d?.data)) {
+          adAccountIgs = d.data.map((ig: any) => ({ id: ig.id, username: ig.username || null }));
+        }
+      } catch { /* non-fatal */ }
+    }
+
+    const pageIgInAdAccount = !!(pageIg && adAccountIgs.some(ig => ig.id === pageIg!.id));
+    const adAccountHasAnyIg = adAccountIgs.length > 0;
+
+    if (pageIg && !pageIgInAdAccount) {
+      // The mismatch we're targeting.
+      m.igMismatch = {
+        pageIgId: pageIg.id,
+        pageIgUsername: pageIg.username,
+      };
+      checks.push({
+        id: 'instagram',
+        label: 'Instagram on ad account',
+        status: 'warn',
+        detail: "Your Instagram is connected to your Facebook Page but isn't added to your ad account yet — that's why ads can't use it. One click fixes it.",
+        fix: { kind: 'ig_link', label: 'Connect it for me' },
+      });
+    } else if (pageIgInAdAccount || adAccountHasAnyIg) {
+      const display = pageIg?.username
+        ? `@${pageIg.username}`
+        : adAccountIgs[0]?.username
+          ? `@${adAccountIgs[0].username}`
+          : (brand.instagram_account_name || 'Linked');
+      checks.push({ id: 'instagram', label: 'Instagram account', status: 'pass', detail: display });
+      m.instagramUsername = pageIg?.username || adAccountIgs[0]?.username || null;
     } else {
       checks.push({
         id: 'instagram',
