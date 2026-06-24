@@ -36,7 +36,12 @@ Deno.serve(async (req) => {
       .select("id, user_id, name, brand_voice, target_audience, audience_psychology, value_proposition")
       .eq("id", brand_id)
       .maybeSingle();
-    if (!brand || brand.user_id !== userId) return ok({ error: "Not authorized" }, 200);
+    if (!brand) return ok({ error: "Not authorized" }, 200);
+    if (brand.user_id !== userId) {
+      const { data: roleRow } = await supabase
+        .from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle();
+      if (!roleRow) return ok({ error: "Not authorized" }, 200);
+    }
 
     const { data: workspace } = await supabase
       .from("campaign_workspaces")

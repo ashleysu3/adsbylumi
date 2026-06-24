@@ -61,10 +61,14 @@ Deno.serve(async (req) => {
       });
     }
     if (brand.user_id !== userId) {
-      return new Response(JSON.stringify({ success: false, error: 'Access denied' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      const { data: roleRow } = await supabaseAdmin
+        .from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle();
+      if (!roleRow) {
+        return new Response(JSON.stringify({ success: false, error: 'Access denied' }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
     if (!brand.meta_access_token) {
       return new Response(JSON.stringify({ success: false, error: 'Meta access token not found' }), {

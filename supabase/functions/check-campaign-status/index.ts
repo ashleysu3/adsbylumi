@@ -85,13 +85,17 @@ serve(async (req) => {
       throw new Error('Meta account not connected');
     }
 
-    // Ownership check — mirror pause-meta-entity.
+    // Ownership check — mirror pause-meta-entity. Admins bypass for impersonation.
     if (brand.user_id !== userId) {
-      console.log('Ownership check failed:', { brandUserId: brand.user_id, requestUserId: userId });
-      return new Response(
-        JSON.stringify({ success: false, error: 'Access denied' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const { data: roleRow } = await supabase
+        .from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle();
+      if (!roleRow) {
+        console.log('Ownership check failed:', { brandUserId: brand.user_id, requestUserId: userId });
+        return new Response(
+          JSON.stringify({ success: false, error: 'Access denied' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Read token directly (service-role context can't use get_meta_token RPC which requires auth.uid())

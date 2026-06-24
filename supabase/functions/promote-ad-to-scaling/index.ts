@@ -79,9 +79,13 @@ Deno.serve(async (req) => {
       });
     }
     if (brand.user_id !== userId) {
-      return new Response(JSON.stringify({ error: 'Access denied' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      const { data: roleRow } = await supabaseAdmin
+        .from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle();
+      if (!roleRow) {
+        return new Response(JSON.stringify({ error: 'Access denied' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
     if (!brand.meta_access_token || !brand.meta_account_id) {
       return new Response(

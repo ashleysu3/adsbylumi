@@ -66,10 +66,14 @@ Deno.serve(async (req) => {
     // Verify user owns this workspace via the brand
     const brand = workspace.brands as any;
     if (brand.user_id !== user.id) {
-      return new Response(
-        JSON.stringify({ error: 'Access denied: You do not own this workspace' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
-      );
+      const { data: roleRow } = await supabase
+        .from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle();
+      if (!roleRow) {
+        return new Response(
+          JSON.stringify({ error: 'Access denied: You do not own this workspace' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+        );
+      }
     }
 
     console.log('Ownership verified for workspace:', workspaceId);
