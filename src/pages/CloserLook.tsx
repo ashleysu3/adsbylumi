@@ -183,6 +183,15 @@ export default function CloserLook() {
   const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [promoteOpen, setPromoteOpen] = useState(false);
 
+  // Auto-open Promote dialog from ?promotePost=1
+  useEffect(() => {
+    if (searchParams.get("promotePost") === "1") {
+      setPromoteOpen(true);
+      searchParams.delete("promotePost");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   // Task-execute dialog (shared confirm + execute path)
   const [taskOpen, setTaskOpen] = useState(false);
   const [activeTask, setActiveTask] = useState<ExecutableTaskShape | null>(null);
