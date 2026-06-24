@@ -446,7 +446,8 @@ export function PromoteExistingPostDialog({
       setCreatedAds(data.ads || []);
       setCreatedAdSetId(data.adSetId || null);
       setNewAdSetCreated(!!data.newAdSetCreated);
-      setStep("preview");
+      toast.success("Ad is live! ✨");
+      setStep("done");
     } catch (e: any) {
       const raw = e?.message || "Failed to create ad";
       const isIgPerm = /instagram_basic|OAuthException|#10\b/i.test(raw);
@@ -692,10 +693,10 @@ export function PromoteExistingPostDialog({
                 </Label>
               </RadioGroup>
 
-              <div className="rounded-xl border border-border/60 bg-muted/30 p-3 flex items-start gap-3">
-                <Pause className="h-4 w-4 text-muted-foreground mt-0.5" />
-                <p className="text-xs text-muted-foreground flex-1">
-                  We'll create this ad <span className="font-medium text-foreground">paused</span> so you can preview and confirm before it goes live.
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 flex items-start gap-3">
+                <PlayCircle className="h-4 w-4 text-emerald-600 mt-0.5" />
+                <p className="text-xs text-foreground flex-1">
+                  We'll launch this ad <span className="font-medium">live</span> in Meta as soon as you click create.
                 </p>
               </div>
 
@@ -861,11 +862,11 @@ export function PromoteExistingPostDialog({
               </Button>
               <Button onClick={handleCreatePausedAd} disabled={submitting || (submitError?.kind === "needs_destination" && !destinationLink.trim())}>
                 {submitting ? (
-                  <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Creating paused ad…</>
+                  <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Launching ad…</>
                 ) : submitError?.kind === "needs_destination" ? (
                   <>Retry with this link <ArrowRight className="h-4 w-4 ml-1.5" /></>
                 ) : (
-                  <>Create paused ad <ArrowRight className="h-4 w-4 ml-1.5" /></>
+                  <><PlayCircle className="h-4 w-4 mr-1.5" /> Launch ad live</>
                 )}
               </Button>
             </>

@@ -274,6 +274,7 @@ Deno.serve(async (req) => {
     const {
       workspaceId,
       posts,
+      status,                 // 'ACTIVE' | 'PAUSED' — default ACTIVE (launch live)
       createNewAdSet,         // boolean — default true for promoted posts
       adSetName,              // optional override
       destinationLink,        // optional override URL for objectives that need a link
@@ -288,8 +289,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Always create promoted ads PAUSED — the user previews and activates explicitly.
-    const adStatus: 'PAUSED' = 'PAUSED';
+    // Launch promoted ads live by default — user explicitly chose to promote this post.
+    const adStatus: 'ACTIVE' | 'PAUSED' = status === 'PAUSED' ? 'PAUSED' : 'ACTIVE';
 
     const { data: workspace, error: wsError } = await supabase
       .from('campaign_workspaces')
