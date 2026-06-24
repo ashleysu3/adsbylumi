@@ -3,7 +3,8 @@ import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Download, Sparkles } from "lucide-react";
+import { Download, Sparkles, HelpCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ImportCampaignsModal } from "./ImportCampaignsModal";
 
 /**
@@ -120,15 +121,13 @@ export function MetaImportBridgeBanner({ surface = "campaigns" }: Props) {
     return null;
   }
 
-  const headline =
-    unimportedCount === 1
-      ? "You have 1 campaign running in Meta that isn't in LUMI yet"
-      : `You have ${unimportedCount} campaigns running in Meta that aren't in LUMI yet`;
+  const isOne = unimportedCount === 1;
+  const itThem = isOne ? "it" : "them";
+  const campaignWord = isOne ? "campaign" : "campaigns";
+  const isAre = isOne ? "is" : "are";
 
-  const sub =
-    surface === "live-ads"
-      ? "Import them to manage them here, add creative, and track results in one place."
-      : "Import them here to manage them, add creative, and see them alongside your LUMI-built campaigns.";
+  const tooltipBody =
+    "Campaigns you create directly in Meta show up under Live Ads automatically. Importing one brings it into LUMI so you can add creative and manage it here — it won't change, pause, or move anything in your Meta account.";
 
   return (
     <>
@@ -138,10 +137,30 @@ export function MetaImportBridgeBanner({ surface = "campaigns" }: Props) {
             <Sparkles className="h-4 w-4 text-primary" />
           </div>
           <div className="flex-1 space-y-2">
-            <AlertDescription className="text-sm font-semibold text-foreground">
-              {headline}
-            </AlertDescription>
-            <p className="text-xs text-muted-foreground">{sub}</p>
+            <div className="flex items-center gap-1.5">
+              <AlertDescription className="text-sm font-semibold text-foreground">
+                Running in Meta, not in LUMI yet
+              </AlertDescription>
+              <TooltipProvider delayDuration={150}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="What does importing do?"
+                      className="text-muted-foreground/70 hover:text-foreground transition-colors"
+                    >
+                      <HelpCircle className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs text-xs leading-relaxed">
+                    {tooltipBody}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              LUMI can see <span className="font-medium text-foreground">{unimportedCount} {campaignWord}</span> live in your Meta account but {isAre}n't managing {itThem} yet. Import {itThem} to add creative, track performance, and let LUMI help you optimize. Nothing changes in Meta.
+            </p>
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <Button
                 size="sm"
