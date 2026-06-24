@@ -301,9 +301,30 @@ Deno.serve(async (req) => {
     const failedAds: Array<{ postId: string; error: string }> = [];
 
     for (const post of posts) {
-      const postId = post.id;
-      const caption = post.caption || '';
+      let postId = post.id;
+      let caption = post.caption || '';
       const isFacebookPost = post.platform === 'facebook' || !!post.facebook_post_id;
+
+      // Fallback: user pasted an Instagram URL instead of picking from the list.
+      if (!postId && !isFacebookPost && (post.url || post.permalink)) {
+        if (!igAccountId) {
+          failedAds.push({ postId: post.url || 'url', error: 'No Instagram account is connected to this brand.' });
+          continue;
+        }
+        const resolved = await resolveIgMediaByUrl(igAccountId, post.url || post.permalink, metaAccessToken);
+        if (resolved.error || !resolved.id) {
+          failedAds.push({ postId: post.url || 'url', error: resolved.error || "Couldn't resolve that URL." });
+          continue;
+        }
+        postId = resolved.id;
+        if (!caption) caption = resolved.caption || '';
+        post.media_type = post.media_type || resolved.media_type;
+      }
+
+      if (!postId) {
+        failedAds.push({ postId: 'unknown', error: 'Missing post id or URL.' });
+        continue;
+      }
 
       if (!isFacebookPost && post.instagram_account_id && post.instagram_account_id !== igAccountId) {
         failedAds.push({
