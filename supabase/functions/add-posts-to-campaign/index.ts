@@ -29,6 +29,13 @@ function translateMetaCreativeError(error: any): string {
   if (msg.includes('valid instagram media') || msg.includes('media v2 id')) {
     return "Meta won't accept this Instagram post as an ad through the link path right now (it needs Instagram browsing permissions we don't have). Use the Facebook Page tab to pick the same post — that path works with your current permissions.";
   }
+  if (
+    msg.includes('call_to_action') || msg.includes('call to action') ||
+    msg.includes('link_url') || msg.includes('destination') ||
+    msg.includes('website url') || msg.includes('objective')
+  ) {
+    return "This campaign is optimized for a destination (conversions or leads), so your post needs a link + CTA. Add the URL you want people to land on and we'll attach it to the ad.";
+  }
   if (msg.includes('does not exist') || msg.includes('not found') || (code === 100 && !msg.includes('param'))) {
     return "We couldn't find this post. It may have been deleted or is from a private account.";
   }
@@ -42,7 +49,7 @@ function translateMetaCreativeError(error: any): string {
     return "Stories and expired content can't be used as ads. Try a regular post or Reel.";
   }
   if (error.error_user_msg) return error.error_user_msg;
-  return "Meta couldn't use this post as an ad. Try a different one.";
+  return error.message || "Meta couldn't use this post as an ad. Try a different one.";
 }
 
 async function fetchAdPreview(adId: string, token: string): Promise<string | null> {
