@@ -865,6 +865,30 @@ export default function CloserLook() {
 
         </Card>
 
+        {/* Lead-fit feedback loop */}
+        {activeBrand && workspaceId && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Target className="h-4 w-4" /> Lead quality
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <AdFitReviewTaskCard
+                workspaceId={workspaceId}
+                brandId={activeBrand.id}
+                variant="full"
+              />
+              <LeadQualityCheck
+                workspaceId={workspaceId}
+                brandId={activeBrand.id}
+                campaignMetaId={(result?.campaign as any)?.id || null}
+                variant="full"
+              />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Recent actions */}
         <Card>
           <CardHeader className="pb-2">
