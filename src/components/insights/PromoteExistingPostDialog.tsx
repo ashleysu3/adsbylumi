@@ -32,6 +32,7 @@ import {
   Link as LinkIcon,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 
 interface FetchedPost {
   id: string;
