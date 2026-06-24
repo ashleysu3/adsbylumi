@@ -976,6 +976,17 @@ export default function CloserLook() {
           }] : []}
           onGoalsSaved={() => { setGoalModalOpen(false); setReloadKey((n) => n + 1); }}
         />
+
+        {workspaceId && activeBrand && (
+          <PromoteExistingPostDialog
+            open={promoteOpen}
+            onOpenChange={setPromoteOpen}
+            workspaceId={workspaceId}
+            brandId={activeBrand.id}
+            workspaceName={workspaceName || result.campaign.name}
+            campaignObjective={result.meta?.campaignType || null}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
