@@ -13,10 +13,11 @@ interface TeamMember {
   email: string | null;
   role: string;
   invite_status: string;
-  invite_token: string | null;
   user_id: string | null;
   created_at: string;
 }
+
+// (invite_token is no longer client-readable — fetched via get_team_invite_token RPC on demand)
 
 interface TeamMembersSectionProps {
   brandId?: string;
