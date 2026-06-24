@@ -29,8 +29,11 @@ function translateMetaCreativeError(error: any): string {
   if (code === 100 || msg.includes('does not exist') || msg.includes('not found')) {
     return "We couldn't find this post. It may have been deleted or is from a private account.";
   }
-  if (code === 10 || code === 200 || code === 190 || msg.includes('permission') || userMsg.includes('permission')) {
-    return "Meta won't let LUMI use this post as an ad. Reconnect Meta from Settings and make sure the Instagram account is on a Business or Creator profile linked to your Page with posts access — then try again.";
+  if (code === 10 || code === 200 || msg.includes('permission') || userMsg.includes('permission')) {
+    return "Meta couldn't use this linked post with the connected ad account. Make sure the link is a public post or Reel from the Instagram account connected to this brand, then try again.";
+  }
+  if (code === 190) {
+    return "Meta says this connection has expired. Refresh the Meta connection from Settings, then try again.";
   }
   if (msg.includes('story') || msg.includes('expired')) {
     return "Stories and expired content can't be used as ads. Try a regular post or Reel.";
@@ -101,6 +104,25 @@ function extractIgShortcode(url: string): string | null {
   return m?.[1] || null;
 }
 
+/**
+ * Instagram shortcodes are a base64-ish encoding of the organic media id.
+ * Decoding the ID from the pasted permalink lets us create existing-post ads
+ * without calling /{ig-user-id}/media, which is the endpoint that commonly
+ * fails for users even when ads_management is valid.
+ */
+function decodeIgShortcodeToMediaId(shortcode: string): string | null {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  let value = 0n;
+
+  for (const char of shortcode) {
+    const index = alphabet.indexOf(char);
+    if (index < 0) return null;
+    value = value * 64n + BigInt(index);
+  }
+
+  return value > 0n ? value.toString() : null;
+}
+
 /** Resolve a pasted IG URL to a media id by scanning the connected IG account's media list. */
 async function resolveIgMediaByUrl(
   igUserId: string,
@@ -111,6 +133,14 @@ async function resolveIgMediaByUrl(
   if (!shortcode) {
     return { error: "That doesn't look like an Instagram post URL. Use a link like instagram.com/p/… or /reel/…" };
   }
+
+  const decodedMediaId = decodeIgShortcodeToMediaId(shortcode);
+  if (decodedMediaId) {
+    return { id: decodedMediaId };
+  }
+
+  // Last-resort fallback for unusual permalink formats: scan the connected
+  // account's media list when Meta allows it.
   const fields = 'id,permalink,caption,media_type,thumbnail_url,media_url';
   let next: string | null =
     `https://graph.facebook.com/v25.0/${igUserId}/media?fields=${fields}&limit=50&access_token=${token}`;
@@ -125,7 +155,7 @@ async function resolveIgMediaByUrl(
         if (code === 10 || code === 200 || code === 190 || msg.includes('permission')) {
           return {
             error:
-              "Meta won't let LUMI read this Instagram account's posts. Reconnect Meta from Settings and make sure the Instagram account is linked to your Page with posts access — then try again.",
+              "Meta couldn't resolve that Instagram link automatically. Make sure it is a public post or Reel from the Instagram account connected to this brand.",
           };
         }
         return { error: data.error.message || 'Meta rejected the media lookup.' };
