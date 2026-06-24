@@ -218,17 +218,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               >
                 <LogOut className="h-4 w-4" />
               </button>
-              <button
-                type="button"
-                aria-label="Sign out"
-                title="Sign out"
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  sonnerToast.success("Signed out");
-                  navigate("/auth");
-                }}
-                className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
                 <LogOut className="h-4 w-4" />
               </button>
             </div>
