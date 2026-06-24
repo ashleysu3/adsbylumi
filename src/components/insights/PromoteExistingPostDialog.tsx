@@ -295,22 +295,39 @@ export function PromoteExistingPostDialog({
   }
 
   async function handleCreatePausedAd() {
-    if (!selectedPost && !(useManualUrl && manualUrl.trim())) return;
+    const hasUrl = !!manualUrl.trim();
+    if (!selectedPost && !hasUrl) return;
     setSubmitting(true);
     try {
-      const postPayload = selectedPost
-        ? {
+      let postPayload: any;
+      if (selectedPost) {
+        if (selectedPost.platform === "facebook") {
+          postPayload = {
+            id: selectedPost.id,
+            facebook_post_id: selectedPost.facebook_post_id || selectedPost.id,
+            media_type: selectedPost.media_type,
+            caption: selectedPost.caption || "",
+            platform: "facebook",
+          };
+        } else {
+          postPayload = {
             id: selectedPost.id,
             media_type: selectedPost.media_type,
             caption: selectedPost.caption || "",
             instagram_account_id: igAccountId,
             platform: "instagram",
-          }
-        : {
-            url: manualUrl.trim(),
-            instagram_account_id: igAccountId,
-            platform: "instagram",
           };
+        }
+      } else {
+        // Pasted URL — could be Instagram or Facebook. add-posts-to-campaign already
+        // handles IG URL resolution; FB URLs flow through as page-post links.
+        const isFb = /facebook\.com\//i.test(manualUrl);
+        postPayload = {
+          url: manualUrl.trim(),
+          instagram_account_id: isFb ? null : igAccountId,
+          platform: isFb ? "facebook" : "instagram",
+        };
+      }
       const { data, error } = await supabase.functions.invoke("add-posts-to-campaign", {
         body: {
           workspaceId,
