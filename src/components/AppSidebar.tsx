@@ -198,16 +198,8 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
   }, []);
 
   const brandWithVip = useMemo<NavGroup>(() => {
-    const brandGroup = groups.find((g) => g.key === "brand")!;
-    if (!hasVipBonuses) return brandGroup;
-    return {
-      ...brandGroup,
-      items: [
-        ...brandGroup.items,
-        { label: "VIP Offers", to: "/refer", icon: Crown },
-      ],
-    };
-  }, [hasVipBonuses]);
+    return groups.find((g) => g.key === "brand")!;
+  }, []);
 
   const allGroups: NavGroup[] = [
     ...groups.map((g) => (g.key === "brand" ? brandWithVip : g)),
