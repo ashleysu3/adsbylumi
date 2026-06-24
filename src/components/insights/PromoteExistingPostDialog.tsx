@@ -17,13 +17,14 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   Instagram,
+  Facebook,
   Heart,
   MessageCircle,
+  Share2,
   Loader2,
   CheckCircle2,
   AlertTriangle,
   XCircle,
-  ShieldAlert,
   Sparkles,
   ArrowLeft,
   ArrowRight,
@@ -33,9 +34,11 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface FetchedPost {
   id: string;
+  facebook_post_id?: string;
   caption?: string;
   media_type: "IMAGE" | "VIDEO" | "CAROUSEL_ALBUM";
   media_url?: string;
@@ -43,6 +46,9 @@ interface FetchedPost {
   permalink: string;
   like_count?: number;
   comments_count?: number;
+  share_count?: number;
+  platform: "facebook" | "instagram";
+  created_time?: string;
 }
 
 interface FitResult {
@@ -123,6 +129,81 @@ function VerdictBanner({ fit }: { fit: FitResult }) {
   );
 }
 
+function PostGrid({
+  posts,
+  selectedId,
+  onPick,
+}: {
+  posts: FetchedPost[];
+  selectedId?: string;
+  onPick: (p: FetchedPost) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      {posts.map((p) => {
+        const selected = selectedId === p.id;
+        const thumb = p.thumbnail_url || p.media_url;
+        const PlatformIcon = p.platform === "facebook" ? Facebook : Instagram;
+        return (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => onPick(p)}
+            className={cn(
+              "relative rounded-lg overflow-hidden border-2 text-left transition-all group",
+              selected ? "border-primary ring-2 ring-primary/30" : "border-border hover:border-primary/50"
+            )}
+          >
+            <div className="aspect-square bg-muted relative">
+              {thumb ? (
+                <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <PlatformIcon className="h-6 w-6 text-muted-foreground" />
+                </div>
+              )}
+              {selected && (
+                <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                  <CheckCircle2 className="h-6 w-6 text-primary-foreground bg-primary rounded-full p-1" />
+                </div>
+              )}
+              {p.media_type === "VIDEO" && (
+                <Badge className="absolute bottom-1 left-1 text-[9px] px-1 py-0 bg-background/70 text-foreground backdrop-blur-sm">
+                  {p.platform === "facebook" ? "Video" : "Reel"}
+                </Badge>
+              )}
+            </div>
+            <div className="p-2 space-y-1">
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                {p.like_count !== undefined && (
+                  <span className="flex items-center gap-1">
+                    <Heart className="h-3 w-3" /> {p.like_count}
+                  </span>
+                )}
+                {p.comments_count !== undefined && (
+                  <span className="flex items-center gap-1">
+                    <MessageCircle className="h-3 w-3" /> {p.comments_count}
+                  </span>
+                )}
+                {p.share_count !== undefined && p.share_count > 0 && (
+                  <span className="flex items-center gap-1">
+                    <Share2 className="h-3 w-3" /> {p.share_count}
+                  </span>
+                )}
+              </div>
+              {p.caption && (
+                <p className="text-[11px] text-muted-foreground line-clamp-2 leading-snug">
+                  {p.caption}
+                </p>
+              )}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function PromoteExistingPostDialog({
   open,
   onOpenChange,
@@ -134,13 +215,15 @@ export function PromoteExistingPostDialog({
   const [step, setStep] = useState<Step>("pick");
 
   // Step 1: pick
-  const [postsLoading, setPostsLoading] = useState(false);
-  const [posts, setPosts] = useState<FetchedPost[]>([]);
-  const [postsError, setPostsError] = useState<string | null>(null);
+  const [fbPostsLoading, setFbPostsLoading] = useState(false);
+  const [fbPosts, setFbPosts] = useState<FetchedPost[]>([]);
+  const [fbPostsError, setFbPostsError] = useState<string | null>(null);
+  const [igPosts, setIgPosts] = useState<FetchedPost[]>([]);
+  const [igAvailable, setIgAvailable] = useState(false);
+  const [pickerTab, setPickerTab] = useState<"facebook" | "instagram" | "link">("facebook");
   const [igAccountId, setIgAccountId] = useState<string | null>(null);
   const [selectedPost, setSelectedPost] = useState<FetchedPost | null>(null);
   const [manualUrl, setManualUrl] = useState("");
-  const [useManualUrl, setUseManualUrl] = useState(false);
 
   // Step 2: fit
   const [fitLoading, setFitLoading] = useState(false);
@@ -148,7 +231,8 @@ export function PromoteExistingPostDialog({
 
   // Step 3: placement
   const [placement, setPlacement] = useState<"new" | "existing">("new");
-  const [launchLive, setLaunchLive] = useState(true); // default: go live unless user opts to start paused
+  // Default: paused so user reviews before it runs. Toggle to launch live immediately.
+  const [launchLive, setLaunchLive] = useState(false);
 
   // Step 4: preview
   const [submitting, setSubmitting] = useState(false);
@@ -162,69 +246,88 @@ export function PromoteExistingPostDialog({
     if (!open) {
       setTimeout(() => {
         setStep("pick");
-        setPosts([]);
+        setFbPosts([]);
+        setIgPosts([]);
+        setIgAvailable(false);
+        setPickerTab("facebook");
         setSelectedPost(null);
         setFit(null);
         setPlacement("new");
+        setLaunchLive(false);
         setCreatedAds([]);
         setCreatedAdSetId(null);
         setNewAdSetCreated(false);
-        setPostsError(null);
+        setFbPostsError(null);
         setManualUrl("");
-        setUseManualUrl(false);
       }, 250);
     }
   }, [open]);
 
   // Load posts on open
+  // Primary: Facebook Page posts (uses pages_read_engagement — already granted).
+  // Progressive: try Instagram media; if permissions block it, silently hide that tab.
   useEffect(() => {
     if (!open || !brandId) return;
     let cancelled = false;
-    (async () => {
-      setPostsLoading(true);
-      setPostsError(null);
-      try {
-        const { data: brand } = await supabase
-          .from("brands")
-          .select("instagram_account_id, instagram_account_name")
-          .eq("id", brandId)
-          .maybeSingle();
-        if (cancelled) return;
-        if (!brand?.instagram_account_id) {
-          setPostsError(
-            "No Instagram account is connected to this brand. Connect one in Meta Settings to promote existing posts."
-          );
-          return;
-        }
-        setIgAccountId(brand.instagram_account_id);
 
-        const { data, error } = await supabase.functions.invoke("analyze-instagram-posts", {
-          body: { brandId, instagramAccountId: brand.instagram_account_id, simple: false },
+    (async () => {
+      const { data: brand } = await supabase
+        .from("brands")
+        .select("instagram_account_id")
+        .eq("id", brandId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (brand?.instagram_account_id) setIgAccountId(brand.instagram_account_id);
+
+      // --- 1. Facebook Page posts (primary) ---
+      setFbPostsLoading(true);
+      setFbPostsError(null);
+      try {
+        const { data, error } = await supabase.functions.invoke("list-facebook-page-posts", {
+          body: { brandId },
         });
         if (cancelled) return;
         if (error) throw error;
-        if (data?.error) {
-          setPostsError(data.error);
-          return;
+        if (data?.error && (!data?.posts || data.posts.length === 0)) {
+          setFbPostsError(data.error);
+        } else {
+          setFbPosts((data?.posts || []) as FetchedPost[]);
         }
-        const list: FetchedPost[] = data?.posts || [];
-        // Sort by engagement so high-performers surface first
-        list.sort((a, b) => {
-          const ae = (a.like_count || 0) + (a.comments_count || 0);
-          const be = (b.like_count || 0) + (b.comments_count || 0);
-          return be - ae;
-        });
-        setPosts(list);
       } catch (e: any) {
-        if (!cancelled) {
-          setPostsError(e?.message || "Couldn't load posts.");
-        }
+        if (!cancelled) setFbPostsError(e?.message || "Couldn't load Page posts.");
       } finally {
-        if (!cancelled) setPostsLoading(false);
+        if (!cancelled) setFbPostsLoading(false);
+      }
+
+      // --- 2. Instagram (progressive enhancement — silent on failure) ---
+      if (brand?.instagram_account_id) {
+        try {
+          const { data, error } = await supabase.functions.invoke("analyze-instagram-posts", {
+            body: { brandId, instagramAccountId: brand.instagram_account_id, simple: true },
+          });
+          if (cancelled) return;
+          if (!error && data?.posts?.length && !data?.fallbackMode) {
+            const list: FetchedPost[] = (data.posts as any[]).map((p) => ({
+              ...p,
+              platform: "instagram" as const,
+            }));
+            list.sort((a, b) => {
+              const ae = (a.like_count || 0) + (a.comments_count || 0);
+              const be = (b.like_count || 0) + (b.comments_count || 0);
+              return be - ae;
+            });
+            setIgPosts(list);
+            setIgAvailable(true);
+          }
+        } catch {
+          // Silent — IG is optional. Page posts + URL paste cover this flow.
+        }
       }
     })();
+
     return () => { cancelled = true; };
   }, [open, brandId]);
+
 
   async function runFitCheck(post: FetchedPost) {
     setFitLoading(true);
@@ -267,22 +370,39 @@ export function PromoteExistingPostDialog({
   }
 
   async function handleCreatePausedAd() {
-    if (!selectedPost && !(useManualUrl && manualUrl.trim())) return;
+    const hasUrl = !!manualUrl.trim();
+    if (!selectedPost && !hasUrl) return;
     setSubmitting(true);
     try {
-      const postPayload = selectedPost
-        ? {
+      let postPayload: any;
+      if (selectedPost) {
+        if (selectedPost.platform === "facebook") {
+          postPayload = {
+            id: selectedPost.id,
+            facebook_post_id: selectedPost.facebook_post_id || selectedPost.id,
+            media_type: selectedPost.media_type,
+            caption: selectedPost.caption || "",
+            platform: "facebook",
+          };
+        } else {
+          postPayload = {
             id: selectedPost.id,
             media_type: selectedPost.media_type,
             caption: selectedPost.caption || "",
             instagram_account_id: igAccountId,
             platform: "instagram",
-          }
-        : {
-            url: manualUrl.trim(),
-            instagram_account_id: igAccountId,
-            platform: "instagram",
           };
+        }
+      } else {
+        // Pasted URL — could be Instagram or Facebook. add-posts-to-campaign already
+        // handles IG URL resolution; FB URLs flow through as page-post links.
+        const isFb = /facebook\.com\//i.test(manualUrl);
+        postPayload = {
+          url: manualUrl.trim(),
+          instagram_account_id: isFb ? null : igAccountId,
+          platform: isFb ? "facebook" : "instagram",
+        };
+      }
       const { data, error } = await supabase.functions.invoke("add-posts-to-campaign", {
         body: {
           workspaceId,
@@ -361,142 +481,113 @@ export function PromoteExistingPostDialog({
           {/* STEP 1 — PICK */}
           {step === "pick" && (
             <div className="space-y-4 py-2">
-              <div className="text-xs text-muted-foreground">
-                Showing your recent Instagram posts, sorted by engagement.
-              </div>
+              <Tabs value={pickerTab} onValueChange={(v) => setPickerTab(v as any)}>
+                <TabsList className="w-full">
+                  <TabsTrigger value="facebook" className="flex-1 gap-1.5">
+                    <Facebook className="h-3.5 w-3.5" /> Facebook Page
+                  </TabsTrigger>
+                  <TabsTrigger value="instagram" className="flex-1 gap-1.5" disabled={!igAvailable}>
+                    <Instagram className="h-3.5 w-3.5" /> Instagram
+                  </TabsTrigger>
+                  <TabsTrigger value="link" className="flex-1 gap-1.5">
+                    <LinkIcon className="h-3.5 w-3.5" /> Paste link
+                  </TabsTrigger>
+                </TabsList>
 
-              {postsLoading && (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                  {[...Array(8)].map((_, i) => (
-                    <Skeleton key={i} className="aspect-square rounded-lg" />
-                  ))}
-                </div>
-              )}
-
-              {!postsLoading && postsError && (() => {
-                const isPermission = /#10|permission|OAuthException/i.test(postsError);
-                return (
-                  <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm space-y-2">
-                    <div className="flex items-center gap-2 text-destructive font-medium">
-                      <ShieldAlert className="h-4 w-4" />
-                      {isPermission ? "Post browsing isn't available right now" : "We couldn't load your posts"}
-                    </div>
-                    <p className="text-muted-foreground text-xs">
-                      {isPermission
-                        ? "You can still paste the exact Instagram post or Reel link below and we'll use that link directly."
-                        : postsError}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground pt-1">
-                      Paste a post URL below — we'll try to publish it with the Meta access you already have.
-                    </p>
+                {/* --- Facebook Page posts --- */}
+                <TabsContent value="facebook" className="space-y-3 mt-3">
+                  <div className="text-xs text-muted-foreground">
+                    Your most recent Facebook Page posts. Pick one to add as a paused ad — you'll review it before it runs.
                   </div>
-                );
-              })()}
 
-              {!postsLoading && !postsError && posts.length === 0 && (
-                <p className="text-sm text-muted-foreground py-8 text-center">
-                  No recent posts found on the connected Instagram account.
-                </p>
-              )}
+                  {fbPostsLoading && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {[...Array(6)].map((_, i) => (
+                        <Skeleton key={i} className="aspect-square rounded-lg" />
+                      ))}
+                    </div>
+                  )}
 
-              {!postsLoading && posts.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {posts.map((p) => {
-                    const reason = disabledReason(p);
-                    const disabled = !!reason;
-                    const selected = selectedPost?.id === p.id;
-                    const eng = (p.like_count || 0) + (p.comments_count || 0);
-                    const thumb = p.thumbnail_url || p.media_url;
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        disabled={disabled}
-                        onClick={() => setSelectedPost(p)}
-                        title={reason || undefined}
-                        className={cn(
-                          "relative rounded-lg overflow-hidden border-2 text-left transition-all group",
-                          disabled && "opacity-40 cursor-not-allowed",
-                          !disabled && selected && "border-primary ring-2 ring-primary/30",
-                          !disabled && !selected && "border-border hover:border-primary/50"
-                        )}
-                      >
-                        <div className="aspect-square bg-muted relative">
-                          {thumb ? (
-                            <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Instagram className="h-6 w-6 text-muted-foreground" />
-                            </div>
-                          )}
-                          {selected && (
-                            <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                              <CheckCircle2 className="h-6 w-6 text-primary-foreground bg-primary rounded-full p-1" />
-                            </div>
-                          )}
-                          {p.media_type === "VIDEO" && (
-                            <Badge className="absolute bottom-1 left-1 text-[9px] px-1 py-0 bg-background/70 text-foreground backdrop-blur-sm">
-                              Reel
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="p-2 space-y-1">
-                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Heart className="h-3 w-3" /> {p.like_count ?? "—"}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <MessageCircle className="h-3 w-3" /> {p.comments_count ?? "—"}
-                            </span>
-                            {eng > 0 && (
-                              <span className="ml-auto text-[10px] text-foreground/70">{eng} total</span>
-                            )}
-                          </div>
-                          {p.caption && (
-                            <p className="text-[11px] text-muted-foreground line-clamp-2 leading-snug">
-                              {p.caption}
-                            </p>
-                          )}
-                          {reason && (
-                            <p className="text-[10px] text-destructive/80">{reason}</p>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                  {!fbPostsLoading && fbPostsError && fbPosts.length === 0 && (
+                    <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm space-y-1">
+                      <p className="font-medium">No Page posts available</p>
+                      <p className="text-xs text-muted-foreground">{fbPostsError}</p>
+                      <p className="text-xs text-muted-foreground pt-1">
+                        You can still paste a post link in the <strong>Paste link</strong> tab above.
+                      </p>
+                    </div>
+                  )}
 
-              {/* Manual URL fallback — works even when Meta's post fetch fails */}
-              <div className="rounded-xl border border-dashed bg-muted/30 p-4 space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <LinkIcon className="h-4 w-4 text-primary" />
-                  Don't see the post you want? Paste its URL.
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Meta sometimes hides posts from this list. Drop in the link to any post on your
-                  connected Instagram account and we'll pull it directly.
-                </p>
-                <Input
-                  type="url"
-                  placeholder="https://www.instagram.com/p/…  or  /reel/…"
-                  value={manualUrl}
-                  onChange={(e) => {
-                    setManualUrl(e.target.value);
-                    setUseManualUrl(!!e.target.value.trim());
-                    if (e.target.value.trim()) setSelectedPost(null);
-                  }}
-                  className="bg-background"
-                />
-                {useManualUrl && (
-                  <p className="text-[11px] text-muted-foreground">
-                    We'll match this URL to your connected Instagram account before creating the ad
-                    (paused).
-                  </p>
-                )}
-              </div>
+                  {!fbPostsLoading && fbPosts.length === 0 && !fbPostsError && (
+                    <p className="text-sm text-muted-foreground py-8 text-center">
+                      No recent posts found on the connected Facebook Page.
+                    </p>
+                  )}
+
+                  {!fbPostsLoading && fbPosts.length > 0 && (
+                    <PostGrid
+                      posts={fbPosts}
+                      selectedId={selectedPost?.id}
+                      onPick={(p) => { setSelectedPost(p); setManualUrl(""); }}
+                    />
+                  )}
+                </TabsContent>
+
+                {/* --- Instagram (progressive) --- */}
+                <TabsContent value="instagram" className="space-y-3 mt-3">
+                  {igAvailable && igPosts.length > 0 ? (
+                    <>
+                      <div className="text-xs text-muted-foreground">
+                        Your recent Instagram posts, sorted by engagement.
+                      </div>
+                      <PostGrid
+                        posts={igPosts}
+                        selectedId={selectedPost?.id}
+                        onPick={(p) => { setSelectedPost(p); setManualUrl(""); }}
+                      />
+                    </>
+                  ) : (
+                    <div className="rounded-xl border border-dashed bg-muted/30 p-4 text-sm space-y-1">
+                      <p className="font-medium">Instagram browsing isn't connected yet</p>
+                      <p className="text-xs text-muted-foreground">
+                        Connect Instagram browsing to see all your IG posts here automatically (coming soon).
+                        Meanwhile, use <strong>Facebook Page</strong> posts or <strong>Paste link</strong> to promote an IG post directly.
+                      </p>
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* --- Paste link --- */}
+                <TabsContent value="link" className="space-y-3 mt-3">
+                  <div className="rounded-xl border border-dashed bg-muted/30 p-4 space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <LinkIcon className="h-4 w-4 text-primary" />
+                      Paste an Instagram or Facebook post link
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Works for any public post or Reel on your connected accounts. We'll pull it straight from the link — no extra Instagram permissions required.
+                    </p>
+                    <Input
+                      type="url"
+                      placeholder="https://www.instagram.com/p/…  or  https://www.facebook.com/…"
+                      value={manualUrl}
+                      onChange={(e) => {
+                        setManualUrl(e.target.value);
+                        if (e.target.value.trim()) setSelectedPost(null);
+                      }}
+                      className="bg-background"
+                    />
+                    {manualUrl.trim() && (
+                      <p className="text-[11px] text-muted-foreground">
+                        We'll add this as a paused ad so you can review it before it runs.
+                      </p>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
           )}
+
 
           {/* STEP 2 — FIT */}
           {step === "fit" && selectedPost && (
@@ -665,10 +756,10 @@ export function PromoteExistingPostDialog({
             <>
               <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button
-                disabled={!selectedPost && !(useManualUrl && manualUrl.trim())}
+                disabled={!selectedPost && !manualUrl.trim()}
                 onClick={() => {
                   // Manual URL skips the fit check (no caption yet) and goes straight to placement.
-                  if (!selectedPost && useManualUrl && manualUrl.trim()) {
+                  if (!selectedPost && manualUrl.trim()) {
                     setStep("place");
                     return;
                   }
@@ -676,7 +767,7 @@ export function PromoteExistingPostDialog({
                   if (selectedPost) runFitCheck(selectedPost);
                 }}
               >
-                {!selectedPost && useManualUrl ? "Next: placement" : "Next: fit check"}
+                {!selectedPost && manualUrl.trim() ? "Next: placement" : "Next: fit check"}
                 <ArrowRight className="h-4 w-4 ml-1.5" />
               </Button>
             </>
