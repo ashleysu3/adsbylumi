@@ -299,6 +299,74 @@ function CheckRow({ check, onAction }: { check: Check; onAction: (a: ActionHint 
 }
 
 // ---------------------------------------------------------------------------
+// AssetsSummary — anyone-can-verify panel: which Ad account, Page, and IG are
+// connected (by name), plus per-permission Granted/Missing chips, plus a single
+// "Fix / re-pick assets" CTA when something needs attention.
+// ---------------------------------------------------------------------------
+function AssetsSummary({ meta, onReconnect }: { meta: any; onReconnect: () => void }) {
+  if (!meta) return null;
+  const adAccount = meta.adAccountName
+    ? `${meta.adAccountName}${meta.adAccountId ? ` (${meta.adAccountId})` : ''}`
+    : meta.adAccountId || null;
+  const igUsername = meta.instagramUsername ? `@${meta.instagramUsername}` : null;
+  const perms = meta.permissions as { required?: string[]; granted?: string[]; missing?: string[] } | undefined;
+
+  return (
+    <div className="space-y-3 rounded-md border bg-background/60 p-3">
+      <div className="grid gap-2 sm:grid-cols-3 text-xs">
+        <AssetCell label="Ad account" value={adAccount} missingLabel="Not selected" onFix={!adAccount ? onReconnect : undefined} />
+        <AssetCell label="Facebook Page" value={meta.pageName || null} missingLabel="Not linked" onFix={!meta.pageName ? onReconnect : undefined} />
+        <AssetCell label="Instagram" value={igUsername || meta.instagramName || null} missingLabel="Not linked" onFix={!igUsername && !meta.instagramName ? onReconnect : undefined} />
+      </div>
+      {perms?.required && perms.required.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5">Permissions</p>
+          <div className="flex flex-wrap gap-1.5">
+            {perms.required.map((p) => {
+              const granted = (perms.granted || []).includes(p);
+              return (
+                <Badge
+                  key={p}
+                  variant="outline"
+                  className={cn(
+                    'text-[10px] font-mono',
+                    granted
+                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700'
+                      : 'border-destructive/40 bg-destructive/10 text-destructive',
+                  )}
+                >
+                  {granted ? '✓' : '✗'} {p}
+                </Badge>
+              );
+            })}
+          </div>
+          {perms.missing && perms.missing.length > 0 && (
+            <p className="text-[11px] text-destructive mt-1.5">
+              Meta didn't grant {perms.missing.length} required permission{perms.missing.length === 1 ? '' : 's'}. Re-pick assets and accept all permissions on Meta's consent screen.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AssetCell({ label, value, missingLabel, onFix }: { label: string; value: string | null; missingLabel: string; onFix?: () => void }) {
+  return (
+    <div className={cn('rounded-md border p-2', value ? 'bg-muted/30' : 'bg-destructive/5 border-destructive/30')}>
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">{label}</p>
+      {value ? (
+        <p className="font-medium truncate">{value}</p>
+      ) : (
+        <button onClick={onFix} className="text-destructive underline-offset-2 hover:underline font-medium">
+          {missingLabel} — fix
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Visual treatment per overall status
 // ---------------------------------------------------------------------------
 
