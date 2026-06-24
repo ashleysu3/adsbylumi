@@ -168,6 +168,8 @@ export function PromoteExistingPostDialog({
         setCreatedAdSetId(null);
         setNewAdSetCreated(false);
         setPostsError(null);
+        setManualUrl("");
+        setUseManualUrl(false);
       }, 250);
     }
   }, [open]);
