@@ -20,6 +20,14 @@ export function LabAngles({ seedId: _seedId }: { seedId?: string }) {
     }
     setLoading(true);
     setResults([]);
+    const label = `Brainstorming fresh angles${prompt.trim() ? ` for: ${prompt.trim().slice(0, 80)}` : ""}`;
+    const jobId = await startCreative({
+      brandId: activeBrand.id,
+      type: "angle",
+      taskLabel: label,
+      source: "lab",
+      sourceRef: { tool: "angles", prompt },
+    });
     try {
       const { data, error } = await supabase.functions.invoke("generate-creative-angles", {
         body: {
@@ -31,25 +39,36 @@ export function LabAngles({ seedId: _seedId }: { seedId?: string }) {
       if (error) throw error;
       const arr: any[] = data?.angles || data?.results || data?.items || [];
       if (arr.length === 0) {
-        toast.error(data?.error || "No angles generated");
-      } else {
-        setResults(arr);
-        for (const a of arr) {
-          const title = a.title || a.name || a.angle || "Angle";
-          const desc = a.description || a.why || a.summary || "";
-          await saveCreative({
-            brandId: activeBrand.id,
-            type: "angle",
-            title,
-            content: { text: desc, ...a },
-            source: "lab",
-            sourceRef: { tool: "angles", prompt },
-          });
-        }
-        toast.success(`${arr.length} angles saved to My Creatives`);
+        const msg = data?.error || "No angles generated";
+        if (jobId) await failCreative(jobId, msg);
+        toast.error(msg);
+        return;
       }
+      setResults(arr);
+      const first = arr[0];
+      if (jobId) {
+        await completeCreative(jobId, {
+          type: "angle",
+          title: first.title || first.name || first.angle || "Angle",
+          content: { text: first.description || first.why || first.summary || "", ...first },
+        });
+      }
+      for (const a of arr.slice(1)) {
+        const title = a.title || a.name || a.angle || "Angle";
+        const desc = a.description || a.why || a.summary || "";
+        await saveCreative({
+          brandId: activeBrand.id,
+          type: "angle",
+          title,
+          content: { text: desc, ...a },
+          source: "lab",
+          sourceRef: { tool: "angles", prompt },
+        });
+      }
+      toast.success(`${arr.length} angles ready in My Creatives`);
     } catch (e: any) {
       console.error(e);
+      if (jobId) await failCreative(jobId, e?.message || "Generation failed");
       toast.error(e?.message || "Couldn't generate angles");
     } finally {
       setLoading(false);
