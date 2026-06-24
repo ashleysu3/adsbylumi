@@ -114,6 +114,7 @@ import AdGenerator from "./pages/AdGenerator";
 import BrandSetup from "./pages/BrandSetup";
 import Photos from "./pages/Photos";
 import Creative from "./pages/Creative";
+import MyCreatives from "./pages/MyCreatives";
 import Launch from "./pages/Launch";
 import Performance from "./pages/Performance";
 import CloserLook from "./pages/CloserLook";
