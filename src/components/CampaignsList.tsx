@@ -387,30 +387,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
 
         {/* Filter tabs */}
         {campaigns.length > 0 && !combineMode && (
-          <div className="flex items-center gap-1 mt-3">
-            {([
-              { key: "all" as ViewFilter, label: "All", count: campaigns.length },
-              { key: "live" as ViewFilter, label: "Live", count: liveCount },
-              { key: "draft" as ViewFilter, label: "Drafts", count: draftCount },
-            ]).map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setViewFilter(tab.key)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                  viewFilter === tab.key
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                {tab.label}
-                {tab.count > 0 && (
-                  <span className={`ml-1.5 ${viewFilter === tab.key ? 'text-primary-foreground/70' : 'text-muted-foreground/60'}`}>
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            ))}
-            <div className="flex-1" />
+          <div className="flex items-center justify-end gap-1 mt-3">
             <button
               onClick={() => setShowArchived(!showArchived)}
               className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
