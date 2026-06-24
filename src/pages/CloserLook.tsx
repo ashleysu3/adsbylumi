@@ -909,20 +909,7 @@ export default function CloserLook() {
                   },
                 },
                 {
-                  id: "kill",
-                  icon: Pause,
-                  label: "Kill it",
-                  desc: "Pause this campaign in Meta.",
-                  run: () => {
-                    const r = syntheticRecForOption(
-                      "turn_off",
-                      "Approved pause from Closer Look",
-                    );
-                    if (r) openExecuteFor(r);
-                  },
-                  tone: "danger" as const,
-                },
-                {
+
                   id: "new_creative",
                   icon: Wand2,
                   label: "New creative",
