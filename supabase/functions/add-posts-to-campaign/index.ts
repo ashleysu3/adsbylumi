@@ -396,7 +396,7 @@ Deno.serve(async (req) => {
           failedAds.push({ postId: post.url || 'url', error: 'No Instagram account is connected to this brand.' });
           continue;
         }
-        const resolved = await resolveIgMediaByUrl(igAccountId, post.url || post.permalink, metaAccessToken);
+        const resolved = await resolveIgMediaByUrl(igAccountId, post.url || post.permalink, metaAccessToken, pageId);
         if (resolved.error || !resolved.id) {
           failedAds.push({ postId: post.url || 'url', error: resolved.error || "Couldn't resolve that URL." });
           continue;
