@@ -19,9 +19,9 @@ export function FlodeskIntegrationCard({ brand, onRefresh }: FlodeskIntegrationC
   const [disconnecting, setDisconnecting] = useState(false);
   const [showSteps, setShowSteps] = useState(false);
 
-  const isConnected = !!(brand?.flodesk_api_key);
+  const isConnected = !!(brand?.flodesk_connected);
   const hasWebhook = !!(brand?.flodesk_webhook_id);
-  const hasMetaPixel = !!(brand?.meta_pixel_id && brand?.meta_access_token);
+  const hasMetaPixel = !!(brand?.meta_pixel_id && brand?.meta_connected);
 
   const handleConnect = async () => {
     if (!apiKey.trim()) {
