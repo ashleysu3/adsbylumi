@@ -435,7 +435,9 @@ export function PromoteExistingPostDialog({
         setStep("preview");
       }
     } catch (e: any) {
-      toast.error(e?.message || "Failed to create ad");
+      const raw = e?.message || "Failed to create ad";
+      const isIgPerm = /instagram|ig\b|permission|#10|OAuthException/i.test(raw);
+      setSubmitError({ message: raw, kind: isIgPerm ? "ig_permission" : "other" });
     } finally {
       setSubmitting(false);
     }
