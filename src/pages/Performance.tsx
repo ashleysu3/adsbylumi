@@ -791,10 +791,13 @@ export default function Performance() {
 
         {!loading && !hasActive && (
           <Card>
-            <CardContent className="py-10 text-center space-y-2">
+            <CardContent className="py-10 text-center space-y-3">
               <Sparkles className="h-6 w-6 text-lumi-pink-1 mx-auto" />
               <p className="text-sm text-muted-foreground">
                 Once a campaign is running and has spent a few days collecting data, this is where LUMI tells you what to do next. ✨
+              </p>
+              <p className="text-xs text-muted-foreground/80">
+                Don't see a campaign you're running? If you built it in Meta, import it here to manage it in LUMI.
               </p>
             </CardContent>
           </Card>
