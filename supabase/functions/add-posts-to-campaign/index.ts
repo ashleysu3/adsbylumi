@@ -26,7 +26,10 @@ function translateMetaCreativeError(error: any): string {
   if (msg.includes('invalid media') || msg.includes('media type') || subcode === 1487390) {
     return "This post type can't be promoted as an ad. Try a photo or Reel instead.";
   }
-  if (code === 100 || msg.includes('does not exist') || msg.includes('not found')) {
+  if (msg.includes('valid instagram media') || msg.includes('media v2 id')) {
+    return "Meta won't accept this Instagram post as an ad through the link path right now (it needs Instagram browsing permissions we don't have). Use the Facebook Page tab to pick the same post — that path works with your current permissions.";
+  }
+  if (msg.includes('does not exist') || msg.includes('not found') || (code === 100 && !msg.includes('param'))) {
     return "We couldn't find this post. It may have been deleted or is from a private account.";
   }
   if (code === 10 || code === 200 || msg.includes('permission') || userMsg.includes('permission')) {
