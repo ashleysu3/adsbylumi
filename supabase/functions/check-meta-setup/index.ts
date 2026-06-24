@@ -40,7 +40,7 @@ interface ActionHint {
   detail?: string;
 }
 
-const REQUIRED_PERMISSIONS = ['ads_management', 'ads_read', 'business_management', 'pages_show_list', 'instagram_basic'];
+const REQUIRED_PERMISSIONS = ['ads_management', 'ads_read', 'business_management', 'pages_show_list', 'pages_read_engagement', 'instagram_basic'];
 
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
