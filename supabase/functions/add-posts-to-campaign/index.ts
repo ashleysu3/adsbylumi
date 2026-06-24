@@ -379,10 +379,88 @@ Deno.serve(async (req) => {
       }
     }
 
+    // --- Inspect the target ad set so we can apply a link/CTA when the objective requires it ---
+    // Objectives/optimizations that REQUIRE a destination URL on the creative:
+    const DESTINATION_REQUIRED_GOALS = new Set([
+      'OFFSITE_CONVERSIONS', 'LINK_CLICKS', 'LANDING_PAGE_VIEWS',
+      'LEAD_GENERATION', 'QUALITY_LEAD', 'VALUE', 'APP_INSTALLS',
+      'CONVERSATIONS', 'REACH', // REACH only if destination_type=WEBSITE — handled below
+    ]);
+
+    let adSetOptGoal: string | null = null;
+    let adSetDestType: string | null = null;
+    let referenceSettings: { link?: string; call_to_action_type?: string; url_tags?: string } = {};
+    try {
+      const asRes = await fetch(
+        `https://graph.facebook.com/v25.0/${sourceAdSetId}?fields=optimization_goal,destination_type,promoted_object&access_token=${metaAccessToken}`,
+      );
+      const asData = await asRes.json();
+      if (!asData.error) {
+        adSetOptGoal = asData.optimization_goal || null;
+        adSetDestType = asData.destination_type || null;
+      }
+    } catch (e) {
+      console.warn('Ad set inspection failed:', e);
+    }
+
+    // Pull an existing ad's creative to clone its link/CTA/url_tags into the new ad.
+    try {
+      const adsRes = await fetch(
+        `https://graph.facebook.com/v25.0/${sourceAdSetId}/ads?fields=creative{link_url,call_to_action_type,url_tags,object_story_spec}&limit=5&access_token=${metaAccessToken}`,
+      );
+      const adsData = await adsRes.json();
+      if (!adsData.error) {
+        for (const ad of (adsData.data || [])) {
+          const cr = ad.creative || {};
+          const link = cr.link_url
+            || cr.object_story_spec?.link_data?.link
+            || cr.object_story_spec?.video_data?.call_to_action?.value?.link
+            || cr.object_story_spec?.link_data?.call_to_action?.value?.link;
+          const cta = cr.call_to_action_type
+            || cr.object_story_spec?.link_data?.call_to_action?.type
+            || cr.object_story_spec?.video_data?.call_to_action?.type;
+          if (link || cta || cr.url_tags) {
+            referenceSettings = {
+              link: link || undefined,
+              call_to_action_type: cta || undefined,
+              url_tags: cr.url_tags || undefined,
+            };
+            if (link) break;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Reference creative fetch failed:', e);
+    }
+
+    // Determine final destination link + CTA — explicit override wins, else clone from existing ad.
+    const finalLink = (destinationLink && String(destinationLink).trim()) || referenceSettings.link || null;
+    const finalCta = (callToActionType && String(callToActionType).trim()) || referenceSettings.call_to_action_type || 'LEARN_MORE';
+    const finalUrlTags = (urlTags && String(urlTags).trim()) || referenceSettings.url_tags || null;
+
+    const destinationRequired =
+      (adSetOptGoal && DESTINATION_REQUIRED_GOALS.has(adSetOptGoal) && adSetDestType !== 'ON_AD') ||
+      adSetDestType === 'WEBSITE';
+
+    if (destinationRequired && !finalLink) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          needsDestination: true,
+          optimizationGoal: adSetOptGoal,
+          destinationType: adSetDestType,
+          suggestedCallToActionType: finalCta,
+          error:
+            `This campaign is optimized for ${adSetOptGoal?.toLowerCase().replace(/_/g, ' ') || 'conversions'}, so your post needs a destination link to run here. Add the URL you want people to land on and we'll attach it to the ad.`,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
     // Multi-advertiser ads: ALWAYS OFF
     const multiAdvertiserAds = false;
 
-    console.log(`Adding ${posts.length} post(s) as new ads (status=${adStatus}) to ad set ${targetAdSetId}`);
+    console.log(`Adding ${posts.length} post(s) as PAUSED ad(s) to ad set ${targetAdSetId} (opt=${adSetOptGoal}, link=${finalLink ? 'yes' : 'no'})`);
 
     const createdAds: Array<{ adId: string; postId: string; previewIframeUrl: string | null; status: string }> = [];
     const failedAds: Array<{ postId: string; error: string }> = [];
