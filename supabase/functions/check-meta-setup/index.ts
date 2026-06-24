@@ -159,24 +159,30 @@ Deno.serve(async req => {
       });
     }
 
-    // ----- 3. Required permissions -----
+    // ----- 3. Required permissions (per-scope visibility) -----
     let missingPerms: string[] = [];
+    let grantedPerms: string[] = [];
     try {
       const r = await fetch(`https://graph.facebook.com/v25.0/me/permissions?access_token=${token}`);
       const d = await r.json();
-      const granted: string[] = (Array.isArray(d?.data) ? d.data : [])
+      grantedPerms = (Array.isArray(d?.data) ? d.data : [])
         .filter((p: any) => p.status === 'granted')
         .map((p: any) => p.permission);
-      missingPerms = REQUIRED_PERMISSIONS.filter(p => !granted.includes(p));
+      missingPerms = REQUIRED_PERMISSIONS.filter(p => !grantedPerms.includes(p));
+      m.permissions = {
+        required: REQUIRED_PERMISSIONS,
+        granted: grantedPerms.filter((p: string) => REQUIRED_PERMISSIONS.includes(p)),
+        missing: missingPerms,
+      };
       if (missingPerms.length === 0) {
-        checks.push({ id: 'permissions', label: 'Required permissions', status: 'pass', detail: 'All requested scopes granted.' });
+        checks.push({ id: 'permissions', label: 'Required permissions', status: 'pass', detail: `All granted: ${REQUIRED_PERMISSIONS.join(', ')}.` });
       } else {
         checks.push({
           id: 'permissions',
           label: 'Required permissions',
-          status: 'warn',
-          detail: `Missing: ${missingPerms.join(', ')}. Some Lumi features may not work.`,
-          fix: { kind: 'reconnect', label: 'Re-authorize Meta' },
+          status: missingPerms.includes('ads_management') || missingPerms.includes('ads_read') ? 'fail' : 'warn',
+          detail: `Missing: ${missingPerms.join(', ')}. Re-pick assets and grant all permissions on Meta's consent screen.`,
+          fix: { kind: 'reconnect', label: 'Fix / re-pick assets' },
         });
       }
     } catch (e: any) {
