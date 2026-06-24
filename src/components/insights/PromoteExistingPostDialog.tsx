@@ -568,12 +568,29 @@ export function PromoteExistingPostDialog({
                 </Label>
               </RadioGroup>
 
-              <div className="rounded-xl bg-muted/40 border border-border/60 p-3 flex items-start gap-2 text-xs text-muted-foreground">
-                <Pause className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                <p>
-                  The new ad will be created <span className="font-medium text-foreground">paused</span>.
-                  You'll preview it next and confirm before it goes live.
-                </p>
+              <div className="rounded-xl border border-border/60 bg-muted/30 p-3 flex items-start gap-3">
+                <div className="mt-0.5">
+                  {launchLive ? (
+                    <PlayCircle className="h-4 w-4 text-emerald-600" />
+                  ) : (
+                    <Pause className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Label htmlFor="launch-live-toggle" className="text-sm font-medium cursor-pointer">
+                    Launch this ad live right away
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {launchLive
+                      ? "We'll publish it as ACTIVE in Meta as soon as you click create."
+                      : "We'll create it paused so you can preview and confirm before it goes live."}
+                  </p>
+                </div>
+                <Switch
+                  id="launch-live-toggle"
+                  checked={launchLive}
+                  onCheckedChange={setLaunchLive}
+                />
               </div>
             </div>
           )}
