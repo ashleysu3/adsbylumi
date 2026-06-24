@@ -686,37 +686,58 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
       </Dialog>
       {/* Live campaign action dialog */}
       <Dialog open={!!actionDialogCampaign} onOpenChange={(open) => { if (!open) setActionDialogCampaign(null); }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>What would you like to do?</DialogTitle>
             <DialogDescription className="truncate">{actionDialogCampaign?.name}</DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-1 gap-2 pt-2">
+            <button
+              onClick={() => {
+                const id = actionDialogCampaign?.id;
+                setActionDialogCampaign(null);
+                navigate(`/live-ads/${id}?promotePost=1`);
+              }}
+              className="flex items-center gap-3 rounded-xl border border-border p-4 hover:border-primary/50 hover:bg-primary/5 transition-all text-left group"
+            >
+              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 shrink-0">
+                <ImagePlus className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-semibold text-sm">Use a post I already have</div>
+                <div className="text-xs text-muted-foreground">Promote an Instagram post as an ad in this campaign</div>
+              </div>
+            </button>
             <button
               onClick={() => {
                 navigate(`/creative-studio?workspace=${actionDialogCampaign?.id}`);
                 setActionDialogCampaign(null);
               }}
-              className="flex flex-col items-center gap-2 rounded-xl border border-border p-5 hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
+              className="flex items-center gap-3 rounded-xl border border-border p-4 hover:border-primary/50 hover:bg-primary/5 transition-all text-left group"
             >
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                <PenTool className="h-5 w-5 text-primary" />
+              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 shrink-0">
+                <PenTool className="h-4 w-4 text-primary" />
               </div>
-              <span className="font-semibold text-sm">Update Creative</span>
-              <span className="text-xs text-muted-foreground">Add or swap ad creative</span>
+              <div className="min-w-0">
+                <div className="font-semibold text-sm">Build new creative</div>
+                <div className="text-xs text-muted-foreground">Generate fresh ad creative with LUMI</div>
+              </div>
             </button>
             <button
               onClick={() => {
-                navigate('/performance');
+                const id = actionDialogCampaign?.id;
                 setActionDialogCampaign(null);
+                navigate(`/live-ads/${id}`);
               }}
-              className="flex flex-col items-center gap-2 rounded-xl border border-border p-5 hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
+              className="flex items-center gap-3 rounded-xl border border-border p-4 hover:border-primary/50 hover:bg-primary/5 transition-all text-left group"
             >
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                <BarChart2 className="h-5 w-5 text-primary" />
+              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 shrink-0">
+                <BarChart2 className="h-4 w-4 text-primary" />
               </div>
-              <span className="font-semibold text-sm">See Results</span>
-              <span className="text-xs text-muted-foreground">View performance</span>
+              <div className="min-w-0">
+                <div className="font-semibold text-sm">See results</div>
+                <div className="text-xs text-muted-foreground">View performance &amp; LUMI's next moves</div>
+              </div>
             </button>
           </div>
         </DialogContent>

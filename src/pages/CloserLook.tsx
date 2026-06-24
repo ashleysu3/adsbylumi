@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,8 @@ import {
 } from "lucide-react";
 import { SetupPrompt } from "@/components/SetupPrompt";
 import { GoalSetupModal } from "@/components/insights/GoalSetupModal";
+import { PromoteExistingPostDialog } from "@/components/insights/PromoteExistingPostDialog";
+import { Instagram } from "lucide-react";
 
 // ============================================================================
 // /live-ads/:campaignId — Closer Look at one live campaign.
@@ -169,6 +171,7 @@ function TrendArrow({ direction, kpi }: { direction?: string; kpi: string }) {
 export default function CloserLook() {
   const { campaignId } = useParams<{ campaignId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { activeBrand, loading: brandLoading } = useBrand();
 
   const [loading, setLoading] = useState(true);
@@ -178,6 +181,16 @@ export default function CloserLook() {
   const [actions, setActions] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [promoteOpen, setPromoteOpen] = useState(false);
+
+  // Auto-open Promote dialog from ?promotePost=1
+  useEffect(() => {
+    if (searchParams.get("promotePost") === "1") {
+      setPromoteOpen(true);
+      searchParams.delete("promotePost");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Task-execute dialog (shared confirm + execute path)
   const [taskOpen, setTaskOpen] = useState(false);
@@ -495,6 +508,9 @@ export default function CloserLook() {
                 }}
               >
                 <Wand2 className="h-4 w-4 mr-2" /> New creative
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setPromoteOpen(true)}>
+                <Instagram className="h-4 w-4 mr-2" /> Use a post I already have
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => navigate("/strategy-builder")}>
@@ -970,6 +986,17 @@ export default function CloserLook() {
           }] : []}
           onGoalsSaved={() => { setGoalModalOpen(false); setReloadKey((n) => n + 1); }}
         />
+
+        {workspaceId && activeBrand && (
+          <PromoteExistingPostDialog
+            open={promoteOpen}
+            onOpenChange={setPromoteOpen}
+            workspaceId={workspaceId}
+            brandId={activeBrand.id}
+            workspaceName={workspaceName || result.campaign.name}
+            campaignObjective={result.meta?.campaignType || null}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
