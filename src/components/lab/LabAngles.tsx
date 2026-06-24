@@ -5,7 +5,7 @@ import { Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
-import { saveCreative } from "@/lib/creatives";
+import { saveCreative, startCreative, completeCreative, failCreative } from "@/lib/creatives";
 
 export function LabAngles({ seedId: _seedId }: { seedId?: string }) {
   const { activeBrand } = useBrand();
