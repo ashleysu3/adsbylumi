@@ -274,6 +274,7 @@ Deno.serve(async (req) => {
     const {
       workspaceId,
       posts,
+      status,                 // 'ACTIVE' | 'PAUSED' — default ACTIVE (launch live)
       createNewAdSet,         // boolean — default true for promoted posts
       adSetName,              // optional override
       destinationLink,        // optional override URL for objectives that need a link
