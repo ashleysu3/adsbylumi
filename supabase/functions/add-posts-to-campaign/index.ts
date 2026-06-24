@@ -119,7 +119,17 @@ async function resolveIgMediaByUrl(
     try {
       const res = await fetch(next);
       const data = await res.json();
-      if (data.error) return { error: data.error.message || 'Meta rejected the media lookup.' };
+      if (data.error) {
+        const code = data.error.code;
+        const msg = (data.error.message || '').toLowerCase();
+        if (code === 10 || code === 200 || code === 190 || msg.includes('permission')) {
+          return {
+            error:
+              "Meta won't let LUMI read this Instagram account's posts. Reconnect Meta from Settings and make sure the Instagram account is linked to your Page with posts access — then try again.",
+          };
+        }
+        return { error: data.error.message || 'Meta rejected the media lookup.' };
+      }
       const hit = (data?.data || []).find(
         (m: any) => typeof m.permalink === 'string' && m.permalink.includes(`/${shortcode}`),
       );
