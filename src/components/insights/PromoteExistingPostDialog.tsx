@@ -693,29 +693,47 @@ export function PromoteExistingPostDialog({
               </RadioGroup>
 
               <div className="rounded-xl border border-border/60 bg-muted/30 p-3 flex items-start gap-3">
-                <div className="mt-0.5">
-                  {launchLive ? (
-                    <PlayCircle className="h-4 w-4 text-emerald-600" />
-                  ) : (
-                    <Pause className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <Label htmlFor="launch-live-toggle" className="text-sm font-medium cursor-pointer">
-                    Launch this ad live right away
-                  </Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {launchLive
-                      ? "We'll publish it as ACTIVE in Meta as soon as you click create."
-                      : "We'll create it paused so you can preview and confirm before it goes live."}
-                  </p>
-                </div>
-                <Switch
-                  id="launch-live-toggle"
-                  checked={launchLive}
-                  onCheckedChange={setLaunchLive}
-                />
+                <Pause className="h-4 w-4 text-muted-foreground mt-0.5" />
+                <p className="text-xs text-muted-foreground flex-1">
+                  We'll create this ad <span className="font-medium text-foreground">paused</span> so you can preview and confirm before it goes live.
+                </p>
               </div>
+
+              {submitError?.kind === "needs_destination" && (
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="dest-link" className="text-sm font-medium">Destination link</Label>
+                    <Input
+                      id="dest-link"
+                      type="url"
+                      placeholder="https://yoursite.com/landing-page"
+                      value={destinationLink}
+                      onChange={(e) => setDestinationLink(e.target.value)}
+                      className="bg-background"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="dest-cta" className="text-sm font-medium">Call to action</Label>
+                    <select
+                      id="dest-cta"
+                      value={destinationCta}
+                      onChange={(e) => setDestinationCta(e.target.value)}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="LEARN_MORE">Learn more</option>
+                      <option value="SIGN_UP">Sign up</option>
+                      <option value="SUBSCRIBE">Subscribe</option>
+                      <option value="GET_OFFER">Get offer</option>
+                      <option value="DOWNLOAD">Download</option>
+                      <option value="BOOK_TRAVEL">Book now</option>
+                      <option value="SHOP_NOW">Shop now</option>
+                      <option value="CONTACT_US">Contact us</option>
+                      <option value="APPLY_NOW">Apply now</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
 
               {submitError && (
                 <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-3">
