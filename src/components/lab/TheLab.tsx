@@ -161,14 +161,30 @@ export function TheLab() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {TOOLS.map((t) => {
           const Icon = t.icon;
+          const soon = !!t.comingSoon;
           return (
             <button
               key={t.key}
               type="button"
               onClick={() => openTool(t.key)}
-              className="text-left group"
+              disabled={soon}
+              aria-disabled={soon}
+              className={cn("text-left group", soon && "cursor-not-allowed")}
             >
-              <Card className="h-full hover:shadow-md transition-shadow">
+              <Card
+                className={cn(
+                  "h-full transition-shadow relative overflow-hidden",
+                  soon ? "opacity-70" : "hover:shadow-md",
+                )}
+              >
+                {soon && (
+                  <Badge
+                    variant="secondary"
+                    className="absolute top-2 right-2 text-[10px] uppercase tracking-wide"
+                  >
+                    Coming soon
+                  </Badge>
+                )}
                 <CardContent className="p-5 space-y-3">
                   <div
                     className={cn(
@@ -182,9 +198,11 @@ export function TheLab() {
                     <p className="font-semibold">{t.title}</p>
                     <p className="text-xs text-muted-foreground mt-1">{t.desc}</p>
                   </div>
-                  <div className="text-xs text-primary inline-flex items-center group-hover:translate-x-0.5 transition-transform">
-                    Open <ChevronRight className="h-3 w-3 ml-0.5" />
-                  </div>
+                  {!soon && (
+                    <div className="text-xs text-primary inline-flex items-center group-hover:translate-x-0.5 transition-transform">
+                      Open <ChevronRight className="h-3 w-3 ml-0.5" />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </button>
