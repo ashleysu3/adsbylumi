@@ -86,12 +86,12 @@ export default function Campaigns() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-3xl font-display font-bold tracking-tight">
-              My <span className="text-gradient-lumi">Campaigns</span>
+              <span className="text-gradient-lumi">Drafts</span>
             </h1>
             <p className="text-muted-foreground mt-2">
-              {isAddCreativeMode 
-                ? "Select an ad to add new creative to" 
-                : "Your ads in progress and live"}
+              {isAddCreativeMode
+                ? "Select an ad to add new creative to"
+                : "Campaigns you're still building."}
             </p>
           </div>
           {isAddCreativeMode && (
@@ -109,7 +109,7 @@ export default function Campaigns() {
           <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/40 border border-border/60 rounded-xl px-3 py-2">
             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground/70" />
             <p>
-              These are campaigns you've <span className="font-medium text-foreground">built in LUMI</span>. Campaigns you created directly in Meta show under <button onClick={() => navigate("/live-ads")} className="underline underline-offset-2 hover:text-foreground">Live Ads</button> — import them here to manage them.
+              Campaigns you're building in LUMI. Once you launch one, it moves to <button onClick={() => navigate("/ad-performance")} className="underline underline-offset-2 hover:text-foreground">Live Ads</button>.
             </p>
           </div>
         )}
