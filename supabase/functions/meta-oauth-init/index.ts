@@ -94,9 +94,18 @@ Deno.serve(async (req) => {
       'scope',
       'ads_management,ads_read,business_management,pages_read_engagement,pages_show_list,instagram_basic'
     );
-    // Force Meta to re-request previously declined scopes on reconnect.
-    oauthUrl.searchParams.set('auth_type', 'rerequest');
+    // Force Meta's asset-selection / permission re-grant flow on every connect.
+    // `rerequest` re-prompts previously-declined scopes (e.g. instagram_basic).
+    // `reauthorize` forces Meta to show the asset-selection panel again instead
+    // of silently re-establishing the previous selection — the "Edit settings"
+    // path. We use `reauthorize` whenever the client asks for it (reconnect or
+    // a known missing scope/asset), and `rerequest` otherwise.
+    oauthUrl.searchParams.set('auth_type', forceAssetSelection ? 'reauthorize' : 'rerequest');
     oauthUrl.searchParams.set('response_type', 'code');
+    // `display=page` opens the full asset-picker UI rather than the compact
+    // "use previous settings" popup variant.
+    oauthUrl.searchParams.set('display', 'page');
+
 
     return new Response(JSON.stringify({ authUrl: oauthUrl.toString() }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
