@@ -45,6 +45,8 @@ import {
 } from "lucide-react";
 import { SetupPrompt } from "@/components/SetupPrompt";
 import { GoalSetupModal } from "@/components/insights/GoalSetupModal";
+import { PromoteExistingPostDialog } from "@/components/insights/PromoteExistingPostDialog";
+import { Instagram } from "lucide-react";
 
 // ============================================================================
 // /live-ads/:campaignId — Closer Look at one live campaign.
