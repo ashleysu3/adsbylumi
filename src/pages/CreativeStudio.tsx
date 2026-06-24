@@ -1287,7 +1287,16 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
               <span className="text-xs text-muted-foreground font-medium">Campaign</span>
               <Select value={selectedWorkspaceId} onValueChange={loadWorkspace}>
                 <SelectTrigger className="w-[200px] sm:w-[260px]"><SelectValue placeholder="Select campaign" /></SelectTrigger>
-                <SelectContent>{workspaces.map(w => <SelectItem key={w.id} value={w.id}>{w.offerName || w.name}</SelectItem>)}</SelectContent>
+                <SelectContent>{workspaces.map(w => (
+                  <SelectItem key={w.id} value={w.id}>
+                    <div className="flex flex-col">
+                      <span className="font-medium truncate max-w-[280px]">{w.name || w.offerName || "Untitled campaign"}</span>
+                      {w.offerName && w.name && w.offerName !== w.name && (
+                        <span className="text-[11px] text-muted-foreground truncate max-w-[280px]">Offer: {w.offerName}</span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}</SelectContent>
               </Select>
             </div>
             <div className="flex items-center gap-2">
