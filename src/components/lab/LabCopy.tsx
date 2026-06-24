@@ -8,7 +8,7 @@ import { Loader2, Sparkles, Save, Copy as CopyIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
-import { saveCreative, type CreativeType } from "@/lib/creatives";
+import { saveCreative, startCreative, completeCreative, failCreative, type CreativeType } from "@/lib/creatives";
 
 type CopyKind = "hook" | "primary_copy" | "headline" | "description" | "caption" | "cta";
 
