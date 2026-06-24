@@ -407,7 +407,7 @@ Deno.serve(async (req) => {
         const adData = await adRes.json();
         if (adData.error) {
           console.error(`Ad creation failed for post ${postId}:`, adData.error);
-          failedAds.push({ postId, error: adData.error.message || 'Ad creation failed' });
+          failedAds.push({ postId, error: translateMetaCreativeError(adData.error) });
           continue;
         }
 
