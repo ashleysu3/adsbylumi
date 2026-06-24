@@ -35,7 +35,7 @@ export function LabBRoll({ seedId: _seedId }: { seedId?: string }) {
     (async () => {
       const { data } = await supabase
         .from("offers")
-        .select("id, name, auto_summary")
+        .select("id, name")
         .eq("brand_id", activeBrand.id)
         .eq("archived", false)
         .order("created_at", { ascending: false });
