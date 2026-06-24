@@ -26,34 +26,41 @@ export function LabGraphics({ seedId: _seedId }: { seedId?: string }) {
     }
     setLoading(true);
     setImageUrl(null);
+    const label = `Generating graphic: ${prompt.trim().slice(0, 80)}`;
+    const jobId = await startCreative({
+      brandId: activeBrand.id,
+      type: "graphic",
+      taskLabel: label,
+      title: prompt.slice(0, 80),
+      source: "lab",
+      sourceRef: { tool: "graphics", prompt },
+    });
     try {
       const { data, error } = await supabase.functions.invoke("generate-creative", {
-        body: {
-          brand_id: activeBrand.id,
-          prompt: prompt.trim(),
-          format: "graphic",
-        },
+        body: { brand_id: activeBrand.id, prompt: prompt.trim(), format: "graphic" },
       });
       if (error) throw error;
       const url = data?.image_url || data?.url || data?.asset_url;
       if (!url) {
-        toast.error(data?.error || "No graphic returned");
+        const msg = data?.error || "No graphic returned";
+        if (jobId) await failCreative(jobId, msg);
+        toast.error(msg);
         return;
       }
       setImageUrl(url);
-      await saveCreative({
-        brandId: activeBrand.id,
-        type: "graphic",
-        title: prompt.slice(0, 80),
-        content: { prompt },
-        assetUrl: url,
-        thumbUrl: url,
-        source: "lab",
-        sourceRef: { tool: "graphics", prompt },
-      });
-      toast.success("Graphic saved to My Creatives");
+      if (jobId) {
+        await completeCreative(jobId, {
+          type: "graphic",
+          title: prompt.slice(0, 80),
+          content: { prompt },
+          assetUrl: url,
+          thumbUrl: url,
+        });
+      }
+      toast.success("Graphic ready in My Creatives");
     } catch (e: any) {
       console.error(e);
+      if (jobId) await failCreative(jobId, e?.message || "Generation failed");
       toast.error(e?.message || "Couldn't generate graphic");
     } finally {
       setLoading(false);
