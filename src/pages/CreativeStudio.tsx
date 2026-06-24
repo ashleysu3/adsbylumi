@@ -71,6 +71,7 @@ import { CreativeRefreshDialog } from "@/components/creative/CreativeRefreshDial
 import { BYOCreativeUploader } from "@/components/creative/BYOCreativeUploader";
 import { CopyRegenerateDialog, CopyFeedback } from "@/components/creative/CopyRegenerateDialog";
 import { GenerateCreativeDialog } from "@/components/creative/GenerateCreativeDialog";
+import { TheLab as LazyTheLab } from "@/components/lab/TheLab";
 
 type WorkflowTab = "angles" | "concepts" | "copy" | "build" | "saved";
 
@@ -184,6 +185,46 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
   const { showExplainer, closeExplainer } = useCreativeStudioExplainer();
   const { activeBrand, brands, setActiveBrand, loading: brandLoading } = useBrand();
   const { setConcepts: setDraftConcepts } = useCampaignDraft();
+
+  // The Lab — free-play mode (?mode=lab). Renders standalone tools that don't
+  // require going through the guided angles→concepts→copy flow. Every output
+  // saves to My Creatives as a draft.
+  const mode = searchParams.get("mode");
+  if (mode === "lab") {
+    const LabLayout = embedded ? (({ children }: any) => <>{children}</>) : DashboardLayout;
+    return (
+      <LabLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4">
+          <div className="flex items-center gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                const next = new URLSearchParams(searchParams);
+                next.delete("mode");
+                next.delete("tool");
+                next.delete("seed");
+                setSearchParams(next, { replace: true });
+              }}
+              className="text-muted-foreground hover:text-foreground underline underline-offset-2"
+            >
+              Switch to Guided flow
+            </button>
+            <span className="text-muted-foreground">·</span>
+            <button
+              type="button"
+              onClick={() => navigate("/my-creatives")}
+              className="text-muted-foreground hover:text-foreground underline underline-offset-2"
+            >
+              My Creatives
+            </button>
+          </div>
+          <LazyTheLab />
+        </div>
+      </LabLayout>
+    );
+  }
+
+  
   
   const [loading, setLoading] = useState(true);
   const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([]);

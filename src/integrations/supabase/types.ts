@@ -1648,6 +1648,68 @@ export type Database = {
           },
         ]
       }
+      creatives: {
+        Row: {
+          asset_url: string | null
+          brand_id: string
+          content: Json
+          created_at: string
+          id: string
+          source: string
+          source_ref: Json
+          status: string
+          tags: string[]
+          thumb_url: string | null
+          title: string | null
+          type: string
+          updated_at: string
+          used_in: Json | null
+          user_id: string
+        }
+        Insert: {
+          asset_url?: string | null
+          brand_id: string
+          content?: Json
+          created_at?: string
+          id?: string
+          source?: string
+          source_ref?: Json
+          status?: string
+          tags?: string[]
+          thumb_url?: string | null
+          title?: string | null
+          type: string
+          updated_at?: string
+          used_in?: Json | null
+          user_id: string
+        }
+        Update: {
+          asset_url?: string | null
+          brand_id?: string
+          content?: Json
+          created_at?: string
+          id?: string
+          source?: string
+          source_ref?: Json
+          status?: string
+          tags?: string[]
+          thumb_url?: string | null
+          title?: string | null
+          type?: string
+          updated_at?: string
+          used_in?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creatives_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       digest_settings: {
         Row: {
           additional_emails: string[] | null

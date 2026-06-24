@@ -114,6 +114,7 @@ import AdGenerator from "./pages/AdGenerator";
 import BrandSetup from "./pages/BrandSetup";
 import Photos from "./pages/Photos";
 import Creative from "./pages/Creative";
+import MyCreatives from "./pages/MyCreatives";
 import Launch from "./pages/Launch";
 import Performance from "./pages/Performance";
 import CloserLook from "./pages/CloserLook";
@@ -212,6 +213,8 @@ const App = () => {
                   <Route path="/offers" element={<Offers />} />
                   <Route path="/style" element={<Style />} />
                   <Route path="/creative-studio" element={<CreativeStudio />} />
+                  <Route path="/lab" element={<Navigate to="/creative-studio?mode=lab" replace />} />
+                  <Route path="/my-creatives" element={<MyCreatives />} />
                   <Route path="/brand/patterns" element={<Navigate to="/retrospectives" replace />} />
                   <Route path="/retrospectives" element={<Retrospectives />} />
                   <Route path="/glossary" element={<Glossary />} />

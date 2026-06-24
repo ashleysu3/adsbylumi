@@ -210,11 +210,11 @@ ${kb ? `\n## Reference: ${kb.title}\n${kb.content}` : ""}`;
       .insert({
         user_id: userId,
         brand_id,
-        title: `You flagged ${fitLabel} on "${workspace.name || "this campaign"}" — here's a re-aimed version`,
-        description: `Fit Score: ${review.fit_score}. ${review.attracts || ""}`.slice(0, 500),
+        title: `You flagged ${fitLabel} on "${workspace.name || "this campaign"}" — re-aimed draft saved in My Creatives`,
+        description: `Fit Score: ${review.fit_score}. Saved to My Creatives — nothing changes in your live ad until you add it.`.slice(0, 500),
         source: "ad_fit_review",
         action_type: "ad_fit_review",
-        link_to: `/live-ads/${workspace_id}`,
+        link_to: `/my-creatives`,
         action_payload: {
           workspace_id,
           brand_id,
@@ -227,6 +227,36 @@ ${kb ? `\n## Reference: ${kb.title}\n${kb.content}` : ""}`;
       .single();
 
     if (taskErr) console.error("task insert failed", taskErr);
+
+    // Save the re-aimed copy as draft creatives in My Creatives
+    try {
+      const rewritten: any[] = Array.isArray(review.rewritten) ? review.rewritten : [];
+      const rows = rewritten
+        .map((r: any) => {
+          const text = typeof r === "string" ? r : (r?.text || r?.copy || r?.body || "");
+          if (!text) return null;
+          const kind = (typeof r === "object" && r?.kind) ? String(r.kind) : "primary_copy";
+          const allowed = ["hook","primary_copy","headline","description","caption","cta"];
+          const type = allowed.includes(kind) ? kind : "primary_copy";
+          return {
+            brand_id,
+            user_id: userId,
+            type,
+            title: text.slice(0, 80),
+            content: { text, fit_score: review.fit_score, attracts: review.attracts },
+            source: "lead_fit_feedback",
+            source_ref: { workspace_id, feedback_id },
+            tags: ["re-aimed"],
+          };
+        })
+        .filter(Boolean);
+      if (rows.length > 0) {
+        const { error: cErr } = await supabase.from("creatives").insert(rows as any);
+        if (cErr) console.error("creatives insert failed", cErr);
+      }
+    } catch (e) {
+      console.error("save re-aimed creatives failed", e);
+    }
 
     return ok({ review, task });
   } catch (e: any) {

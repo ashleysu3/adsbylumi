@@ -1,100 +1,87 @@
-# Lead-Fit Feedback Loop
+# The Lab + My Creatives — Plan
 
-Three connected pieces. Diagnose + draft only — no changes to billing or Meta execution.
+Two new surfaces inside Creative, plus a persisted draft store. Nothing auto-publishes.
 
-## Part A — Capture: "How are the leads?"
+## 1. New `creatives` table (drafts library)
 
-**New table `lead_quality_feedback`**
-- `id, workspace_id, campaign_id (meta), brand_id, user_id, fit_rating ('right'|'mixed'|'wrong'), reasons text[], note text, created_at`
-- Allowed reasons: `cant_afford`, `too_beginner`, `just_browsing`, `wrong_niche`, `only_want_free`
-- RLS: brand-owner only via `brands.user_id = auth.uid()`; service_role full.
+Migration creates `public.creatives`:
 
-**New component `LeadQualityCheck`** (`src/components/insights/LeadQualityCheck.tsx`)
-- One-tap row: 🎯 Right people / 🤷 Mixed / 👎 Wrong people
-- On Mixed/Wrong: chips for the 5 reasons + one-line note + Submit
-- Soft "How are the leads going?" prompt shown when no feedback in the last 10 days for that campaign; otherwise collapsed under a small "Update lead quality" link (always available)
-- On Mixed/Wrong submit → fire-and-forget invokes `ad-fit-review`, toasts "LUMI is reviewing your copy — we'll drop a re-aimed version on Live Ads"
+- `id uuid pk`
+- `brand_id uuid` (FK brands, indexed)
+- `user_id uuid` (owner, for RLS)
+- `type text` — one of: `hook`, `primary_copy`, `headline`, `description`, `caption`, `cta`, `angle`, `concept`, `broll_idea`, `broll_clip`, `graphic`, `trend`
+- `title text`
+- `content jsonb` — flexible payload (text, asset urls, structured concept, etc.)
+- `asset_url text` (nullable — for graphics / b-roll clips)
+- `thumb_url text` (nullable)
+- `source text` — `lab` | `guided_flow` | `lead_fit_feedback` | `trend_translator`
+- `source_ref jsonb` — pointers back to workspace/tool params for "Edit/iterate"
+- `status text` — `unused` (default) | `used`
+- `used_in jsonb` — `{ campaign_id, ad_id, used_at }` when promoted
+- `tags text[]`
+- `created_at`, `updated_at`
 
-**Surfaces**
-- `src/pages/Performance.tsx`: render at bottom of each campaign card (compact)
-- `src/pages/CloserLook.tsx`: render full version in main column
+GRANTs to `authenticated` + `service_role`. RLS: owner via `user_id = auth.uid()` OR admin. Updated_at trigger.
 
-## Part B — Diagnose + Re-Aim
+## 2. Creative Studio — add "The Lab" mode
 
-**New edge function `ad-fit-review`** (`verify_jwt = true`)
-Input: `{ workspace_id, brand_id, feedback_id }`
-Loads:
-- workspace ad copy from `campaign_workspaces` (headline/primary/description) + linked creatives if present
-- `brands.audience_psychology`, brand voice
-- linked offer (price, type) from `offers`
-- KB doc "Audience fit — who your copy attracts" (Part C)
-- The submitted feedback row
+`src/pages/CreativeStudio.tsx` gets a top-level mode toggle:
+- **Guided flow** (current 4-step Angles → Concepts → Copy → Produce)
+- **The Lab** (new — free-play tools grid)
 
-Calls Lovable AI (`google/gemini-2.5-flash`) with the attractor-signals taxonomy. Returns structured JSON:
-```
-{
-  fit_score: 'A'|'B'|'C'|'D'|'F',
-  attracts: string,           // who the current copy attracts
-  leaking_phrases: [{quote, why}],
-  creative_mismatch: string|null,
-  ideal_buyer_summary: string,
-  ideal_buyer_thin: boolean,  // if true, ask user to confirm rather than guess
-  rewritten: { headline, primary, description, repels_note },
-  creative_changes: string|null
-}
-```
+The Lab is a tools dashboard. Each tile opens a standalone tool that:
+- Reads brand brain via existing `BrandContext` / knowledge base loaders
+- Does NOT require prior steps
+- Has a "Save to My Creatives" action on every output (auto-saves on generate too)
 
-**Persistence as task** — write a `tasks` row:
-- `action_type = 'ad_fit_review'`
-- `action_payload = { workspace_id, brand_id, feedback_id, review: <json above> }`
-- `link_to = /live-ads/:workspace_id`
-- `title = "Great CPL — but the leads feel off. Here's a re-aimed version."`
+Tools (each = a small component under `src/components/lab/`):
 
-**New dialog `AdFitReviewDialog`** (opened from the task row in `LumiRecommendations`/Closer Look)
-- Shows fit score, who-it-attracts, quoted leaking phrases, ideal buyer
-- Side-by-side current vs rewritten copy
-- "Use this copy" → copies to clipboard, saves into `creative_bench` as a draft variant, marks task done
-- "Open creative flow" → navigates `/creative-studio?workspaceId=…&fitReviewId=…` and marks task done
-- If `ideal_buyer_thin`, show a short confirm step ("Quick check: who do you actually want?") before generating — gets stored back to `brands.audience_psychology.ideal_buyer_note`
+- `LabAngles.tsx` — generate angles for current brand/offer
+- `LabConcepts.tsx` — generate ad concepts (graphic / carousel / b-roll / talking head)
+- `LabCopy.tsx` — tabbed: Hooks · Primary text · Captions · CTAs · Headlines · Descriptions
+- `LabBRoll.tsx` — ideas + generation (reuse existing b-roll generator)
+- `LabGraphics.tsx` — graphic/image generation (reuse existing image gen + templates)
+- `LabTrendTranslator.tsx` — move existing `TrendTranslator` page contents here as a tool
 
-**Wire-in**
-- `LumiRecommendations` already pulls from tasks-style sources; add a small inline render for `action_type === 'ad_fit_review'` tasks on Performance.tsx + CloserLook.tsx.
+Add `TheLab.tsx` container with a tool picker. Keep `/trends` route working but render a "moved to The Lab" redirect card linking to `/creative?mode=lab&tool=trends`.
 
-## Part C — Proactive Fit Filter
+## 3. My Creatives library page
 
-**KB seed (migration)** — insert `knowledge_documents` row:
-- `category = 'psychology'` (existing allowed category, already read by copy/angle generators)
-- `subcategory = 'audience_fit'`, `tags = ['fit','attractor','audience']`
-- `title = "Audience fit — who your copy attracts"`
-- Body: full attractor-signals taxonomy
-  - Wrong-fit magnets: price-shopper, beginner, tire-kicker, overpromise, vague-everyone (definitions + sample leaking phrases)
-  - Right-fit magnets: specificity, identity/level markers, investment framing, sophisticated problem, "not for you if", proof of caliber
-  - **Calibration rule** (called out explicitly): judge against who the brand *wants*. Beginner/cheap framing is only wrong for premium offers; a real low-ticket/beginner offer should keep it.
+Repurpose `src/components/creative/MyCreativeLibrary.tsx` to read from the new `creatives` table (primary source), and keep current workspace-derived items as a secondary "From campaigns" tab for back-compat. Add filters: type, status (unused/used), source, search.
 
-**Fit-check pass in `generate-advanced-copy`**
-After variations are generated, run a second model call:
-- Inputs: each variation + brand ideal buyer + offer price/type + the attractor-signals doc
-- Output per variation: `{ fit_score: 'A'..'F', attracts, wrong_fit_phrases:[{quote,why}], right_fit_suggestions:[string] }`
-- Sort variations so highest-fit appear first; attach `fit` to each in the response
+Each card gets an actions menu:
+- **Edit / iterate** — reopens the matching Lab tool with `source_ref` payload prefilled
+- **Add to an existing campaign** — opens existing `PromoteExistingPostDialog` / reuses `add-creative-to-campaign` flow. Ad created PAUSED, requires user confirm before going live. On success, mark creative `status='used'` + populate `used_in`.
+- **Use in a new ad** — hands the creative into the guided 4-step flow (`/creative?mode=guided&seed=<creative_id>`)
+- Copy / Delete
 
-**UI surface** (lightweight)
-- In any component that renders generated copy variations, show a small `<FitBadge score="A" attracts="…" />` and tooltip with wrong-fit phrases + suggestions. Scope to where `generate-advanced-copy` results are rendered (no other UI rewrites).
+## 4. Save-on-generate everywhere
 
-## Files
+All Lab tools and guided-flow generators write to `creatives` immediately on generate (status `unused`). Add a small `saveCreative()` helper in `src/lib/creatives.ts`.
 
-New:
-- `supabase/migrations/<ts>_lead_fit_loop.sql` (table + RLS + grants + KB seed)
-- `supabase/functions/ad-fit-review/index.ts`
-- `src/components/insights/LeadQualityCheck.tsx`
-- `src/components/insights/AdFitReviewDialog.tsx`
-- `src/components/insights/FitBadge.tsx`
+## 5. Lead-fit feedback fix
 
-Edited:
-- `supabase/config.toml` — register `ad-fit-review` with `verify_jwt = true`
-- `src/pages/Performance.tsx` — render `<LeadQualityCheck>` per card + surface `ad_fit_review` tasks
-- `src/pages/CloserLook.tsx` — render `<LeadQualityCheck>` + surface review task
-- `supabase/functions/generate-advanced-copy/index.ts` — fit-check pass, return per-variation `fit`
-- Component that renders `generate-advanced-copy` output — add `<FitBadge>` (will identify when editing)
+`LeadQualityCheck.tsx` (and the ad-fit-review function path): re-aimed copy/concepts are saved to `creatives` with `source='lead_fit_feedback'`. Replace any "we updated your ad" / auto-publish wording with:
 
-## Out of scope
-No billing changes. No Meta execution changes. `ad-fit-review` never pushes copy to Meta; it only drafts.
+> Saved in My Creatives — review and add to your campaign when ready. Nothing changes in your live ad until you do.
+
+Remove buttons that imply auto-push to live; replace with "Open in My Creatives".
+
+## 6. Routing / nav
+
+- `/creative` keeps current behavior; query `?mode=lab` opens The Lab
+- Add "My Creatives" nav link (already exists as Library — confirm and surface)
+- Sidebar: add "The Lab" sub-item under Creative
+
+## 7. Out of scope
+
+- No billing changes
+- No Meta API execution changes (reuses existing paused-first promote flow)
+- No deletion of guided flow
+
+## Technical notes
+
+- Edge functions stay the same; only client writes drafts to `creatives`
+- `BrandContext` already provides `activeBrand` — all tools scope by `brand_id`
+- Existing components reused: `PromoteExistingPostDialog`, `ImportCampaignsModal`, `add-creative-to-campaign`, b-roll generator, image gen, `TrendTranslator`
+- Library card actions wired through a single `CreativeActionsMenu` component

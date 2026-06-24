@@ -103,8 +103,10 @@ export function LeadQualityCheck({
       if (chosen === "right") {
         toast.success("Got it — locking in what's working.");
       } else {
-        toast.success("LUMI is reviewing your copy — we'll drop a re-aimed version on Live Ads.");
-        // Fire-and-forget review
+        toast.success(
+          "Saved in My Creatives — review and add to your campaign when ready. Nothing changes in your live ad until you do.",
+        );
+        // Fire-and-forget review — re-aimed copy lands in My Creatives as drafts.
         supabase.functions
           .invoke("ad-fit-review", {
             body: { workspace_id: workspaceId, brand_id: brandId, feedback_id: row.id },
