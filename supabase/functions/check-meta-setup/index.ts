@@ -244,6 +244,7 @@ Deno.serve(async req => {
         const r = await fetch(`https://graph.facebook.com/v25.0/${brand.page_id}?fields=id,name&access_token=${token}`);
         const d = await r.json();
         if (r.ok && d?.id) {
+          m.pageId = d.id; m.pageName = d.name || brand.page_name || null;
           checks.push({ id: 'page', label: 'Facebook Page', status: 'pass', detail: d.name || brand.page_name || 'Linked' });
         } else {
           checks.push({
