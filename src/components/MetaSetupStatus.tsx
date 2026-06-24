@@ -202,12 +202,21 @@ export function MetaSetupStatus({ brandId, onReconnectRequested, onPixelSetupReq
                 {primaryAction.label}
               </Button>
             )}
+            {overallStatus !== 'healthy' && overallStatus !== 'disconnected' && primaryAction?.kind !== 'reconnect' && (
+              <Button variant="outline" size="sm" onClick={() => handleAction({ kind: 'reconnect', label: 'Fix / re-pick assets' })} className="gap-1.5">
+                Fix / re-pick assets
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={runCheck} disabled={loading} className="gap-1.5">
               {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
               Recheck
             </Button>
           </div>
         </div>
+
+        {/* Assets-at-a-glance: Ad account / Page / Instagram + per-permission grants */}
+        <AssetsSummary meta={meta} onReconnect={() => handleAction({ kind: 'reconnect', label: 'Fix / re-pick assets' })} />
+
 
         {/* #1 hangup: IG connected to Page but not to ad account */}
         {igMismatch && (
