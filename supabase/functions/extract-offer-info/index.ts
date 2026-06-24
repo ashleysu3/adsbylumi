@@ -184,6 +184,8 @@ All text fields must be formatted for easy reading:
 
 EXTRACT THE FOLLOWING (be thorough - pull actual quotes and language from the page):
 
+0. **name** - The actual product/offer name as it appears on the page (e.g. the course name, program name, webinar title, product name). Short — usually 2-6 words. Pull the exact branded name from the page headline/hero/title. If multiple candidates, prefer the one nearest the primary CTA. Do NOT use the company/brand name unless that IS the offer name.
+
 1. **raw_copy_highlights** - Array of 5-10 of the most compelling phrases, headlines, or copy snippets directly from the page. These are exact quotes or near-quotes that capture the offer's voice.
 
 2. **description** - A comprehensive, well-formatted description of what the product/offer includes. Structure it like this:
