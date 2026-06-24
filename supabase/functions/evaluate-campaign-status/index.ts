@@ -528,7 +528,12 @@ async function resolveContext(body: any, sb: any, userId: string) {
   const { data: brand } = await sb
     .from('brands').select('id, user_id, meta_access_token').eq('id', brandId).single();
   if (!brand) throw new Error('Brand not found');
-  if (brand.user_id !== userId) throw new Error('Forbidden');
+  if (brand.user_id !== userId) {
+    // Admin impersonation bypass — admins can act on any brand.
+    const { data: roleRow } = await sb
+      .from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle();
+    if (!roleRow) throw new Error('Forbidden');
+  }
   accessToken = brand.meta_access_token;
 
   return {

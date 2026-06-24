@@ -68,7 +68,11 @@ Deno.serve(async req => {
       .select('id, user_id, name, meta_access_token, meta_account_id, meta_token_expires_at, page_id, page_name, instagram_account_id, instagram_account_name, meta_pixel_id, meta_pixel_name, meta_pixel_verified_at, meta_pixel_events')
       .eq('id', brandId).single();
     if (bErr || !brand) return json({ error: 'Brand not found' }, 404);
-    if (brand.user_id !== user.id) return json({ error: 'Forbidden' }, 403);
+    if (brand.user_id !== user.id) {
+      const { data: roleRow } = await sb
+        .from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle();
+      if (!roleRow) return json({ error: 'Forbidden' }, 403);
+    }
 
     const checks: Check[] = [];
     const m: any = { brandName: brand.name };

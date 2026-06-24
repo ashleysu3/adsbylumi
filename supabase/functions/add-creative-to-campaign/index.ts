@@ -61,10 +61,14 @@ Deno.serve(async (req) => {
     const brand = workspace.brands;
 
     if (brand.user_id !== user.id) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Access denied' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const { data: roleRow } = await supabase
+        .from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle();
+      if (!roleRow) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Access denied' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const metaCampaignIds = workspace.meta_campaign_ids as any;
