@@ -29,8 +29,8 @@ function translateMetaCreativeError(error: any): string {
   if (code === 100 || msg.includes('does not exist') || msg.includes('not found')) {
     return "We couldn't find this post. It may have been deleted or is from a private account.";
   }
-  if (code === 10 || code === 200 || msg.includes('permission')) {
-    return "Meta didn't allow access to this post. Make sure it's on a Business or Creator account connected to your Page.";
+  if (code === 10 || code === 200 || code === 190 || msg.includes('permission') || userMsg.includes('permission')) {
+    return "Meta won't let LUMI use this post as an ad. Reconnect Meta from Settings and make sure the Instagram account is on a Business or Creator profile linked to your Page with posts access — then try again.";
   }
   if (msg.includes('story') || msg.includes('expired')) {
     return "Stories and expired content can't be used as ads. Try a regular post or Reel.";
