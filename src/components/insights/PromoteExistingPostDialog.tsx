@@ -263,6 +263,8 @@ export function PromoteExistingPostDialog({
         setFbPostsError(null);
         setManualUrl("");
         setSubmitError(null);
+        setDestinationLink("");
+        setDestinationCta("LEARN_MORE");
       }, 250);
     }
   }, [open]);
