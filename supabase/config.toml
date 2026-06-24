@@ -111,6 +111,8 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = true
   [functions.process-email-queue]
     verify_jwt = true
+  [functions.pause-meta-entity]
+    verify_jwt = true
   [functions.qa-preflight-check]
     verify_jwt = true
   [functions.rank-creative-concepts]
