@@ -261,6 +261,7 @@ export function PromoteExistingPostDialog({
         setFbPostsError(null);
         setManualUrl("");
         setSubmitError(null);
+      }, 250);
     }
   }, [open]);
 
