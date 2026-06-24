@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { MetaSetupStatus } from '@/components/MetaSetupStatus';
-import { LumiEducationCard } from '@/components/LumiEducationCard';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -13,15 +11,13 @@ import { MetaAccountConnect } from '@/components/MetaAccountConnect';
 import { useLumi } from '@/contexts/LumiContext';
 import { useBrand } from '@/contexts/BrandContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
-import { 
-  Link2, Link2Off, CheckCircle, XCircle, 
-  AlertTriangle, Calendar, Shield, ExternalLink, Loader2,
-  ArrowLeft, Zap, Key, RefreshCw, Sparkles
+import {
+  Link2, Link2Off, CheckCircle, XCircle,
+  AlertTriangle, Shield, ExternalLink, Loader2,
+  ArrowLeft, Zap, RefreshCw,
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 
-import { MetaReadinessChecklist } from '@/components/MetaReadinessChecklist';
-import { MetaSetupDiagnostic, type DiagnosticResult } from '@/components/MetaSetupDiagnostic';
 import { MetaConnectionCheckLog } from '@/components/MetaConnectionCheckLog';
 import { logMetaConnectionCheck, type MetaCheckItem } from '@/lib/log-meta-check';
 
@@ -38,7 +34,7 @@ export default function MetaSettings() {
   const [refreshing, setRefreshing] = useState(false);
   const [autoTesting, setAutoTesting] = useState(false);
   const [connectionHealth, setConnectionHealth] = useState<'checking' | 'healthy' | 'warning' | 'error' | null>(null);
-  const [diagnosticResult, setDiagnosticResult] = useState<DiagnosticResult | null>(null);
+  const [diagnosticResult, setDiagnosticResult] = useState<any>(null);
   const [diagnosticLoading, setDiagnosticLoading] = useState(false);
   const [diagnosticRecheckCount, setDiagnosticRecheckCount] = useState(0);
   // Bumped after each connection check so the log panel re-fetches
@@ -563,21 +559,9 @@ export default function MetaSettings() {
   return (
     <DashboardLayout>
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
-        {/* Education card for successful connection */}
-        {isConnected && (
-          <LumiEducationCard
-            cardId="meta-connected-tip"
-            headline="You're connected! Here's what happens next."
-            body="Lumi will now be able to publish your ads directly to Meta and pull in your performance data automatically."
-          />
-        )}
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-             onClick={() => navigate('/dashboard')}
-          >
+          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -590,543 +574,315 @@ export default function MetaSettings() {
           </div>
         </div>
 
-        {/* Patch #30 — unified Meta setup status (single source of truth) */}
+        {/* ============================================================ */}
+        {/* NOT CONNECTED — single CTA, one-line explainer                */}
+        {/* ============================================================ */}
+        {!isConnected && !isPartiallyConnected && !isAwaitingSelection && (
+          <Card variant="gradient" id="meta-connect-section">
+            <CardContent className="py-10 text-center space-y-5">
+              <div className="w-16 h-16 rounded-full bg-gradient-lumi/10 flex items-center justify-center mx-auto">
+                <Link2 className="h-8 w-8 text-lumi-orange-1" />
+              </div>
+              <div className="space-y-2 max-w-md mx-auto">
+                <h3 className="text-xl font-semibold">Connect your Meta account</h3>
+                <p className="text-sm text-muted-foreground">
+                  Link your Meta Business account so LUMI can create, manage, and track your Facebook and Instagram ads.
+                </p>
+              </div>
+              {brand?.id ? (
+                <MetaAccountConnect
+                  brandId={brand.id}
+                  currentAccountId={brand.meta_account_id}
+                  currentPageId={brand.page_id}
+                  currentPageName={brand.page_name}
+                  currentInstagramId={brand.instagram_account_id}
+                  currentInstagramName={brand.instagram_account_name}
+                  triggerSize="lg"
+                  onUpdate={fetchBrand}
+                />
+              ) : (
+                <Button variant="lumi" size="lg" onClick={() => navigate('/dashboard')}>
+                  Go to Dashboard
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ============================================================ */}
+        {/* AWAITING SELECTION                                           */}
+        {/* ============================================================ */}
+        {isAwaitingSelection && (
+          <Card variant="gradient" id="meta-connect-section">
+            <CardContent className="py-10 text-center space-y-5">
+              <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto">
+                <AlertTriangle className="h-8 w-8 text-amber-500" />
+              </div>
+              <div className="space-y-2 max-w-md mx-auto">
+                <h3 className="text-xl font-semibold">Finish your Meta connection</h3>
+                <p className="text-sm text-muted-foreground">
+                  We're connected to Meta — now choose the ad account and Facebook Page for this brand.
+                </p>
+              </div>
+              {brand?.id && (
+                <MetaAccountConnect
+                  brandId={brand.id}
+                  currentAccountId={brand.meta_account_id}
+                  currentPageId={brand.page_id}
+                  currentPageName={brand.page_name}
+                  currentInstagramId={brand.instagram_account_id}
+                  currentInstagramName={brand.instagram_account_name}
+                  triggerSize="lg"
+                  autoOpen
+                  onUpdate={fetchBrand}
+                />
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ============================================================ */}
+        {/* PARTIALLY CONNECTED — token missing/expired                  */}
+        {/* ============================================================ */}
+        {isPartiallyConnected && (
+          <Card variant="gradient" id="meta-connect-section" className="border-amber-500/40">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                Reconnect to keep LUMI running
+              </CardTitle>
+              <CardDescription>
+                Your Meta access token expired or was revoked. Reconnect to restore ad management and tracking.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-2 text-sm">
+                <div className="p-3 bg-muted/30 rounded-lg">
+                  <p className="text-[10px] text-muted-foreground uppercase mb-0.5">Previous Ad Account</p>
+                  <p className="font-mono text-xs">{brand?.meta_account_id}</p>
+                </div>
+                {brand?.page_name && (
+                  <div className="p-3 bg-muted/30 rounded-lg opacity-70">
+                    <p className="text-[10px] text-muted-foreground uppercase mb-0.5">Previous Page</p>
+                    <p className="text-xs font-medium">{brand.page_name}</p>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <MetaAccountConnect
+                  brandId={brand.id}
+                  currentAccountId={brand.meta_account_id}
+                  currentPageId={brand.page_id}
+                  currentPageName={brand.page_name}
+                  currentInstagramId={brand.instagram_account_id}
+                  currentInstagramName={brand.instagram_account_name}
+                  tokenExpired
+                  onUpdate={fetchBrand}
+                />
+                <Button onClick={() => handleTestConnection()} disabled={testing || refreshing} variant="outline" size="sm" className="gap-2">
+                  {testing || refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                  {refreshing ? 'Refreshing…' : testing ? 'Testing…' : 'Test & Refresh'}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleDisconnectMeta} className="text-destructive hover:text-destructive">
+                  <Link2Off className="h-4 w-4 mr-2" />Disconnect
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ============================================================ */}
+        {/* UNIFIED SETUP STATUS + CHECKLIST                             */}
+        {/* MetaSetupStatus = single source: status banner + 5/5 checks  */}
+        {/* with inline fix actions. Replaces Connection Card + Health   */}
+        {/* Check + Readiness Checklist.                                 */}
+        {/* ============================================================ */}
         {brand?.id && (
           <MetaSetupStatus
             brandId={brand.id}
             onReconnectRequested={() => {
               document.getElementById('meta-connect-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }}
-            onPixelSetupRequested={() => {
-              navigate('/tracking-setup');
-            }}
+            onPixelSetupRequested={() => navigate('/tracking-setup')}
           />
         )}
 
-        {/* Connection Status Card */}
-        <Card variant="gradient" id="meta-connect-section">
-          <CardHeader>
-
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                {isConnected ? (
-                  <>
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    Connected
-                  </>
-                ) : isPartiallyConnected ? (
-                  <>
-                    <AlertTriangle className="h-5 w-5 text-amber-500" />
-                    Reconnection Required
-                  </>
-                ) : isAwaitingSelection ? (
-                  <>
-                    <AlertTriangle className="h-5 w-5 text-amber-500" />
-                    Almost Connected
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-5 w-5 text-muted-foreground" />
-                    Not Connected
-                  </>
+        {/* ============================================================ */}
+        {/* CONNECTED — compact essentials + small secondary actions     */}
+        {/* ============================================================ */}
+        {isConnected && (
+          <Card>
+            <CardContent className="p-5 space-y-4">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="text-sm font-medium text-foreground">
+                  You're connected — LUMI can run ads on this account.
+                </div>
+                {connectionHealth === 'checking' && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Verifying…
+                  </span>
                 )}
-              </CardTitle>
-              <div className="flex items-center gap-2">
-                {/* Connection Health Indicator */}
-                {isConnected && connectionHealth && (
-                  <div className="flex items-center gap-1.5">
-                    {connectionHealth === 'checking' && (
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        <span className="text-xs">Verifying...</span>
-                      </div>
-                    )}
-                    {connectionHealth === 'healthy' && (
-                      <div className="flex items-center gap-1.5 text-green-600">
-                        <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                        <span className="text-xs font-medium">Verified</span>
-                      </div>
-                    )}
-                    {connectionHealth === 'warning' && (
-                      <div className="flex items-center gap-1.5 text-amber-600">
-                        <div className="h-2 w-2 rounded-full bg-amber-500" />
-                        <span className="text-xs font-medium">Limited</span>
-                      </div>
-                    )}
-                    {connectionHealth === 'error' && (
-                      <div className="flex items-center gap-1.5 text-destructive">
-                        <div className="h-2 w-2 rounded-full bg-destructive" />
-                        <span className="text-xs font-medium">
-                          {testResult?.error ? 'Connection Issue' : 'Issue'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-                <Badge 
-                  variant={isConnected ? (isExpired ? "destructive" : isExpiringSoon ? "secondary" : "default") : isPartiallyConnected ? "secondary" : "outline"}
-                  className={isConnected && !isExpired && !isExpiringSoon ? "bg-green-500/10 text-green-500 border-green-500/30" : isPartiallyConnected ? "bg-amber-500/10 text-amber-500 border-amber-500/30" : ""}
-                >
-                  {isConnected ? (isExpired ? "Expired" : isExpiringSoon ? "Expiring Soon" : "Active") : isPartiallyConnected ? "Token Missing" : "Inactive"}
-                </Badge>
               </div>
-            </div>
-              <CardDescription>
-                {isConnected 
-                  ? "Your Meta ad account is connected and syncing"
-                  : isPartiallyConnected
-                  ? "Your Meta account needs to be reconnected to restore access"
-                  : isAwaitingSelection
-                  ? "Meta access granted — now choose the ad account and Facebook Page for this brand"
-                  : "Connect your Meta account to manage ads and track performance"
-                }
-              </CardDescription>
-              {/* Inline error alert when connection test fails */}
-              {connectionHealth === 'error' && testResult?.error && (
-                <Alert variant="destructive" className="mt-3">
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+                <Essential label="Ad Account ID" value={brand?.meta_account_id} mono />
+                <Essential label="Facebook Page" value={brand?.page_name || '—'} />
+                <Essential label="Instagram" value={brand?.instagram_account_name || 'Not linked'} />
+                <Essential
+                  label="Token expires"
+                  value={tokenExpiresAt ? format(tokenExpiresAt, 'MMM d, yyyy') : '—'}
+                  tone={isExpired ? 'error' : isExpiringSoon ? 'warn' : 'default'}
+                  hint={daysUntilExpiry !== null ? (isExpired ? 'Expired' : `${daysUntilExpiry} days left`) : undefined}
+                />
+              </div>
+
+              {(isExpired || isExpiringSoon) && (
+                <Alert variant={isExpired ? 'destructive' : 'default'} className="border-yellow-500/30 bg-yellow-500/5">
                   <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription className="text-sm">
-                    <span className="font-medium">Connection issue: </span>
-                    {testResult.error}
+                  <AlertDescription className="text-xs">
+                    {isExpired
+                      ? 'Your Meta connection has expired. Reconnect to resume ad management and tracking.'
+                      : 'Your Meta token will expire soon. Reconnect to avoid interruption.'}
                   </AlertDescription>
                 </Alert>
               )}
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Partially Connected State - Needs Reconnection */}
-            {isPartiallyConnected && (
-              <>
-                <Alert className="border-amber-500/30 bg-amber-500/5">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  <AlertDescription>
-                    <span className="font-medium block mb-1">Your Meta connection has lost its access token.</span>
-                    <span className="text-muted-foreground">
-                      This can happen when:
-                    </span>
-                    <ul className="list-disc list-inside text-muted-foreground mt-2 space-y-1">
-                      <li>The token expired (tokens last ~60 days)</li>
-                      <li>You changed your Meta password</li>
-                      <li>You revoked app permissions in Meta settings</li>
-                    </ul>
-                  </AlertDescription>
-                </Alert>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="p-4 bg-muted/30 rounded-lg">
-                    <p className="text-xs text-muted-foreground uppercase mb-1">Previous Ad Account</p>
-                    <p className="font-mono text-sm">{brand?.meta_account_id}</p>
+              {/* Inline test result only when manual test or error */}
+              {testResult && (!testResult.isAutoTest || !testResult.success) && (
+                <div className={`p-3 rounded-md border text-xs ${testResult.success ? 'border-green-500/30 bg-green-500/5 text-green-700' : 'border-destructive/30 bg-destructive/5 text-destructive'}`}>
+                  <div className="flex items-start gap-2">
+                    {testResult.success ? <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" /> : <XCircle className="h-4 w-4 mt-0.5 shrink-0" />}
+                    <div className="flex-1">
+                      <p className="font-medium">{testResult.message}</p>
+                      {testResult.error && <p className="text-muted-foreground mt-0.5">{testResult.error}</p>}
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setTestResult(null)}>
+                      <XCircle className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
-                  {brand?.page_name && (
-                    <div className="p-4 bg-muted/30 rounded-lg opacity-60">
-                      <p className="text-xs text-muted-foreground uppercase mb-1">Previous Page</p>
-                      <p className="text-sm font-medium">{brand.page_name}</p>
-                    </div>
-                  )}
                 </div>
+              )}
 
-                <div className="flex flex-wrap gap-3 pt-2">
-                  <MetaAccountConnect
-                    brandId={brand.id}
-                    currentAccountId={brand.meta_account_id}
-                    currentPageId={brand.page_id}
-                    currentPageName={brand.page_name}
-                    currentInstagramId={brand.instagram_account_id}
-                    currentInstagramName={brand.instagram_account_name}
-                    tokenExpired
-                    onUpdate={fetchBrand}
-                  />
-                  <Button 
-                    onClick={() => handleTestConnection()} 
-                    disabled={testing || refreshing}
-                    variant="outline"
-                    className="gap-2"
-                  >
-                    {testing || refreshing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Zap className="h-4 w-4" />
-                    )}
-                    {refreshing ? "Refreshing..." : testing ? "Testing..." : "Test & Refresh Connection"}
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    onClick={handleDisconnectMeta}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Link2Off className="h-4 w-4 mr-2" />
-                    Disconnect
-                  </Button>
-                </div>
-              </>
-            )}
-
-            {/* Fully Connected State */}
-            {isConnected && (
-              <>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="p-4 bg-muted/30 rounded-lg">
-                    <p className="text-xs text-muted-foreground uppercase mb-1">Ad Account ID</p>
-                    <p className="font-mono text-sm">{brand?.meta_account_id}</p>
-                  </div>
-                  {brand?.page_name && (
-                    <div className="p-4 bg-muted/30 rounded-lg">
-                      <p className="text-xs text-muted-foreground uppercase mb-1">Facebook Page</p>
-                      <p className="text-sm font-medium">{brand.page_name}</p>
-                    </div>
-                  )}
-                  {brand?.instagram_account_name && (
-                    <div className="p-4 bg-muted/30 rounded-lg">
-                      <p className="text-xs text-muted-foreground uppercase mb-1">Instagram Account</p>
-                      <p className="text-sm font-medium">{brand.instagram_account_name}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Token Expiry Info */}
-                {tokenExpiresAt && (
-                  <div className={`p-4 rounded-lg border ${
-                    isExpired 
-                      ? 'bg-destructive/10 border-destructive/30' 
-                      : isExpiringSoon 
-                      ? 'bg-yellow-500/10 border-yellow-500/30'
-                      : 'bg-muted/30 border-border'
-                  }`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Calendar className="h-4 w-4" />
-                      <p className="text-xs text-muted-foreground uppercase">Token Expiration</p>
-                    </div>
-                    <p className="text-sm font-medium">
-                      {isExpired 
-                        ? `Expired on ${format(tokenExpiresAt, 'MMM d, yyyy')}`
-                        : `Expires ${format(tokenExpiresAt, 'MMM d, yyyy')} (${daysUntilExpiry} days)`
-                      }
-                    </p>
-                    {(isExpired || isExpiringSoon) && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {isExpired 
-                          ? "Please reconnect your Meta account to continue syncing"
-                          : "Reconnect soon to avoid disruption"
-                        }
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Warning Alert */}
-                {(isExpired || isExpiringSoon) && (
-                  <Alert variant={isExpired ? "destructive" : "default"} className="border-yellow-500/30 bg-yellow-500/5">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      {isExpired 
-                        ? "Your Meta connection has expired. Reconnect to resume ad management and tracking."
-                        : "Your Meta token will expire soon. Reconnect to ensure uninterrupted service."
-                      }
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {/* Test Connection Result - Only show full panel for manual tests or errors */}
-                {testResult && (!testResult.isAutoTest || !testResult.success) && (
-                  <div className={`p-4 rounded-lg border ${
-                    testResult.success 
-                      ? 'bg-green-500/10 border-green-500/30' 
-                      : 'bg-destructive/10 border-destructive/30'
-                  }`}>
-                    <div className="flex items-start gap-3">
-                      {testResult.success ? (
-                        <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                      ) : (
-                        <XCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className={`font-medium ${testResult.success ? 'text-green-600' : 'text-destructive'}`}>
-                          {testResult.message}
-                        </p>
-                        {testResult.error && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {testResult.error}
-                          </p>
-                        )}
-                        {testResult.details && (
-                          <div className="mt-3 space-y-2 text-sm">
-                            <div className="flex items-center gap-2">
-                              <Key className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-muted-foreground">Token:</span>
-                              <Badge variant={testResult.details.tokenValid ? "default" : "destructive"} className={testResult.details.tokenValid ? "bg-green-500/10 text-green-600 border-green-500/30" : ""}>
-                                {testResult.details.tokenValid ? "Valid" : "Invalid"}
-                              </Badge>
-                            </div>
-                            {testResult.details.permissionsValid !== undefined && (
-                              <div className="flex items-center gap-2">
-                                <Shield className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-muted-foreground">Permissions:</span>
-                                <Badge variant={testResult.details.permissionsValid ? "default" : "destructive"} className={testResult.details.permissionsValid ? "bg-green-500/10 text-green-600 border-green-500/30" : ""}>
-                                  {testResult.details.permissionsValid
-                                    ? "All granted"
-                                    : testResult.details.missingPermissions?.length
-                                    ? `Missing: ${testResult.details.missingPermissions.join(', ')}`
-                                    : testResult.details.hasInstagramMediaAccess === false
-                                    ? "Instagram access blocked"
-                                    : "Needs attention"}
-                                </Badge>
-                              </div>
-                            )}
-                            {testResult.details.hasInstagramMediaAccess === false && (
-                              <Alert className="mt-2 border-amber-500/30 bg-amber-500/5">
-                                <AlertTriangle className="h-4 w-4 text-amber-500" />
-                                <AlertDescription className="text-xs space-y-2">
-                                  <p><span className="font-medium">Instagram post browsing isn't available yet for this connection.</span></p>
-                                  <p>Try disconnecting and reconnecting your Meta account — this will automatically update your access. Make sure the Instagram profile is a Business or Creator account linked to your selected Facebook Page.</p>
-                                  {testResult.details.instagramMediaError && (
-                                    <p><span className="font-medium">Meta returned:</span> {testResult.details.instagramMediaError}</p>
-                                  )}
-                                </AlertDescription>
-                              </Alert>
-                            )}
-                            {testResult.details.adAccountName && (
-                              <div className="flex items-center gap-2">
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                                <span className="text-muted-foreground">Ad Account:</span>
-                                <span className="font-medium">{testResult.details.adAccountName}</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        {/* Troubleshooting tips for errors */}
-                        {!testResult.success && (
-                          <div className="mt-4 p-3 bg-muted/50 rounded-md">
-                            <p className="text-xs font-medium text-muted-foreground mb-2">Troubleshooting:</p>
-                            <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
-                              {testResult.details?.tokenValid === false && (
-                                <li>Your token may have expired. Try reconnecting your Meta account.</li>
-                              )}
-                              {testResult.details?.permissionsValid === false && (
-                                <li>Some access may be missing. Try disconnecting and reconnecting your Meta account to refresh it.</li>
-                              )}
-                              {testResult.details?.hasInstagramMediaAccess === false && (
-                                <li>Instagram post browsing isn't available yet. Disconnect and reconnect to update your access.</li>
-                              )}
-                              {!testResult.details?.tokenValid && (
-                                <li>Check if you've changed your Meta password recently.</li>
-                              )}
-                              <li>Try disconnecting and reconnecting your Meta account.</li>
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="shrink-0"
-                        onClick={() => setTestResult(null)}
-                      >
-                        <XCircle className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap gap-3 pt-2">
-                  <Button 
-                    onClick={() => handleTestConnection()} 
-                    disabled={testing || refreshing}
-                    variant="outline"
-                    className="gap-2"
-                  >
-                    {testing || refreshing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Zap className="h-4 w-4" />
-                    )}
-                    {refreshing ? "Refreshing..." : testing ? "Testing..." : "Test & Refresh Connection"}
-                  </Button>
-                  <MetaAccountConnect
-                    brandId={brand.id}
-                    currentAccountId={brand.meta_account_id}
-                    currentPageId={brand.page_id}
-                    currentPageName={brand.page_name}
-                    currentInstagramId={brand.instagram_account_id}
-                    currentInstagramName={brand.instagram_account_name}
-                    tokenExpired={isExpired || isExpiringSoon}
-                    onUpdate={fetchBrand}
-                  />
-                  <Button 
-                    variant="ghost" 
-                    onClick={handleDisconnectMeta}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Link2Off className="h-4 w-4 mr-2" />
-                    Disconnect
-                  </Button>
-                </div>
-              </>
-            )}
-
-            {/* Awaiting Selection State (token stored, but no ad account chosen yet) */}
-            {isAwaitingSelection && (
-              <div className="text-center py-6">
-                <div className="w-16 h-16 rounded-full bg-gradient-lumi/10 flex items-center justify-center mx-auto mb-4">
-                  <AlertTriangle className="h-8 w-8 text-lumi-orange-1" />
-                </div>
-                <h3 className="font-semibold mb-2">Finish Your Meta Connection</h3>
-                <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-                  We’re connected to Meta—now select the ad account and Facebook Page you want to use for this brand.
-                </p>
-                {brand?.id ? (
-                  <MetaAccountConnect
-                    brandId={brand.id}
-                    currentAccountId={brand.meta_account_id}
-                    currentPageId={brand.page_id}
-                    currentPageName={brand.page_name}
-                    currentInstagramId={brand.instagram_account_id}
-                    currentInstagramName={brand.instagram_account_name}
-                    triggerSize="lg"
-                    autoOpen
-                    onUpdate={fetchBrand}
-                  />
-                ) : (
-                  <Button variant="lumi" size="lg" onClick={() => navigate('/dashboard')}>
-                    Go to Dashboard
-                  </Button>
-                )}
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button onClick={() => handleTestConnection()} disabled={testing || refreshing} variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
+                  {testing || refreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                  {refreshing ? 'Refreshing…' : testing ? 'Testing…' : 'Recheck'}
+                </Button>
+                <MetaAccountConnect
+                  brandId={brand.id}
+                  currentAccountId={brand.meta_account_id}
+                  currentPageId={brand.page_id}
+                  currentPageName={brand.page_name}
+                  currentInstagramId={brand.instagram_account_id}
+                  currentInstagramName={brand.instagram_account_name}
+                  tokenExpired={isExpired || isExpiringSoon}
+                  onUpdate={fetchBrand}
+                />
+                <Button variant="ghost" size="sm" onClick={handleDisconnectMeta} className="h-8 text-xs text-destructive hover:text-destructive">
+                  <Link2Off className="h-3.5 w-3.5 mr-1.5" />Disconnect
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => navigate('/tracking-setup')} className="h-8 text-xs ml-auto">
+                  Tracking & Pixel Setup →
+                </Button>
               </div>
-            )}
-
-            {/* Not Connected State */}
-            {!isConnected && !isPartiallyConnected && !isAwaitingSelection && (
-              <div className="text-center py-6">
-                <div className="w-16 h-16 rounded-full bg-gradient-lumi/10 flex items-center justify-center mx-auto mb-4">
-                  <Link2 className="h-8 w-8 text-lumi-orange-1" />
-                </div>
-                <h3 className="font-semibold mb-2">Connect Your Meta Account</h3>
-                <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-                  Link your Meta Business account to create, manage, and track your Facebook and Instagram ads directly from Lumi.
-                </p>
-                {brand?.id ? (
-                  <MetaAccountConnect
-                    brandId={brand.id}
-                    currentAccountId={brand.meta_account_id}
-                    currentPageId={brand.page_id}
-                    currentPageName={brand.page_name}
-                    currentInstagramId={brand.instagram_account_id}
-                    currentInstagramName={brand.instagram_account_name}
-                    triggerSize="lg"
-                    onUpdate={fetchBrand}
-                  />
-                ) : (
-                  <Button variant="lumi" size="lg" onClick={() => navigate('/dashboard')}>
-                    Go to Dashboard
-                  </Button>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Setup Diagnostic — show when connected and diagnostic has results */}
-        {isConnected && diagnosticResult && (
-          <MetaSetupDiagnostic
-            result={diagnosticResult}
-            brandId={brand?.id || ''}
-            onRecheck={handleDiagnosticRecheck}
-            rechecking={diagnosticLoading}
-            recheckCount={diagnosticRecheckCount}
-            onAskLumi={() => {
-              // Open Lumi with meta-setup context
-              const event = new CustomEvent('open-lumi', { detail: { context: 'meta-setup', message: 'I need help with my Meta setup' } });
-              window.dispatchEvent(event);
-            }}
-          />
+            </CardContent>
+          </Card>
         )}
 
-        {/* Meta Readiness Checklist — only show when NOT fully connected */}
-        {brand?.id && !isConnected && (
-          <MetaReadinessChecklist
-            brandId={brand.id}
-            onConnectMeta={() => {
-              // Connect flow is handled by the connection card above
-            }}
-          />
-        )}
-
-        {/* Permissions & Info Card */}
-        <Card variant="glow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Permissions & Security
-            </CardTitle>
-            <CardDescription>
-              What we access and how your data is protected
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium">Ad Account Management</p>
-                  <p className="text-xs text-muted-foreground">Create, edit, and manage ad campaigns</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium">Performance Insights</p>
-                  <p className="text-xs text-muted-foreground">Read campaign metrics and analytics</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium">Page Publishing</p>
-                  <p className="text-xs text-muted-foreground">Post ads to your Facebook page</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t">
-              <p className="text-xs text-muted-foreground">
-                Your credentials are encrypted and stored securely. We never share your data with third parties.
-                Tokens expire after 60 days and require re-authentication.
-              </p>
-            </div>
-
-            <Button variant="link" className="p-0 h-auto text-sm" asChild>
+        {/* ============================================================ */}
+        {/* COLLAPSED: What LUMI can access                              */}
+        {/* ============================================================ */}
+        <CollapsibleSection
+          icon={<Shield className="h-4 w-4" />}
+          title="What LUMI can access"
+          subtitle="Permissions, encryption, and Meta API details"
+        >
+          <div className="space-y-3 pt-2">
+            <AccessRow title="Ad Account Management" desc="Create, edit, and manage ad campaigns" />
+            <AccessRow title="Performance Insights" desc="Read campaign metrics and analytics" />
+            <AccessRow title="Page Publishing" desc="Post ads to your Facebook Page" />
+            <p className="text-xs text-muted-foreground pt-3 border-t">
+              Your credentials are encrypted and stored securely. We never share your data with third parties. Tokens expire after 60 days and require re-authentication.
+            </p>
+            <Button variant="link" className="p-0 h-auto text-xs" asChild>
               <a href="https://developers.facebook.com/docs/marketing-api" target="_blank" rel="noopener noreferrer">
                 Learn more about Meta API permissions
                 <ExternalLink className="h-3 w-3 ml-1" />
               </a>
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </CollapsibleSection>
 
-        {/* Connection check log — visible whenever there's a brand to log against */}
+        {/* ============================================================ */}
+        {/* COLLAPSED: Connection history                                */}
+        {/* ============================================================ */}
         {brand?.id && (
-          <MetaConnectionCheckLog brandId={brand.id} refreshKey={logRefreshKey} />
-        )}
-
-        {/* Pixel & event tracking moved to dedicated page for clearer guidance */}
-        {isConnected && (
-          <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-primary" />
-                Tracking & Pixel Setup
-              </CardTitle>
-              <CardDescription>
-                Pixel verification, event tracking, and plain-English help now live on their
-                own page so you've got room to actually understand what's happening.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={() => navigate('/tracking-setup')}>
-                Open Tracking & Pixel Setup
-              </Button>
-            </CardContent>
-          </Card>
+          <CollapsibleSection
+            icon={<RefreshCw className="h-4 w-4" />}
+            title="Connection history"
+            subtitle={connectionHealth === 'healthy' ? 'Last check passed' : connectionHealth === 'warning' ? 'Last check: limited access' : connectionHealth === 'error' ? 'Last check: issues found' : 'View previous checks'}
+          >
+            <div className="pt-2">
+              <MetaConnectionCheckLog brandId={brand.id} refreshKey={logRefreshKey} />
+            </div>
+          </CollapsibleSection>
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Small helpers — kept inline so this page stays self-contained
+// ---------------------------------------------------------------------------
+
+function Essential({
+  label, value, mono, tone = 'default', hint,
+}: { label: string; value?: string | null; mono?: boolean; tone?: 'default' | 'warn' | 'error'; hint?: string }) {
+  const toneClass =
+    tone === 'error' ? 'border-destructive/30 bg-destructive/5' :
+    tone === 'warn' ? 'border-amber-500/30 bg-amber-500/5' :
+    'bg-muted/30';
+  return (
+    <div className={`p-3 rounded-md border ${toneClass}`}>
+      <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
+      <p className={`text-xs font-medium truncate ${mono ? 'font-mono' : ''}`}>{value || '—'}</p>
+      {hint && <p className="text-[10px] text-muted-foreground mt-0.5">{hint}</p>}
+    </div>
+  );
+}
+
+function AccessRow({ title, desc }: { title: string; desc: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+      <div>
+        <p className="text-sm font-medium">{title}</p>
+        <p className="text-xs text-muted-foreground">{desc}</p>
+      </div>
+    </div>
+  );
+}
+
+function CollapsibleSection({
+  icon, title, subtitle, children,
+}: { icon: React.ReactNode; title: string; subtitle?: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Card>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/30 transition-colors rounded-lg"
+      >
+        <span className="text-muted-foreground">{icon}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium">{title}</p>
+          {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+        </div>
+        <span className="text-xs text-muted-foreground">{open ? 'Hide' : 'Show'}</span>
+      </button>
+      {open && <div className="px-4 pb-4">{children}</div>}
+    </Card>
   );
 }
