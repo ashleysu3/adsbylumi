@@ -131,12 +131,21 @@ Deno.serve(async (req) => {
             {
               role: "system",
               content:
-                "You are LUMI, an ad strategist. Pick the single best matching strategy template for this brand based on industry, business model, goal, and website signals. If none truly fit, return no_match. Respond ONLY with JSON.",
+                "You are LUMI, an ad strategist. Pick the single best matching strategy template for THIS specific offer + goal. REQUIRED: match the funnel to what the user is actually promoting. Do NOT default to the most generic / broadest option. Specifically:\n" +
+                "- A webinar / free training / masterclass / workshop offer → webinar funnel.\n" +
+                "- A free download / guide / checklist / PDF / quiz / lead magnet → lead-magnet funnel.\n" +
+                "- A low-ticket paid challenge / bootcamp / $27–$97 sprint → paid-challenge funnel.\n" +
+                "- A high-ticket coaching / consulting / 1:1 / mastermind / application offer → DM / conversation funnel.\n" +
+                "- A podcast / show / clip-based growth play → podcast-grow funnel.\n" +
+                "- A standard paid product or course with a sales page (no webinar, no challenge) → the matching sales funnel (e.g. coach-course-creator-3step).\n" +
+                "- A local in-person service → local-service funnel.\n" +
+                "Use the offer name, description, price, page_goal, and the user_goal to decide. Only return no_match if literally none of the templates fit the offer type. Respond ONLY with JSON.",
             },
             {
               role: "user",
               content: JSON.stringify({ brandSnapshot, templates: templateSummaries }),
             },
+
           ],
           response_format: {
             type: "json_schema",
@@ -193,10 +202,48 @@ Deno.serve(async (req) => {
       parsed = {};
     }
 
+    const detectedObjective = detectPrimaryObjective(brandSnapshot);
+
     const matchSlug: string | null = parsed?.no_match ? null : parsed?.match_slug;
-    const matched = matchSlug
+    let matched = matchSlug
       ? templates.find((t: any) => t.slug === matchSlug)
       : null;
+
+    // Guardrail: if the AI picked a template whose primary_goals clearly
+    // conflict with the detected objective for this offer, prefer a template
+    // whose goals align with the detected objective.
+    const goalsAlignWithObjective = (goals: string[] | null | undefined, obj: string) => {
+      const g = (goals ?? []).map((x) => String(x).toLowerCase());
+      if (obj === "OUTCOME_LEADS") {
+        return g.some((x) => ["get_leads", "book_calls", "dm_leads"].includes(x));
+      }
+      if (obj === "OUTCOME_AWARENESS") {
+        return g.some((x) => ["grow_social", "awareness"].includes(x));
+      }
+      // OUTCOME_SALES
+      return g.some((x) => ["promote_offer", "sales"].includes(x));
+    };
+
+    if (matched && !goalsAlignWithObjective(matched.primary_goals, detectedObjective)) {
+      const better = templates.find((t: any) =>
+        goalsAlignWithObjective(t.primary_goals, detectedObjective),
+      );
+      if (better) {
+        console.log(
+          `Guardrail: AI picked ${matched.slug} but detected ${detectedObjective}; switching to ${better.slug}`,
+        );
+        matched = better;
+      }
+    }
+
+    // No match from AI → fall back to the best template for the detected
+    // objective rather than queuing a manual request (which always felt like
+    // the coach default).
+    if (!matched) {
+      matched = templates.find((t: any) =>
+        goalsAlignWithObjective(t.primary_goals, detectedObjective),
+      ) ?? null;
+    }
 
     if (!matched) {
       const { data: reqRow } = await admin
@@ -213,6 +260,7 @@ Deno.serve(async (req) => {
         .single();
       return json({ pending: true, request_id: reqRow?.id });
     }
+
 
     // Adapt the matched template's campaign objectives to the actual offer.
     // Templates are written generically (often defaulting to OUTCOME_SALES),
