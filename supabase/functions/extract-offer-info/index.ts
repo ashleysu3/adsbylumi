@@ -316,14 +316,46 @@ ${!fetchSuccess ? 'Since the page content could not be fetched, set needs_clarif
 
       try {
         return JSON.parse(raw);
-      } catch (e) {
-        let open = 0, close = 0;
-        for (const ch of raw) { if (ch === '{') open++; if (ch === '}') close++; }
-        let repaired = raw;
-        if (open > close) repaired += '}'.repeat(open - close);
-        let ao = 0, ac = 0;
-        for (const ch of repaired) { if (ch === '[') ao++; if (ch === ']') ac++; }
-        if (ao > ac) repaired = repaired.replace(/,?\s*$/, '') + ']'.repeat(ao - ac);
+      } catch (_e) {
+        // Aggressive repair for truncated output: walk the string tracking
+        // string/array/object state, then close any open structures.
+        let inStr = false, esc = false;
+        const stack: string[] = [];
+        let lastSafe = 0; // index after last completed top-level value boundary
+        for (let i = 0; i < raw.length; i++) {
+          const ch = raw[i];
+          if (inStr) {
+            if (esc) { esc = false; continue; }
+            if (ch === '\\') { esc = true; continue; }
+            if (ch === '"') { inStr = false; }
+            continue;
+          }
+          if (ch === '"') { inStr = true; continue; }
+          if (ch === '{' || ch === '[') { stack.push(ch); continue; }
+          if (ch === '}' || ch === ']') { stack.pop(); lastSafe = i + 1; continue; }
+          if (ch === ',' && stack.length > 0) { lastSafe = i; }
+        }
+        let repaired = raw.slice(0, lastSafe || raw.length);
+        if (inStr) repaired += '"';
+        // Re-walk to compute remaining open structures on the truncated string
+        const stack2: string[] = [];
+        let inStr2 = false, esc2 = false;
+        for (const ch of repaired) {
+          if (inStr2) {
+            if (esc2) { esc2 = false; continue; }
+            if (ch === '\\') { esc2 = true; continue; }
+            if (ch === '"') inStr2 = false;
+            continue;
+          }
+          if (ch === '"') { inStr2 = true; continue; }
+          if (ch === '{' || ch === '[') stack2.push(ch);
+          else if (ch === '}' || ch === ']') stack2.pop();
+        }
+        repaired = repaired.replace(/,\s*$/, '');
+        while (stack2.length) {
+          const open = stack2.pop();
+          repaired += open === '{' ? '}' : ']';
+        }
         repaired = repaired.replace(/,\s*([}\]])/g, '$1');
         return JSON.parse(repaired);
       }
