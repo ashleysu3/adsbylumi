@@ -777,6 +777,9 @@ export default function Performance() {
         </div>
 
 
+        {/* Bridge: live Meta campaigns not yet in LUMI */}
+        <MetaImportBridgeBanner surface="live-ads" />
+
         {loading && (
           <Card>
             <CardContent className="py-12 flex items-center justify-center gap-2 text-muted-foreground">
