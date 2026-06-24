@@ -94,6 +94,56 @@ async function cloneAdSet(sourceAdSetId: string, campaignId: string, token: stri
   }
 }
 
+/** Pull the shortcode from an Instagram URL like /p/XXXX/, /reel/XXXX/, /tv/XXXX/. */
+function extractIgShortcode(url: string): string | null {
+  if (!url) return null;
+  const m = url.match(/instagram\.com\/(?:[^/]+\/)?(?:p|reel|tv|reels)\/([A-Za-z0-9_-]+)/i);
+  return m?.[1] || null;
+}
+
+/** Resolve a pasted IG URL to a media id by scanning the connected IG account's media list. */
+async function resolveIgMediaByUrl(
+  igUserId: string,
+  url: string,
+  token: string,
+): Promise<{ id?: string; caption?: string; media_type?: string; thumbnail_url?: string; media_url?: string; error?: string }> {
+  const shortcode = extractIgShortcode(url);
+  if (!shortcode) {
+    return { error: "That doesn't look like an Instagram post URL. Use a link like instagram.com/p/… or /reel/…" };
+  }
+  const fields = 'id,permalink,caption,media_type,thumbnail_url,media_url';
+  let next: string | null =
+    `https://graph.facebook.com/v25.0/${igUserId}/media?fields=${fields}&limit=50&access_token=${token}`;
+  let pages = 0;
+  while (next && pages < 6) {
+    try {
+      const res = await fetch(next);
+      const data = await res.json();
+      if (data.error) return { error: data.error.message || 'Meta rejected the media lookup.' };
+      const hit = (data?.data || []).find(
+        (m: any) => typeof m.permalink === 'string' && m.permalink.includes(`/${shortcode}`),
+      );
+      if (hit) {
+        return {
+          id: hit.id,
+          caption: hit.caption,
+          media_type: hit.media_type,
+          thumbnail_url: hit.thumbnail_url,
+          media_url: hit.media_url,
+        };
+      }
+      next = data?.paging?.next || null;
+      pages++;
+    } catch (e: any) {
+      return { error: e?.message || 'Meta media lookup failed.' };
+    }
+  }
+  return {
+    error:
+      "We couldn't find that post on the connected Instagram account. Make sure the URL is from the same IG account that's connected to this brand.",
+  };
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
@@ -251,9 +301,30 @@ Deno.serve(async (req) => {
     const failedAds: Array<{ postId: string; error: string }> = [];
 
     for (const post of posts) {
-      const postId = post.id;
-      const caption = post.caption || '';
+      let postId = post.id;
+      let caption = post.caption || '';
       const isFacebookPost = post.platform === 'facebook' || !!post.facebook_post_id;
+
+      // Fallback: user pasted an Instagram URL instead of picking from the list.
+      if (!postId && !isFacebookPost && (post.url || post.permalink)) {
+        if (!igAccountId) {
+          failedAds.push({ postId: post.url || 'url', error: 'No Instagram account is connected to this brand.' });
+          continue;
+        }
+        const resolved = await resolveIgMediaByUrl(igAccountId, post.url || post.permalink, metaAccessToken);
+        if (resolved.error || !resolved.id) {
+          failedAds.push({ postId: post.url || 'url', error: resolved.error || "Couldn't resolve that URL." });
+          continue;
+        }
+        postId = resolved.id;
+        if (!caption) caption = resolved.caption || '';
+        post.media_type = post.media_type || resolved.media_type;
+      }
+
+      if (!postId) {
+        failedAds.push({ postId: 'unknown', error: 'Missing post id or URL.' });
+        continue;
+      }
 
       if (!isFacebookPost && post.instagram_account_id && post.instagram_account_id !== igAccountId) {
         failedAds.push({

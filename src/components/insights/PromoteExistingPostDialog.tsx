@@ -29,7 +29,9 @@ import {
   ArrowRight,
   PlayCircle,
   Pause,
+  Link as LinkIcon,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface FetchedPost {
   id: string;
@@ -136,6 +138,8 @@ export function PromoteExistingPostDialog({
   const [postsError, setPostsError] = useState<string | null>(null);
   const [igAccountId, setIgAccountId] = useState<string | null>(null);
   const [selectedPost, setSelectedPost] = useState<FetchedPost | null>(null);
+  const [manualUrl, setManualUrl] = useState("");
+  const [useManualUrl, setUseManualUrl] = useState(false);
 
   // Step 2: fit
   const [fitLoading, setFitLoading] = useState(false);
@@ -164,6 +168,8 @@ export function PromoteExistingPostDialog({
         setCreatedAdSetId(null);
         setNewAdSetCreated(false);
         setPostsError(null);
+        setManualUrl("");
+        setUseManualUrl(false);
       }, 250);
     }
   }, [open]);
@@ -259,23 +265,28 @@ export function PromoteExistingPostDialog({
   }
 
   async function handleCreatePausedAd() {
-    if (!selectedPost) return;
+    if (!selectedPost && !(useManualUrl && manualUrl.trim())) return;
     setSubmitting(true);
     try {
+      const postPayload = selectedPost
+        ? {
+            id: selectedPost.id,
+            media_type: selectedPost.media_type,
+            caption: selectedPost.caption || "",
+            instagram_account_id: igAccountId,
+            platform: "instagram",
+          }
+        : {
+            url: manualUrl.trim(),
+            instagram_account_id: igAccountId,
+            platform: "instagram",
+          };
       const { data, error } = await supabase.functions.invoke("add-posts-to-campaign", {
         body: {
           workspaceId,
           status: "PAUSED", // always paused — user confirms next
           createNewAdSet: placement === "new",
-          posts: [
-            {
-              id: selectedPost.id,
-              media_type: selectedPost.media_type,
-              caption: selectedPost.caption || "",
-              instagram_account_id: igAccountId,
-              platform: "instagram",
-            },
-          ],
+          posts: [postPayload],
         },
       });
       if (error) throw error;
@@ -435,6 +446,35 @@ export function PromoteExistingPostDialog({
                   })}
                 </div>
               )}
+
+              {/* Manual URL fallback — works even when Meta's post fetch fails */}
+              <div className="rounded-xl border border-dashed bg-muted/30 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <LinkIcon className="h-4 w-4 text-primary" />
+                  Don't see the post you want? Paste its URL.
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Meta sometimes hides posts from this list. Drop in the link to any post on your
+                  connected Instagram account and we'll pull it directly.
+                </p>
+                <Input
+                  type="url"
+                  placeholder="https://www.instagram.com/p/…  or  /reel/…"
+                  value={manualUrl}
+                  onChange={(e) => {
+                    setManualUrl(e.target.value);
+                    setUseManualUrl(!!e.target.value.trim());
+                    if (e.target.value.trim()) setSelectedPost(null);
+                  }}
+                  className="bg-background"
+                />
+                {useManualUrl && (
+                  <p className="text-[11px] text-muted-foreground">
+                    We'll match this URL to your connected Instagram account before creating the ad
+                    (paused).
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -588,13 +628,18 @@ export function PromoteExistingPostDialog({
             <>
               <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button
-                disabled={!selectedPost}
+                disabled={!selectedPost && !(useManualUrl && manualUrl.trim())}
                 onClick={() => {
+                  // Manual URL skips the fit check (no caption yet) and goes straight to placement.
+                  if (!selectedPost && useManualUrl && manualUrl.trim()) {
+                    setStep("place");
+                    return;
+                  }
                   setStep("fit");
                   if (selectedPost) runFitCheck(selectedPost);
                 }}
               >
-                Next: fit check
+                {!selectedPost && useManualUrl ? "Next: placement" : "Next: fit check"}
                 <ArrowRight className="h-4 w-4 ml-1.5" />
               </Button>
             </>
