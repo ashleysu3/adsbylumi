@@ -712,17 +712,20 @@ export type Database = {
           copy_perspective: string
           created_at: string | null
           flodesk_api_key: string | null
+          flodesk_connected: boolean | null
           flodesk_webhook_id: string | null
           id: string
           industry: string | null
           instagram_account_id: string | null
           instagram_account_name: string | null
           kit_access_token: string | null
+          kit_connected: boolean | null
           kit_refresh_token: string | null
           kit_webhook_id: string | null
           last_review_date: string | null
           meta_access_token: string | null
           meta_account_id: string | null
+          meta_connected: boolean | null
           meta_pixel_events: Json | null
           meta_pixel_id: string | null
           meta_pixel_name: string | null
@@ -765,17 +768,20 @@ export type Database = {
           copy_perspective?: string
           created_at?: string | null
           flodesk_api_key?: string | null
+          flodesk_connected?: boolean | null
           flodesk_webhook_id?: string | null
           id?: string
           industry?: string | null
           instagram_account_id?: string | null
           instagram_account_name?: string | null
           kit_access_token?: string | null
+          kit_connected?: boolean | null
           kit_refresh_token?: string | null
           kit_webhook_id?: string | null
           last_review_date?: string | null
           meta_access_token?: string | null
           meta_account_id?: string | null
+          meta_connected?: boolean | null
           meta_pixel_events?: Json | null
           meta_pixel_id?: string | null
           meta_pixel_name?: string | null
@@ -818,17 +824,20 @@ export type Database = {
           copy_perspective?: string
           created_at?: string | null
           flodesk_api_key?: string | null
+          flodesk_connected?: boolean | null
           flodesk_webhook_id?: string | null
           id?: string
           industry?: string | null
           instagram_account_id?: string | null
           instagram_account_name?: string | null
           kit_access_token?: string | null
+          kit_connected?: boolean | null
           kit_refresh_token?: string | null
           kit_webhook_id?: string | null
           last_review_date?: string | null
           meta_access_token?: string | null
           meta_account_id?: string | null
+          meta_connected?: boolean | null
           meta_pixel_events?: Json | null
           meta_pixel_id?: string | null
           meta_pixel_name?: string | null
@@ -3722,6 +3731,7 @@ export type Database = {
       }
       get_partner_welcome: { Args: { p_code: string }; Returns: Json }
       get_shared_report: { Args: { p_share_token: string }; Returns: Json }
+      get_team_invite_token: { Args: { p_member_id: string }; Returns: string }
       get_whats_new: { Args: never; Returns: Json }
       get_winback_offer_by_token: { Args: { p_token: string }; Returns: Json }
       has_role: {
