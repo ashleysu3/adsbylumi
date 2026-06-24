@@ -236,7 +236,9 @@ export function PromoteExistingPostDialog({
 
   // Step 4: preview
   const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<{ message: string; kind: "ig_permission" | "other" } | null>(null);
+  const [submitError, setSubmitError] = useState<{ message: string; kind: "ig_permission" | "needs_destination" | "other"; suggestedCta?: string } | null>(null);
+  const [destinationLink, setDestinationLink] = useState("");
+  const [destinationCta, setDestinationCta] = useState<string>("LEARN_MORE");
   const [createdAds, setCreatedAds] = useState<CreatedAd[]>([]);
   const [createdAdSetId, setCreatedAdSetId] = useState<string | null>(null);
   const [newAdSetCreated, setNewAdSetCreated] = useState(false);
