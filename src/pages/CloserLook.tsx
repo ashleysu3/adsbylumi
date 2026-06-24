@@ -883,6 +883,105 @@ export default function CloserLook() {
 
         </Card>
 
+        {/* Actions you can take — quick access to the same things in the Options menu */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Actions you can take</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Jump straight to the most common moves for this campaign. Nothing happens until you
+              confirm.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[
+                {
+                  id: "scale",
+                  icon: Rocket,
+                  label: "Scale it",
+                  desc: "Increase budget on this campaign.",
+                  run: () => {
+                    const r = syntheticRecForOption(
+                      "increase_budget",
+                      "Approved scaling from Closer Look",
+                    );
+                    if (r) openExecuteFor(r);
+                  },
+                },
+                {
+                  id: "kill",
+                  icon: Pause,
+                  label: "Kill it",
+                  desc: "Pause this campaign in Meta.",
+                  run: () => {
+                    const r = syntheticRecForOption(
+                      "turn_off",
+                      "Approved pause from Closer Look",
+                    );
+                    if (r) openExecuteFor(r);
+                  },
+                  tone: "danger" as const,
+                },
+                {
+                  id: "new_creative",
+                  icon: Wand2,
+                  label: "New creative",
+                  desc: "Refresh with new hooks, angles, or formats.",
+                  run: () => {
+                    const r = syntheticRecForOption(
+                      "refresh_creative",
+                      "Approved creative refresh from Closer Look",
+                    );
+                    if (r) openExecuteFor(r);
+                  },
+                },
+                {
+                  id: "existing_post",
+                  icon: Instagram,
+                  label: "Use a post I already have",
+                  desc: "Promote an existing IG or FB post into this campaign.",
+                  run: () => setPromoteOpen(true),
+                },
+                {
+                  id: "adjust_goals",
+                  icon: Target,
+                  label: "Adjust this campaign's goals",
+                  desc: "Change the KPI targets LUMI measures against.",
+                  run: () => setGoalModalOpen(true),
+                },
+              ].map((a) => {
+                const Icon = a.icon;
+                const danger = (a as any).tone === "danger";
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={a.run}
+                    className={cn(
+                      "text-left rounded-lg border bg-background/60 hover:bg-muted/40 transition p-3 flex items-start gap-3",
+                      danger && "border-destructive/40 hover:bg-destructive/5",
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "rounded-md p-2 flex-shrink-0",
+                        danger ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary",
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 space-y-0.5">
+                      <p className="text-sm font-medium">{a.label}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{a.desc}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+
         {/* Lead-fit feedback loop */}
         {activeBrand && workspaceId && (
           <Card>
