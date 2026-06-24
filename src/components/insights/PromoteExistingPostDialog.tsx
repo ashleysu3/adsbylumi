@@ -140,13 +140,15 @@ export function PromoteExistingPostDialog({
   const [step, setStep] = useState<Step>("pick");
 
   // Step 1: pick
-  const [postsLoading, setPostsLoading] = useState(false);
-  const [posts, setPosts] = useState<FetchedPost[]>([]);
-  const [postsError, setPostsError] = useState<string | null>(null);
+  const [fbPostsLoading, setFbPostsLoading] = useState(false);
+  const [fbPosts, setFbPosts] = useState<FetchedPost[]>([]);
+  const [fbPostsError, setFbPostsError] = useState<string | null>(null);
+  const [igPosts, setIgPosts] = useState<FetchedPost[]>([]);
+  const [igAvailable, setIgAvailable] = useState(false);
+  const [pickerTab, setPickerTab] = useState<"facebook" | "instagram" | "link">("facebook");
   const [igAccountId, setIgAccountId] = useState<string | null>(null);
   const [selectedPost, setSelectedPost] = useState<FetchedPost | null>(null);
   const [manualUrl, setManualUrl] = useState("");
-  const [useManualUrl, setUseManualUrl] = useState(false);
 
   // Step 2: fit
   const [fitLoading, setFitLoading] = useState(false);
@@ -154,7 +156,8 @@ export function PromoteExistingPostDialog({
 
   // Step 3: placement
   const [placement, setPlacement] = useState<"new" | "existing">("new");
-  const [launchLive, setLaunchLive] = useState(true); // default: go live unless user opts to start paused
+  // Default: paused so user reviews before it runs. Toggle to launch live immediately.
+  const [launchLive, setLaunchLive] = useState(false);
 
   // Step 4: preview
   const [submitting, setSubmitting] = useState(false);
