@@ -20,35 +20,51 @@ export function LabBRoll({ seedId: _seedId }: { seedId?: string }) {
     }
     setLoading(true);
     setResults([]);
+    const label = `Brainstorming b-roll shots${prompt.trim() ? ` for: ${prompt.trim().slice(0, 80)}` : ""}`;
+    const jobId = await startCreative({
+      brandId: activeBrand.id,
+      type: "broll_idea",
+      taskLabel: label,
+      source: "lab",
+      sourceRef: { tool: "broll", prompt },
+    });
     try {
       const { data, error } = await supabase.functions.invoke("generate-broll-ideas", {
-        body: {
-          brand_id: activeBrand.id,
-          prompt: prompt.trim() || undefined,
-          count: 8,
-        },
+        body: { brand_id: activeBrand.id, prompt: prompt.trim() || undefined, count: 8 },
       });
       if (error) throw error;
       const arr: any[] = data?.ideas || data?.results || data?.shots || [];
       if (arr.length === 0) {
-        toast.error(data?.error || "No b-roll ideas generated");
-      } else {
-        setResults(arr);
-        for (const idea of arr) {
-          const label = typeof idea === "string" ? idea : idea.label || idea.description || idea.shot || "B-roll shot";
-          await saveCreative({
-            brandId: activeBrand.id,
-            type: "broll_idea",
-            title: label.slice(0, 80),
-            content: typeof idea === "string" ? { text: idea } : idea,
-            source: "lab",
-            sourceRef: { tool: "broll", prompt },
-          });
-        }
-        toast.success(`${arr.length} b-roll ideas saved to My Creatives`);
+        const msg = data?.error || "No b-roll ideas generated";
+        if (jobId) await failCreative(jobId, msg);
+        toast.error(msg);
+        return;
       }
+      setResults(arr);
+      const labelOf = (idea: any) =>
+        typeof idea === "string" ? idea : idea.label || idea.description || idea.shot || "B-roll shot";
+      if (jobId) {
+        const first = arr[0];
+        await completeCreative(jobId, {
+          type: "broll_idea",
+          title: labelOf(first).slice(0, 80),
+          content: typeof first === "string" ? { text: first } : first,
+        });
+      }
+      for (const idea of arr.slice(1)) {
+        await saveCreative({
+          brandId: activeBrand.id,
+          type: "broll_idea",
+          title: labelOf(idea).slice(0, 80),
+          content: typeof idea === "string" ? { text: idea } : idea,
+          source: "lab",
+          sourceRef: { tool: "broll", prompt },
+        });
+      }
+      toast.success(`${arr.length} b-roll ideas ready in My Creatives`);
     } catch (e: any) {
       console.error(e);
+      if (jobId) await failCreative(jobId, e?.message || "Generation failed");
       toast.error(e?.message || "Couldn't generate b-roll ideas");
     } finally {
       setLoading(false);
