@@ -417,10 +417,11 @@ export function PromoteExistingPostDialog({
       if (error) throw error;
       if (!data?.success) {
         const raw = data?.failedAds?.[0]?.error || data?.error || "Failed to create ad";
-        const reason = /#10|permission|OAuthException/i.test(raw)
-          ? "Meta couldn't use this linked post with the connected ad account. Make sure the link is a public post or Reel from the Instagram account connected to this brand, then try again."
+        const isIgPerm = /instagram|ig\b|media v2 id|valid instagram media|permission|#10|OAuthException/i.test(raw);
+        const reason = isIgPerm
+          ? "Meta won't let us read this Instagram account's posts with the current permissions on your Meta connection (instagram_basic is denied/pending). The Facebook Page tab uses a different access path that works today — pick the same post from there if you cross-posted it."
           : raw;
-        toast.error(reason);
+        setSubmitError({ message: reason, kind: isIgPerm ? "ig_permission" : "other" });
         setSubmitting(false);
         return;
       }
