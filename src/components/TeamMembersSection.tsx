@@ -207,12 +207,12 @@ export function TeamMembersSection({ brandId }: TeamMembersSectionProps) {
                       <SelectItem value="viewer">Viewer</SelectItem>
                     </SelectContent>
                   </Select>
-                  {member.invite_status === 'pending' && member.invite_token && (
+                  {member.invite_status === 'pending' && (
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => handleCopyLink(member.invite_token!)}
+                      onClick={() => handleCopyLink(member.id)}
                       title="Copy invite link"
                     >
                       <Copy className="h-4 w-4" />
