@@ -205,28 +205,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   ? (agencyName || profile?.full_name || 'Agency')
                   : isAgencyUser && activeBrand ? activeBrand.name : (profile?.full_name || user?.email)}
               </span>
-              {isPartner && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 gap-1.5"
-                  onClick={() => navigate("/partner-portal")}
-                >
-                  <Briefcase className="h-4 w-4" />
-                  <span className="hidden sm:inline">Partner Dashboard</span>
-                </Button>
-              )}
-              {isAdmin && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 gap-1.5 text-amber-600 border-amber-300 hover:text-amber-700"
-                  onClick={() => navigate("/admin/users")}
-                >
-                  <Shield className="h-4 w-4" />
-                  <span className="hidden sm:inline">Admin Dashboard</span>
-                </Button>
-              )}
+              <button
+                type="button"
+                aria-label="Sign out"
+                title="Sign out"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  sonnerToast.success("Signed out");
+                  navigate("/auth");
+                }}
+                className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
               <button
                 type="button"
                 aria-label="Sign out"
