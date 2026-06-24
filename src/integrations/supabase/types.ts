@@ -1654,11 +1654,13 @@ export type Database = {
           brand_id: string
           content: Json
           created_at: string
+          error_message: string | null
           id: string
           source: string
           source_ref: Json
           status: string
           tags: string[]
+          task_label: string | null
           thumb_url: string | null
           title: string | null
           type: string
@@ -1671,11 +1673,13 @@ export type Database = {
           brand_id: string
           content?: Json
           created_at?: string
+          error_message?: string | null
           id?: string
           source?: string
           source_ref?: Json
           status?: string
           tags?: string[]
+          task_label?: string | null
           thumb_url?: string | null
           title?: string | null
           type: string
@@ -1688,11 +1692,13 @@ export type Database = {
           brand_id?: string
           content?: Json
           created_at?: string
+          error_message?: string | null
           id?: string
           source?: string
           source_ref?: Json
           status?: string
           tags?: string[]
+          task_label?: string | null
           thumb_url?: string | null
           title?: string | null
           type?: string
