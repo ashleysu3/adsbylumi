@@ -176,7 +176,55 @@ function effectiveBrand<T extends Record<string, any> | null | undefined>(
 }
 
 
+// The Lab — free-play mode (?mode=lab). Standalone tools that don't require
+// the guided angles→concepts→copy flow. Every output saves to My Creatives.
+function LabModeView({ embedded }: { embedded?: boolean }) {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const LabLayout = embedded ? (({ children }: any) => <>{children}</>) : DashboardLayout;
+  return (
+    <LabLayout>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4">
+        <div className="flex items-center gap-2 text-xs">
+          <button
+            type="button"
+            onClick={() => {
+              const next = new URLSearchParams(searchParams);
+              next.delete("mode");
+              next.delete("tool");
+              next.delete("seed");
+              setSearchParams(next, { replace: true });
+            }}
+            className="text-muted-foreground hover:text-foreground underline underline-offset-2"
+          >
+            Switch to Guided flow
+          </button>
+          <span className="text-muted-foreground">·</span>
+          <button
+            type="button"
+            onClick={() => navigate("/my-creatives")}
+            className="text-muted-foreground hover:text-foreground underline underline-offset-2"
+          >
+            My Creatives
+          </button>
+        </div>
+        <LazyTheLab />
+      </div>
+    </LabLayout>
+  );
+}
+
 export default function CreativeStudio({ embedded = false }: { embedded?: boolean } = {}) {
+  // Branch BEFORE any hooks below so React's hook order stays stable when the
+  // user toggles between guided and lab modes.
+  const [searchParams] = useSearchParams();
+  if (searchParams.get("mode") === "lab") {
+    return <LabModeView embedded={embedded} />;
+  }
+  return <CreativeStudioGuided embedded={embedded} />;
+}
+
+function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
   const Layout = embedded
     ? (({ children }: any) => <>{children}</>)
     : DashboardLayout;
@@ -186,43 +234,7 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
   const { activeBrand, brands, setActiveBrand, loading: brandLoading } = useBrand();
   const { setConcepts: setDraftConcepts } = useCampaignDraft();
 
-  // The Lab — free-play mode (?mode=lab). Renders standalone tools that don't
-  // require going through the guided angles→concepts→copy flow. Every output
-  // saves to My Creatives as a draft.
-  const mode = searchParams.get("mode");
-  if (mode === "lab") {
-    const LabLayout = embedded ? (({ children }: any) => <>{children}</>) : DashboardLayout;
-    return (
-      <LabLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4">
-          <div className="flex items-center gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => {
-                const next = new URLSearchParams(searchParams);
-                next.delete("mode");
-                next.delete("tool");
-                next.delete("seed");
-                setSearchParams(next, { replace: true });
-              }}
-              className="text-muted-foreground hover:text-foreground underline underline-offset-2"
-            >
-              Switch to Guided flow
-            </button>
-            <span className="text-muted-foreground">·</span>
-            <button
-              type="button"
-              onClick={() => navigate("/my-creatives")}
-              className="text-muted-foreground hover:text-foreground underline underline-offset-2"
-            >
-              My Creatives
-            </button>
-          </div>
-          <LazyTheLab />
-        </div>
-      </LabLayout>
-    );
-  }
+
 
   
   
