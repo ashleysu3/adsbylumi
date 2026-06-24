@@ -137,13 +137,12 @@ async function resolveIgMediaByUrl(
     return { error: "That doesn't look like an Instagram post URL. Use a link like instagram.com/p/… or /reel/…" };
   }
 
-  const decodedMediaId = decodeIgShortcodeToMediaId(shortcode);
-  if (decodedMediaId) {
-    return { id: decodedMediaId };
-  }
+  // NOTE: We previously tried decoding the shortcode locally to skip the /media
+  // lookup, but that returns the IG-internal media PK, not the "V2 ID" the ads
+  // API requires for source_instagram_media_id. Always resolve via /media so we
+  // get the proper V2 ID (or a clean permission error the UI can act on).
 
-  // Last-resort fallback for unusual permalink formats: scan the connected
-  // account's media list when Meta allows it.
+  // Fallback: scan the connected account's media list.
   const fields = 'id,permalink,caption,media_type,thumbnail_url,media_url';
   let next: string | null =
     `https://graph.facebook.com/v25.0/${igUserId}/media?fields=${fields}&limit=50&access_token=${token}`;
