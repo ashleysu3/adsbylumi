@@ -347,10 +347,46 @@ Deno.serve(async (req) => {
     }
     console.log('Final Instagram accounts count:', instagramAccounts.length);
 
-    // Permission checks for instagram_basic/pages_read_user_content removed —
-    // those permissions are no longer requested. Post selection uses URL paste + Firecrawl scraping.
+    // Verify granted permissions via /me/permissions so we can record exactly
+    // which required scopes the user actually agreed to (instagram_basic is
+    // the most-commonly-declined one and silently breaks IG post promotion).
+    const REQUIRED_PERMISSIONS = [
+      'ads_management',
+      'ads_read',
+      'business_management',
+      'pages_show_list',
+      'pages_read_engagement',
+      'instagram_basic',
+    ];
+    let permissions: { granted: string[]; declined: string[]; missing: string[] } = {
+      granted: [],
+      declined: [],
+      missing: [],
+    };
     let permissionWarning: string | null = null;
-    console.log('Skipping instagram_basic permission checks (not requested)');
+    try {
+      const permRes = await fetch(
+        `https://graph.facebook.com/v25.0/me/permissions?access_token=${finalToken}`,
+      );
+      const permData = await permRes.json();
+      if (permRes.ok && Array.isArray(permData?.data)) {
+        const granted = permData.data.filter((p: any) => p.status === 'granted').map((p: any) => p.permission);
+        const declined = permData.data.filter((p: any) => p.status !== 'granted').map((p: any) => p.permission);
+        const missing = REQUIRED_PERMISSIONS.filter((p) => !granted.includes(p));
+        permissions = { granted, declined, missing };
+        if (missing.length > 0) {
+          permissionWarning = `Meta didn't grant these required permissions: ${missing.join(', ')}. Click "Fix / re-pick assets" to re-authorize.`;
+          console.warn('[meta-oauth-callback] missing required permissions:', missing);
+        } else {
+          console.log('[meta-oauth-callback] all required permissions granted');
+        }
+      } else {
+        console.warn('[meta-oauth-callback] could not read /me/permissions:', permData);
+      }
+    } catch (permErr) {
+      console.warn('[meta-oauth-callback] permission check failed (non-fatal):', permErr);
+    }
+
 
     // Store the access token securely in Supabase Vault
     const { data: vaultResult, error: vaultError } = await supabase
@@ -417,7 +453,7 @@ Deno.serve(async (req) => {
         accounts: activeAccounts,
         pages: pages,
         instagramAccounts: instagramAccounts,
-        
+        permissions,
         ...(permissionWarning ? { permissionWarning } : {})
       }),
       { 

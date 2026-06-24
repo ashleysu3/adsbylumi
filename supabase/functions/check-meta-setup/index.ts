@@ -40,7 +40,7 @@ interface ActionHint {
   detail?: string;
 }
 
-const REQUIRED_PERMISSIONS = ['ads_management', 'ads_read', 'business_management', 'pages_show_list', 'instagram_basic'];
+const REQUIRED_PERMISSIONS = ['ads_management', 'ads_read', 'business_management', 'pages_show_list', 'pages_read_engagement', 'instagram_basic'];
 
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -159,24 +159,30 @@ Deno.serve(async req => {
       });
     }
 
-    // ----- 3. Required permissions -----
+    // ----- 3. Required permissions (per-scope visibility) -----
     let missingPerms: string[] = [];
+    let grantedPerms: string[] = [];
     try {
       const r = await fetch(`https://graph.facebook.com/v25.0/me/permissions?access_token=${token}`);
       const d = await r.json();
-      const granted: string[] = (Array.isArray(d?.data) ? d.data : [])
+      grantedPerms = (Array.isArray(d?.data) ? d.data : [])
         .filter((p: any) => p.status === 'granted')
         .map((p: any) => p.permission);
-      missingPerms = REQUIRED_PERMISSIONS.filter(p => !granted.includes(p));
+      missingPerms = REQUIRED_PERMISSIONS.filter(p => !grantedPerms.includes(p));
+      m.permissions = {
+        required: REQUIRED_PERMISSIONS,
+        granted: grantedPerms.filter((p: string) => REQUIRED_PERMISSIONS.includes(p)),
+        missing: missingPerms,
+      };
       if (missingPerms.length === 0) {
-        checks.push({ id: 'permissions', label: 'Required permissions', status: 'pass', detail: 'All requested scopes granted.' });
+        checks.push({ id: 'permissions', label: 'Required permissions', status: 'pass', detail: `All granted: ${REQUIRED_PERMISSIONS.join(', ')}.` });
       } else {
         checks.push({
           id: 'permissions',
           label: 'Required permissions',
-          status: 'warn',
-          detail: `Missing: ${missingPerms.join(', ')}. Some Lumi features may not work.`,
-          fix: { kind: 'reconnect', label: 'Re-authorize Meta' },
+          status: missingPerms.includes('ads_management') || missingPerms.includes('ads_read') ? 'fail' : 'warn',
+          detail: `Missing: ${missingPerms.join(', ')}. Re-pick assets and grant all permissions on Meta's consent screen.`,
+          fix: { kind: 'reconnect', label: 'Fix / re-pick assets' },
         });
       }
     } catch (e: any) {
@@ -238,6 +244,7 @@ Deno.serve(async req => {
         const r = await fetch(`https://graph.facebook.com/v25.0/${brand.page_id}?fields=id,name&access_token=${token}`);
         const d = await r.json();
         if (r.ok && d?.id) {
+          m.pageId = d.id; m.pageName = d.name || brand.page_name || null;
           checks.push({ id: 'page', label: 'Facebook Page', status: 'pass', detail: d.name || brand.page_name || 'Linked' });
         } else {
           checks.push({
@@ -315,6 +322,7 @@ Deno.serve(async req => {
           : (brand.instagram_account_name || 'Linked');
       checks.push({ id: 'instagram', label: 'Instagram account', status: 'pass', detail: display });
       m.instagramUsername = pageIg?.username || adAccountIgs[0]?.username || null;
+      m.instagramName = brand.instagram_account_name || null;
     } else {
       checks.push({
         id: 'instagram',
