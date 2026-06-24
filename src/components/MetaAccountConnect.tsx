@@ -308,14 +308,34 @@ export function MetaAccountConnect({
                 }
               }
 
-              // Auto-select only when the entire brand mapping is unambiguous.
+              // Auto-bind + save when the granted assets are unambiguous.
+              // If there's exactly one ad account, one Page, and at most one
+              // Instagram linked to that Page, we don't need to make the user
+              // pick the same assets twice.
               if (accountCount === 1 && pageCount === 1) {
                 const pageScopedInstagram = returnedInstagram.filter((ig: InstagramAccount) => ig.linked_page_id === returnedPages[0].id);
+                const igId = pageScopedInstagram.length === 1 ? pageScopedInstagram[0].id : undefined;
+                if (pageScopedInstagram.length <= 1) {
+                  setSelectedAccount(returnedAccounts[0].id);
+                  setSelectedPage(returnedPages[0].id);
+                  if (igId) setSelectedInstagram(igId);
+                  setStep('select-account');
+                  // Reuse the auto-save path so we also kick off campaign sync.
+                  setTimeout(() => {
+                    autoSaveReconnection(
+                      returnedAccounts[0].id,
+                      returnedPages[0].id,
+                      igId,
+                      returnedPages,
+                      returnedInstagram,
+                    );
+                  }, 100);
+                  return;
+                }
+                // Multiple IG options — make the user pick that one explicitly.
                 setSelectedAccount(returnedAccounts[0].id);
                 setSelectedPage(returnedPages[0].id);
-                if (pageScopedInstagram.length === 1) {
-                  setSelectedInstagram(pageScopedInstagram[0].id);
-                }
+                setSelectedInstagram("");
                 toast.info(`We found one ad account and one Page — confirm the Instagram account for this brand.`);
               }
 
