@@ -202,10 +202,48 @@ Deno.serve(async (req) => {
       parsed = {};
     }
 
+    const detectedObjective = detectPrimaryObjective(brandSnapshot);
+
     const matchSlug: string | null = parsed?.no_match ? null : parsed?.match_slug;
-    const matched = matchSlug
+    let matched = matchSlug
       ? templates.find((t: any) => t.slug === matchSlug)
       : null;
+
+    // Guardrail: if the AI picked a template whose primary_goals clearly
+    // conflict with the detected objective for this offer, prefer a template
+    // whose goals align with the detected objective.
+    const goalsAlignWithObjective = (goals: string[] | null | undefined, obj: string) => {
+      const g = (goals ?? []).map((x) => String(x).toLowerCase());
+      if (obj === "OUTCOME_LEADS") {
+        return g.some((x) => ["get_leads", "book_calls", "dm_leads"].includes(x));
+      }
+      if (obj === "OUTCOME_AWARENESS") {
+        return g.some((x) => ["grow_social", "awareness"].includes(x));
+      }
+      // OUTCOME_SALES
+      return g.some((x) => ["promote_offer", "sales"].includes(x));
+    };
+
+    if (matched && !goalsAlignWithObjective(matched.primary_goals, detectedObjective)) {
+      const better = templates.find((t: any) =>
+        goalsAlignWithObjective(t.primary_goals, detectedObjective),
+      );
+      if (better) {
+        console.log(
+          `Guardrail: AI picked ${matched.slug} but detected ${detectedObjective}; switching to ${better.slug}`,
+        );
+        matched = better;
+      }
+    }
+
+    // No match from AI → fall back to the best template for the detected
+    // objective rather than queuing a manual request (which always felt like
+    // the coach default).
+    if (!matched) {
+      matched = templates.find((t: any) =>
+        goalsAlignWithObjective(t.primary_goals, detectedObjective),
+      ) ?? null;
+    }
 
     if (!matched) {
       const { data: reqRow } = await admin
@@ -222,6 +260,7 @@ Deno.serve(async (req) => {
         .single();
       return json({ pending: true, request_id: reqRow?.id });
     }
+
 
     // Adapt the matched template's campaign objectives to the actual offer.
     // Templates are written generically (often defaulting to OUTCOME_SALES),
