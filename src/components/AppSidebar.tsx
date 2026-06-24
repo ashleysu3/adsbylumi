@@ -296,6 +296,36 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
                 <span className="text-base leading-none">✅</span>
                 <span className="text-sm font-medium tracking-tight">My Tasks</span>
               </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/admin/users")}
+                  className="w-full rounded-lg border border-amber-300/60 bg-amber-50/60 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 hover:bg-amber-100/80 dark:hover:bg-amber-500/20 transition-colors px-3 py-2 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <Shield className="h-4 w-4" />
+                  <span className="text-sm font-medium tracking-tight">Admin Dashboard</span>
+                </button>
+              )}
+              {isPartner && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/partner-portal")}
+                  className="w-full rounded-lg border border-border bg-card hover:bg-muted transition-colors px-3 py-2 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <Briefcase className="h-4 w-4" />
+                  <span className="text-sm font-medium tracking-tight">Partner Dashboard</span>
+                </button>
+              )}
+              {hasVipBonuses && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/refer")}
+                  className="w-full rounded-lg border border-lumi-purple-1/40 bg-lumi-purple-1/10 text-foreground hover:bg-lumi-purple-1/20 transition-colors px-3 py-2 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <Crown className="h-4 w-4" />
+                  <span className="text-sm font-medium tracking-tight">VIP Bonuses</span>
+                </button>
+              )}
             </div>
           )}
         </SidebarHeader>
