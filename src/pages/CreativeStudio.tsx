@@ -335,11 +335,25 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
       });
       setWorkspaces(options);
 
-      // Only use URL workspace ID if it belongs to the active brand's workspaces
+      // Only use URL workspace ID if it belongs to the active brand's workspaces.
+      // If the URL points at a workspace from a different brand (or one that no
+      // longer exists), DON'T silently snap to options[0] — that's how users end
+      // up "stuck" on a campaign they didn't pick. Leave selection empty so the
+      // dropdown prompts them, and clear the bad ID from the URL.
       const validWorkspaceIds = new Set(options.map(o => o.id));
-      const targetId = (urlWorkspaceId && validWorkspaceIds.has(urlWorkspaceId)) 
-        ? urlWorkspaceId 
-        : options[0]?.id;
+      let targetId: string | undefined;
+      if (urlWorkspaceId) {
+        if (validWorkspaceIds.has(urlWorkspaceId)) {
+          targetId = urlWorkspaceId;
+        } else {
+          setSearchParams(p => { p.delete("workspace"); return p; }, { replace: true });
+          if (options.length > 0) {
+            toast.message("That campaign isn't on this brand. Pick one from the list above.");
+          }
+        }
+      } else {
+        targetId = options[0]?.id;
+      }
       if (targetId) await loadWorkspace(targetId, targetBrand.id);
 
       const { data: ideasData } = await supabase
