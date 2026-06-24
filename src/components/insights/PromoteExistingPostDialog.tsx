@@ -285,7 +285,7 @@ export function PromoteExistingPostDialog({
       const { data, error } = await supabase.functions.invoke("add-posts-to-campaign", {
         body: {
           workspaceId,
-          status: "PAUSED", // always paused — user confirms next
+          status: launchLive ? "ACTIVE" : "PAUSED",
           createNewAdSet: placement === "new",
           posts: [postPayload],
         },
@@ -300,7 +300,12 @@ export function PromoteExistingPostDialog({
       setCreatedAds(data.ads || []);
       setCreatedAdSetId(data.adSetId || null);
       setNewAdSetCreated(!!data.newAdSetCreated);
-      setStep("preview");
+      if (launchLive) {
+        toast.success("Ad is live! ✨");
+        setStep("done");
+      } else {
+        setStep("preview");
+      }
     } catch (e: any) {
       toast.error(e?.message || "Failed to create ad");
     } finally {
