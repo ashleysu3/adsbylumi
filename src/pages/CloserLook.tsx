@@ -180,6 +180,7 @@ export default function CloserLook() {
   const [actions, setActions] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [promoteOpen, setPromoteOpen] = useState(false);
 
   // Task-execute dialog (shared confirm + execute path)
   const [taskOpen, setTaskOpen] = useState(false);
