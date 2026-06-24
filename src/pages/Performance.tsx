@@ -17,6 +17,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { LeadQualityCheck } from "@/components/insights/LeadQualityCheck";
 import { AdFitReviewTaskCard } from "@/components/insights/AdFitReviewTaskCard";
+import { MetaImportBridgeBanner } from "@/components/insights/MetaImportBridgeBanner";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
 import {
@@ -775,6 +776,9 @@ export default function Performance() {
           </TooltipProvider>
         </div>
 
+
+        {/* Bridge: live Meta campaigns not yet in LUMI */}
+        <MetaImportBridgeBanner surface="live-ads" />
 
         {loading && (
           <Card>
