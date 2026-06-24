@@ -1027,6 +1027,21 @@ export default function Performance() {
                             <span className="text-foreground">{topLine}</span>
                           </p>
 
+                          {activeBrand && (
+                            <AdFitReviewTaskCard
+                              workspaceId={r.workspaceId}
+                              brandId={activeBrand.id}
+                              variant="compact"
+                            />
+                          )}
+                          {activeBrand && (
+                            <LeadQualityCheck
+                              workspaceId={r.workspaceId}
+                              brandId={activeBrand.id}
+                              campaignMetaId={(r as any).meta?.metaCampaignId || null}
+                              variant="compact"
+                            />
+                          )}
                         </CardContent>
                       </Card>
                     );
