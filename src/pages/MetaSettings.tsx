@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { MetaSetupStatus } from '@/components/MetaSetupStatus';
-import { LumiEducationCard } from '@/components/LumiEducationCard';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -13,15 +11,13 @@ import { MetaAccountConnect } from '@/components/MetaAccountConnect';
 import { useLumi } from '@/contexts/LumiContext';
 import { useBrand } from '@/contexts/BrandContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
-import { 
-  Link2, Link2Off, CheckCircle, XCircle, 
-  AlertTriangle, Calendar, Shield, ExternalLink, Loader2,
-  ArrowLeft, Zap, Key, RefreshCw, Sparkles
+import {
+  Link2, Link2Off, CheckCircle, XCircle,
+  AlertTriangle, Shield, ExternalLink, Loader2,
+  ArrowLeft, Zap, RefreshCw,
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 
-import { MetaReadinessChecklist } from '@/components/MetaReadinessChecklist';
-import { MetaSetupDiagnostic, type DiagnosticResult } from '@/components/MetaSetupDiagnostic';
 import { MetaConnectionCheckLog } from '@/components/MetaConnectionCheckLog';
 import { logMetaConnectionCheck, type MetaCheckItem } from '@/lib/log-meta-check';
 
