@@ -170,6 +170,7 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
   const [userEmail, setUserEmail] = useState("");
   const [intent, setIntent] = useState("");
   const [hasVipBonuses, setHasVipBonuses] = useState(false);
+  const [isPartner, setIsPartner] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -183,6 +184,13 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
         .is("applied_at", null)
         .limit(1);
       setHasVipBonuses((credits?.length || 0) > 0);
+      const { data: partner } = await supabase
+        .from("partner_access_tokens")
+        .select("id")
+        .eq("partner_user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+      setIsPartner(!!partner);
     });
     const handler = () => setBugReportOpen(true);
     window.addEventListener("open-bug-report", handler);
