@@ -103,13 +103,45 @@ export function LeadQualityCheck({
       if (chosen === "right") {
         toast.success("Got it — locking in what's working.");
       } else {
-        toast.success(
-          "Saved in My Creatives — review and add to your campaign when ready. Nothing changes in your live ad until you do.",
-        );
-        // Fire-and-forget review — re-aimed copy lands in My Creatives as drafts.
+        // Create a "working" creative immediately so the user sees a real
+        // in-progress card in My Creatives — no premature "saved" toast.
+        const reasonText = reasons.length
+          ? reasons.map((id) => REASON_OPTIONS.find((r) => r.id === id)?.label || id).join(", ")
+          : chosen === "wrong"
+          ? "wrong-fit leads"
+          : "mixed-fit leads";
+        const taskLabel = `Re-aiming your ad based on: ${reasonText} — drafting for your ideal buyer`;
+        const { data: u } = await supabase.auth.getUser();
+        let creativeId: string | null = null;
+        if (u?.user) {
+          const { data: cRow } = await (supabase as any)
+            .from("creatives")
+            .insert({
+              brand_id: brandId,
+              user_id: u.user.id,
+              type: "primary_copy",
+              title: taskLabel.slice(0, 80),
+              content: {},
+              source: "lead_fit_feedback",
+              source_ref: { workspace_id: workspaceId, feedback_id: row.id },
+              tags: ["re-aimed"],
+              status: "working",
+              task_label: taskLabel,
+            })
+            .select("id")
+            .single();
+          creativeId = cRow?.id ?? null;
+        }
+        toast.success("Working on it — track progress in My Creatives.");
+        // Fire-and-forget review — edge function fills in or fails this record.
         supabase.functions
           .invoke("ad-fit-review", {
-            body: { workspace_id: workspaceId, brand_id: brandId, feedback_id: row.id },
+            body: {
+              workspace_id: workspaceId,
+              brand_id: brandId,
+              feedback_id: row.id,
+              creative_id: creativeId,
+            },
           })
           .then(({ error }) => {
             if (error) console.error("ad-fit-review failed", error);
