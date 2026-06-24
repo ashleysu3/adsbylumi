@@ -138,6 +138,8 @@ export function PromoteExistingPostDialog({
   const [postsError, setPostsError] = useState<string | null>(null);
   const [igAccountId, setIgAccountId] = useState<string | null>(null);
   const [selectedPost, setSelectedPost] = useState<FetchedPost | null>(null);
+  const [manualUrl, setManualUrl] = useState("");
+  const [useManualUrl, setUseManualUrl] = useState(false);
 
   // Step 2: fit
   const [fitLoading, setFitLoading] = useState(false);
