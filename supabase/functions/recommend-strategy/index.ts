@@ -131,12 +131,21 @@ Deno.serve(async (req) => {
             {
               role: "system",
               content:
-                "You are LUMI, an ad strategist. Pick the single best matching strategy template for this brand based on industry, business model, goal, and website signals. If none truly fit, return no_match. Respond ONLY with JSON.",
+                "You are LUMI, an ad strategist. Pick the single best matching strategy template for THIS specific offer + goal. REQUIRED: match the funnel to what the user is actually promoting. Do NOT default to the most generic / broadest option. Specifically:\n" +
+                "- A webinar / free training / masterclass / workshop offer → webinar funnel.\n" +
+                "- A free download / guide / checklist / PDF / quiz / lead magnet → lead-magnet funnel.\n" +
+                "- A low-ticket paid challenge / bootcamp / $27–$97 sprint → paid-challenge funnel.\n" +
+                "- A high-ticket coaching / consulting / 1:1 / mastermind / application offer → DM / conversation funnel.\n" +
+                "- A podcast / show / clip-based growth play → podcast-grow funnel.\n" +
+                "- A standard paid product or course with a sales page (no webinar, no challenge) → the matching sales funnel (e.g. coach-course-creator-3step).\n" +
+                "- A local in-person service → local-service funnel.\n" +
+                "Use the offer name, description, price, page_goal, and the user_goal to decide. Only return no_match if literally none of the templates fit the offer type. Respond ONLY with JSON.",
             },
             {
               role: "user",
               content: JSON.stringify({ brandSnapshot, templates: templateSummaries }),
             },
+
           ],
           response_format: {
             type: "json_schema",
