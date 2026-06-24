@@ -686,7 +686,9 @@ export function PromoteExistingPostDialog({
               </Button>
               <Button onClick={handleCreatePausedAd} disabled={submitting}>
                 {submitting ? (
-                  <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Creating paused ad…</>
+                  <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> {launchLive ? "Launching ad…" : "Creating paused ad…"}</>
+                ) : launchLive ? (
+                  <><PlayCircle className="h-4 w-4 mr-1.5" /> Launch ad live</>
                 ) : (
                   <>Create paused ad <ArrowRight className="h-4 w-4 ml-1.5" /></>
                 )}
