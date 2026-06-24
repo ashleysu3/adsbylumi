@@ -90,6 +90,8 @@ export function TheLab() {
   }, [params]);
 
   const openTool = (k: ToolKey) => {
+    const tool = TOOLS.find((t) => t.key === k);
+    if (tool?.comingSoon) return;
     const next = new URLSearchParams(params);
     next.set("mode", "lab");
     next.set("tool", k);
