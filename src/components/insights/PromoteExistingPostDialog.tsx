@@ -293,7 +293,10 @@ export function PromoteExistingPostDialog({
       });
       if (error) throw error;
       if (!data?.success) {
-        const reason = data?.failedAds?.[0]?.error || data?.error || "Failed to create ad";
+        const raw = data?.failedAds?.[0]?.error || data?.error || "Failed to create ad";
+        const reason = /#10|permission|OAuthException/i.test(raw)
+          ? "Meta won't let us use this post as an ad. Reconnect Meta from Settings and grant Instagram + ads permissions, then try again."
+          : raw;
         toast.error(reason);
         setSubmitting(false);
         return;
@@ -370,15 +373,37 @@ export function PromoteExistingPostDialog({
                 </div>
               )}
 
-              {!postsLoading && postsError && (
-                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
-                  <div className="flex items-center gap-2 text-destructive font-medium mb-1">
-                    <ShieldAlert className="h-4 w-4" />
-                    We couldn't load your posts
+              {!postsLoading && postsError && (() => {
+                const isPermission = /#10|permission|OAuthException/i.test(postsError);
+                return (
+                  <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm space-y-2">
+                    <div className="flex items-center gap-2 text-destructive font-medium">
+                      <ShieldAlert className="h-4 w-4" />
+                      {isPermission ? "Meta won't let us read your Instagram posts" : "We couldn't load your posts"}
+                    </div>
+                    <p className="text-muted-foreground text-xs">
+                      {isPermission
+                        ? "Your Meta connection is missing the Instagram permission needed to list posts. Reconnect Meta and approve Instagram access — then come back here."
+                        : postsError}
+                    </p>
+                    {isPermission && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          onOpenChange(false);
+                          window.location.href = "/settings/meta";
+                        }}
+                      >
+                        Reconnect Meta
+                      </Button>
+                    )}
+                    <p className="text-[11px] text-muted-foreground pt-1">
+                      Or paste a post URL below — we'll try to pull it directly.
+                    </p>
                   </div>
-                  <p className="text-muted-foreground text-xs">{postsError}</p>
-                </div>
-              )}
+                );
+              })()}
 
               {!postsLoading && !postsError && posts.length === 0 && (
                 <p className="text-sm text-muted-foreground py-8 text-center">
