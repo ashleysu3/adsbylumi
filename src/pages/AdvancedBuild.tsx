@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import lumiLogo from "@/assets/lumi-logo.png";
+import { FitBadge } from "@/components/insights/FitBadge";
 
 interface UploadedAsset {
   id: string;
@@ -37,6 +38,7 @@ interface CopyVariation {
   headline: string;
   description: string;
   angle?: string;
+  fit?: import("@/components/insights/FitBadge").FitInfo;
 }
 
 interface SharedCopy {
@@ -728,13 +730,14 @@ export default function AdvancedBuild({ embedded = false }: { embedded?: boolean
                               className="mt-0.5"
                             />
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <span className="text-sm font-semibold">Variation {i + 1}</span>
                                 {variation.angle && (
                                   <Badge variant="secondary" className="text-xs">
                                     {angleLabels[variation.angle] || variation.angle}
                                   </Badge>
                                 )}
+                                <FitBadge fit={variation.fit} />
                               </div>
                             </div>
                           </div>

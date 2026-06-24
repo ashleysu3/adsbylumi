@@ -1,60 +1,100 @@
-## What changes for the user
+# Lead-Fit Feedback Loop
 
-After they paste their website and click **Read my site**:
+Three connected pieces. Diagnose + draft only — no changes to billing or Meta execution.
 
-1. A full-screen Lumi loader takes over the whole window with the rotating witty copy. Nothing else is visible (no inline reveals, no progress bar peeking through). It stays up until everything has finished pulling: brand basics, voice, audience, design (colors/fonts/logo), social proof, and assets.
-2. The app then auto-advances them into a **"Here's what we gathered"** sequence — one focused, editable card per topic, in this exact order:
+## Part A — Capture: "How are the leads?"
 
-```text
-Brand basics  →  Audience  →  Design guide & images  →  Social proof  →  Your offer
+**New table `lead_quality_feedback`**
+- `id, workspace_id, campaign_id (meta), brand_id, user_id, fit_rating ('right'|'mixed'|'wrong'), reasons text[], note text, created_at`
+- Allowed reasons: `cant_afford`, `too_beginner`, `just_browsing`, `wrong_niche`, `only_want_free`
+- RLS: brand-owner only via `brands.user_id = auth.uid()`; service_role full.
+
+**New component `LeadQualityCheck`** (`src/components/insights/LeadQualityCheck.tsx`)
+- One-tap row: 🎯 Right people / 🤷 Mixed / 👎 Wrong people
+- On Mixed/Wrong: chips for the 5 reasons + one-line note + Submit
+- Soft "How are the leads going?" prompt shown when no feedback in the last 10 days for that campaign; otherwise collapsed under a small "Update lead quality" link (always available)
+- On Mixed/Wrong submit → fire-and-forget invokes `ad-fit-review`, toasts "LUMI is reviewing your copy — we'll drop a re-aimed version on Live Ads"
+
+**Surfaces**
+- `src/pages/Performance.tsx`: render at bottom of each campaign card (compact)
+- `src/pages/CloserLook.tsx`: render full version in main column
+
+## Part B — Diagnose + Re-Aim
+
+**New edge function `ad-fit-review`** (`verify_jwt = true`)
+Input: `{ workspace_id, brand_id, feedback_id }`
+Loads:
+- workspace ad copy from `campaign_workspaces` (headline/primary/description) + linked creatives if present
+- `brands.audience_psychology`, brand voice
+- linked offer (price, type) from `offers`
+- KB doc "Audience fit — who your copy attracts" (Part C)
+- The submitted feedback row
+
+Calls Lovable AI (`google/gemini-2.5-flash`) with the attractor-signals taxonomy. Returns structured JSON:
+```
+{
+  fit_score: 'A'|'B'|'C'|'D'|'F',
+  attracts: string,           // who the current copy attracts
+  leaking_phrases: [{quote, why}],
+  creative_mismatch: string|null,
+  ideal_buyer_summary: string,
+  ideal_buyer_thin: boolean,  // if true, ask user to confirm rather than guess
+  rewritten: { headline, primary, description, repels_note },
+  creative_changes: string|null
+}
 ```
 
-Social proof is skipped automatically (both forward and back) when nothing was found — they can add it later from My Brand.
+**Persistence as task** — write a `tasks` row:
+- `action_type = 'ad_fit_review'`
+- `action_payload = { workspace_id, brand_id, feedback_id, review: <json above> }`
+- `link_to = /live-ads/:workspace_id`
+- `title = "Great CPL — but the leads feel off. Here's a re-aimed version."`
 
-Every review step has a built-in **Edit** toggle so they can fix anything the website got wrong (rebrand, outdated copy, missing audience nuance, wrong fonts, etc.) before continuing. Back/Continue stays consistent across all steps.
+**New dialog `AdFitReviewDialog`** (opened from the task row in `LumiRecommendations`/Closer Look)
+- Shows fit score, who-it-attracts, quoted leaking phrases, ideal buyer
+- Side-by-side current vs rewritten copy
+- "Use this copy" → copies to clipboard, saves into `creative_bench` as a draft variant, marks task done
+- "Open creative flow" → navigates `/creative-studio?workspaceId=…&fitReviewId=…` and marks task done
+- If `ideal_buyer_thin`, show a short confirm step ("Quick check: who do you actually want?") before generating — gets stored back to `brands.audience_psychology.ideal_buyer_note`
 
-After the offer step, the existing **Connect Meta** and **Strategy & launch** steps continue as they do today.
+**Wire-in**
+- `LumiRecommendations` already pulls from tasks-style sources; add a small inline render for `action_type === 'ad_fit_review'` tasks on Performance.tsx + CloserLook.tsx.
 
-## New step map
+## Part C — Proactive Fit Filter
 
-```text
-1. Drop your website      (full-screen loader during extraction → auto-advance)
-2. Brand basics           name • what you do • brand voice
-3. Audience               psychology (pain / wants / doubt) + demographics
-4. Design guide & images  colors • fonts • logo + photos (existing photos UI folded in)
-5. Social proof           skipped if nothing was pulled
-6. Your offer             current offer flow
-7. Connect Meta           unchanged
-8. Strategy & launch      unchanged
-```
+**KB seed (migration)** — insert `knowledge_documents` row:
+- `category = 'psychology'` (existing allowed category, already read by copy/angle generators)
+- `subcategory = 'audience_fit'`, `tags = ['fit','attractor','audience']`
+- `title = "Audience fit — who your copy attracts"`
+- Body: full attractor-signals taxonomy
+  - Wrong-fit magnets: price-shopper, beginner, tire-kicker, overpromise, vague-everyone (definitions + sample leaking phrases)
+  - Right-fit magnets: specificity, identity/level markers, investment framing, sophisticated problem, "not for you if", proof of caliber
+  - **Calibration rule** (called out explicitly): judge against who the brand *wants*. Beginner/cheap framing is only wrong for premium offers; a real low-ticket/beginner offer should keep it.
 
-## Edit-as-you-go pattern
+**Fit-check pass in `generate-advanced-copy`**
+After variations are generated, run a second model call:
+- Inputs: each variation + brand ideal buyer + offer price/type + the attractor-signals doc
+- Output per variation: `{ fit_score: 'A'..'F', attracts, wrong_fit_phrases:[{quote,why}], right_fit_suggestions:[string] }`
+- Sort variations so highest-fit appear first; attach `fit` to each in the response
 
-Each review step uses the same pattern that's already on the Design and Social Proof cards: a clean read-only summary at the top with a small **Edit** button that swaps to inline inputs, plus a **Save** / **Cancel** pair. No surprises, same shape on every step.
+**UI surface** (lightweight)
+- In any component that renders generated copy variations, show a small `<FitBadge score="A" attracts="…" />` and tooltip with wrong-fit phrases + suggestions. Scope to where `generate-advanced-copy` results are rendered (no other UI rewrites).
 
-## Technical details
+## Files
 
-- **`src/pages/GuidedOnboarding.tsx`**
-  - Replace the `STEPS` array with the 8-step map above; bump `TOTAL`.
-  - **Full-screen extraction overlay**
-    - Add `extractionPhase: 'idle' | 'running' | 'done'`.
-    - In `startStep1`, set phase to `running`, remove the toast-based rotator, and render `<LumiPageLoader>` (from `src/components/LumiLoader.tsx`) at the top level of the page whenever `extractionPhase === 'running'`. While running, hide the step card and progress header so nothing else shows.
-    - Cycle the existing witty lines through the loader's `message` prop on a `setInterval`.
-    - Add `extract-social-proof` to the parallel batch (currently fires on Step 2 mount). Wait for `Promise.allSettled` over brand + voice + audience + social-proof + assets, then set phase to `done` and `setStep(2)` so they land directly on Brand basics.
-    - Keep the existing brand-reset logic when the website URL changes.
-  - **New `BrandBasicsCard`** review component (in the same file, alongside `ReviewVoiceCard`): shows brand name, "what you do" (`value_proposition`), and brand voice with the standard Edit/Save toggle. Removes the need to look at Voice separately on Step 2.
-  - **Audience step** uses the existing `ReviewAudienceCard`, extended to also render and edit `audience_psychology.demographics` (string) so the user sees "psychology + demographics" together.
-  - **Design step** stacks `ReviewDesignCard` (colors/fonts) on top of the existing photos UI block (the categorized assets grid + classification + upload buttons). Pull that JSX out of today's Step 4 into a helper render so it can live under Design without duplicating logic. Keep all existing handlers (`toggleKept`, `removeAsset`, `setRole`, `uploadFile`, b-roll block).
-  - **Social proof step** auto-skips when empty:
-    - On step enter, if `social_proof` has no content and `proofExtracting === false`, call `advance()` immediately.
-    - On back navigation into it, if empty, jump past it to the previous non-empty step.
-  - **Offer step** keeps its current behavior.
-  - Update the resume logic (`onboarding_step`) so older saved values map cleanly into the new step indexes (clamp into range; default forward to nearest review step).
-- **No backend changes.** All extractors already exist; we're only reordering when results are surfaced and consolidating the loading state.
-- **No schema changes.** `audience_psychology.demographics` already lives in the existing JSONB column.
+New:
+- `supabase/migrations/<ts>_lead_fit_loop.sql` (table + RLS + grants + KB seed)
+- `supabase/functions/ad-fit-review/index.ts`
+- `src/components/insights/LeadQualityCheck.tsx`
+- `src/components/insights/AdFitReviewDialog.tsx`
+- `src/components/insights/FitBadge.tsx`
+
+Edited:
+- `supabase/config.toml` — register `ad-fit-review` with `verify_jwt = true`
+- `src/pages/Performance.tsx` — render `<LeadQualityCheck>` per card + surface `ad_fit_review` tasks
+- `src/pages/CloserLook.tsx` — render `<LeadQualityCheck>` + surface review task
+- `supabase/functions/generate-advanced-copy/index.ts` — fit-check pass, return per-variation `fit`
+- Component that renders `generate-advanced-copy` output — add `<FitBadge>` (will identify when editing)
 
 ## Out of scope
-
-- Step copy polish beyond what's needed for the new ordering.
-- Changes to Connect Meta and Strategy & launch.
-- New AI prompts or extractors.
+No billing changes. No Meta execution changes. `ad-fit-review` never pushes copy to Meta; it only drafts.

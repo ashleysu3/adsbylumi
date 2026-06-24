@@ -238,6 +238,118 @@ Remember:
       variations = parsed.variations || [];
     }
 
+    // -- Fit-check pass: score each variation against the brand's ideal buyer + offer price --
+    if (variations.length > 0) {
+      try {
+        const { data: fitDoc } = await (createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        ))
+          .from("knowledge_documents")
+          .select("title, content")
+          .eq("active", true)
+          .eq("subcategory", "audience_fit")
+          .maybeSingle();
+
+        const fitSystem = `You are LUMI's audience-fit checker. For each ad variation, score who the copy is currently casting for — against the brand's ideal buyer and the offer's price/level.
+
+CRITICAL CALIBRATION: judge against who the brand WANTS. Beginner / cheap / "no experience needed" framing is only wrong for premium offers. A real low-ticket or beginner offer should KEEP that framing — that copy gets a high fit score because it's correctly cast.
+
+Return one entry per variation in the same order. Fit Score A=best fit for the stated ideal buyer; F=actively repels them.
+
+${fitDoc ? `\n## Reference\n${fitDoc.content}` : ""}`;
+
+        const fitUser = JSON.stringify({
+          brand: { name: brandName, ideal_buyer: audiencePsychology || null, voice: brandVoice },
+          offer: { name: offerName, price: offerPrice, description: offerDescription },
+          variations: variations.map((v: any, i: number) => ({
+            index: i,
+            headline: v.headline,
+            primary: v.primary_text,
+            description: v.description,
+          })),
+        });
+
+        const fitRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-lite",
+            messages: [
+              { role: "system", content: fitSystem },
+              { role: "user", content: fitUser },
+            ],
+            tools: [
+              {
+                type: "function",
+                function: {
+                  name: "return_fit_scores",
+                  parameters: {
+                    type: "object",
+                    properties: {
+                      scores: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            index: { type: "number" },
+                            fit_score: { type: "string", enum: ["A", "B", "C", "D", "F"] },
+                            attracts: { type: "string" },
+                            wrong_fit_phrases: {
+                              type: "array",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  quote: { type: "string" },
+                                  why: { type: "string" },
+                                },
+                                required: ["quote", "why"],
+                                additionalProperties: false,
+                              },
+                            },
+                            right_fit_suggestions: { type: "array", items: { type: "string" } },
+                          },
+                          required: ["index", "fit_score", "attracts"],
+                          additionalProperties: false,
+                        },
+                      },
+                    },
+                    required: ["scores"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+            ],
+            tool_choice: { type: "function", function: { name: "return_fit_scores" } },
+          }),
+        });
+
+        if (fitRes.ok) {
+          const fitData = await fitRes.json();
+          const fitCall = fitData.choices?.[0]?.message?.tool_calls?.[0];
+          if (fitCall?.function?.arguments) {
+            const parsed = JSON.parse(fitCall.function.arguments);
+            const byIdx = new Map<number, any>();
+            for (const s of parsed.scores || []) byIdx.set(s.index, s);
+            variations = variations.map((v: any, i: number) => {
+              const fit = byIdx.get(i);
+              return fit ? { ...v, fit } : v;
+            });
+            // Sort: A > B > C > D > F, but keep stable for ties
+            const ORDER: Record<string, number> = { A: 0, B: 1, C: 2, D: 3, F: 4 };
+            variations.sort(
+              (a: any, b: any) =>
+                (ORDER[a.fit?.fit_score] ?? 5) - (ORDER[b.fit?.fit_score] ?? 5),
+            );
+          }
+        } else {
+          console.warn("fit-check pass returned", fitRes.status);
+        }
+      } catch (e) {
+        console.warn("fit-check pass failed (non-fatal):", e);
+      }
+    }
+
     return new Response(JSON.stringify({ variations }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

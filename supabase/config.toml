@@ -1,6 +1,8 @@
 project_id = "sqwjbndgighjtifijgws"
 
 [functions]
+  [functions.ad-fit-review]
+    verify_jwt = true
   [functions.add-creative-to-campaign]
     verify_jwt = false
   [functions.admin-get-affiliates]

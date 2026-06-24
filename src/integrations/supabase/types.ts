@@ -2058,6 +2058,57 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_quality_feedback: {
+        Row: {
+          brand_id: string
+          campaign_id: string | null
+          created_at: string
+          fit_rating: string
+          id: string
+          note: string | null
+          reasons: string[]
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          brand_id: string
+          campaign_id?: string | null
+          created_at?: string
+          fit_rating: string
+          id?: string
+          note?: string | null
+          reasons?: string[]
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          brand_id?: string
+          campaign_id?: string | null
+          created_at?: string
+          fit_rating?: string
+          id?: string
+          note?: string | null
+          reasons?: string[]
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_quality_feedback_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_quality_feedback_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lumi_features: {
         Row: {
           area: string | null
