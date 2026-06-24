@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import lumiLogo from "@/assets/lumi-logo.png";
+import { FitBadge } from "@/components/insights/FitBadge";
 
 interface UploadedAsset {
   id: string;
