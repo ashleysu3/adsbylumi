@@ -628,13 +628,18 @@ export function PromoteExistingPostDialog({
             <>
               <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button
-                disabled={!selectedPost}
+                disabled={!selectedPost && !(useManualUrl && manualUrl.trim())}
                 onClick={() => {
+                  // Manual URL skips the fit check (no caption yet) and goes straight to placement.
+                  if (!selectedPost && useManualUrl && manualUrl.trim()) {
+                    setStep("place");
+                    return;
+                  }
                   setStep("fit");
                   if (selectedPost) runFitCheck(selectedPost);
                 }}
               >
-                Next: fit check
+                {!selectedPost && useManualUrl ? "Next: placement" : "Next: fit check"}
                 <ArrowRight className="h-4 w-4 ml-1.5" />
               </Button>
             </>
