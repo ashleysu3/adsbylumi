@@ -375,6 +375,7 @@ export function PromoteExistingPostDialog({
     const hasUrl = !!manualUrl.trim();
     if (!selectedPost && !hasUrl) return;
     setSubmitting(true);
+    setSubmitError(null);
     try {
       let postPayload: any;
       if (selectedPost) {
