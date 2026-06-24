@@ -159,10 +159,9 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
     return campaign.template_slug && SOCIAL_POST_SLUGS.includes(campaign.template_slug);
   };
 
-  const isLive = (status: string, metaStatus?: string | null, metaCampaignIds?: any) => {
-    const claimsLive = ['live', 'completed', 'publishing_to_meta'].includes(status) || metaStatus === 'active';
-    // Only consider it truly live if a real Meta campaign ID is attached
-    return claimsLive && hasRealMetaCampaign(metaCampaignIds);
+  // Rule: has a Meta campaign → Live Ads; no Meta campaign yet → Draft.
+  const isLive = (_status: string, _metaStatus?: string | null, metaCampaignIds?: any) => {
+    return hasRealMetaCampaign(metaCampaignIds);
   };
   const isDraft = (status: string, metaStatus?: string | null, metaCampaignIds?: any) => !isLive(status, metaStatus, metaCampaignIds);
 
@@ -311,15 +310,16 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
     });
   };
 
-  // Filtered campaigns
-  const filteredCampaigns = campaigns.filter(c => {
-    if (viewFilter === "live") return isLive(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids);
-    if (viewFilter === "draft") return isDraft(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids);
+  // Drafts page: only show campaigns without a real Meta campaign.
+  // Anything launched/imported/paused lives in Live Ads.
+  const draftsOnly = campaigns.filter(c => isDraft(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids));
+  const filteredCampaigns = draftsOnly.filter(c => {
+    if (viewFilter === "live") return false;
     return true;
   });
 
-  const liveCount = campaigns.filter(c => isLive(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids)).length;
-  const draftCount = campaigns.filter(c => isDraft(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids)).length;
+  const liveCount = 0;
+  const draftCount = draftsOnly.length;
 
   if (loading) {
     return (
@@ -339,8 +339,8 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <CardTitle className="text-lg">My Campaigns</CardTitle>
-            <CardDescription className="text-sm">Your ads in progress and live</CardDescription>
+            <CardTitle className="text-lg">Drafts</CardTitle>
+            <CardDescription className="text-sm">Campaigns you're still building. Launch one and it moves to Live Ads.</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             {!combineMode && draftCount >= 2 && (
@@ -387,30 +387,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
 
         {/* Filter tabs */}
         {campaigns.length > 0 && !combineMode && (
-          <div className="flex items-center gap-1 mt-3">
-            {([
-              { key: "all" as ViewFilter, label: "All", count: campaigns.length },
-              { key: "live" as ViewFilter, label: "Live", count: liveCount },
-              { key: "draft" as ViewFilter, label: "Drafts", count: draftCount },
-            ]).map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setViewFilter(tab.key)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                  viewFilter === tab.key
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                {tab.label}
-                {tab.count > 0 && (
-                  <span className={`ml-1.5 ${viewFilter === tab.key ? 'text-primary-foreground/70' : 'text-muted-foreground/60'}`}>
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            ))}
-            <div className="flex-1" />
+          <div className="flex items-center justify-end gap-1 mt-3">
             <button
               onClick={() => setShowArchived(!showArchived)}
               className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"

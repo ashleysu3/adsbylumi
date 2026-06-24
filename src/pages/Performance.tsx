@@ -731,7 +731,7 @@ export default function Performance() {
           <div>
             <h1 className="text-2xl font-bold">Live Ads</h1>
             <p className="text-sm text-muted-foreground">
-              The big picture across every active campaign — and the next moves worth making.
+              Everything running, paused, or off in your Meta account. Created a campaign directly in Meta? Import it to manage it here.
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
