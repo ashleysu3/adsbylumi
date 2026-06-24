@@ -335,11 +335,25 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
       });
       setWorkspaces(options);
 
-      // Only use URL workspace ID if it belongs to the active brand's workspaces
+      // Only use URL workspace ID if it belongs to the active brand's workspaces.
+      // If the URL points at a workspace from a different brand (or one that no
+      // longer exists), DON'T silently snap to options[0] — that's how users end
+      // up "stuck" on a campaign they didn't pick. Leave selection empty so the
+      // dropdown prompts them, and clear the bad ID from the URL.
       const validWorkspaceIds = new Set(options.map(o => o.id));
-      const targetId = (urlWorkspaceId && validWorkspaceIds.has(urlWorkspaceId)) 
-        ? urlWorkspaceId 
-        : options[0]?.id;
+      let targetId: string | undefined;
+      if (urlWorkspaceId) {
+        if (validWorkspaceIds.has(urlWorkspaceId)) {
+          targetId = urlWorkspaceId;
+        } else {
+          setSearchParams(p => { p.delete("workspace"); return p; }, { replace: true });
+          if (options.length > 0) {
+            toast.message("That campaign isn't on this brand. Pick one from the list above.");
+          }
+        }
+      } else {
+        targetId = options[0]?.id;
+      }
       if (targetId) await loadWorkspace(targetId, targetBrand.id);
 
       const { data: ideasData } = await supabase
@@ -1287,7 +1301,16 @@ export default function CreativeStudio({ embedded = false }: { embedded?: boolea
               <span className="text-xs text-muted-foreground font-medium">Campaign</span>
               <Select value={selectedWorkspaceId} onValueChange={loadWorkspace}>
                 <SelectTrigger className="w-[200px] sm:w-[260px]"><SelectValue placeholder="Select campaign" /></SelectTrigger>
-                <SelectContent>{workspaces.map(w => <SelectItem key={w.id} value={w.id}>{w.offerName || w.name}</SelectItem>)}</SelectContent>
+                <SelectContent>{workspaces.map(w => (
+                  <SelectItem key={w.id} value={w.id}>
+                    <div className="flex flex-col">
+                      <span className="font-medium truncate max-w-[280px]">{w.name || w.offerName || "Untitled campaign"}</span>
+                      {w.offerName && w.name && w.offerName !== w.name && (
+                        <span className="text-[11px] text-muted-foreground truncate max-w-[280px]">Offer: {w.offerName}</span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}</SelectContent>
               </Select>
             </div>
             <div className="flex items-center gap-2">
