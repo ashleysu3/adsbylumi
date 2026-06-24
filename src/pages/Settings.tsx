@@ -312,7 +312,7 @@ export default function Settings() {
   };
 
   const currentTier = tier ? SUBSCRIPTION_TIERS[tier] : null;
-  const metaConnected = !!(brand?.meta_access_token && brand?.meta_account_id);
+  const metaConnected = !!((brand as any)?.meta_connected && brand?.meta_account_id);
 
   if (loading) {
     return (

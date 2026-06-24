@@ -101,10 +101,15 @@ export default function AdvancedBuild({ embedded = false }: { embedded?: boolean
       setWorkspace(ws);
       setBrand(ws.brands);
 
-      // Fetch Instagram accounts linked to the page
+      // Fetch Instagram accounts linked to the page (meta token fetched via SECURITY DEFINER RPC)
       const brandData = ws.brands as any;
-      if (brandData?.page_id && brandData?.meta_access_token) {
-        fetchInstagramAccounts(brandData.page_id, brandData.meta_access_token, brandData.instagram_account_id);
+      if (brandData?.page_id && brandData?.meta_connected) {
+        const { data: metaToken } = await supabase.rpc('get_meta_token', { p_brand_id: brandData.id });
+        if (metaToken) {
+          fetchInstagramAccounts(brandData.page_id, metaToken as string, brandData.instagram_account_id);
+        } else if (brandData?.instagram_account_id) {
+          setSelectedInstagramId(brandData.instagram_account_id);
+        }
       } else if (brandData?.instagram_account_id) {
         setSelectedInstagramId(brandData.instagram_account_id);
       }

@@ -17,9 +17,9 @@ export function KitIntegrationCard({ brand, onRefresh }: KitIntegrationCardProps
   const [disconnecting, setDisconnecting] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const isConnected = !!(brand?.kit_access_token);
+  const isConnected = !!(brand?.kit_connected);
   const hasWebhook = !!(brand?.kit_webhook_id);
-  const hasMetaPixel = !!(brand?.meta_pixel_id && brand?.meta_access_token);
+  const hasMetaPixel = !!(brand?.meta_pixel_id && brand?.meta_connected);
 
   // Handle OAuth callback result
   useEffect(() => {

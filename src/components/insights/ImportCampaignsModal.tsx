@@ -85,15 +85,11 @@ export function ImportCampaignsModal({
         .map((w) => (w.meta_campaign_ids as any)?.campaignId)
         .filter(Boolean);
 
-      // Get meta token from the brand record.
-      // NOTE: get_meta_token RPC is currently failing with a crypto permissions error in this environment.
-      const { data: brand, error: brandError } = await supabase
-        .from('brands')
-        .select('meta_access_token')
-        .eq('id', brandId)
-        .single();
+      // Get meta token via SECURITY DEFINER RPC (never read from the table directly)
+      const { data: metaToken, error: brandError } = await supabase
+        .rpc('get_meta_token', { p_brand_id: brandId });
 
-      if (brandError || !brand?.meta_access_token) {
+      if (brandError || !metaToken) {
         throw new Error('Failed to retrieve Meta access token');
       }
 
@@ -101,7 +97,7 @@ export function ImportCampaignsModal({
       const { data, error: fetchError } = await supabase.functions.invoke('fetch-meta-campaigns', {
         body: {
           metaAccountId,
-          metaAccessToken: brand.meta_access_token,
+          metaAccessToken: metaToken,
           dateRangeStart,
           dateRangeEnd,
           existingCampaignIds,
@@ -148,14 +144,11 @@ export function ImportCampaignsModal({
     setImporting(true);
 
     try {
-      // Get meta token from the brand record.
-      const { data: brand, error: brandError } = await supabase
-        .from('brands')
-        .select('meta_access_token')
-        .eq('id', brandId)
-        .single();
+      // Get meta token via SECURITY DEFINER RPC
+      const { data: metaToken, error: brandError } = await supabase
+        .rpc('get_meta_token', { p_brand_id: brandId });
 
-      if (brandError || !brand?.meta_access_token) {
+      if (brandError || !metaToken) {
         throw new Error('Failed to retrieve Meta access token');
       }
 
@@ -163,7 +156,7 @@ export function ImportCampaignsModal({
         body: {
           brandId,
           metaAccountId,
-          metaAccessToken: brand.meta_access_token,
+          metaAccessToken: metaToken,
           campaignIds: Array.from(selectedIds),
         },
       });
