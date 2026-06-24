@@ -236,7 +236,9 @@ export function PromoteExistingPostDialog({
 
   // Step 4: preview
   const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<{ message: string; kind: "ig_permission" | "other" } | null>(null);
+  const [submitError, setSubmitError] = useState<{ message: string; kind: "ig_permission" | "needs_destination" | "other"; suggestedCta?: string } | null>(null);
+  const [destinationLink, setDestinationLink] = useState("");
+  const [destinationCta, setDestinationCta] = useState<string>("LEARN_MORE");
   const [createdAds, setCreatedAds] = useState<CreatedAd[]>([]);
   const [createdAdSetId, setCreatedAdSetId] = useState<string | null>(null);
   const [newAdSetCreated, setNewAdSetCreated] = useState(false);
@@ -261,6 +263,8 @@ export function PromoteExistingPostDialog({
         setFbPostsError(null);
         setManualUrl("");
         setSubmitError(null);
+        setDestinationLink("");
+        setDestinationCta("LEARN_MORE");
       }, 250);
     }
   }, [open]);
@@ -409,34 +413,43 @@ export function PromoteExistingPostDialog({
       const { data, error } = await supabase.functions.invoke("add-posts-to-campaign", {
         body: {
           workspaceId,
-          status: launchLive ? "ACTIVE" : "PAUSED",
           createNewAdSet: placement === "new",
           posts: [postPayload],
+          ...(destinationLink.trim() ? {
+            destinationLink: destinationLink.trim(),
+            callToActionType: destinationCta,
+          } : {}),
         },
       });
       if (error) throw error;
       if (!data?.success) {
+        if (data?.needsDestination) {
+          setSubmitError({
+            message: data?.error || "This campaign needs a destination link for your post to run here.",
+            kind: "needs_destination",
+            suggestedCta: data?.suggestedCallToActionType,
+          });
+          if (data?.suggestedCallToActionType) setDestinationCta(data.suggestedCallToActionType);
+          setSubmitting(false);
+          return;
+        }
         const raw = data?.failedAds?.[0]?.error || data?.error || "Failed to create ad";
-        const isIgPerm = /instagram|ig\b|media v2 id|valid instagram media|permission|#10|OAuthException/i.test(raw);
-        const reason = isIgPerm
-          ? "Meta won't let us read this Instagram account's posts with the current permissions on your Meta connection (instagram_basic is denied/pending). The Facebook Page tab uses a different access path that works today — pick the same post from there if you cross-posted it."
-          : raw;
-        setSubmitError({ message: reason, kind: isIgPerm ? "ig_permission" : "other" });
+        const isIgPerm = /instagram_basic|ig_permission|media v2 id|valid instagram media|#10\b|OAuthException/i.test(raw);
+        const isDest = /destination|call.to.action|link/i.test(raw) && /campaign|optimi[sz]ed|conversion|lead/i.test(raw);
+        setSubmitError({
+          message: raw,
+          kind: isIgPerm ? "ig_permission" : isDest ? "needs_destination" : "other",
+        });
         setSubmitting(false);
         return;
       }
       setCreatedAds(data.ads || []);
       setCreatedAdSetId(data.adSetId || null);
       setNewAdSetCreated(!!data.newAdSetCreated);
-      if (launchLive) {
-        toast.success("Ad is live! ✨");
-        setStep("done");
-      } else {
-        setStep("preview");
-      }
+      setStep("preview");
     } catch (e: any) {
       const raw = e?.message || "Failed to create ad";
-      const isIgPerm = /instagram|ig\b|permission|#10|OAuthException/i.test(raw);
+      const isIgPerm = /instagram_basic|OAuthException|#10\b/i.test(raw);
       setSubmitError({ message: raw, kind: isIgPerm ? "ig_permission" : "other" });
     } finally {
       setSubmitting(false);
@@ -680,29 +693,47 @@ export function PromoteExistingPostDialog({
               </RadioGroup>
 
               <div className="rounded-xl border border-border/60 bg-muted/30 p-3 flex items-start gap-3">
-                <div className="mt-0.5">
-                  {launchLive ? (
-                    <PlayCircle className="h-4 w-4 text-emerald-600" />
-                  ) : (
-                    <Pause className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <Label htmlFor="launch-live-toggle" className="text-sm font-medium cursor-pointer">
-                    Launch this ad live right away
-                  </Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {launchLive
-                      ? "We'll publish it as ACTIVE in Meta as soon as you click create."
-                      : "We'll create it paused so you can preview and confirm before it goes live."}
-                  </p>
-                </div>
-                <Switch
-                  id="launch-live-toggle"
-                  checked={launchLive}
-                  onCheckedChange={setLaunchLive}
-                />
+                <Pause className="h-4 w-4 text-muted-foreground mt-0.5" />
+                <p className="text-xs text-muted-foreground flex-1">
+                  We'll create this ad <span className="font-medium text-foreground">paused</span> so you can preview and confirm before it goes live.
+                </p>
               </div>
+
+              {submitError?.kind === "needs_destination" && (
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="dest-link" className="text-sm font-medium">Destination link</Label>
+                    <Input
+                      id="dest-link"
+                      type="url"
+                      placeholder="https://yoursite.com/landing-page"
+                      value={destinationLink}
+                      onChange={(e) => setDestinationLink(e.target.value)}
+                      className="bg-background"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="dest-cta" className="text-sm font-medium">Call to action</Label>
+                    <select
+                      id="dest-cta"
+                      value={destinationCta}
+                      onChange={(e) => setDestinationCta(e.target.value)}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="LEARN_MORE">Learn more</option>
+                      <option value="SIGN_UP">Sign up</option>
+                      <option value="SUBSCRIBE">Subscribe</option>
+                      <option value="GET_OFFER">Get offer</option>
+                      <option value="DOWNLOAD">Download</option>
+                      <option value="BOOK_TRAVEL">Book now</option>
+                      <option value="SHOP_NOW">Shop now</option>
+                      <option value="CONTACT_US">Contact us</option>
+                      <option value="APPLY_NOW">Apply now</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
 
               {submitError && (
                 <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-3">
@@ -828,11 +859,11 @@ export function PromoteExistingPostDialog({
               <Button variant="ghost" onClick={() => setStep("fit")}>
                 <ArrowLeft className="h-4 w-4 mr-1.5" /> Back
               </Button>
-              <Button onClick={handleCreatePausedAd} disabled={submitting}>
+              <Button onClick={handleCreatePausedAd} disabled={submitting || (submitError?.kind === "needs_destination" && !destinationLink.trim())}>
                 {submitting ? (
-                  <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> {launchLive ? "Launching ad…" : "Creating paused ad…"}</>
-                ) : launchLive ? (
-                  <><PlayCircle className="h-4 w-4 mr-1.5" /> Launch ad live</>
+                  <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Creating paused ad…</>
+                ) : submitError?.kind === "needs_destination" ? (
+                  <>Retry with this link <ArrowRight className="h-4 w-4 ml-1.5" /></>
                 ) : (
                   <>Create paused ad <ArrowRight className="h-4 w-4 ml-1.5" /></>
                 )}

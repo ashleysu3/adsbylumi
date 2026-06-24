@@ -29,6 +29,13 @@ function translateMetaCreativeError(error: any): string {
   if (msg.includes('valid instagram media') || msg.includes('media v2 id')) {
     return "Meta won't accept this Instagram post as an ad through the link path right now (it needs Instagram browsing permissions we don't have). Use the Facebook Page tab to pick the same post — that path works with your current permissions.";
   }
+  if (
+    msg.includes('call_to_action') || msg.includes('call to action') ||
+    msg.includes('link_url') || msg.includes('destination') ||
+    msg.includes('website url') || msg.includes('objective')
+  ) {
+    return "This campaign is optimized for a destination (conversions or leads), so your post needs a link + CTA. Add the URL you want people to land on and we'll attach it to the ad.";
+  }
   if (msg.includes('does not exist') || msg.includes('not found') || (code === 100 && !msg.includes('param'))) {
     return "We couldn't find this post. It may have been deleted or is from a private account.";
   }
@@ -42,7 +49,7 @@ function translateMetaCreativeError(error: any): string {
     return "Stories and expired content can't be used as ads. Try a regular post or Reel.";
   }
   if (error.error_user_msg) return error.error_user_msg;
-  return "Meta couldn't use this post as an ad. Try a different one.";
+  return error.message || "Meta couldn't use this post as an ad. Try a different one.";
 }
 
 async function fetchAdPreview(adId: string, token: string): Promise<string | null> {
@@ -267,10 +274,11 @@ Deno.serve(async (req) => {
     const {
       workspaceId,
       posts,
-      // New options:
-      status,            // 'PAUSED' | 'ACTIVE' — default PAUSED (safe by default)
-      createNewAdSet,    // boolean — default true for promoted posts
-      adSetName,         // optional override
+      createNewAdSet,         // boolean — default true for promoted posts
+      adSetName,              // optional override
+      destinationLink,        // optional override URL for objectives that need a link
+      callToActionType,       // optional override CTA type (LEARN_MORE, SIGN_UP, etc.)
+      urlTags,                // optional UTM-style query string
     } = await req.json();
 
     if (!workspaceId || !posts?.length) {
@@ -280,7 +288,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const adStatus: 'PAUSED' | 'ACTIVE' = status === 'ACTIVE' ? 'ACTIVE' : 'PAUSED';
+    // Always create promoted ads PAUSED — the user previews and activates explicitly.
+    const adStatus: 'PAUSED' = 'PAUSED';
 
     const { data: workspace, error: wsError } = await supabase
       .from('campaign_workspaces')
@@ -377,10 +386,88 @@ Deno.serve(async (req) => {
       }
     }
 
+    // --- Inspect the target ad set so we can apply a link/CTA when the objective requires it ---
+    // Objectives/optimizations that REQUIRE a destination URL on the creative:
+    const DESTINATION_REQUIRED_GOALS = new Set([
+      'OFFSITE_CONVERSIONS', 'LINK_CLICKS', 'LANDING_PAGE_VIEWS',
+      'LEAD_GENERATION', 'QUALITY_LEAD', 'VALUE', 'APP_INSTALLS',
+      'CONVERSATIONS', 'REACH', // REACH only if destination_type=WEBSITE — handled below
+    ]);
+
+    let adSetOptGoal: string | null = null;
+    let adSetDestType: string | null = null;
+    let referenceSettings: { link?: string; call_to_action_type?: string; url_tags?: string } = {};
+    try {
+      const asRes = await fetch(
+        `https://graph.facebook.com/v25.0/${sourceAdSetId}?fields=optimization_goal,destination_type,promoted_object&access_token=${metaAccessToken}`,
+      );
+      const asData = await asRes.json();
+      if (!asData.error) {
+        adSetOptGoal = asData.optimization_goal || null;
+        adSetDestType = asData.destination_type || null;
+      }
+    } catch (e) {
+      console.warn('Ad set inspection failed:', e);
+    }
+
+    // Pull an existing ad's creative to clone its link/CTA/url_tags into the new ad.
+    try {
+      const adsRes = await fetch(
+        `https://graph.facebook.com/v25.0/${sourceAdSetId}/ads?fields=creative{link_url,call_to_action_type,url_tags,object_story_spec}&limit=5&access_token=${metaAccessToken}`,
+      );
+      const adsData = await adsRes.json();
+      if (!adsData.error) {
+        for (const ad of (adsData.data || [])) {
+          const cr = ad.creative || {};
+          const link = cr.link_url
+            || cr.object_story_spec?.link_data?.link
+            || cr.object_story_spec?.video_data?.call_to_action?.value?.link
+            || cr.object_story_spec?.link_data?.call_to_action?.value?.link;
+          const cta = cr.call_to_action_type
+            || cr.object_story_spec?.link_data?.call_to_action?.type
+            || cr.object_story_spec?.video_data?.call_to_action?.type;
+          if (link || cta || cr.url_tags) {
+            referenceSettings = {
+              link: link || undefined,
+              call_to_action_type: cta || undefined,
+              url_tags: cr.url_tags || undefined,
+            };
+            if (link) break;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Reference creative fetch failed:', e);
+    }
+
+    // Determine final destination link + CTA — explicit override wins, else clone from existing ad.
+    const finalLink = (destinationLink && String(destinationLink).trim()) || referenceSettings.link || null;
+    const finalCta = (callToActionType && String(callToActionType).trim()) || referenceSettings.call_to_action_type || 'LEARN_MORE';
+    const finalUrlTags = (urlTags && String(urlTags).trim()) || referenceSettings.url_tags || null;
+
+    const destinationRequired =
+      (adSetOptGoal && DESTINATION_REQUIRED_GOALS.has(adSetOptGoal) && adSetDestType !== 'ON_AD') ||
+      adSetDestType === 'WEBSITE';
+
+    if (destinationRequired && !finalLink) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          needsDestination: true,
+          optimizationGoal: adSetOptGoal,
+          destinationType: adSetDestType,
+          suggestedCallToActionType: finalCta,
+          error:
+            `This campaign is optimized for ${adSetOptGoal?.toLowerCase().replace(/_/g, ' ') || 'conversions'}, so your post needs a destination link to run here. Add the URL you want people to land on and we'll attach it to the ad.`,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
     // Multi-advertiser ads: ALWAYS OFF
     const multiAdvertiserAds = false;
 
-    console.log(`Adding ${posts.length} post(s) as new ads (status=${adStatus}) to ad set ${targetAdSetId}`);
+    console.log(`Adding ${posts.length} post(s) as PAUSED ad(s) to ad set ${targetAdSetId} (opt=${adSetOptGoal}, link=${finalLink ? 'yes' : 'no'})`);
 
     const createdAds: Array<{ adId: string; postId: string; previewIframeUrl: string | null; status: string }> = [];
     const failedAds: Array<{ postId: string; error: string }> = [];
@@ -435,13 +522,23 @@ Deno.serve(async (req) => {
 
         if (isFacebookPost) {
           // Facebook Page post — use object_story_id (format: "<page_id>_<post_id>")
+          // The post's own link/CTA carry through automatically.
           const storyId = post.facebook_post_id || (postId.includes('_') ? postId : `${pageId}_${postId}`);
           creativeParams.object_story_id = storyId;
+          if (finalUrlTags) creativeParams.url_tags = finalUrlTags;
         } else {
           // Instagram media — use existing-post fields
           creativeParams.object_id = pageId;
           creativeParams.instagram_user_id = igAccountId!;
           creativeParams.source_instagram_media_id = postId;
+          // Attach the campaign's destination link + CTA so conversion/leads ad sets accept this ad.
+          if (finalLink) {
+            creativeParams.call_to_action = JSON.stringify({
+              type: finalCta,
+              value: { link: finalLink },
+            });
+          }
+          if (finalUrlTags) creativeParams.url_tags = finalUrlTags;
         }
 
         const creativeRes = await fetch(
