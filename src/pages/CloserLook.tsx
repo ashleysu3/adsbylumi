@@ -15,6 +15,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import { FatigueGauge } from "@/components/insights/FatigueGauge";
+import { LeadQualityCheck } from "@/components/insights/LeadQualityCheck";
+import { AdFitReviewTaskCard } from "@/components/insights/AdFitReviewTaskCard";
 import { getFatigueStatus } from "@/lib/fatigue";
 import { TaskExecuteDialog, ExecutableTaskShape } from "@/components/TaskExecuteDialog";
 import { BugReportModal } from "@/components/BugReportModal";
