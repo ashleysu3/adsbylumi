@@ -104,6 +104,19 @@ export default function Campaigns() {
           )}
         </div>
 
+        {/* Explainer: what shows here vs Live Ads */}
+        {!isAddCreativeMode && (
+          <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/40 border border-border/60 rounded-xl px-3 py-2">
+            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground/70" />
+            <p>
+              These are campaigns you've <span className="font-medium text-foreground">built in LUMI</span>. Campaigns you created directly in Meta show under <button onClick={() => navigate("/live-ads")} className="underline underline-offset-2 hover:text-foreground">Live Ads</button> — import them here to manage them.
+            </p>
+          </div>
+        )}
+
+        {/* Bridge: surface live Meta campaigns not yet in LUMI */}
+        {!isAddCreativeMode && <MetaImportBridgeBanner surface="campaigns" />}
+
         {/* Resume incomplete workspace banner */}
         {!isAddCreativeMode && (
           <ResumeWorkspaceBanner brandId={activeBrand.id} />
