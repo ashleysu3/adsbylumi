@@ -32,6 +32,7 @@ import {
   CreditCard,
   Crown,
   Shield,
+  Briefcase,
 } from "lucide-react";
 import { LadybugIcon } from "@/components/LadybugIcon";
 import { IntentBar } from "@/components/IntentBar";
@@ -170,6 +171,7 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
   const [userEmail, setUserEmail] = useState("");
   const [intent, setIntent] = useState("");
   const [hasVipBonuses, setHasVipBonuses] = useState(false);
+  const [isPartner, setIsPartner] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -183,6 +185,13 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
         .is("applied_at", null)
         .limit(1);
       setHasVipBonuses((credits?.length || 0) > 0);
+      const { data: partner } = await supabase
+        .from("partner_access_tokens")
+        .select("id")
+        .eq("partner_user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+      setIsPartner(!!partner);
     });
     const handler = () => setBugReportOpen(true);
     window.addEventListener("open-bug-report", handler);
@@ -190,16 +199,8 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
   }, []);
 
   const brandWithVip = useMemo<NavGroup>(() => {
-    const brandGroup = groups.find((g) => g.key === "brand")!;
-    if (!hasVipBonuses) return brandGroup;
-    return {
-      ...brandGroup,
-      items: [
-        ...brandGroup.items,
-        { label: "VIP Offers", to: "/refer", icon: Crown },
-      ],
-    };
-  }, [hasVipBonuses]);
+    return groups.find((g) => g.key === "brand")!;
+  }, []);
 
   const allGroups: NavGroup[] = [
     ...groups.map((g) => (g.key === "brand" ? brandWithVip : g)),
@@ -296,6 +297,36 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
                 <span className="text-base leading-none">✅</span>
                 <span className="text-sm font-medium tracking-tight">My Tasks</span>
               </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/admin/users")}
+                  className="w-full rounded-lg border border-amber-300/60 bg-amber-50/60 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 hover:bg-amber-100/80 dark:hover:bg-amber-500/20 transition-colors px-3 py-2 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <Shield className="h-4 w-4" />
+                  <span className="text-sm font-medium tracking-tight">Admin Dashboard</span>
+                </button>
+              )}
+              {isPartner && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/partner-portal")}
+                  className="w-full rounded-lg border border-border bg-card hover:bg-muted transition-colors px-3 py-2 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <Briefcase className="h-4 w-4" />
+                  <span className="text-sm font-medium tracking-tight">Partner Dashboard</span>
+                </button>
+              )}
+              {hasVipBonuses && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/refer")}
+                  className="w-full rounded-lg border border-lumi-purple-1/40 bg-lumi-purple-1/10 text-foreground hover:bg-lumi-purple-1/20 transition-colors px-3 py-2 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <Crown className="h-4 w-4" />
+                  <span className="text-sm font-medium tracking-tight">VIP Bonuses</span>
+                </button>
+              )}
             </div>
           )}
         </SidebarHeader>
