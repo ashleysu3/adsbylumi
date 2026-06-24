@@ -147,6 +147,7 @@ export function PromoteExistingPostDialog({
 
   // Step 3: placement
   const [placement, setPlacement] = useState<"new" | "existing">("new");
+  const [launchLive, setLaunchLive] = useState(true); // default: go live unless user opts to start paused
 
   // Step 4: preview
   const [submitting, setSubmitting] = useState(false);
