@@ -293,7 +293,10 @@ export function PromoteExistingPostDialog({
       });
       if (error) throw error;
       if (!data?.success) {
-        const reason = data?.failedAds?.[0]?.error || data?.error || "Failed to create ad";
+        const raw = data?.failedAds?.[0]?.error || data?.error || "Failed to create ad";
+        const reason = /#10|permission|OAuthException/i.test(raw)
+          ? "Meta won't let us use this post as an ad. Reconnect Meta from Settings and grant Instagram + ads permissions, then try again."
+          : raw;
         toast.error(reason);
         setSubmitting(false);
         return;
