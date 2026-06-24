@@ -192,8 +192,10 @@ export function MetaAccountConnect({
     try {
       const redirectUri = `${window.location.origin}/meta-oauth-callback`;
 
+      // Always force Meta's asset-selection / permission re-grant flow —
+      // never let Meta silently "re-establish previous settings".
       const { data, error } = await supabase.functions.invoke('meta-oauth-init', {
-        body: { brandId, redirectUri }
+        body: { brandId, redirectUri, forceAssetSelection: true }
       });
 
       if (error) {
