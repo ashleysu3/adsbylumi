@@ -30,6 +30,7 @@ const TOOLS: Array<{
   desc: string;
   icon: any;
   accent: string;
+  comingSoon?: boolean;
 }> = [
   {
     key: "copy",
@@ -65,6 +66,7 @@ const TOOLS: Array<{
     desc: "Generate static and carousel visuals on-brand.",
     icon: ImageIcon,
     accent: "from-emerald-500/15 to-emerald-500/0 text-emerald-600",
+    comingSoon: true,
   },
   {
     key: "trends",
@@ -72,6 +74,7 @@ const TOOLS: Array<{
     desc: "Translate a trending post or sound into ad concepts for your brand.",
     icon: TrendingUp,
     accent: "from-cyan-500/15 to-cyan-500/0 text-cyan-600",
+    comingSoon: true,
   },
 ];
 
