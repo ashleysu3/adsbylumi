@@ -29,7 +29,9 @@ import {
   ArrowRight,
   PlayCircle,
   Pause,
+  Link as LinkIcon,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface FetchedPost {
   id: string;
