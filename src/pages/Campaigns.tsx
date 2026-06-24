@@ -8,6 +8,8 @@ import { CampaignsList } from "@/components/CampaignsList";
 import { ResumeWorkspaceBanner } from "@/components/ResumeWorkspaceBanner";
 import { GridShimmer } from "@/components/GradientShimmer";
 import { LumiEducationCard } from "@/components/LumiEducationCard";
+import { MetaImportBridgeBanner } from "@/components/insights/MetaImportBridgeBanner";
+import { Info } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 
