@@ -37,6 +37,7 @@ interface CopyVariation {
   headline: string;
   description: string;
   angle?: string;
+  fit?: import("@/components/insights/FitBadge").FitInfo;
 }
 
 interface SharedCopy {
