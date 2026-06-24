@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
-import { saveCreative } from "@/lib/creatives";
+import { startCreative, completeCreative, failCreative } from "@/lib/creatives";
 
 export function LabGraphics({ seedId: _seedId }: { seedId?: string }) {
   const { activeBrand } = useBrand();
