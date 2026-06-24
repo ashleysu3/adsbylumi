@@ -39,7 +39,7 @@ export function TeamMembersSection({ brandId }: TeamMembersSectionProps) {
     try {
       const { data, error } = await supabase
         .from('brand_team_members')
-        .select('*')
+        .select('id, email, role, invite_status, user_id, created_at')
         .eq('brand_id', brandId)
         .neq('invite_status', 'revoked')
         .order('created_at', { ascending: true });
@@ -85,10 +85,17 @@ export function TeamMembersSection({ brandId }: TeamMembersSectionProps) {
     }
   };
 
-  const handleCopyLink = (token: string) => {
-    const link = `${window.location.origin}/auth?invite=${token}`;
-    navigator.clipboard.writeText(link);
-    toast.success('Invite link copied to clipboard!');
+  const handleCopyLink = async (memberId: string) => {
+    try {
+      const { data: token, error } = await supabase
+        .rpc('get_team_invite_token', { p_member_id: memberId });
+      if (error || !token) throw error || new Error('No token');
+      const link = `${window.location.origin}/auth?invite=${token}`;
+      await navigator.clipboard.writeText(link);
+      toast.success('Invite link copied to clipboard!');
+    } catch (e: any) {
+      toast.error('Could not copy invite link');
+    }
   };
 
   const handleRemoveMember = async (memberId: string) => {
