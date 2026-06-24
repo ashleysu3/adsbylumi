@@ -236,6 +236,7 @@ export function PromoteExistingPostDialog({
 
   // Step 4: preview
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<{ message: string; kind: "ig_permission" | "other" } | null>(null);
   const [createdAds, setCreatedAds] = useState<CreatedAd[]>([]);
   const [createdAdSetId, setCreatedAdSetId] = useState<string | null>(null);
   const [newAdSetCreated, setNewAdSetCreated] = useState(false);
@@ -259,6 +260,7 @@ export function PromoteExistingPostDialog({
         setNewAdSetCreated(false);
         setFbPostsError(null);
         setManualUrl("");
+        setSubmitError(null);
       }, 250);
     }
   }, [open]);
@@ -373,6 +375,7 @@ export function PromoteExistingPostDialog({
     const hasUrl = !!manualUrl.trim();
     if (!selectedPost && !hasUrl) return;
     setSubmitting(true);
+    setSubmitError(null);
     try {
       let postPayload: any;
       if (selectedPost) {
@@ -414,10 +417,11 @@ export function PromoteExistingPostDialog({
       if (error) throw error;
       if (!data?.success) {
         const raw = data?.failedAds?.[0]?.error || data?.error || "Failed to create ad";
-        const reason = /#10|permission|OAuthException/i.test(raw)
-          ? "Meta couldn't use this linked post with the connected ad account. Make sure the link is a public post or Reel from the Instagram account connected to this brand, then try again."
+        const isIgPerm = /instagram|ig\b|media v2 id|valid instagram media|permission|#10|OAuthException/i.test(raw);
+        const reason = isIgPerm
+          ? "Meta won't let us read this Instagram account's posts with the current permissions on your Meta connection (instagram_basic is denied/pending). The Facebook Page tab uses a different access path that works today — pick the same post from there if you cross-posted it."
           : raw;
-        toast.error(reason);
+        setSubmitError({ message: reason, kind: isIgPerm ? "ig_permission" : "other" });
         setSubmitting(false);
         return;
       }
@@ -431,7 +435,9 @@ export function PromoteExistingPostDialog({
         setStep("preview");
       }
     } catch (e: any) {
-      toast.error(e?.message || "Failed to create ad");
+      const raw = e?.message || "Failed to create ad";
+      const isIgPerm = /instagram|ig\b|permission|#10|OAuthException/i.test(raw);
+      setSubmitError({ message: raw, kind: isIgPerm ? "ig_permission" : "other" });
     } finally {
       setSubmitting(false);
     }
@@ -697,6 +703,40 @@ export function PromoteExistingPostDialog({
                   onCheckedChange={setLaunchLive}
                 />
               </div>
+
+              {submitError && (
+                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+                  <div className="flex items-start gap-2 text-sm">
+                    <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                    <p className="text-foreground">{submitError.message}</p>
+                  </div>
+                  {submitError.kind === "ig_permission" && (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => {
+                          setSubmitError(null);
+                          setSelectedPost(null);
+                          setManualUrl("");
+                          setPickerTab("facebook");
+                          setStep("pick");
+                        }}
+                      >
+                        <Facebook className="h-3.5 w-3.5 mr-1.5" />
+                        Switch to Facebook Page tab
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => window.open("/meta-settings", "_blank")}
+                      >
+                        Open Meta Settings
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
