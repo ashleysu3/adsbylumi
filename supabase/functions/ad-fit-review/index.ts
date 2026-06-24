@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     if (gate.blocked) return gate.blocked;
     const userId = gate.userId!;
 
-    const { workspace_id, brand_id, feedback_id } = await req.json();
+    const { workspace_id, brand_id, feedback_id, creative_id } = await req.json();
     if (!workspace_id || !brand_id || !feedback_id) {
       return ok({ error: "Missing workspace_id, brand_id, or feedback_id" }, 200);
     }
