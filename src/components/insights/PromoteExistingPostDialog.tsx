@@ -17,13 +17,14 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   Instagram,
+  Facebook,
   Heart,
   MessageCircle,
+  Share2,
   Loader2,
   CheckCircle2,
   AlertTriangle,
   XCircle,
-  ShieldAlert,
   Sparkles,
   ArrowLeft,
   ArrowRight,
@@ -33,9 +34,11 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface FetchedPost {
   id: string;
+  facebook_post_id?: string;
   caption?: string;
   media_type: "IMAGE" | "VIDEO" | "CAROUSEL_ALBUM";
   media_url?: string;
@@ -43,6 +46,9 @@ interface FetchedPost {
   permalink: string;
   like_count?: number;
   comments_count?: number;
+  share_count?: number;
+  platform: "facebook" | "instagram";
+  created_time?: string;
 }
 
 interface FitResult {
