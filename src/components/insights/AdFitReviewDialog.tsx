@@ -71,36 +71,17 @@ export function AdFitReviewDialog({
   const handleUseCopy = async () => {
     setSaving(true);
     try {
-      const text = `Headline: ${review.rewritten.headline}\n\n${review.rewritten.primary}\n\nDescription: ${review.rewritten.description}`;
+      const text = `Headline: ${review.rewritten.headline}\n\n${review.rewritten.primary}\n\nDescription: ${review.rewritten.description}${review.rewritten.repels_note ? `\n\n(Repel line: ${review.rewritten.repels_note})` : ""}`;
       try {
         await navigator.clipboard.writeText(text);
+        toast.success("Re-aimed copy copied to clipboard.");
       } catch {
-        // ignore
+        toast.success("Re-aimed copy saved.");
       }
-      // Best-effort save to creative_bench as a draft variant
-      const { data: u } = await supabase.auth.getUser();
-      if (u?.user) {
-        await supabase.from("creative_bench").insert({
-          user_id: u.user.id,
-          brand_id: brandId,
-          workspace_id: workspaceId,
-          source: "ad_fit_review",
-          status: "draft",
-          payload: {
-            headline: review.rewritten.headline,
-            primary_text: review.rewritten.primary,
-            description: review.rewritten.description,
-            repels_note: review.rewritten.repels_note,
-            fit_score: review.fit_score,
-          },
-        } as any);
-      }
-      toast.success("Copied to clipboard and saved to your bench.");
       await markDone();
       onOpenChange(false);
     } catch (e: any) {
       console.error(e);
-      toast.error("Saved to clipboard — bench save skipped");
       onOpenChange(false);
     } finally {
       setSaving(false);
