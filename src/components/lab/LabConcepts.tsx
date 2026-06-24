@@ -20,33 +20,49 @@ export function LabConcepts({ seedId: _seedId }: { seedId?: string }) {
     }
     setLoading(true);
     setResults([]);
+    const label = `Sketching ad concepts${prompt.trim() ? ` around: ${prompt.trim().slice(0, 80)}` : ""}`;
+    const jobId = await startCreative({
+      brandId: activeBrand.id,
+      type: "concept",
+      taskLabel: label,
+      source: "lab",
+      sourceRef: { tool: "concepts", prompt },
+    });
     try {
       const { data, error } = await supabase.functions.invoke("rank-creative-concepts", {
-        body: {
-          brand_id: activeBrand.id,
-          prompt: prompt.trim() || undefined,
-        },
+        body: { brand_id: activeBrand.id, prompt: prompt.trim() || undefined },
       });
       if (error) throw error;
       const arr: any[] = data?.concepts || data?.results || [];
       if (arr.length === 0) {
-        toast.error(data?.error || "No concepts generated");
-      } else {
-        setResults(arr);
-        for (const c of arr) {
-          await saveCreative({
-            brandId: activeBrand.id,
-            type: "concept",
-            title: c.title || c.name || "Concept",
-            content: c,
-            source: "lab",
-            sourceRef: { tool: "concepts", prompt },
-          });
-        }
-        toast.success(`${arr.length} concepts saved to My Creatives`);
+        const msg = data?.error || "No concepts generated";
+        if (jobId) await failCreative(jobId, msg);
+        toast.error(msg);
+        return;
       }
+      setResults(arr);
+      const first = arr[0];
+      if (jobId) {
+        await completeCreative(jobId, {
+          type: "concept",
+          title: first.title || first.name || "Concept",
+          content: first,
+        });
+      }
+      for (const c of arr.slice(1)) {
+        await saveCreative({
+          brandId: activeBrand.id,
+          type: "concept",
+          title: c.title || c.name || "Concept",
+          content: c,
+          source: "lab",
+          sourceRef: { tool: "concepts", prompt },
+        });
+      }
+      toast.success(`${arr.length} concepts ready in My Creatives`);
     } catch (e: any) {
       console.error(e);
+      if (jobId) await failCreative(jobId, e?.message || "Generation failed");
       toast.error(e?.message || "Couldn't generate concepts");
     } finally {
       setLoading(false);
