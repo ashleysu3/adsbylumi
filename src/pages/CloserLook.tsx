@@ -965,6 +965,21 @@ export default function CloserLook() {
                 );
               })}
             </div>
+            <div className="mt-3 pt-3 border-t flex justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  const r = syntheticRecForOption(
+                    "turn_off",
+                    "Approved pause from Closer Look",
+                  );
+                  if (r) openExecuteFor(r);
+                }}
+                className="text-xs text-muted-foreground hover:text-destructive underline underline-offset-4 transition-colors"
+              >
+                Pause this campaign
+              </button>
+            </div>
           </CardContent>
         </Card>
 
