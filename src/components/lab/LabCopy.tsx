@@ -8,7 +8,7 @@ import { Loader2, Sparkles, Save, Copy as CopyIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
-import { saveCreative, type CreativeType } from "@/lib/creatives";
+import { saveCreative, startCreative, completeCreative, failCreative, type CreativeType } from "@/lib/creatives";
 
 type CopyKind = "hook" | "primary_copy" | "headline" | "description" | "caption" | "cta";
 
@@ -54,6 +54,14 @@ export function LabCopy({ seedId }: { seedId?: string }) {
     }
     setLoading(true);
     setResults([]);
+    const label = `Drafting ${KINDS.find((k) => k.value === kind)?.label.toLowerCase() || kind}${prompt.trim() ? ` for: ${prompt.trim().slice(0, 80)}` : ""}`;
+    const jobId = await startCreative({
+      brandId: activeBrand.id,
+      type: kind as CreativeType,
+      taskLabel: label,
+      source: "lab",
+      sourceRef: { tool: "copy", kind, prompt },
+    });
     try {
       const { data, error } = await supabase.functions.invoke("generate-copy-variations", {
         body: {
@@ -68,24 +76,34 @@ export function LabCopy({ seedId }: { seedId?: string }) {
         .map((v: any) => (typeof v === "string" ? v : v?.text || v?.copy || ""))
         .filter(Boolean);
       if (arr.length === 0) {
-        toast.error(data?.error || "No copy generated");
-      } else {
-        setResults(arr);
-        // Auto-save each as draft
-        for (const text of arr) {
-          await saveCreative({
-            brandId: activeBrand.id,
-            type: kind as CreativeType,
-            title: text.slice(0, 80),
-            content: { text },
-            source: "lab",
-            sourceRef: { tool: "copy", kind, prompt },
-          });
-        }
-        toast.success(`${arr.length} drafts saved to My Creatives`);
+        const msg = data?.error || "No copy generated";
+        if (jobId) await failCreative(jobId, msg);
+        toast.error(msg);
+        return;
       }
+      setResults(arr);
+      // First result completes the job placeholder; the rest save as ready.
+      if (jobId) {
+        await completeCreative(jobId, {
+          type: kind as CreativeType,
+          title: arr[0].slice(0, 80),
+          content: { text: arr[0] },
+        });
+      }
+      for (const text of arr.slice(1)) {
+        await saveCreative({
+          brandId: activeBrand.id,
+          type: kind as CreativeType,
+          title: text.slice(0, 80),
+          content: { text },
+          source: "lab",
+          sourceRef: { tool: "copy", kind, prompt },
+        });
+      }
+      toast.success(`${arr.length} drafts ready in My Creatives`);
     } catch (e: any) {
       console.error(e);
+      if (jobId) await failCreative(jobId, e?.message || "Generation failed");
       toast.error(e?.message || "Couldn't generate");
     } finally {
       setLoading(false);
