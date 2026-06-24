@@ -157,7 +157,7 @@ async function resolveIgMediaByUrl(
         if (code === 10 || code === 200 || code === 190 || msg.includes('permission')) {
           return {
             error:
-              "Meta couldn't resolve that Instagram link automatically. Make sure it is a public post or Reel from the Instagram account connected to this brand.",
+              "Meta won't let us resolve that Instagram link without extra Instagram permissions we don't have yet. Use the Facebook Page tab to pick the same post — that path works with your current permissions.",
           };
         }
         return { error: data.error.message || 'Meta rejected the media lookup.' };
