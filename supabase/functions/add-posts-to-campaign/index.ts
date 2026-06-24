@@ -126,11 +126,26 @@ function decodeIgShortcodeToMediaId(shortcode: string): string | null {
   return value > 0n ? value.toString() : null;
 }
 
+/** Exchange the user token for a Page Access Token — IG-via-Page reads work with this even when the User token can't. */
+async function getPageAccessToken(pageId: string, userToken: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v25.0/${pageId}?fields=access_token&access_token=${userToken}`,
+    );
+    const data = await res.json();
+    if (res.ok && data.access_token) return data.access_token;
+  } catch (e) {
+    console.warn('Page token fetch failed:', e);
+  }
+  return null;
+}
+
 /** Resolve a pasted IG URL to a media id by scanning the connected IG account's media list. */
 async function resolveIgMediaByUrl(
   igUserId: string,
   url: string,
   token: string,
+  pageId?: string | null,
 ): Promise<{ id?: string; caption?: string; media_type?: string; thumbnail_url?: string; media_url?: string; error?: string }> {
   const shortcode = extractIgShortcode(url);
   if (!shortcode) {
@@ -140,51 +155,79 @@ async function resolveIgMediaByUrl(
   // NOTE: We previously tried decoding the shortcode locally to skip the /media
   // lookup, but that returns the IG-internal media PK, not the "V2 ID" the ads
   // API requires for source_instagram_media_id. Always resolve via /media so we
-  // get the proper V2 ID (or a clean permission error the UI can act on).
+  // get the proper V2 ID. Mirror analyze-instagram-posts: if the User token is
+  // blocked, retry with a Page Access Token (which has IG-via-Page read access).
 
-  // Fallback: scan the connected account's media list.
   const fields = 'id,permalink,caption,media_type,thumbnail_url,media_url';
-  let next: string | null =
-    `https://graph.facebook.com/v25.0/${igUserId}/media?fields=${fields}&limit=50&access_token=${token}`;
-  let pages = 0;
-  while (next && pages < 6) {
-    try {
-      const res = await fetch(next);
-      const data = await res.json();
-      if (data.error) {
-        const code = data.error.code;
-        const msg = (data.error.message || '').toLowerCase();
-        if (code === 10 || code === 200 || code === 190 || msg.includes('permission')) {
+  const tokensToTry: string[] = [token];
+  if (pageId) {
+    const pageToken = await getPageAccessToken(pageId, token);
+    if (pageToken && pageToken !== token) tokensToTry.push(pageToken);
+  }
+
+  let lastPermissionError: string | null = null;
+  let lastGenericError: string | null = null;
+
+  for (const activeToken of tokensToTry) {
+    let next: string | null =
+      `https://graph.facebook.com/v25.0/${igUserId}/media?fields=${fields}&limit=50&access_token=${activeToken}`;
+    let pages = 0;
+    let permissionBlocked = false;
+
+    while (next && pages < 6) {
+      try {
+        const res = await fetch(next);
+        const data = await res.json();
+        if (data.error) {
+          const code = data.error.code;
+          const msg = (data.error.message || '').toLowerCase();
+          if (code === 10 || code === 200 || code === 190 || msg.includes('permission')) {
+            lastPermissionError =
+              "Meta won't let us read this Instagram account's posts with the current permissions. Try the Facebook Page tab — it uses a different access path that's working.";
+            permissionBlocked = true;
+            break; // try next token
+          }
+          lastGenericError = data.error.message || 'Meta rejected the media lookup.';
+          break;
+        }
+        const hit = (data?.data || []).find(
+          (m: any) => typeof m.permalink === 'string' && m.permalink.includes(`/${shortcode}`),
+        );
+        if (hit) {
           return {
-            error:
-              "Meta won't let us resolve that Instagram link without extra Instagram permissions we don't have yet. Use the Facebook Page tab to pick the same post — that path works with your current permissions.",
+            id: hit.id,
+            caption: hit.caption,
+            media_type: hit.media_type,
+            thumbnail_url: hit.thumbnail_url,
+            media_url: hit.media_url,
           };
         }
-        return { error: data.error.message || 'Meta rejected the media lookup.' };
+        next = data?.paging?.next || null;
+        pages++;
+      } catch (e: any) {
+        lastGenericError = e?.message || 'Meta media lookup failed.';
+        break;
       }
-      const hit = (data?.data || []).find(
-        (m: any) => typeof m.permalink === 'string' && m.permalink.includes(`/${shortcode}`),
-      );
-      if (hit) {
-        return {
-          id: hit.id,
-          caption: hit.caption,
-          media_type: hit.media_type,
-          thumbnail_url: hit.thumbnail_url,
-          media_url: hit.media_url,
-        };
-      }
-      next = data?.paging?.next || null;
-      pages++;
-    } catch (e: any) {
-      return { error: e?.message || 'Meta media lookup failed.' };
+    }
+
+    if (!permissionBlocked && !lastGenericError) {
+      // Walked all pages on this token without permission failure but didn't find the post.
+      // No point retrying with another token — the post genuinely isn't in this account's feed.
+      return {
+        error:
+          "We couldn't find that post on the connected Instagram account. Make sure the URL is from the same IG account that's connected to this brand.",
+      };
     }
   }
+
   return {
     error:
+      lastPermissionError ||
+      lastGenericError ||
       "We couldn't find that post on the connected Instagram account. Make sure the URL is from the same IG account that's connected to this brand.",
   };
 }
+
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -353,7 +396,7 @@ Deno.serve(async (req) => {
           failedAds.push({ postId: post.url || 'url', error: 'No Instagram account is connected to this brand.' });
           continue;
         }
-        const resolved = await resolveIgMediaByUrl(igAccountId, post.url || post.permalink, metaAccessToken);
+        const resolved = await resolveIgMediaByUrl(igAccountId, post.url || post.permalink, metaAccessToken, pageId);
         if (resolved.error || !resolved.id) {
           failedAds.push({ postId: post.url || 'url', error: resolved.error || "Couldn't resolve that URL." });
           continue;
