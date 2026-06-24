@@ -322,6 +322,7 @@ Deno.serve(async req => {
           : (brand.instagram_account_name || 'Linked');
       checks.push({ id: 'instagram', label: 'Instagram account', status: 'pass', detail: display });
       m.instagramUsername = pageIg?.username || adAccountIgs[0]?.username || null;
+      m.instagramName = brand.instagram_account_name || null;
     } else {
       checks.push({
         id: 'instagram',
