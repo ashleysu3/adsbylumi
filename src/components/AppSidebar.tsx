@@ -32,6 +32,7 @@ import {
   CreditCard,
   Crown,
   Shield,
+  Briefcase,
 } from "lucide-react";
 import { LadybugIcon } from "@/components/LadybugIcon";
 import { IntentBar } from "@/components/IntentBar";
