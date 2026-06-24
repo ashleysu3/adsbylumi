@@ -129,6 +129,81 @@ function VerdictBanner({ fit }: { fit: FitResult }) {
   );
 }
 
+function PostGrid({
+  posts,
+  selectedId,
+  onPick,
+}: {
+  posts: FetchedPost[];
+  selectedId?: string;
+  onPick: (p: FetchedPost) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      {posts.map((p) => {
+        const selected = selectedId === p.id;
+        const thumb = p.thumbnail_url || p.media_url;
+        const PlatformIcon = p.platform === "facebook" ? Facebook : Instagram;
+        return (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => onPick(p)}
+            className={cn(
+              "relative rounded-lg overflow-hidden border-2 text-left transition-all group",
+              selected ? "border-primary ring-2 ring-primary/30" : "border-border hover:border-primary/50"
+            )}
+          >
+            <div className="aspect-square bg-muted relative">
+              {thumb ? (
+                <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <PlatformIcon className="h-6 w-6 text-muted-foreground" />
+                </div>
+              )}
+              {selected && (
+                <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                  <CheckCircle2 className="h-6 w-6 text-primary-foreground bg-primary rounded-full p-1" />
+                </div>
+              )}
+              {p.media_type === "VIDEO" && (
+                <Badge className="absolute bottom-1 left-1 text-[9px] px-1 py-0 bg-background/70 text-foreground backdrop-blur-sm">
+                  {p.platform === "facebook" ? "Video" : "Reel"}
+                </Badge>
+              )}
+            </div>
+            <div className="p-2 space-y-1">
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                {p.like_count !== undefined && (
+                  <span className="flex items-center gap-1">
+                    <Heart className="h-3 w-3" /> {p.like_count}
+                  </span>
+                )}
+                {p.comments_count !== undefined && (
+                  <span className="flex items-center gap-1">
+                    <MessageCircle className="h-3 w-3" /> {p.comments_count}
+                  </span>
+                )}
+                {p.share_count !== undefined && p.share_count > 0 && (
+                  <span className="flex items-center gap-1">
+                    <Share2 className="h-3 w-3" /> {p.share_count}
+                  </span>
+                )}
+              </div>
+              {p.caption && (
+                <p className="text-[11px] text-muted-foreground line-clamp-2 leading-snug">
+                  {p.caption}
+                </p>
+              )}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function PromoteExistingPostDialog({
   open,
   onOpenChange,
