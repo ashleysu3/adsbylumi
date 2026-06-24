@@ -515,13 +515,23 @@ Deno.serve(async (req) => {
 
         if (isFacebookPost) {
           // Facebook Page post — use object_story_id (format: "<page_id>_<post_id>")
+          // The post's own link/CTA carry through automatically.
           const storyId = post.facebook_post_id || (postId.includes('_') ? postId : `${pageId}_${postId}`);
           creativeParams.object_story_id = storyId;
+          if (finalUrlTags) creativeParams.url_tags = finalUrlTags;
         } else {
           // Instagram media — use existing-post fields
           creativeParams.object_id = pageId;
           creativeParams.instagram_user_id = igAccountId!;
           creativeParams.source_instagram_media_id = postId;
+          // Attach the campaign's destination link + CTA so conversion/leads ad sets accept this ad.
+          if (finalLink) {
+            creativeParams.call_to_action = JSON.stringify({
+              type: finalCta,
+              value: { link: finalLink },
+            });
+          }
+          if (finalUrlTags) creativeParams.url_tags = finalUrlTags;
         }
 
         const creativeRes = await fetch(
