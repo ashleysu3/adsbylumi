@@ -275,6 +275,8 @@ ${!fetchSuccess ? 'Since the page content could not be fetched, set needs_clarif
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
+        max_tokens: 8192,
+        response_format: { type: 'json_object' },
       }),
     });
 
