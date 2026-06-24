@@ -446,7 +446,8 @@ export function PromoteExistingPostDialog({
       setCreatedAds(data.ads || []);
       setCreatedAdSetId(data.adSetId || null);
       setNewAdSetCreated(!!data.newAdSetCreated);
-      setStep("preview");
+      toast.success("Ad is live! ✨");
+      setStep("done");
     } catch (e: any) {
       const raw = e?.message || "Failed to create ad";
       const isIgPerm = /instagram_basic|OAuthException|#10\b/i.test(raw);
