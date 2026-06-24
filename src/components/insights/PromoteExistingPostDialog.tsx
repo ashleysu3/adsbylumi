@@ -171,69 +171,88 @@ export function PromoteExistingPostDialog({
     if (!open) {
       setTimeout(() => {
         setStep("pick");
-        setPosts([]);
+        setFbPosts([]);
+        setIgPosts([]);
+        setIgAvailable(false);
+        setPickerTab("facebook");
         setSelectedPost(null);
         setFit(null);
         setPlacement("new");
+        setLaunchLive(false);
         setCreatedAds([]);
         setCreatedAdSetId(null);
         setNewAdSetCreated(false);
-        setPostsError(null);
+        setFbPostsError(null);
         setManualUrl("");
-        setUseManualUrl(false);
       }, 250);
     }
   }, [open]);
 
   // Load posts on open
+  // Primary: Facebook Page posts (uses pages_read_engagement — already granted).
+  // Progressive: try Instagram media; if permissions block it, silently hide that tab.
   useEffect(() => {
     if (!open || !brandId) return;
     let cancelled = false;
-    (async () => {
-      setPostsLoading(true);
-      setPostsError(null);
-      try {
-        const { data: brand } = await supabase
-          .from("brands")
-          .select("instagram_account_id, instagram_account_name")
-          .eq("id", brandId)
-          .maybeSingle();
-        if (cancelled) return;
-        if (!brand?.instagram_account_id) {
-          setPostsError(
-            "No Instagram account is connected to this brand. Connect one in Meta Settings to promote existing posts."
-          );
-          return;
-        }
-        setIgAccountId(brand.instagram_account_id);
 
-        const { data, error } = await supabase.functions.invoke("analyze-instagram-posts", {
-          body: { brandId, instagramAccountId: brand.instagram_account_id, simple: false },
+    (async () => {
+      const { data: brand } = await supabase
+        .from("brands")
+        .select("instagram_account_id")
+        .eq("id", brandId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (brand?.instagram_account_id) setIgAccountId(brand.instagram_account_id);
+
+      // --- 1. Facebook Page posts (primary) ---
+      setFbPostsLoading(true);
+      setFbPostsError(null);
+      try {
+        const { data, error } = await supabase.functions.invoke("list-facebook-page-posts", {
+          body: { brandId },
         });
         if (cancelled) return;
         if (error) throw error;
-        if (data?.error) {
-          setPostsError(data.error);
-          return;
+        if (data?.error && (!data?.posts || data.posts.length === 0)) {
+          setFbPostsError(data.error);
+        } else {
+          setFbPosts((data?.posts || []) as FetchedPost[]);
         }
-        const list: FetchedPost[] = data?.posts || [];
-        // Sort by engagement so high-performers surface first
-        list.sort((a, b) => {
-          const ae = (a.like_count || 0) + (a.comments_count || 0);
-          const be = (b.like_count || 0) + (b.comments_count || 0);
-          return be - ae;
-        });
-        setPosts(list);
       } catch (e: any) {
-        if (!cancelled) {
-          setPostsError(e?.message || "Couldn't load posts.");
-        }
+        if (!cancelled) setFbPostsError(e?.message || "Couldn't load Page posts.");
       } finally {
-        if (!cancelled) setPostsLoading(false);
+        if (!cancelled) setFbPostsLoading(false);
+      }
+
+      // --- 2. Instagram (progressive enhancement — silent on failure) ---
+      if (brand?.instagram_account_id) {
+        try {
+          const { data, error } = await supabase.functions.invoke("analyze-instagram-posts", {
+            body: { brandId, instagramAccountId: brand.instagram_account_id, simple: true },
+          });
+          if (cancelled) return;
+          if (!error && data?.posts?.length && !data?.fallbackMode) {
+            const list: FetchedPost[] = (data.posts as any[]).map((p) => ({
+              ...p,
+              platform: "instagram" as const,
+            }));
+            list.sort((a, b) => {
+              const ae = (a.like_count || 0) + (a.comments_count || 0);
+              const be = (b.like_count || 0) + (b.comments_count || 0);
+              return be - ae;
+            });
+            setIgPosts(list);
+            setIgAvailable(true);
+          }
+        } catch {
+          // Silent — IG is optional. Page posts + URL paste cover this flow.
+        }
       }
     })();
+
     return () => { cancelled = true; };
   }, [open, brandId]);
+
 
   async function runFitCheck(post: FetchedPost) {
     setFitLoading(true);
