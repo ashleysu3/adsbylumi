@@ -15,6 +15,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { LeadQualityCheck } from "@/components/insights/LeadQualityCheck";
+import { AdFitReviewTaskCard } from "@/components/insights/AdFitReviewTaskCard";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
 import {
