@@ -413,34 +413,43 @@ export function PromoteExistingPostDialog({
       const { data, error } = await supabase.functions.invoke("add-posts-to-campaign", {
         body: {
           workspaceId,
-          status: launchLive ? "ACTIVE" : "PAUSED",
           createNewAdSet: placement === "new",
           posts: [postPayload],
+          ...(destinationLink.trim() ? {
+            destinationLink: destinationLink.trim(),
+            callToActionType: destinationCta,
+          } : {}),
         },
       });
       if (error) throw error;
       if (!data?.success) {
+        if (data?.needsDestination) {
+          setSubmitError({
+            message: data?.error || "This campaign needs a destination link for your post to run here.",
+            kind: "needs_destination",
+            suggestedCta: data?.suggestedCallToActionType,
+          });
+          if (data?.suggestedCallToActionType) setDestinationCta(data.suggestedCallToActionType);
+          setSubmitting(false);
+          return;
+        }
         const raw = data?.failedAds?.[0]?.error || data?.error || "Failed to create ad";
-        const isIgPerm = /instagram|ig\b|media v2 id|valid instagram media|permission|#10|OAuthException/i.test(raw);
-        const reason = isIgPerm
-          ? "Meta won't let us read this Instagram account's posts with the current permissions on your Meta connection (instagram_basic is denied/pending). The Facebook Page tab uses a different access path that works today — pick the same post from there if you cross-posted it."
-          : raw;
-        setSubmitError({ message: reason, kind: isIgPerm ? "ig_permission" : "other" });
+        const isIgPerm = /instagram_basic|ig_permission|media v2 id|valid instagram media|#10\b|OAuthException/i.test(raw);
+        const isDest = /destination|call.to.action|link/i.test(raw) && /campaign|optimi[sz]ed|conversion|lead/i.test(raw);
+        setSubmitError({
+          message: raw,
+          kind: isIgPerm ? "ig_permission" : isDest ? "needs_destination" : "other",
+        });
         setSubmitting(false);
         return;
       }
       setCreatedAds(data.ads || []);
       setCreatedAdSetId(data.adSetId || null);
       setNewAdSetCreated(!!data.newAdSetCreated);
-      if (launchLive) {
-        toast.success("Ad is live! ✨");
-        setStep("done");
-      } else {
-        setStep("preview");
-      }
+      setStep("preview");
     } catch (e: any) {
       const raw = e?.message || "Failed to create ad";
-      const isIgPerm = /instagram|ig\b|permission|#10|OAuthException/i.test(raw);
+      const isIgPerm = /instagram_basic|OAuthException|#10\b/i.test(raw);
       setSubmitError({ message: raw, kind: isIgPerm ? "ig_permission" : "other" });
     } finally {
       setSubmitting(false);
