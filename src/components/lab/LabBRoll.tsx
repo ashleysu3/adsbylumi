@@ -18,7 +18,7 @@ import { saveCreative } from "@/lib/creatives";
 
 const ALL_BRAND = "__all__";
 
-type Offer = { id: string; name: string; auto_summary?: string | null };
+type Offer = { id: string; name: string };
 
 export function LabBRoll({ seedId: _seedId }: { seedId?: string }) {
   const { activeBrand } = useBrand();
