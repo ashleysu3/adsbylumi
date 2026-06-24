@@ -693,10 +693,10 @@ export function PromoteExistingPostDialog({
                 </Label>
               </RadioGroup>
 
-              <div className="rounded-xl border border-border/60 bg-muted/30 p-3 flex items-start gap-3">
-                <Pause className="h-4 w-4 text-muted-foreground mt-0.5" />
-                <p className="text-xs text-muted-foreground flex-1">
-                  We'll create this ad <span className="font-medium text-foreground">paused</span> so you can preview and confirm before it goes live.
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 flex items-start gap-3">
+                <PlayCircle className="h-4 w-4 text-emerald-600 mt-0.5" />
+                <p className="text-xs text-foreground flex-1">
+                  We'll launch this ad <span className="font-medium">live</span> in Meta as soon as you click create.
                 </p>
               </div>
 
