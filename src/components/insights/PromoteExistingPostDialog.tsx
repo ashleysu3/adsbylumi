@@ -265,23 +265,28 @@ export function PromoteExistingPostDialog({
   }
 
   async function handleCreatePausedAd() {
-    if (!selectedPost) return;
+    if (!selectedPost && !(useManualUrl && manualUrl.trim())) return;
     setSubmitting(true);
     try {
+      const postPayload = selectedPost
+        ? {
+            id: selectedPost.id,
+            media_type: selectedPost.media_type,
+            caption: selectedPost.caption || "",
+            instagram_account_id: igAccountId,
+            platform: "instagram",
+          }
+        : {
+            url: manualUrl.trim(),
+            instagram_account_id: igAccountId,
+            platform: "instagram",
+          };
       const { data, error } = await supabase.functions.invoke("add-posts-to-campaign", {
         body: {
           workspaceId,
           status: "PAUSED", // always paused — user confirms next
           createNewAdSet: placement === "new",
-          posts: [
-            {
-              id: selectedPost.id,
-              media_type: selectedPost.media_type,
-              caption: selectedPost.caption || "",
-              instagram_account_id: igAccountId,
-              platform: "instagram",
-            },
-          ],
+          posts: [postPayload],
         },
       });
       if (error) throw error;
