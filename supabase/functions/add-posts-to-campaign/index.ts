@@ -29,8 +29,8 @@ function translateMetaCreativeError(error: any): string {
   if (code === 100 || msg.includes('does not exist') || msg.includes('not found')) {
     return "We couldn't find this post. It may have been deleted or is from a private account.";
   }
-  if (code === 10 || code === 200 || msg.includes('permission')) {
-    return "Meta didn't allow access to this post. Make sure it's on a Business or Creator account connected to your Page.";
+  if (code === 10 || code === 200 || code === 190 || msg.includes('permission') || userMsg.includes('permission')) {
+    return "Meta won't let LUMI use this post as an ad. Reconnect Meta from Settings and make sure the Instagram account is on a Business or Creator profile linked to your Page with posts access — then try again.";
   }
   if (msg.includes('story') || msg.includes('expired')) {
     return "Stories and expired content can't be used as ads. Try a regular post or Reel.";
@@ -119,7 +119,17 @@ async function resolveIgMediaByUrl(
     try {
       const res = await fetch(next);
       const data = await res.json();
-      if (data.error) return { error: data.error.message || 'Meta rejected the media lookup.' };
+      if (data.error) {
+        const code = data.error.code;
+        const msg = (data.error.message || '').toLowerCase();
+        if (code === 10 || code === 200 || code === 190 || msg.includes('permission')) {
+          return {
+            error:
+              "Meta won't let LUMI read this Instagram account's posts. Reconnect Meta from Settings and make sure the Instagram account is linked to your Page with posts access — then try again.",
+          };
+        }
+        return { error: data.error.message || 'Meta rejected the media lookup.' };
+      }
       const hit = (data?.data || []).find(
         (m: any) => typeof m.permalink === 'string' && m.permalink.includes(`/${shortcode}`),
       );
@@ -397,7 +407,7 @@ Deno.serve(async (req) => {
         const adData = await adRes.json();
         if (adData.error) {
           console.error(`Ad creation failed for post ${postId}:`, adData.error);
-          failedAds.push({ postId, error: adData.error.message || 'Ad creation failed' });
+          failedAds.push({ postId, error: translateMetaCreativeError(adData.error) });
           continue;
         }
 
