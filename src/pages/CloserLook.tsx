@@ -171,6 +171,7 @@ function TrendArrow({ direction, kpi }: { direction?: string; kpi: string }) {
 export default function CloserLook() {
   const { campaignId } = useParams<{ campaignId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { activeBrand, loading: brandLoading } = useBrand();
 
   const [loading, setLoading] = useState(true);
