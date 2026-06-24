@@ -191,16 +191,30 @@ ${kb ? `\n## Reference: ${kb.title}\n${kb.content}` : ""}`;
       }),
     });
 
+    // Helper: mark the working creative as failed (if the client created one)
+    const markFailed = async (msg: string) => {
+      if (!creative_id) return;
+      await supabase
+        .from("creatives")
+        .update({ status: "failed", error_message: msg.slice(0, 500) })
+        .eq("id", creative_id);
+    };
+
     if (!aiRes.ok) {
       const txt = await aiRes.text();
       console.error("ad-fit-review AI error", aiRes.status, txt);
-      if (aiRes.status === 429) return ok({ error: "Rate limited. Try again shortly." }, 200);
-      if (aiRes.status === 402) return ok({ error: "AI credits exhausted." }, 200);
-      return ok({ error: "AI gateway error" }, 200);
+      let msg = "AI gateway error";
+      if (aiRes.status === 429) msg = "Rate limited. Try again shortly.";
+      else if (aiRes.status === 402) msg = "AI credits exhausted.";
+      await markFailed(msg);
+      return ok({ error: msg }, 200);
     }
     const data = await aiRes.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) return ok({ error: "Empty AI response" }, 200);
+    if (!toolCall?.function?.arguments) {
+      await markFailed("Empty AI response");
+      return ok({ error: "Empty AI response" }, 200);
+    }
     const review = JSON.parse(toolCall.function.arguments);
 
     // Persist as a task on Live Ads
@@ -210,17 +224,16 @@ ${kb ? `\n## Reference: ${kb.title}\n${kb.content}` : ""}`;
       .insert({
         user_id: userId,
         brand_id,
-        title: `You flagged ${fitLabel} on "${workspace.name || "this campaign"}" — re-aimed draft saved in My Creatives`,
-        description: `Fit Score: ${review.fit_score}. Saved to My Creatives — nothing changes in your live ad until you add it.`.slice(0, 500),
+        title: `You flagged ${fitLabel} on "${workspace.name || "this campaign"}" — re-aimed draft ready to review in My Creatives`,
+        description:
+          `Fit Score: ${review.fit_score}. Re-aimed copy is ready in My Creatives — nothing changes in your live ad until you add it there.`.slice(
+            0,
+            500,
+          ),
         source: "ad_fit_review",
         action_type: "ad_fit_review",
         link_to: `/my-creatives`,
-        action_payload: {
-          workspace_id,
-          brand_id,
-          feedback_id,
-          review,
-        },
+        action_payload: { workspace_id, brand_id, feedback_id, review },
         status: "open",
       })
       .select()
@@ -228,39 +241,102 @@ ${kb ? `\n## Reference: ${kb.title}\n${kb.content}` : ""}`;
 
     if (taskErr) console.error("task insert failed", taskErr);
 
-    // Save the re-aimed copy as draft creatives in My Creatives
+    // Persist the rewrite to creatives.
+    // The AI returns `rewritten` as an object {headline, primary, description, repels_note}.
     try {
-      const rewritten: any[] = Array.isArray(review.rewritten) ? review.rewritten : [];
-      const rows = rewritten
-        .map((r: any) => {
-          const text = typeof r === "string" ? r : (r?.text || r?.copy || r?.body || "");
-          if (!text) return null;
-          const kind = (typeof r === "object" && r?.kind) ? String(r.kind) : "primary_copy";
-          const allowed = ["hook","primary_copy","headline","description","caption","cta"];
-          const type = allowed.includes(kind) ? kind : "primary_copy";
-          return {
-            brand_id,
-            user_id: userId,
-            type,
-            title: text.slice(0, 80),
-            content: { text, fit_score: review.fit_score, attracts: review.attracts },
-            source: "lead_fit_feedback",
-            source_ref: { workspace_id, feedback_id },
-            tags: ["re-aimed"],
-          };
-        })
-        .filter(Boolean);
-      if (rows.length > 0) {
-        const { error: cErr } = await supabase.from("creatives").insert(rows as any);
+      const rw = review.rewritten || {};
+      const primary = typeof rw.primary === "string" ? rw.primary : "";
+      const headline = typeof rw.headline === "string" ? rw.headline : "";
+      const description = typeof rw.description === "string" ? rw.description : "";
+      const meta = {
+        fit_score: review.fit_score,
+        attracts: review.attracts,
+        repels_note: rw.repels_note || null,
+      };
+
+      // 1) Complete the working placeholder with the primary text.
+      if (creative_id && primary) {
+        await supabase
+          .from("creatives")
+          .update({
+            status: "ready",
+            type: "primary_copy",
+            title: primary.slice(0, 80),
+            content: { text: primary, ...meta },
+            task_label: null,
+            error_message: null,
+          })
+          .eq("id", creative_id);
+      } else if (creative_id) {
+        // No primary text — mark failed so user isn't left staring at a stuck card.
+        await markFailed("No re-aimed copy returned");
+      }
+
+      // 2) Save headline + description as additional ready drafts.
+      const extra: any[] = [];
+      if (headline)
+        extra.push({
+          brand_id,
+          user_id: userId,
+          type: "headline",
+          title: headline.slice(0, 80),
+          content: { text: headline, ...meta },
+          source: "lead_fit_feedback",
+          source_ref: { workspace_id, feedback_id },
+          tags: ["re-aimed"],
+          status: "ready",
+        });
+      if (description)
+        extra.push({
+          brand_id,
+          user_id: userId,
+          type: "description",
+          title: description.slice(0, 80),
+          content: { text: description, ...meta },
+          source: "lead_fit_feedback",
+          source_ref: { workspace_id, feedback_id },
+          tags: ["re-aimed"],
+          status: "ready",
+        });
+      // Fallback: no working placeholder + no primary → still save primary as a fresh draft
+      if (!creative_id && primary) {
+        extra.push({
+          brand_id,
+          user_id: userId,
+          type: "primary_copy",
+          title: primary.slice(0, 80),
+          content: { text: primary, ...meta },
+          source: "lead_fit_feedback",
+          source_ref: { workspace_id, feedback_id },
+          tags: ["re-aimed"],
+          status: "ready",
+        });
+      }
+      if (extra.length > 0) {
+        const { error: cErr } = await supabase.from("creatives").insert(extra as any);
         if (cErr) console.error("creatives insert failed", cErr);
       }
     } catch (e) {
       console.error("save re-aimed creatives failed", e);
+      await markFailed("Couldn't save re-aimed copy");
     }
 
     return ok({ review, task });
   } catch (e: any) {
     console.error("ad-fit-review error", e);
+    try {
+      const body = await req.clone().json().catch(() => ({}));
+      if (body?.creative_id) {
+        const supabase = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        );
+        await supabase
+          .from("creatives")
+          .update({ status: "failed", error_message: (e?.message || "Unknown error").slice(0, 500) })
+          .eq("id", body.creative_id);
+      }
+    } catch {}
     return ok({ error: e?.message || "Unknown error" }, 200);
   }
 });
