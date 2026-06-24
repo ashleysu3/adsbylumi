@@ -260,7 +260,7 @@ export function PromoteExistingPostDialog({
         setNewAdSetCreated(false);
         setFbPostsError(null);
         setManualUrl("");
-      }, 250);
+        setSubmitError(null);
     }
   }, [open]);
 
