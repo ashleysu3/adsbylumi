@@ -499,6 +499,9 @@ export default function CloserLook() {
               >
                 <Wand2 className="h-4 w-4 mr-2" /> New creative
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setPromoteOpen(true)}>
+                <Instagram className="h-4 w-4 mr-2" /> Use a post I already have
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => navigate("/strategy-builder")}>
                 <Brain className="h-4 w-4 mr-2" /> Build a new strategy
