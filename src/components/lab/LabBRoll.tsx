@@ -60,7 +60,7 @@ export function LabBRoll({ seedId: _seedId }: { seedId?: string }) {
       const offer = offers.find((o) => o.id === offerId);
       const focusBits: string[] = [];
       if (offer) {
-        focusBits.push(`Focus on the offer "${offer.name}"${offer.auto_summary ? ` — ${offer.auto_summary}` : ""}.`);
+        focusBits.push(`Focus on the offer "${offer.name}".`);
       } else {
         focusBits.push("Mix shots that fit the brand as a whole, not a single offer.");
       }
