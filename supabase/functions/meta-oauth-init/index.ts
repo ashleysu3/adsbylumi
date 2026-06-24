@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { brandId, redirectUri } = await req.json();
+    const { brandId, redirectUri, forceAssetSelection } = await req.json();
 
     if (!brandId) {
       return new Response(JSON.stringify({ error: 'Brand ID is required' }), {
