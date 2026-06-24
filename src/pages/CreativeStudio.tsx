@@ -71,6 +71,7 @@ import { CreativeRefreshDialog } from "@/components/creative/CreativeRefreshDial
 import { BYOCreativeUploader } from "@/components/creative/BYOCreativeUploader";
 import { CopyRegenerateDialog, CopyFeedback } from "@/components/creative/CopyRegenerateDialog";
 import { GenerateCreativeDialog } from "@/components/creative/GenerateCreativeDialog";
+import { TheLab as LazyTheLab } from "@/components/lab/TheLab";
 
 type WorkflowTab = "angles" | "concepts" | "copy" | "build" | "saved";
 
