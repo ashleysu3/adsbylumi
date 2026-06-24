@@ -218,8 +218,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               >
                 <LogOut className="h-4 w-4" />
               </button>
-                <LogOut className="h-4 w-4" />
-              </button>
             </div>
           </header>
 
