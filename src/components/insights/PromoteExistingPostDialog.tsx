@@ -446,6 +446,35 @@ export function PromoteExistingPostDialog({
                   })}
                 </div>
               )}
+
+              {/* Manual URL fallback — works even when Meta's post fetch fails */}
+              <div className="rounded-xl border border-dashed bg-muted/30 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <LinkIcon className="h-4 w-4 text-primary" />
+                  Don't see the post you want? Paste its URL.
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Meta sometimes hides posts from this list. Drop in the link to any post on your
+                  connected Instagram account and we'll pull it directly.
+                </p>
+                <Input
+                  type="url"
+                  placeholder="https://www.instagram.com/p/…  or  /reel/…"
+                  value={manualUrl}
+                  onChange={(e) => {
+                    setManualUrl(e.target.value);
+                    setUseManualUrl(!!e.target.value.trim());
+                    if (e.target.value.trim()) setSelectedPost(null);
+                  }}
+                  className="bg-background"
+                />
+                {useManualUrl && (
+                  <p className="text-[11px] text-muted-foreground">
+                    We'll match this URL to your connected Instagram account before creating the ad
+                    (paused).
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
