@@ -172,8 +172,14 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
     return 'bg-muted-foreground/40';
   };
 
+  const isImported = (status: string) => status === 'imported';
+
   const getStatusLabelForDisplay = (status: string, metaStatus?: string | null, metaCampaignIds?: any) => {
-    if (isLive(status, metaStatus, metaCampaignIds)) return 'Running Live ✅';
+    if (isLive(status, metaStatus, metaCampaignIds)) {
+      if (isImported(status)) return 'Imported · Live ✅';
+      return 'Running Live ✅';
+    }
+    if (isImported(status)) return 'Imported';
     return getStatusLabel(status);
   };
 
