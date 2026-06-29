@@ -233,11 +233,31 @@ Deno.serve(async (req) => {
           daily_budget: budgetCents,
         }),
       });
-      const result = await resp.json();
-      if (!result.success) {
-        throw new Error(
-          `Failed to update campaign budget: ${result.error?.message || "unknown error"}`,
-        );
+      const result = await resp.json().catch(() => ({}));
+      const fail = metaPostFailed(resp, result);
+      if (fail.failed) {
+        logStep("Campaign budget update rejected by Meta", { reason: fail.reason });
+        return jsonResponse({
+          success: false,
+          error: `Meta rejected the campaign budget update: ${fail.reason}`,
+        });
+      }
+
+      // Read-back: confirm Meta actually persisted the new value.
+      const verifyUrl =
+        `https://graph.facebook.com/v25.0/${campaignId}` +
+        `?fields=id,daily_budget,lifetime_budget&access_token=${encodeURIComponent(accessToken)}`;
+      const verify = await fetchMetaJson(verifyUrl, "campaign (verify)").catch((e) => ({ _err: e?.message }));
+      const verifiedCents = (verify as any)?.daily_budget ? parseInt((verify as any).daily_budget, 10) : null;
+      if (verifiedCents == null || Math.abs(verifiedCents - parseInt(budgetCents, 10)) > 1) {
+        logStep("Campaign budget verification mismatch", { expected: budgetCents, got: verifiedCents });
+        return jsonResponse({
+          success: false,
+          error:
+            `Meta accepted the request but the budget didn't change. ` +
+            `Expected $${newBudget}/day; Meta still reports ${verifiedCents == null ? "no daily budget" : `$${(verifiedCents / 100).toFixed(2)}/day`}. ` +
+            `Try again in a moment, or update it directly in Ads Manager.`,
+        });
       }
 
       await supabase.from("ad_action_log").insert({
@@ -248,6 +268,7 @@ Deno.serve(async (req) => {
           level: "campaign",
           campaign_id: campaignId,
           new_budget: newBudget,
+          verified_daily_budget: verifiedCents / 100,
         },
         source: "user",
       });
@@ -256,6 +277,7 @@ Deno.serve(async (req) => {
         success: true,
         level: "campaign",
         new_budget: newBudget,
+        verified_daily_budget: verifiedCents / 100,
         message: `Budget updated to $${newBudget}/day on Meta`,
       });
     }
