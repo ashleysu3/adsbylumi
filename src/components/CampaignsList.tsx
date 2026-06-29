@@ -103,20 +103,23 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
         }
       }
 
-      // Filter out campaigns whose offers are archived (unless showing archived)
+      // Filter out campaigns whose offers are archived (unless showing archived).
+      // Never hide a campaign that has a real Meta campaign attached — those
+      // appear in Ad Performance and users need to be able to open them here
+      // to manage creative.
       if (enriched.length > 0 && !showArchived) {
         const filtered = await Promise.all(
           enriched.map(async (campaign) => {
             if (!campaign.offer_name) return campaign;
+            if (hasRealMetaCampaign(campaign.meta_campaign_ids)) return campaign;
+            if (['live', 'completed', 'imported'].includes(campaign.progress_status)) return campaign;
             const { data: offer } = await supabase
               .from('offers')
               .select('archived')
               .eq('brand_id', brandId)
               .eq('name', campaign.offer_name)
               .maybeSingle();
-            if (!offer || !offer.archived || ['live', 'completed'].includes(campaign.progress_status)) {
-              return campaign;
-            }
+            if (!offer || !offer.archived) return campaign;
             return null;
           })
         );
