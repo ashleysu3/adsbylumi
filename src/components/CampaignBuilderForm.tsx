@@ -365,6 +365,81 @@ export function CampaignBuilderForm({
         </CardContent>
       </Card>
 
+      {/* Audience selector — warm vs. broad/cold. Surfaces the high-price
+          recommendation when the rule fires; always overridable. */}
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Users className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm">Who should see this?</p>
+              <p className="text-xs text-muted-foreground">
+                Start with people who already know you, or open it up to new strangers.
+              </p>
+            </div>
+          </div>
+
+          {audienceRec.triggered && (
+            <div className="p-3 rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30">
+              <p className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                Lumi recommends a warm audience for this one
+              </p>
+              <p className="text-xs mt-1 leading-snug text-amber-800 dark:text-amber-300">
+                {audienceRec.reason}
+              </p>
+              {audienceRec.cppSourceLabel && (
+                <p className="text-[11px] mt-2 italic text-amber-700/80 dark:text-amber-400/80">
+                  {audienceRec.cppSourceLabel}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant={audience === "warm" ? "default" : "outline"}
+              size="sm"
+              className="text-xs h-auto py-2.5 flex flex-col gap-0.5"
+              onClick={() => {
+                audienceTouchedRef.current = true;
+                setAudience("warm");
+              }}
+            >
+              <span className="font-semibold">Warm audience only</span>
+              <span className="text-[11px] font-normal opacity-80">
+                Your list, past customers, engagers, retargeting
+              </span>
+            </Button>
+            <Button
+              type="button"
+              variant={audience === "broad" ? "default" : "outline"}
+              size="sm"
+              className="text-xs h-auto py-2.5 flex flex-col gap-0.5"
+              onClick={() => {
+                audienceTouchedRef.current = true;
+                setAudience("broad");
+              }}
+            >
+              <span className="font-semibold">Cold / Broad</span>
+              <span className="text-[11px] font-normal opacity-80">
+                New people who don't know you yet
+              </span>
+            </Button>
+          </div>
+
+          {audienceRec.triggered && audience === "broad" && (
+            <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-snug">
+              Overriding to cold — to give this a fair shot, plan on ~${Math.round((audienceRec.neededWeeklyForCold || 0) / 7).toLocaleString()}/day so Meta sees enough buyers to optimize.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+
+
       {/* Location Targeting — Universal */}
       <Card>
         <CardContent className="p-4 space-y-4">
