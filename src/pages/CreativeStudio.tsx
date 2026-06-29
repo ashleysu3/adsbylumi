@@ -693,35 +693,82 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
     setAngleCopy(prev => ({ ...prev, [angleId]: copy }));
   }, []);
 
-  // Auto-save angleCopy whenever it changes (debounced)
+  // Auto-save angleCopy whenever it changes (debounced + flush-on-unmount).
+  // Previous bug: the effect cleanup cleared the pending timer on every
+  // re-render AND on unmount, so navigating away inside the 1.5s window
+  // silently dropped the most recent edit. We now (a) only clear timers
+  // when a newer edit replaces them, (b) flush the pending save on unmount,
+  // and (c) warn the user on tab close while a save is in flight.
   const angleCopyRef = useRef(angleCopy);
   angleCopyRef.current = angleCopy;
   const copySaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const copyPendingRef = useRef(false);
+  const copyInFlightRef = useRef(false);
+
+  const flushCopySave = useCallback(async () => {
+    if (!workspace?.id) return;
+    if (copySaveTimerRef.current) {
+      clearTimeout(copySaveTimerRef.current);
+      copySaveTimerRef.current = null;
+    }
+    if (!copyPendingRef.current) return;
+    copyPendingRef.current = false;
+    copyInFlightRef.current = true;
+    setCopySaveStatus("saving");
+    try {
+      const merged = { ...creativeJsonRef.current, angle_copy: angleCopyRef.current };
+      creativeJsonRef.current = merged;
+      await supabase
+        .from("campaign_workspaces")
+        .update({ creative_json: merged, updated_at: new Date().toISOString() })
+        .eq("id", workspace.id);
+      setWorkspace((prev: any) => prev ? { ...prev, creative_json: merged } : prev);
+      setCopySaveStatus("saved");
+      setTimeout(() => setCopySaveStatus("idle"), 2000);
+    } catch (e) {
+      console.error("Auto-save copy failed:", e);
+      // Re-queue so the next flush retries.
+      copyPendingRef.current = true;
+      setCopySaveStatus("error");
+      setTimeout(() => setCopySaveStatus("idle"), 4000);
+    } finally {
+      copyInFlightRef.current = false;
+    }
+  }, [workspace?.id]);
 
   useEffect(() => {
     if (!workspace || Object.keys(angleCopy).length === 0) return;
-    // Debounce: save 1.5s after last change
+    copyPendingRef.current = true;
     if (copySaveTimerRef.current) clearTimeout(copySaveTimerRef.current);
-    copySaveTimerRef.current = setTimeout(async () => {
-      setCopySaveStatus("saving");
-      try {
-        const merged = { ...creativeJsonRef.current, angle_copy: angleCopyRef.current };
-        creativeJsonRef.current = merged;
-        await supabase
-          .from("campaign_workspaces")
-          .update({ creative_json: merged, updated_at: new Date().toISOString() })
-          .eq("id", workspace.id);
-        setWorkspace((prev: any) => prev ? { ...prev, creative_json: merged } : prev);
-        setCopySaveStatus("saved");
-        setTimeout(() => setCopySaveStatus("idle"), 2000);
-      } catch (e) {
-        console.error("Auto-save copy failed:", e);
-        setCopySaveStatus("error");
-        setTimeout(() => setCopySaveStatus("idle"), 3000);
+    copySaveTimerRef.current = setTimeout(() => { void flushCopySave(); }, 1500);
+    // NOTE: no cleanup that clears the timer — letting the timer fire is
+    // what protects unsaved edits when the next keystroke replaces it.
+  }, [angleCopy, workspace?.id, flushCopySave]);
+
+  // Flush pending copy save on unmount / route change / tab hide / close.
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (copyPendingRef.current || copyInFlightRef.current) {
+        void flushCopySave();
+        e.preventDefault();
+        e.returnValue = "";
       }
-    }, 1500);
-    return () => { if (copySaveTimerRef.current) clearTimeout(copySaveTimerRef.current); };
-  }, [angleCopy, workspace?.id]);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden" && copyPendingRef.current) {
+        void flushCopySave();
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("visibilitychange", onVisibility);
+      // Final flush on unmount so route changes never drop edits.
+      if (copyPendingRef.current) void flushCopySave();
+    };
+  }, [flushCopySave]);
+
 
   const handleSaveCopy = useCallback(async () => {
     if (!workspace) return;
