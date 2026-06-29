@@ -1198,7 +1198,7 @@ export function CreativeChecklistCard({
                     </div>
                   )}
 
-                  {/* Graphic Copy (Text Overlays) */}
+                  {/* Graphic Copy (Text Overlays) — editable, same flow as B-Roll */}
                   {item.text_overlays && item.text_overlays.length > 0 && (
                     <div className="space-y-2">
                       <h5 className="text-xs font-semibold text-muted-foreground uppercase">📝 Graphic Copy</h5>
@@ -1213,14 +1213,72 @@ export function CreativeChecklistCard({
                               !overlay.type && "bg-muted/50"
                             )}
                           >
-                            <div className="flex items-center gap-2">
-                              {overlay.type && (
-                                <Badge variant="outline" className="text-[10px] uppercase">
-                                  {overlay.type}
-                                </Badge>
-                              )}
-                              <span>"{overlay.text}"</span>
-                            </div>
+                            {editingOverlayIdx === idx ? (
+                              <div className="space-y-1.5">
+                                {overlay.type && (
+                                  <Badge variant="outline" className="text-[10px] uppercase shrink-0">
+                                    {overlay.type}
+                                  </Badge>
+                                )}
+                                <Input
+                                  value={editOverlayText}
+                                  onChange={(e) => setEditOverlayText(e.target.value)}
+                                  className="h-8 text-sm"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      const updated = [...(item.text_overlays || [])];
+                                      updated[idx] = { ...updated[idx], text: editOverlayText };
+                                      onOverlaysChange?.(updated);
+                                      setEditingOverlayIdx(null);
+                                    } else if (e.key === "Escape") {
+                                      setEditingOverlayIdx(null);
+                                    }
+                                  }}
+                                />
+                                <div className="flex gap-1 justify-end">
+                                  <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setEditingOverlayIdx(null)}>
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="h-6 text-[10px]"
+                                    onClick={() => {
+                                      const updated = [...(item.text_overlays || [])];
+                                      updated[idx] = { ...updated[idx], text: editOverlayText };
+                                      onOverlaysChange?.(updated);
+                                      setEditingOverlayIdx(null);
+                                    }}
+                                  >
+                                    <Check className="h-3 w-3 mr-0.5" />
+                                    Save
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  {overlay.type && (
+                                    <Badge variant="outline" className="text-[10px] uppercase shrink-0">
+                                      {overlay.type}
+                                    </Badge>
+                                  )}
+                                  <span className="truncate">"{overlay.text}"</span>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 shrink-0"
+                                  onClick={() => {
+                                    setEditingOverlayIdx(idx);
+                                    setEditOverlayText(overlay.text);
+                                  }}
+                                  aria-label="Edit overlay text"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
