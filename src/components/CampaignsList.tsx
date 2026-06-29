@@ -313,16 +313,18 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
     });
   };
 
-  // Drafts page: only show campaigns without a real Meta campaign.
-  // Anything launched/imported/paused lives in Live Ads.
-  const draftsOnly = campaigns.filter(c => isDraft(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids));
-  const filteredCampaigns = draftsOnly.filter(c => {
-    if (viewFilter === "live") return false;
+  // Show every campaign for this brand — drafts AND anything attached to a
+  // Meta campaign (live, paused, off, imported). The status pill differentiates
+  // them. This keeps parity with Ad Performance so users can always open a
+  // campaign here to manage its creative.
+  const filteredCampaigns = campaigns.filter(c => {
+    if (viewFilter === "live") return isLive(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids);
+    if (viewFilter === "draft") return isDraft(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids);
     return true;
   });
 
-  const liveCount = 0;
-  const draftCount = draftsOnly.length;
+  const liveCount = campaigns.filter(c => isLive(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids)).length;
+  const draftCount = campaigns.filter(c => isDraft(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids)).length;
 
   if (loading) {
     return (
