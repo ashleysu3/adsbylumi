@@ -200,9 +200,9 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
   };
 
   const processFiles = (incoming: File[]) => {
-    const maxSize = 250 * 1024 * 1024;
+    const maxSize = 150 * 1024 * 1024;
     const valid = incoming.filter(f => {
-      if (f.size > maxSize) { toast.error(`${f.name} exceeds 250MB limit`); return false; }
+      if (f.size > maxSize) { toast.error(`${f.name} exceeds 150MB limit`); return false; }
       return true;
     });
 
@@ -442,7 +442,7 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
           <Upload className="h-10 w-10 text-muted-foreground mb-4" />
           <p className="font-medium">Drop your ads here or click to browse</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Videos and images • Max 250MB per file
+            Videos and images • Max 150MB per file
           </p>
           <input
             ref={fileInputRef}

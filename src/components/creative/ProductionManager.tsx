@@ -597,8 +597,8 @@ export function ProductionManager({
     if (!files || files.length === 0) return;
     
     const file = files[0];
-    if (file.size > 250 * 1024 * 1024) {
-      toast.error("File must be less than 250MB");
+    if (file.size > 150 * 1024 * 1024) {
+      toast.error("File must be less than 150MB");
       return;
     }
 
@@ -672,8 +672,8 @@ export function ProductionManager({
     if (!files || files.length === 0) return;
     
     const file = files[0];
-    if (file.size > 250 * 1024 * 1024) {
-      toast.error("File must be less than 250MB");
+    if (file.size > 150 * 1024 * 1024) {
+      toast.error("File must be less than 150MB");
       return;
     }
 

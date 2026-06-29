@@ -75,8 +75,8 @@ export default function Boards() {
 
       let ok = 0, failed = 0;
       for (const file of uploadFiles) {
-        if (file.size > 250 * 1024 * 1024) {
-          toast.error(`${file.name} is over 250MB`);
+        if (file.size > 150 * 1024 * 1024) {
+          toast.error(`${file.name} is over 150MB`);
           failed++;
           continue;
         }

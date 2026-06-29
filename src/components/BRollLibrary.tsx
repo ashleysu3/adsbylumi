@@ -286,8 +286,8 @@ export function BRollLibrary({
           toast.error(`${f.name} is not a video file`);
           return false;
         }
-        if (f.size > 250 * 1024 * 1024) {
-          toast.error(`${f.name} exceeds 250MB limit`);
+        if (f.size > 150 * 1024 * 1024) {
+          toast.error(`${f.name} exceeds 150MB limit`);
           return false;
         }
         return true;
@@ -457,7 +457,7 @@ export function BRollLibrary({
         <span className="text-sm text-muted-foreground">
           {uploading
             ? "Uploading..."
-            : "Click to upload video clips (max 250MB each)"}
+            : "Click to upload video clips (max 150MB each)"}
         </span>
         <input
           type="file"

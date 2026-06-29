@@ -650,8 +650,8 @@ export function CreativeChecklistCard({
                         toast.error("Please upload a video file");
                         return;
                       }
-                      if (file.size > 250 * 1024 * 1024) {
-                        toast.error("File must be under 250MB");
+                      if (file.size > 150 * 1024 * 1024) {
+                        toast.error("File must be under 150MB");
                         return;
                       }
                       setUploadingBroll(true);
@@ -755,7 +755,7 @@ export function CreativeChecklistCard({
                                 <span className="text-xs text-muted-foreground text-center">
                                   Upload your recorded talking head (with captions)
                                 </span>
-                                <span className="text-[10px] text-muted-foreground">9:16 vertical · MP4 · up to 250MB</span>
+                                <span className="text-[10px] text-muted-foreground">9:16 vertical · MP4 · up to 150MB</span>
                               </>
                             )}
                             <input
@@ -904,8 +904,8 @@ export function CreativeChecklistCard({
                         toast.error("Please upload a video file");
                         return;
                       }
-                      if (file.size > 250 * 1024 * 1024) {
-                        toast.error("File must be under 250MB");
+                      if (file.size > 150 * 1024 * 1024) {
+                        toast.error("File must be under 150MB");
                         return;
                       }
                       setUploadingBroll(true);
@@ -1134,7 +1134,7 @@ export function CreativeChecklistCard({
                                 ) : (
                                   <>
                                     <Upload className="h-5 w-5 text-muted-foreground" />
-                                    <span className="text-xs text-muted-foreground">Upload 9:16 video (max 250MB)</span>
+                                    <span className="text-xs text-muted-foreground">Upload 9:16 video (max 150MB)</span>
                                   </>
                                 )}
                                 <input

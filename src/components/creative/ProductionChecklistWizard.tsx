@@ -31,7 +31,7 @@ const STEPS: Step[] = [
     title: "Drop your creative into the upload box",
     body:
       "Once you've made the video or image, drag it into the upload box on that card (or click to browse). Lumi automatically pairs it with the right copy and angle.",
-    tip: "Videos must be 9:16 vertical. Files up to 250MB.",
+    tip: "Videos must be 9:16 vertical. Files up to 150MB.",
   },
   {
     icon: Download,

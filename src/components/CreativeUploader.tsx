@@ -68,8 +68,8 @@ export function CreativeUploader({ workspace, onUpdate }: CreativeUploaderProps)
         toast.error(`${file.name}: Unsupported file type`);
         return false;
       }
-      if (file.size > 250 * 1024 * 1024) {
-        toast.error(`${file.name}: File too large (max 250MB)`);
+      if (file.size > 150 * 1024 * 1024) {
+        toast.error(`${file.name}: File too large (max 150MB)`);
         return false;
       }
       return true;

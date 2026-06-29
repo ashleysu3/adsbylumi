@@ -156,8 +156,8 @@ export default function BoardDetail() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not signed in");
       for (const file of Array.from(files)) {
-        if (file.size > 250 * 1024 * 1024) {
-          toast.error(`${file.name} is over 250MB`);
+        if (file.size > 150 * 1024 * 1024) {
+          toast.error(`${file.name} is over 150MB`);
           failed++;
           continue;
         }
