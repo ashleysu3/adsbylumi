@@ -344,8 +344,8 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <CardTitle className="text-lg">Drafts</CardTitle>
-            <CardDescription className="text-sm">Campaigns you're still building. Launch one and it moves to Live Ads.</CardDescription>
+            <CardTitle className="text-lg">My Campaigns</CardTitle>
+            <CardDescription className="text-sm">Every campaign for this brand — drafts you're still building and anything connected to Meta. Open one to manage its creative.</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             {!combineMode && draftCount >= 2 && (
