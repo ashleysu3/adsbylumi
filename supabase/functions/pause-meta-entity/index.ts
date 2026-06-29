@@ -92,23 +92,92 @@ Deno.serve(async (req) => {
       console.error('prior status fetch error', e);
     }
 
-    // Pause
-    const pauseRes = await fetch(`https://graph.facebook.com/v25.0/${entityId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'PAUSED', access_token: metaToken }),
-    });
-    const pauseData = await pauseRes.json();
-
-    if (!pauseRes.ok || !pauseData?.success) {
-      const errMsg =
-        pauseData?.error?.error_user_msg ||
-        pauseData?.error?.message ||
-        `Meta returned ${pauseRes.status}`;
-      return new Response(JSON.stringify({ success: false, error: errMsg }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Pause in Meta.
+    // Use form-encoded body — Graph API's POST update endpoint is most reliable
+    // with x-www-form-urlencoded and occasionally rejects JSON bodies with
+    // (#100) "param status is required" even though the field is present.
+    let pauseRes: Response;
+    let rawBody = '';
+    let pauseData: any = null;
+    try {
+      const form = new URLSearchParams();
+      form.set('status', 'PAUSED');
+      form.set('access_token', metaToken);
+      pauseRes = await fetch(`https://graph.facebook.com/v25.0/${entityId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: form.toString(),
       });
+      rawBody = await pauseRes.text();
+      try { pauseData = rawBody ? JSON.parse(rawBody) : {}; } catch { pauseData = { _raw: rawBody }; }
+    } catch (fetchErr: any) {
+      console.error('[pause-meta-entity] network error calling Meta', {
+        entityId,
+        entityLevel,
+        message: fetchErr?.message,
+      });
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Could not reach Meta. Check your connection and try again.',
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // Meta's POST update returns one of:
+    //   { success: true }                                  (campaigns/adsets, sometimes)
+    //   { id: "<entity_id>" }                              (ads, sometimes campaigns)
+    //   { error: { code, message, error_user_msg, ... } } (failure)
+    // The previous check required `pauseData.success === true`, which falsely
+    // flagged the `{ id: ... }` shape as a failure and surfaced "non-2xx" to
+    // the user. Treat the response as a failure ONLY when the HTTP status is
+    // not OK or Meta returned an explicit `error` object.
+    const metaError = pauseData?.error;
+    if (!pauseRes.ok || metaError) {
+      const errMsg =
+        metaError?.error_user_msg ||
+        metaError?.message ||
+        `Meta returned HTTP ${pauseRes.status}`;
+      console.error('[pause-meta-entity] Meta rejected pause', {
+        entityId,
+        entityLevel,
+        httpStatus: pauseRes.status,
+        metaErrorCode: metaError?.code,
+        metaErrorSubcode: metaError?.error_subcode,
+        metaErrorType: metaError?.type,
+        metaErrorTraceId: metaError?.fbtrace_id,
+        rawBody: rawBody.slice(0, 1000),
+      });
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: errMsg,
+          meta_error_code: metaError?.code ?? null,
+          meta_error_subcode: metaError?.error_subcode ?? null,
+          fb_trace_id: metaError?.fbtrace_id ?? null,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // Success — reflect the new state locally so Live Ads / counters stop
+    // showing this campaign as active until the next full sync runs.
+    if (workspaceId && (entityLevel === 'campaign' || !entityLevel)) {
+      try {
+        const { error: updErr } = await supabaseAdmin
+          .from('campaign_workspaces')
+          .update({
+            meta_campaign_status: 'paused',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', workspaceId);
+        if (updErr) {
+          console.error('[pause-meta-entity] local status update failed', updErr);
+        }
+      } catch (e) {
+        console.error('[pause-meta-entity] local status update threw', e);
+      }
     }
 
     await supabaseAdmin.from('ad_action_log').insert({
@@ -129,6 +198,7 @@ Deno.serve(async (req) => {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
   } catch (error: any) {
     console.error('pause-meta-entity error:', error);
     return new Response(JSON.stringify({ success: false, error: error?.message ?? 'Unknown error' }), {
