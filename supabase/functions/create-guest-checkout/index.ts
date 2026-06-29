@@ -63,7 +63,11 @@ serve(async (req) => {
       }
     }
 
-    const returnOrigin = origin || "https://youradassistant.lovable.app";
+    // Trust the request origin only if it's our production app; otherwise
+    // fall back to the canonical app URL so checkout never returns to a
+    // preview/staging origin.
+    const trustedOrigin = origin && /^https:\/\/(www\.)?adsbylumi\.com$/.test(origin) ? origin : null;
+    const returnOrigin = trustedOrigin || getPublicAppUrl();
 
     const sessionOptions: any = {
       client_reference_id: partnerReferralId || rewardful_referral || undefined,
