@@ -413,11 +413,14 @@ Deno.serve(async (req) => {
       warnings: []
     };
 
-    // Extract angle-level copy data from creative_json
+    // Extract angle-level copy data from creative_json. Accept both snake_case
+    // (angle_copy) and the legacy camelCase (angleCopy) key — both shapes
+    // exist in the wild because earlier code paths saved one or the other.
     const creativeJson = workspace.creative_json as Record<string, any> || {};
     const angles = creativeJson.angles || [];
-    const angleCopy: Record<string, AngleCopy> = creativeJson.angle_copy || {};
-    const copySelections: Record<string, CopySelections> = creativeJson.copy_selections || {};
+    const angleCopy: Record<string, AngleCopy> = creativeJson.angle_copy || creativeJson.angleCopy || {};
+    const copySelections: Record<string, CopySelections> = creativeJson.copy_selections || creativeJson.copySelections || {};
+
     
     console.log(`Found ${angles.length} angles, ${Object.keys(angleCopy).length} angle copies, ${Object.keys(copySelections).length} copy selections`);
 
