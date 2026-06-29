@@ -831,21 +831,44 @@ Deno.serve(async (req) => {
     let validCustomConversion = false;
 
     if (customConversionId && pixelId) {
-      // Validate the custom conversion still exists on Meta before using it.
-      // Stale/deleted IDs throw: "Param promoted_object[custom_conversion_id] must be a valid custom conversion id"
+      // Validate the custom conversion still exists on Meta AND belongs to this ad account + pixel.
+      // Stale/deleted/cross-account IDs throw: "Param promoted_object[custom_conversion_id] must be a valid custom conversion id"
       try {
         const ccCheck = await fetch(
-          `https://graph.facebook.com/v25.0/${customConversionId}?fields=id,name&access_token=${encodeURIComponent(metaAccessToken)}`
+          `https://graph.facebook.com/v25.0/${customConversionId}?fields=id,name,pixel,account_id&access_token=${encodeURIComponent(metaAccessToken)}`
         );
         const ccData = await ccCheck.json();
-        if (ccData?.id && !ccData?.error) {
-          validCustomConversion = true;
-        } else {
-          console.warn('Custom conversion invalid, falling back to standard event:', ccData?.error?.message || 'not found');
+        const ccPixelId = ccData?.pixel?.id ?? ccData?.pixel_id ?? null;
+        const ccAccountId = ccData?.account_id ? String(ccData.account_id) : null;
+        const pixelMatches = ccPixelId ? String(ccPixelId) === String(pixelId) : true;
+        const accountMatches = ccAccountId ? ccAccountId === String(accountId) : true;
+
+        if (!ccData?.id || ccData?.error) {
+          console.warn('Custom conversion not found on Meta, falling back:', ccData?.error?.message || 'not found');
           result.warnings.push('Custom conversion was no longer valid — used standard pixel event instead.');
+        } else if (!pixelMatches) {
+          console.warn(`Custom conversion ${customConversionId} is on pixel ${ccPixelId}, not selected pixel ${pixelId}. Falling back.`);
+          result.warnings.push('Custom conversion belongs to a different pixel — used standard pixel event instead.');
+        } else if (!accountMatches) {
+          console.warn(`Custom conversion ${customConversionId} belongs to account ${ccAccountId}, not ${accountId}. Falling back.`);
+          result.warnings.push('Custom conversion belongs to a different ad account — used standard pixel event instead.');
+        } else {
+          // Double-check it's listed under this ad account's customconversions (catches permission/visibility gaps)
+          const listResp = await fetch(
+            `https://graph.facebook.com/v25.0/act_${accountId}/customconversions?fields=id&limit=200&access_token=${encodeURIComponent(metaAccessToken)}`
+          );
+          const listData = await listResp.json();
+          const ids = Array.isArray(listData?.data) ? listData.data.map((c: any) => String(c.id)) : [];
+          if (ids.length === 0 || ids.includes(String(customConversionId))) {
+            validCustomConversion = true;
+          } else {
+            console.warn(`Custom conversion ${customConversionId} not visible under act_${accountId}. Falling back.`);
+            result.warnings.push('Custom conversion is not available on this ad account — used standard pixel event instead.');
+          }
         }
       } catch (e) {
         console.warn('Custom conversion validation failed, falling back:', e);
+        result.warnings.push('Could not verify custom conversion — used standard pixel event instead.');
       }
     }
 
