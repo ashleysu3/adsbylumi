@@ -328,6 +328,10 @@ export default function Performance() {
           .order("created_at", { ascending: false });
         if (error) throw error;
 
+        // Only show genuinely-live campaigns. Anything paused, archived,
+        // deleted, disapproved, or with issues belongs elsewhere (Off / Drafts
+        // / health surfaces) and shouldn't be rendered as a live card.
+        const LIVE_STATUSES = new Set(['active', 'live']);
         const active = (workspaces || []).filter((w: any) => {
           const cid = (w.meta_campaign_ids as any)?.campaignId;
           if (!cid) return false;
@@ -337,9 +341,13 @@ export default function Performance() {
             const now = Date.now();
             if (ts > now - 365 * 86400000 && ts <= now) return false;
           }
-          if ((w.meta_campaign_status || "").toLowerCase() === "draft") return false;
+          const status = (w.meta_campaign_status || "").toLowerCase();
+          // Treat null/empty status as live (legacy rows pre-status tracking)
+          // but exclude any explicit non-live state.
+          if (status && !LIVE_STATUSES.has(status)) return false;
           return true;
         });
+
 
         if (cancelled) return;
         setHasActive(active.length > 0);

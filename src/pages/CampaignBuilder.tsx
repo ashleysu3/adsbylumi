@@ -239,13 +239,24 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
 
       if (countError) throw countError;
 
+      // meta_campaign_ids is stored as either an object `{ campaignId }` or an
+      // array of strings (older rows). Normalize both shapes, drop placeholder
+      // "LUMI_" temp IDs, and dedupe by the real Meta campaign ID so duplicate
+      // workspace rows pointing at the same Meta campaign don't double-count.
       const uniqueLiveMetaIds = new Set<string>();
       (liveRows || []).forEach((row: any) => {
-        const ids: string[] = Array.isArray(row?.meta_campaign_ids) ? row.meta_campaign_ids : [];
-        const realIds = ids.filter((id) => typeof id === 'string' && id && !id.startsWith('LUMI_'));
+        const raw = row?.meta_campaign_ids;
+        const ids: string[] = Array.isArray(raw)
+          ? raw.filter((x) => typeof x === 'string')
+          : raw && typeof raw === 'object'
+            ? [raw.campaignId, ...(Array.isArray(raw.campaignIds) ? raw.campaignIds : [])]
+                .filter((x): x is string => typeof x === 'string' && !!x)
+            : [];
+        const realIds = ids.filter((id) => id && !id.startsWith('LUMI_'));
         if (realIds.length > 0) uniqueLiveMetaIds.add(realIds[0]);
       });
       const liveCount = uniqueLiveMetaIds.size;
+
 
       if (liveCount >= 10) {
         toast.error(`You've reached the maximum of 10 live campaigns (currently ${liveCount}). Pause or archive an existing campaign before publishing a new one.`);

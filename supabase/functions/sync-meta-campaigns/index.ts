@@ -193,13 +193,83 @@ Deno.serve(async (req) => {
       campaignsToSync = allCampaigns.filter((campaign) => campaignIdSet.has(campaign.id));
       console.log(`Found ${campaignsToSync.length} campaigns matching specified IDs`);
     } else {
-      // Default behavior: include all ACTIVE Meta campaigns AND any campaign
-      // we already track in a workspace (regardless of Meta status) so we can
-      // refresh paused/archived statuses and stop counting them as "live".
-      campaignsToSync = allCampaigns.filter((campaign) =>
-        campaign.status === 'ACTIVE' || existingCampaignIds.has(campaign.id)
-      );
-      console.log(`Found ${campaignsToSync.length} campaigns to sync (active + tracked)`);
+      // Default behavior: include campaigns whose EFFECTIVE status is ACTIVE
+      // (not the user-set `status` — that can be ACTIVE while effective_status
+      // is IN_PROCESS, WITH_ISSUES, DISAPPROVED, CAMPAIGN_PAUSED, ADSET_PAUSED,
+      // etc., which would falsely import them as live).
+      // Also include any campaign we already track so we can refresh status.
+      campaignsToSync = allCampaigns.filter((campaign) => {
+        if (existingCampaignIds.has(campaign.id)) return true;
+        return mapMetaStatus(campaign.status, campaign.effective_status) === 'active';
+      });
+      console.log(`Found ${campaignsToSync.length} campaigns to sync (effective-active + tracked)`);
+    }
+
+    // ============================================
+    // RECONCILE: tracked workspaces whose campaigns Meta no longer returns
+    // ============================================
+    // Meta's /{account}/campaigns endpoint omits ARCHIVED and DELETED campaigns
+    // by default. Without explicit reconciliation, any workspace we tracked for
+    // a campaign the user later archived/deleted in Meta stays
+    // `meta_campaign_status='active'` forever and falsely trips the 10-live cap.
+    if (!campaignIds || campaignIds.length === 0) {
+      const returnedIds = new Set(allCampaigns.map((c) => c.id));
+      const missingTrackedIds = [...existingCampaignIds].filter((id) => !returnedIds.has(id));
+      if (missingTrackedIds.length > 0) {
+        console.log(`Reconciling ${missingTrackedIds.length} tracked campaigns missing from Meta /campaigns fetch`);
+        // Look them up directly in batches — works for ARCHIVED/DELETED too.
+        const BATCH = 50;
+        for (let i = 0; i < missingTrackedIds.length; i += BATCH) {
+          const batch = missingTrackedIds.slice(i, i + BATCH);
+          const lookupUrl = `https://graph.facebook.com/v25.0/?ids=${batch.join(',')}&fields=id,name,status,effective_status,objective,created_time,daily_budget,lifetime_budget&access_token=${metaAccessToken}`;
+          try {
+            const resp = await fetch(lookupUrl);
+            const data = await resp.json();
+            const foundIds = new Set<string>();
+            if (data && typeof data === 'object' && !data.error) {
+              for (const id of batch) {
+                const c = (data as any)[id];
+                if (c && c.id) {
+                  foundIds.add(id);
+                  // Merge into the sync list so the existing-update path
+                  // refreshes status/objective/adSets.
+                  campaignsToSync.push({
+                    id: c.id,
+                    name: c.name,
+                    status: c.status,
+                    effective_status: c.effective_status,
+                    objective: c.objective,
+                    created_time: c.created_time,
+                    daily_budget: c.daily_budget,
+                    lifetime_budget: c.lifetime_budget,
+                  });
+                }
+              }
+            }
+            // Anything still missing → genuinely gone from Meta. Mark deleted
+            // so it stops counting as live.
+            const goneIds = batch.filter((id) => !foundIds.has(id));
+            if (goneIds.length > 0) {
+              const goneWorkspaceIds = goneIds
+                .map((id) => existingByCampaignId.get(id)?.id)
+                .filter((x): x is string => !!x);
+              if (goneWorkspaceIds.length > 0) {
+                const { error: delErr } = await supabase
+                  .from('campaign_workspaces')
+                  .update({ meta_campaign_status: 'deleted', updated_at: new Date().toISOString() })
+                  .in('id', goneWorkspaceIds);
+                if (delErr) {
+                  console.error('Failed to mark missing campaigns as deleted:', delErr);
+                } else {
+                  console.log(`Marked ${goneWorkspaceIds.length} workspace(s) as 'deleted' (no longer in Meta)`);
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Reconciliation lookup failed for batch:', e);
+          }
+        }
+      }
     }
 
     if (campaignsToSync.length === 0) {
@@ -216,6 +286,7 @@ Deno.serve(async (req) => {
         }
       );
     }
+
 
 
     // Helper: classify an ad-set role by name. Used so the frontend can
