@@ -201,15 +201,65 @@ function checkSchedule(answers: any): CheckResult {
   return { id: 'schedule', name: 'Schedule', status: 'passed', message: scheduleStr, details: endDate ? 'Fixed duration campaign' : 'Runs until manually paused' };
 }
 
+// Checkout / form / short-link hosts that are valid destinations but routinely
+// (a) block bot fetches, (b) render via client-side JS so the pixel isn't in
+// the initial HTML, or (c) inject the pixel via the platform's own tag manager.
+// For these we accept the URL as a valid destination without strict pixel scan
+// so publish is never blocked on a structurally fine checkout URL.
+const TRUSTED_CHECKOUT_HOSTS = [
+  'flodesk.com', 'f.page',
+  'thrivecart.com',
+  'checkout.stripe.com', 'buy.stripe.com',
+  'paypal.com', 'paypal.me',
+  'kajabi.com', 'mykajabi.com',
+  'teachable.com',
+  'thinkific.com',
+  'podia.com',
+  'gumroad.com',
+  'shopify.com', 'myshopify.com',
+  'samcart.com',
+  'clickfunnels.com',
+  'systeme.io',
+  'kartra.com',
+  'leadpages.co', 'lpages.co',
+  'convertkit.com', 'ck.page',
+  'mailerlite.com',
+  'square.site', 'squareup.com',
+  'eventbrite.com',
+  'calendly.com',
+  'acuityscheduling.com',
+  'circle.so',
+  'memberstack.com', 'memberful.com',
+];
+
+function isTrustedCheckoutHost(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  return TRUSTED_CHECKOUT_HOSTS.some((d) => h === d || h.endsWith(`.${d}`));
+}
+
 async function checkLandingPage(url: string | undefined, brand: any): Promise<CheckResult> {
   if (!url) {
     return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: 'No landing page URL set', details: 'Add a URL to track conversions properly' };
   }
 
   const pixelId = brand?.meta_pixel_id || null;
+  const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+
+  // Trusted checkout / short-link hosts: don't try to scan HTML for pixel —
+  // they're SPAs or bot-blocked, but the URL itself is a valid ad destination.
+  try {
+    const parsed = new URL(fullUrl);
+    if (isTrustedCheckoutHost(parsed.hostname)) {
+      return {
+        id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl,
+        details: 'Checkout / form page detected — Meta will accept this URL. Pixel is typically injected by the platform; we can\'t scan it from here.',
+      };
+    }
+  } catch {
+    // fall through to fetch path; if URL is truly malformed the fetch will fail and we degrade to warning
+  }
 
   try {
-    const fullUrl = url.startsWith('http') ? url : `https://${url}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
@@ -229,7 +279,9 @@ async function checkLandingPage(url: string | undefined, brand: any): Promise<Ch
       if (response.status >= 300 && response.status < 400) {
         return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'Page loads with a redirect — make sure it lands where you expect' };
       }
-      return { id: 'landing_page', name: 'Landing Page', status: 'failed', message: fullUrl, details: `Page returned a ${response.status} error — check that this URL is correct` };
+      // Never block publish on a fetch error — many checkout / membership / login-gated
+      // pages legitimately return 4xx/5xx to our bot but still work fine as ad destinations.
+      return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: fullUrl, details: `We couldn't load this URL from our server (${response.status}). If it works in your browser, you're good to publish — Meta will accept it.` };
     }
 
     // Page is reachable — now scan HTML for pixel
@@ -269,6 +321,7 @@ async function checkLandingPage(url: string | undefined, brand: any): Promise<Ch
     return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: url, details: 'Could not verify URL — page may be behind authentication or firewall' };
   }
 }
+
 
 function checkEventTracking(brand: any, template: any): CheckResult {
   const objective = template?.objective?.toLowerCase() || '';
