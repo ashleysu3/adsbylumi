@@ -306,6 +306,14 @@ export function SocialGrowthFlow({
       </motion.div>
     );
   }
+        {/* Explain why posts didn't auto-load (instead of a bare toast) */}
+        {error && (
+          <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 text-sm">
+            <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <p className="text-muted-foreground">{error}</p>
+          </div>
+        )}
+
 
   // Post selection
   if (step === "post_selection") {
