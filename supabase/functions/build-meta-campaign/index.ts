@@ -150,6 +150,52 @@ function getMetaErrorMessage(metaError: any): string {
   return baseMsg;
 }
 
+// ---------------------------------------------------------------------------
+// fetchWithTimeout: wraps fetch with an AbortController so a hung Meta or
+// Supabase sub-request can never wall-clock the whole edge function (which
+// surfaces to the client as "Edge Function returned a non-2xx status code" /
+// "The request timed out"). Also adds bounded retries for transient failures
+// (network errors, 5xx). We do NOT retry 4xx — those are Meta validation
+// rejections and retrying would mask the real reason.
+// ---------------------------------------------------------------------------
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit & { timeoutMs?: number; retries?: number; label?: string } = {}
+): Promise<Response> {
+  const { timeoutMs = 30_000, retries = 1, label = 'fetch', ...rest } = init;
+  let lastErr: unknown = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+    try {
+      const res = await fetch(url, { ...rest, signal: ctrl.signal });
+      clearTimeout(timer);
+      // Retry only on transient server errors
+      if (res.status >= 500 && res.status < 600 && attempt < retries) {
+        console.warn(`[${label}] ${res.status} on attempt ${attempt + 1}, retrying...`);
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+        continue;
+      }
+      return res;
+    } catch (err: any) {
+      clearTimeout(timer);
+      lastErr = err;
+      const isAbort = err?.name === 'AbortError' || /timed out/i.test(err?.message || '');
+      console.warn(`[${label}] attempt ${attempt + 1} failed:`, err?.message || err);
+      if (attempt >= retries) {
+        if (isAbort) {
+          throw new Error(`${label} timed out after ${timeoutMs}ms. Meta or our service didn't respond in time — please try again.`);
+        }
+        throw err;
+      }
+      await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+    }
+  }
+  // unreachable
+  throw lastErr instanceof Error ? lastErr : new Error(`${label} failed`);
+}
+
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
@@ -188,7 +234,18 @@ Deno.serve(async (req) => {
 
     console.log('User authenticated:', user.id);
 
-    const { workspaceId, answers, actAsUserId } = await req.json();
+    let parsedBody: any = null;
+    try {
+      parsedBody = await req.json();
+    } catch (parseErr) {
+      console.error('Failed to parse request body as JSON:', parseErr);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid request body. Please refresh and try again.' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const { workspaceId, answers, actAsUserId } = parsedBody || {};
+
 
     if (!workspaceId) {
       throw new Error('Workspace ID is required');
@@ -570,30 +627,31 @@ Deno.serve(async (req) => {
     const budgetString = String(answers?.budget || '20').replace(/[$,\s]/g, '');
     const dailyBudgetCents = Math.round((parseInt(budgetString) || 20) * 100);
 
-    // Step 1: Upload all assets to Meta
-    console.log('Uploading creative assets to Meta...');
+    // Step 1: Upload all assets to Meta — run in parallel with bounded
+    // concurrency so 4+ video uploads don't serialize past the edge runtime
+    // wall clock. Each sub-call gets its own timeout so a single hung upload
+    // cannot kill the whole publish.
+    console.log(`Uploading ${approvedConcepts.length} creative asset(s) to Meta (parallel)...`);
     const uploadedAssets: Array<{ item: ProductionItem; assetId: string; assetType: 'image' | 'video' }> = [];
 
-    for (const item of approvedConcepts) {
+    async function uploadOne(item: ProductionItem): Promise<void> {
       if (!item.linkedAsset) {
         result.failedAds.push({
           conceptId: item.id,
           conceptTitle: item.concept?.title || 'Unknown',
-          error: 'No linked asset found'
+          error: 'No linked asset found',
         });
-        continue;
+        return;
       }
-
+      const conceptTitle = item.concept?.title || 'Unknown';
       try {
-        console.log(`Uploading asset for concept ${item.id}...`);
-        
         const normalizedStoragePath = item.linkedAsset.storagePath
           ? (item.linkedAsset.storagePath.startsWith(`${brand.id}/`)
             ? item.linkedAsset.storagePath
             : `${brand.id}/${item.linkedAsset.storagePath}`)
           : undefined;
 
-        const uploadResponse = await fetch(`${supabaseUrl}/functions/v1/upload-creative-to-meta`, {
+        const uploadResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/upload-creative-to-meta`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -605,25 +663,22 @@ Deno.serve(async (req) => {
             brandId: brand.id,
             fileName: item.linkedAsset.url?.split('/').pop(),
           }),
+          // Video uploads to Meta can take a while; allow up to 90s per asset.
+          // No retry — re-uploading a partially-accepted video would duplicate.
+          timeoutMs: 90_000,
+          retries: 0,
+          label: `upload-creative-to-meta(${item.id})`,
         });
 
         const uploadRawText = await uploadResponse.text();
         let uploadResult: any = null;
         if (uploadRawText) {
-          try {
-            uploadResult = JSON.parse(uploadRawText);
-          } catch {
-            uploadResult = null;
-          }
+          try { uploadResult = JSON.parse(uploadRawText); } catch { uploadResult = null; }
         }
 
         if (uploadResult?.success && uploadResult?.assetId) {
-          uploadedAssets.push({
-            item,
-            assetId: uploadResult.assetId,
-            assetType: uploadResult.assetType,
-          });
-          console.log(`Asset uploaded: ${uploadResult.assetType} - ${uploadResult.assetId}`);
+          uploadedAssets.push({ item, assetId: uploadResult.assetId, assetType: uploadResult.assetType });
+          console.log(`Asset uploaded for ${item.id}: ${uploadResult.assetType} - ${uploadResult.assetId}`);
         } else {
           const uploadErrorMessage =
             uploadResult?.error ||
@@ -632,33 +687,36 @@ Deno.serve(async (req) => {
             (!uploadResponse.ok ? `Upload service returned ${uploadResponse.status}` : '') ||
             (uploadRawText?.trim() ? uploadRawText.trim().slice(0, 500) : '') ||
             'Unknown error';
-
           console.error(`Failed to upload asset for ${item.id}:`, {
             status: uploadResponse.status,
             ok: uploadResponse.ok,
             result: uploadResult,
             raw: uploadRawText?.slice(0, 500) || '',
           });
-
-          result.failedAds.push({
-            conceptId: item.id,
-            conceptTitle: item.concept?.title || 'Unknown',
-            error: `Asset upload failed: ${uploadErrorMessage}`
-          });
+          result.failedAds.push({ conceptId: item.id, conceptTitle, error: `Asset upload failed: ${uploadErrorMessage}` });
         }
       } catch (uploadError: any) {
         console.error(`Error uploading asset for ${item.id}:`, uploadError);
-        result.failedAds.push({
-          conceptId: item.id,
-          conceptTitle: item.concept?.title || 'Unknown',
-          error: `Asset upload error: ${uploadError.message}`
-        });
+        result.failedAds.push({ conceptId: item.id, conceptTitle, error: `Asset upload error: ${uploadError?.message || String(uploadError)}` });
       }
     }
 
+    // Bounded concurrency = 3 (keeps memory/CPU sane, still ~3x faster).
+    const CONCURRENCY = 3;
+    let cursor = 0;
+    const workers = Array.from({ length: Math.min(CONCURRENCY, approvedConcepts.length) }, async () => {
+      while (cursor < approvedConcepts.length) {
+        const next = approvedConcepts[cursor++];
+        await uploadOne(next);
+      }
+    });
+    await Promise.all(workers);
+
     if (uploadedAssets.length === 0) {
-      throw new Error('Failed to upload any creative assets to Meta. Please check your files and try again.');
+      const firstReason = result.failedAds[0]?.error || 'No creative assets could be uploaded.';
+      throw new Error(`Failed to upload any creative assets to Meta. ${firstReason}`);
     }
+
 
     console.log(`Successfully uploaded ${uploadedAssets.length} of ${approvedConcepts.length} assets`);
     
@@ -1393,11 +1451,16 @@ Deno.serve(async (req) => {
       }
     );
   } catch (error: any) {
-    console.error('Error building campaign:', error);
+    const rawMsg = error?.message || String(error) || 'Unknown error';
+    console.error('Error building campaign:', rawMsg, error?.stack || '');
 
-    // Slack alert for campaign build failures
+    // Fire-and-forget Slack alert with its own short timeout so a slow
+    // Slack call can never delay or block our 200 response to the client.
     try {
-      await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/slack-error-alert`, {
+      const slackCtrl = new AbortController();
+      const slackTimer = setTimeout(() => slackCtrl.abort(), 3_000);
+      // Intentionally NOT awaited.
+      fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/slack-error-alert`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1407,17 +1470,31 @@ Deno.serve(async (req) => {
           category: 'Meta API',
           severity: 'error',
           title: 'Campaign Build Failed',
-          message: `Error building Meta campaign: ${error.message}`,
+          message: `Error building Meta campaign: ${rawMsg}`,
           source: 'build-meta-campaign',
         }),
-      });
+        signal: slackCtrl.signal,
+      }).catch(() => { /* ignore */ }).finally(() => clearTimeout(slackTimer));
     } catch { /* ignore */ }
+
+    // Translate raw error shapes into a clear, actionable user message.
+    const lower = rawMsg.toLowerCase();
+    const isTimeout = /timed out|aborted|timeout|deadline/.test(lower);
+    const isNetwork = /network|fetch failed|connection|econnreset|enotfound/.test(lower);
+    let friendly = rawMsg;
+    if (isTimeout) {
+      friendly = `Publishing took too long and was cut off before finishing. This usually means a Meta API call (often a video upload) stalled. Please try again — if it keeps happening, try publishing with fewer creatives at once.`;
+    } else if (isNetwork) {
+      friendly = `We couldn't reach Meta to finish publishing. ${rawMsg}. Please try again in a moment.`;
+    }
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
-        failedAds: Array.isArray(error?.failedAds) ? error.failedAds : []
+        error: friendly,
+        rawError: rawMsg,
+        timedOut: isTimeout,
+        failedAds: Array.isArray(error?.failedAds) ? error.failedAds : [],
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -1425,4 +1502,5 @@ Deno.serve(async (req) => {
       }
     );
   }
+
 });
