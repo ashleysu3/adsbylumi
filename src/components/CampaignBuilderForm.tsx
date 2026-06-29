@@ -137,6 +137,24 @@ export function CampaignBuilderForm({
   const { activeBrand } = useBrand();
   const hasInstagram = !!activeBrand?.meta_account_id && !!(workspace?.brands?.instagram_account_id);
 
+  // High-price audience recommendation. Historical CPA isn't yet
+  // aggregated per offer in our DB, so we always fall back to the
+  // 50%-of-price estimate; the helper still labels which source it used.
+  const historicalCPA: number | null =
+    (workspace?.offer_historical_cpa as number | undefined) ?? null;
+  const audienceRec = getAudienceRecommendation({
+    offerPrice: workspace?.offer_price,
+    dailyBudget: budget,
+    historicalCPA,
+  });
+
+  // When the rule fires and the user hasn't manually picked, default to warm.
+  useEffect(() => {
+    if (audienceRec.triggered && !audienceTouchedRef.current && audience !== "warm") {
+      setAudience("warm");
+    }
+  }, [audienceRec.triggered]);
+
   // Sync answers on change
   useEffect(() => {
     const newAnswers = {
@@ -145,7 +163,8 @@ export function CampaignBuilderForm({
       optimizationEvent: defaultOptimizationEvent,
       budget,
       creativeType: defaultCreativeType,
-      audience: defaultAudience,
+      audience,
+      audienceUserOverride: audienceTouchedRef.current,
       startDate,
       launchActive,
       budgetType: "daily",
@@ -170,7 +189,7 @@ export function CampaignBuilderForm({
     };
     if (!newAnswers.endDate) delete newAnswers.endDate;
     onAnswerUpdate(newAnswers);
-  }, [budget, launchActive, additionalPosts, includeExistingPosts, locationAddresses, locationRadius, hasEndDate, endDate, startDate, showSmartLocation, locationMode, selectedCountries]);
+  }, [budget, launchActive, additionalPosts, includeExistingPosts, locationAddresses, locationRadius, hasEndDate, endDate, startDate, showSmartLocation, locationMode, selectedCountries, audience]);
 
   const objectiveLabel = OBJECTIVE_LABELS[defaultObjective] || defaultObjective;
 
