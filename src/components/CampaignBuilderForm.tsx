@@ -90,6 +90,18 @@ export function CampaignBuilderForm({
     answers.additionalPosts || []
   );
 
+  // Audience selector — warm vs. broad/cold. Default uses the template,
+  // but the high-priced-offer rule below can flip the default to "warm"
+  // until the user explicitly picks otherwise.
+  const normalizeAudience = (val?: string): "warm" | "broad" => {
+    const v = (val || "").toLowerCase();
+    return v.includes("warm") || v.includes("retarget") ? "warm" : "broad";
+  };
+  const audienceTouchedRef = useRef<boolean>(!!answers.audienceUserOverride);
+  const [audience, setAudience] = useState<"warm" | "broad">(
+    answers.audience ? normalizeAudience(answers.audience) : normalizeAudience(defaultAudience)
+  );
+
   // Location targeting state — always visible, default to USA
   const [locationMode, setLocationMode] = useState<'country' | 'specific'>(
     answers.locationTargeting?.addresses?.length > 0 ? 'specific' : 'country'
