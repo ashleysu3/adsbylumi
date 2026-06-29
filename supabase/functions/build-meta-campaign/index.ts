@@ -460,7 +460,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const productionItems: ProductionItem[] = (workspace.production_items || []).map(
+    let productionItems: ProductionItem[] = (workspace.production_items || []).map(
       (item: any) => {
         const matchingAsset = resolveAssetForItem(item);
         if (!matchingAsset) {
@@ -485,6 +485,48 @@ Deno.serve(async (req) => {
         };
       }
     );
+
+    // Advanced-Build fallback: if no production_items were persisted but the user
+    // has uploaded assets AND has approved shared copy variations (the Advanced
+    // flow's signature), synthesize publishable items on the fly. Avoids the
+    // "no creatives have an uploaded asset attached" block when the client-side
+    // synthesis didn't persist (race, navigation, or older workspace shape).
+    const itemsHaveLinkedAsset = productionItems.some(
+      (i: any) => !!(i?.linkedAsset?.url || i?.linkedAsset?.storagePath || i?.uploaded_asset_id),
+    );
+    const sharedVariations: any[] = Array.isArray(
+      (workspace as any)?.selected_copy?.shared_variations,
+    )
+      ? (workspace as any).selected_copy.shared_variations
+      : [];
+    if (!itemsHaveLinkedAsset && uploadedAssetsList.length > 0 && sharedVariations.length > 0) {
+      console.log(
+        `Synthesizing ${uploadedAssetsList.length} production_items from user_uploaded_assets × ${sharedVariations.length} shared_variations (Advanced-Build fallback)`,
+      );
+      productionItems = uploadedAssetsList.map((asset: any, idx: number) => {
+        const variation: any = sharedVariations[idx % sharedVariations.length] || {};
+        return {
+          id: asset.id || `prod_${Date.now()}_${idx}`,
+          status: 'approved',
+          completed: true,
+          angleName: variation.angle || `Ad ${idx + 1}`,
+          uploaded_asset_id: asset.id,
+          linkedAsset: {
+            id: asset.id,
+            url: asset.file_url,
+            storagePath: asset.storage_path,
+            type: asset.file_type,
+            fileName: asset.name,
+          },
+          finalCopy: {
+            headline: variation.headline || '',
+            primaryText: variation.primary_text || variation.primaryText || '',
+            description: variation.description || '',
+            cta: variation.cta || 'LEARN_MORE',
+          },
+        } as any;
+      });
+    }
 
     // Bucket items so we can give a specific, useful error if nothing publishable
     const itemsWithAsset: ProductionItem[] = [];
