@@ -157,32 +157,53 @@ export async function getFFmpeg(
   ffmpegLoadPromise = (async () => {
     onProgress?.('Loading video engine…');
     const ffmpeg = new FFmpeg();
-    // Try multiple CDNs — some sandbox/preview environments block specific hosts.
-    const candidates = [
-      'https://cdn.jsdelivr.net/npm/@ffmpeg/[email protected]/dist/umd',
-      'https://unpkg.com/@ffmpeg/[email protected]/dist/umd',
-      'https://cdn.skypack.dev/@ffmpeg/[email protected]/dist/umd',
-    ];
-    let lastErr: unknown = null;
+
+    // Strategy: try the **self-hosted, bundled** core first. This works even
+    // when the user's network blocks public CDNs (corporate firewalls,
+    // sandboxed previews, ad-blockers that swallow jsdelivr/unpkg). Only
+    // fall back to public CDNs if the bundled assets somehow fail to load.
     let loaded = false;
-    for (const baseURL of candidates) {
-      try {
-        const [coreURL, wasmURL] = await Promise.all([
-          toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-          toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-        ]);
-        await ffmpeg.load({ coreURL, wasmURL });
-        loaded = true;
-        break;
-      } catch (err) {
-        lastErr = err;
-        console.warn(`[ffmpeg] Failed to load core from ${baseURL}:`, err);
+    let lastErr: unknown = null;
+
+    try {
+      const [{ default: coreURL }, { default: wasmURL }] = await Promise.all([
+        // Vite resolves these to hashed asset URLs served from the app's own origin.
+        import('@ffmpeg/core/dist/umd/ffmpeg-core.js?url'),
+        import('@ffmpeg/core/dist/umd/ffmpeg-core.wasm?url'),
+      ]);
+      await ffmpeg.load({ coreURL, wasmURL });
+      loaded = true;
+    } catch (err) {
+      lastErr = err;
+      console.warn('[ffmpeg] Bundled core failed to load, falling back to CDN:', err);
+    }
+
+    if (!loaded) {
+      const candidates = [
+        'https://cdn.jsdelivr.net/npm/@ffmpeg/[email protected]/dist/umd',
+        'https://unpkg.com/@ffmpeg/[email protected]/dist/umd',
+        'https://cdn.skypack.dev/@ffmpeg/[email protected]/dist/umd',
+      ];
+      for (const baseURL of candidates) {
+        try {
+          const [coreURL, wasmURL] = await Promise.all([
+            toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+            toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+          ]);
+          await ffmpeg.load({ coreURL, wasmURL });
+          loaded = true;
+          break;
+        } catch (err) {
+          lastErr = err;
+          console.warn(`[ffmpeg] Failed to load core from ${baseURL}:`, err);
+        }
       }
     }
+
     if (!loaded) {
       ffmpegLoadPromise = null;
       throw new Error(
-        `Couldn't load the video engine. Your network may be blocking the CDN. (${
+        `Couldn't load the video engine. Please refresh and try again. (${
           lastErr instanceof Error ? lastErr.message : 'unknown error'
         })`,
       );
