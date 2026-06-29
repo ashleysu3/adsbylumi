@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { getHighTicketGuidance } from "@/lib/high-ticket";
+import { getAudienceRecommendation } from "@/lib/audience-recommendation";
 import { ExistingPostPicker, type SelectedPost } from "@/components/ExistingPostPicker";
 import { BudgetCalculator } from "@/components/BudgetCalculator";
 
