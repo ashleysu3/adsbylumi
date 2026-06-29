@@ -87,7 +87,7 @@ const groups: NavGroup[] = [
     items: [
       { label: "Strategy", to: "/strategy", icon: Sparkles },
       { label: "Live Ads", to: "/ad-performance", icon: Activity },
-      { label: "Drafts", to: "/campaigns", icon: Loader2 },
+      { label: "My Campaigns", to: "/campaigns", icon: Loader2 },
       { label: "Create New", to: "/create", icon: Plus },
     ],
   },

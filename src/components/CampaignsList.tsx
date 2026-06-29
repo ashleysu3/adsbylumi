@@ -103,20 +103,23 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
         }
       }
 
-      // Filter out campaigns whose offers are archived (unless showing archived)
+      // Filter out campaigns whose offers are archived (unless showing archived).
+      // Never hide a campaign that has a real Meta campaign attached — those
+      // appear in Ad Performance and users need to be able to open them here
+      // to manage creative.
       if (enriched.length > 0 && !showArchived) {
         const filtered = await Promise.all(
           enriched.map(async (campaign) => {
             if (!campaign.offer_name) return campaign;
+            if (hasRealMetaCampaign(campaign.meta_campaign_ids)) return campaign;
+            if (['live', 'completed', 'imported'].includes(campaign.progress_status)) return campaign;
             const { data: offer } = await supabase
               .from('offers')
               .select('archived')
               .eq('brand_id', brandId)
               .eq('name', campaign.offer_name)
               .maybeSingle();
-            if (!offer || !offer.archived || ['live', 'completed'].includes(campaign.progress_status)) {
-              return campaign;
-            }
+            if (!offer || !offer.archived) return campaign;
             return null;
           })
         );
@@ -310,16 +313,18 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
     });
   };
 
-  // Drafts page: only show campaigns without a real Meta campaign.
-  // Anything launched/imported/paused lives in Live Ads.
-  const draftsOnly = campaigns.filter(c => isDraft(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids));
-  const filteredCampaigns = draftsOnly.filter(c => {
-    if (viewFilter === "live") return false;
+  // Show every campaign for this brand — drafts AND anything attached to a
+  // Meta campaign (live, paused, off, imported). The status pill differentiates
+  // them. This keeps parity with Ad Performance so users can always open a
+  // campaign here to manage its creative.
+  const filteredCampaigns = campaigns.filter(c => {
+    if (viewFilter === "live") return isLive(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids);
+    if (viewFilter === "draft") return isDraft(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids);
     return true;
   });
 
-  const liveCount = 0;
-  const draftCount = draftsOnly.length;
+  const liveCount = campaigns.filter(c => isLive(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids)).length;
+  const draftCount = campaigns.filter(c => isDraft(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids)).length;
 
   if (loading) {
     return (
@@ -339,8 +344,8 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <CardTitle className="text-lg">Drafts</CardTitle>
-            <CardDescription className="text-sm">Campaigns you're still building. Launch one and it moves to Live Ads.</CardDescription>
+            <CardTitle className="text-lg">My Campaigns</CardTitle>
+            <CardDescription className="text-sm">Every campaign for this brand — drafts you're still building and anything connected to Meta. Open one to manage its creative.</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             {!combineMode && draftCount >= 2 && (
