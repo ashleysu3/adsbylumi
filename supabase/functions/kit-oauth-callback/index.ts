@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { getPublicAppUrl } from '../_shared/site-url.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,7 +13,7 @@ Deno.serve(async (req) => {
     const error = url.searchParams.get('error');
 
     // Determine redirect base from state or fallback
-    let redirectBase = 'https://youradassistant.lovable.app';
+    let redirectBase = getPublicAppUrl();
 
     if (error) {
       console.error('[KIT-OAUTH-CALLBACK] OAuth error:', error);
