@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { getHighTicketGuidance } from "@/lib/high-ticket";
+import { getAudienceRecommendation } from "@/lib/audience-recommendation";
 import { ExistingPostPicker, type SelectedPost } from "@/components/ExistingPostPicker";
 import { BudgetCalculator } from "@/components/BudgetCalculator";
 
@@ -89,6 +90,18 @@ export function CampaignBuilderForm({
     answers.additionalPosts || []
   );
 
+  // Audience selector — warm vs. broad/cold. Default uses the template,
+  // but the high-priced-offer rule below can flip the default to "warm"
+  // until the user explicitly picks otherwise.
+  const normalizeAudience = (val?: string): "warm" | "broad" => {
+    const v = (val || "").toLowerCase();
+    return v.includes("warm") || v.includes("retarget") ? "warm" : "broad";
+  };
+  const audienceTouchedRef = useRef<boolean>(!!answers.audienceUserOverride);
+  const [audience, setAudience] = useState<"warm" | "broad">(
+    answers.audience ? normalizeAudience(answers.audience) : normalizeAudience(defaultAudience)
+  );
+
   // Location targeting state — always visible, default to USA
   const [locationMode, setLocationMode] = useState<'country' | 'specific'>(
     answers.locationTargeting?.addresses?.length > 0 ? 'specific' : 'country'
@@ -124,6 +137,24 @@ export function CampaignBuilderForm({
   const { activeBrand } = useBrand();
   const hasInstagram = !!activeBrand?.meta_account_id && !!(workspace?.brands?.instagram_account_id);
 
+  // High-price audience recommendation. Historical CPA isn't yet
+  // aggregated per offer in our DB, so we always fall back to the
+  // 50%-of-price estimate; the helper still labels which source it used.
+  const historicalCPA: number | null =
+    (workspace?.offer_historical_cpa as number | undefined) ?? null;
+  const audienceRec = getAudienceRecommendation({
+    offerPrice: workspace?.offer_price,
+    dailyBudget: budget,
+    historicalCPA,
+  });
+
+  // When the rule fires and the user hasn't manually picked, default to warm.
+  useEffect(() => {
+    if (audienceRec.triggered && !audienceTouchedRef.current && audience !== "warm") {
+      setAudience("warm");
+    }
+  }, [audienceRec.triggered]);
+
   // Sync answers on change
   useEffect(() => {
     const newAnswers = {
@@ -132,7 +163,8 @@ export function CampaignBuilderForm({
       optimizationEvent: defaultOptimizationEvent,
       budget,
       creativeType: defaultCreativeType,
-      audience: defaultAudience,
+      audience,
+      audienceUserOverride: audienceTouchedRef.current,
       startDate,
       launchActive,
       budgetType: "daily",
@@ -157,7 +189,7 @@ export function CampaignBuilderForm({
     };
     if (!newAnswers.endDate) delete newAnswers.endDate;
     onAnswerUpdate(newAnswers);
-  }, [budget, launchActive, additionalPosts, includeExistingPosts, locationAddresses, locationRadius, hasEndDate, endDate, startDate, showSmartLocation, locationMode, selectedCountries]);
+  }, [budget, launchActive, additionalPosts, includeExistingPosts, locationAddresses, locationRadius, hasEndDate, endDate, startDate, showSmartLocation, locationMode, selectedCountries, audience]);
 
   const objectiveLabel = OBJECTIVE_LABELS[defaultObjective] || defaultObjective;
 
@@ -332,6 +364,81 @@ export function CampaignBuilderForm({
           />
         </CardContent>
       </Card>
+
+      {/* Audience selector — warm vs. broad/cold. Surfaces the high-price
+          recommendation when the rule fires; always overridable. */}
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Users className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm">Who should see this?</p>
+              <p className="text-xs text-muted-foreground">
+                Start with people who already know you, or open it up to new strangers.
+              </p>
+            </div>
+          </div>
+
+          {audienceRec.triggered && (
+            <div className="p-3 rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30">
+              <p className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                Lumi recommends a warm audience for this one
+              </p>
+              <p className="text-xs mt-1 leading-snug text-amber-800 dark:text-amber-300">
+                {audienceRec.reason}
+              </p>
+              {audienceRec.cppSourceLabel && (
+                <p className="text-[11px] mt-2 italic text-amber-700/80 dark:text-amber-400/80">
+                  {audienceRec.cppSourceLabel}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant={audience === "warm" ? "default" : "outline"}
+              size="sm"
+              className="text-xs h-auto py-2.5 flex flex-col gap-0.5"
+              onClick={() => {
+                audienceTouchedRef.current = true;
+                setAudience("warm");
+              }}
+            >
+              <span className="font-semibold">Warm audience only</span>
+              <span className="text-[11px] font-normal opacity-80">
+                Your list, past customers, engagers, retargeting
+              </span>
+            </Button>
+            <Button
+              type="button"
+              variant={audience === "broad" ? "default" : "outline"}
+              size="sm"
+              className="text-xs h-auto py-2.5 flex flex-col gap-0.5"
+              onClick={() => {
+                audienceTouchedRef.current = true;
+                setAudience("broad");
+              }}
+            >
+              <span className="font-semibold">Cold / Broad</span>
+              <span className="text-[11px] font-normal opacity-80">
+                New people who don't know you yet
+              </span>
+            </Button>
+          </div>
+
+          {audienceRec.triggered && audience === "broad" && (
+            <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-snug">
+              Overriding to cold — to give this a fair shot, plan on ~${Math.round((audienceRec.neededWeeklyForCold || 0) / 7).toLocaleString()}/day so Meta sees enough buyers to optimize.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+
 
       {/* Location Targeting — Universal */}
       <Card>
