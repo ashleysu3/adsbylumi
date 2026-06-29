@@ -506,20 +506,8 @@ Deno.serve(async (req) => {
 
     if (activeAdSets.length === 1) {
       const only = activeAdSets[0];
-      const resp = await fetch(`https://graph.facebook.com/v25.0/${only.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          access_token: accessToken,
-          daily_budget: budgetCents,
-        }),
-      });
-      const result = await resp.json();
-      if (!result.success) {
-        throw new Error(
-          `Failed to update ad set budget: ${result.error?.message || "unknown error"}`,
-        );
-      }
+      const r = await updateAndVerifyAdSet(only.id);
+      if (!r.ok) return jsonResponse({ success: false, error: r.error });
 
       await supabase.from("ad_action_log").insert({
         brand_id: brand.id,
@@ -530,20 +518,20 @@ Deno.serve(async (req) => {
           campaign_id: campaignId,
           ad_set_id: only.id,
           new_budget: newBudget,
+          verified_daily_budget: r.verifiedCents / 100,
         },
         source: "user",
         meta_entity_id: only.id,
       });
 
-      return jsonResponse(
-        {
-          success: true,
-          level: "adset_single",
-          ad_set_id: only.id,
-          new_budget: newBudget,
-          message: `Budget updated to $${newBudget}/day on the only active ad set`,
-        }
-      );
+      return jsonResponse({
+        success: true,
+        level: "adset_single",
+        ad_set_id: only.id,
+        new_budget: newBudget,
+        verified_daily_budget: r.verifiedCents / 100,
+        message: `Budget updated to $${newBudget}/day on the only active ad set`,
+      });
     }
 
     // Multiple active ad sets — ambiguous. Refuse to act. This is the
