@@ -173,7 +173,7 @@ ${report.kpi_evaluation?.ctr?.status === 'excellent' || report.kpi_evaluation?.r
   ? '💡 Time to refresh your creative - your audience is seeing the same ads too often.'
   : '📈 You\'re on the right track - small improvements compound over time!'}
 
-[View Full Dashboard & Approve Recommendations] → ${Deno.env.get('SUPABASE_URL')?.replace('https://', 'https://').split('.supabase.co')[0]}.lovable.app/data
+[View Full Dashboard & Approve Recommendations] → ${appUrl('/data')}
 
 Keep going - you're doing great! 🎉
 - Lumi
