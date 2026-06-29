@@ -167,9 +167,11 @@ export async function getFFmpeg(
 
     try {
       const [{ default: coreURL }, { default: wasmURL }] = await Promise.all([
-        // Vite resolves these to hashed asset URLs served from the app's own origin.
-        import('@ffmpeg/core/dist/umd/ffmpeg-core.js?url'),
-        import('@ffmpeg/core/dist/umd/ffmpeg-core.wasm?url'),
+        // `@ffmpeg/core` and `@ffmpeg/core/wasm` are the package's public
+        // export targets. Vite resolves `?url` to a hashed asset served
+        // from the app's own origin.
+        import('@ffmpeg/core?url'),
+        import('@ffmpeg/core/wasm?url'),
       ]);
       await ffmpeg.load({ coreURL, wasmURL });
       loaded = true;
