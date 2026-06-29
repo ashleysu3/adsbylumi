@@ -230,11 +230,73 @@ const TRUSTED_CHECKOUT_HOSTS = [
   'acuityscheduling.com',
   'circle.so',
   'memberstack.com', 'memberful.com',
+  // Site builders whose checkout / order-confirmation pages are dynamic per order
+  'squarespace.com', 'sqsp.net',
+  'wix.com', 'wixsite.com',
+  'webflow.io',
+  'bigcartel.com',
+  'ecwid.com',
 ];
 
 function isTrustedCheckoutHost(hostname: string): boolean {
   const h = hostname.toLowerCase();
   return TRUSTED_CHECKOUT_HOSTS.some((d) => h === d || h.endsWith(`.${d}`));
+}
+
+// Recognize dynamic confirmation / thank-you / order-success URLs.
+// These URLs change per order/session so the exact URL the user pasted may 404
+// to our bot, but the pixel is on the underlying site template.
+const DYNAMIC_CONFIRMATION_PATH_PATTERNS = [
+  /\/checkout\/order-confirmed/i,
+  /\/order[-_/]?confirm/i,
+  /\/order[-_/]?(complete|success|received|thank)/i,
+  /\/thank[-_]?you/i,
+  /\/thankyou/i,
+  /\/confirmation/i,
+  /\/success/i,
+  /\/receipt/i,
+  /\/purchase[-_]?complete/i,
+];
+const DYNAMIC_CONFIRMATION_QUERY_KEYS = [
+  'orderid', 'order_id', 'order', 'sessionid', 'session_id',
+  'session', 'token', 'tx', 'transaction', 'cart', 'checkout',
+];
+
+function isDynamicConfirmationUrl(parsed: URL): boolean {
+  const path = parsed.pathname || '';
+  if (DYNAMIC_CONFIRMATION_PATH_PATTERNS.some((re) => re.test(path))) return true;
+  const params = parsed.searchParams;
+  for (const key of DYNAMIC_CONFIRMATION_QUERY_KEYS) {
+    if (params.has(key)) return true;
+  }
+  return false;
+}
+
+async function scanHtmlForPixel(fullUrl: string, timeoutMs = 10000): Promise<{
+  ok: boolean;
+  status: number;
+  hasFbEvents: boolean;
+  foundPixelId: string | null;
+} | null> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const response = await fetch(fullUrl, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; YourAdAssistant/1.0)' },
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) {
+      return { ok: false, status: response.status, hasFbEvents: false, foundPixelId: null };
+    }
+    const html = await response.text();
+    const hasFbEvents = html.includes('connect.facebook.net') && html.includes('fbevents.js');
+    const m = html.match(/fbq\s*\(\s*['"]init['"]\s*,\s*['"](\d+)['"]/);
+    return { ok: true, status: response.status, hasFbEvents, foundPixelId: m ? m[1] : null };
+  } catch {
+    return null;
+  }
 }
 
 async function checkLandingPage(url: string | undefined, brand: any): Promise<CheckResult> {
@@ -245,82 +307,81 @@ async function checkLandingPage(url: string | undefined, brand: any): Promise<Ch
   const pixelId = brand?.meta_pixel_id || null;
   const fullUrl = url.startsWith('http') ? url : `https://${url}`;
 
+  let parsed: URL | null = null;
+  try { parsed = new URL(fullUrl); } catch { /* fall through */ }
+
   // Trusted checkout / short-link hosts: don't try to scan HTML for pixel —
   // they're SPAs or bot-blocked, but the URL itself is a valid ad destination.
-  try {
-    const parsed = new URL(fullUrl);
-    if (isTrustedCheckoutHost(parsed.hostname)) {
+  if (parsed && isTrustedCheckoutHost(parsed.hostname)) {
+    return {
+      id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl,
+      details: 'Hosted checkout / site-builder URL detected — Meta will accept this. The pixel is typically installed on the site template, not on each dynamic order-confirmation page.',
+    };
+  }
+
+  // Dynamic confirmation / thank-you URLs: the exact URL changes per order so it
+  // may 404 our bot. Try the base domain instead — if the pixel lives there,
+  // the same pixel fires on every page including the confirmation page.
+  if (parsed && isDynamicConfirmationUrl(parsed)) {
+    const rootUrl = `${parsed.protocol}//${parsed.hostname}/`;
+    const rootScan = await scanHtmlForPixel(rootUrl);
+    if (rootScan?.ok && rootScan.hasFbEvents && rootScan.foundPixelId) {
+      if (!pixelId || rootScan.foundPixelId === pixelId) {
+        return {
+          id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl,
+          details: `Dynamic confirmation URL — verified your Meta Pixel (…${rootScan.foundPixelId.slice(-6)}) is installed on ${parsed.hostname}, so it fires on this page too.`,
+          pixelId: pixelId || rootScan.foundPixelId,
+        };
+      }
       return {
-        id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl,
-        details: 'Checkout / form page detected — Meta will accept this URL. Pixel is typically injected by the platform; we can\'t scan it from here.',
+        id: 'landing_page', name: 'Landing Page', status: 'warning', message: fullUrl,
+        details: `Dynamic confirmation URL — a Meta Pixel (…${rootScan.foundPixelId.slice(-6)}) is installed on ${parsed.hostname} but it doesn't match your ad account's pixel (…${String(pixelId).slice(-6)}).`,
+        pixelId, pixelNotInstalled: false,
       };
     }
-  } catch {
-    // fall through to fetch path; if URL is truly malformed the fetch will fail and we degrade to warning
-  }
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-    // Use GET to fetch HTML so we can scan for pixel code
-    const response = await fetch(fullUrl, {
-      method: 'GET',
-      signal: controller.signal,
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; YourAdAssistant/1.0)' },
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      if (response.status === 403 || response.status === 405) {
-        return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'Server blocked our verification, but the URL looks valid' };
-      }
-      if (response.status >= 300 && response.status < 400) {
-        return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'Page loads with a redirect — make sure it lands where you expect' };
-      }
-      // Never block publish on a fetch error — many checkout / membership / login-gated
-      // pages legitimately return 4xx/5xx to our bot but still work fine as ad destinations.
-      return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: fullUrl, details: `We couldn't load this URL from our server (${response.status}). If it works in your browser, you're good to publish — Meta will accept it.` };
-    }
-
-    // Page is reachable — now scan HTML for pixel
-    const html = await response.text();
-    const hasFbEvents = html.includes('connect.facebook.net') && html.includes('fbevents.js');
-    const fbqInitMatch = html.match(/fbq\s*\(\s*['"]init['"]\s*,\s*['"](\d+)['"]/);
-
-    if (!pixelId) {
-      // No pixel configured on brand — just report page is reachable
-      if (hasFbEvents && fbqInitMatch) {
-        return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'Page is live and has a Meta Pixel installed' };
-      }
-      return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'This is the URL people will land on when they click your ad' };
-    }
-
-    // Pixel is configured — check if it's on the page
-    if (hasFbEvents && fbqInitMatch) {
-      const foundPixelId = fbqInitMatch[1];
-      if (foundPixelId === pixelId) {
-        return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: `Page is live and your Meta Pixel (${pixelId.slice(-6)}) is active`, pixelId };
-      } else {
-        return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: fullUrl, details: `A Meta Pixel was found but it doesn't match your ad account's pixel. Found: ...${foundPixelId.slice(-6)}, Expected: ...${pixelId.slice(-6)}`, pixelId, pixelNotInstalled: false };
-      }
-    }
-
-    // Pixel not found on page
+    // Couldn't confirm pixel from root — soft warning, never block.
     return {
       id: 'landing_page', name: 'Landing Page', status: 'warning', message: fullUrl,
-      details: 'Your Meta Pixel isn\'t installed on this page yet. Install it so Meta can track conversions.',
-      pixelId, pixelNotInstalled: true,
+      details: 'This looks like a dynamic order-confirmation URL that changes per order, so we can\'t verify it directly. Make sure your Meta Pixel is installed site-wide so the Purchase event fires here.',
+      pixelId, pixelNotInstalled: false,
     };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    if (errorMessage.includes('abort')) {
-      return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: url, details: 'Page took too long to respond — slow loading may affect ad performance' };
-    }
-    return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: url, details: 'Could not verify URL — page may be behind authentication or firewall' };
   }
+
+  const scan = await scanHtmlForPixel(fullUrl);
+  if (scan === null) {
+    return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: url, details: 'Could not verify URL — page may be slow, behind authentication, or behind a firewall. If it works in your browser, you\'re good to publish.' };
+  }
+  if (!scan.ok) {
+    if (scan.status === 403 || scan.status === 405) {
+      return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'Server blocked our verification, but the URL looks valid' };
+    }
+    if (scan.status >= 300 && scan.status < 400) {
+      return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'Page loads with a redirect — make sure it lands where you expect' };
+    }
+    return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: fullUrl, details: `We couldn't load this URL from our server (${scan.status}). If it works in your browser, you're good to publish — Meta will accept it.` };
+  }
+
+  if (!pixelId) {
+    if (scan.hasFbEvents && scan.foundPixelId) {
+      return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'Page is live and has a Meta Pixel installed' };
+    }
+    return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'This is the URL people will land on when they click your ad' };
+  }
+
+  if (scan.hasFbEvents && scan.foundPixelId) {
+    if (scan.foundPixelId === pixelId) {
+      return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: `Page is live and your Meta Pixel (${pixelId.slice(-6)}) is active`, pixelId };
+    }
+    return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: fullUrl, details: `A Meta Pixel was found but it doesn't match your ad account's pixel. Found: ...${scan.foundPixelId.slice(-6)}, Expected: ...${pixelId.slice(-6)}`, pixelId, pixelNotInstalled: false };
+  }
+
+  return {
+    id: 'landing_page', name: 'Landing Page', status: 'warning', message: fullUrl,
+    details: 'Your Meta Pixel isn\'t installed on this page yet. Install it so Meta can track conversions.',
+    pixelId, pixelNotInstalled: true,
+  };
 }
+
 
 
 function checkEventTracking(brand: any, template: any): CheckResult {
