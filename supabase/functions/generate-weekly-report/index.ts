@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { appUrl } from '../_shared/site-url.ts';
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -127,7 +128,7 @@ ${(() => {
   return recs.join('\n');
 })()}
 
-👉 Approve all recommendations with one click: ${Deno.env.get('SUPABASE_URL')?.replace('https://', 'https://').split('.supabase.co')[0]}.lovable.app/data?workspace=${workspaceId}
+👉 Approve all recommendations with one click: ${appUrl(`/data?workspace=${workspaceId}`)}
 
 === 💡 TRY THIS: CREATIVE IDEAS BASED ON YOUR TOP PERFORMERS ===
 ${(() => {
@@ -172,7 +173,7 @@ ${report.kpi_evaluation?.ctr?.status === 'excellent' || report.kpi_evaluation?.r
   ? '💡 Time to refresh your creative - your audience is seeing the same ads too often.'
   : '📈 You\'re on the right track - small improvements compound over time!'}
 
-[View Full Dashboard & Approve Recommendations] → ${Deno.env.get('SUPABASE_URL')?.replace('https://', 'https://').split('.supabase.co')[0]}.lovable.app/data
+[View Full Dashboard & Approve Recommendations] → ${appUrl('/data')}
 
 Keep going - you're doing great! 🎉
 - Lumi

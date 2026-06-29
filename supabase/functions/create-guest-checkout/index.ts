@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { getPublicAppUrl } from "../_shared/site-url.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -62,7 +63,11 @@ serve(async (req) => {
       }
     }
 
-    const returnOrigin = origin || "https://youradassistant.lovable.app";
+    // Trust the request origin only if it's our production app; otherwise
+    // fall back to the canonical app URL so checkout never returns to a
+    // preview/staging origin.
+    const trustedOrigin = origin && /^https:\/\/(www\.)?adsbylumi\.com$/.test(origin) ? origin : null;
+    const returnOrigin = trustedOrigin || getPublicAppUrl();
 
     const sessionOptions: any = {
       client_reference_id: partnerReferralId || rewardful_referral || undefined,
