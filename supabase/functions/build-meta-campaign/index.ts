@@ -150,6 +150,52 @@ function getMetaErrorMessage(metaError: any): string {
   return baseMsg;
 }
 
+// ---------------------------------------------------------------------------
+// fetchWithTimeout: wraps fetch with an AbortController so a hung Meta or
+// Supabase sub-request can never wall-clock the whole edge function (which
+// surfaces to the client as "Edge Function returned a non-2xx status code" /
+// "The request timed out"). Also adds bounded retries for transient failures
+// (network errors, 5xx). We do NOT retry 4xx — those are Meta validation
+// rejections and retrying would mask the real reason.
+// ---------------------------------------------------------------------------
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit & { timeoutMs?: number; retries?: number; label?: string } = {}
+): Promise<Response> {
+  const { timeoutMs = 30_000, retries = 1, label = 'fetch', ...rest } = init;
+  let lastErr: unknown = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+    try {
+      const res = await fetch(url, { ...rest, signal: ctrl.signal });
+      clearTimeout(timer);
+      // Retry only on transient server errors
+      if (res.status >= 500 && res.status < 600 && attempt < retries) {
+        console.warn(`[${label}] ${res.status} on attempt ${attempt + 1}, retrying...`);
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+        continue;
+      }
+      return res;
+    } catch (err: any) {
+      clearTimeout(timer);
+      lastErr = err;
+      const isAbort = err?.name === 'AbortError' || /timed out/i.test(err?.message || '');
+      console.warn(`[${label}] attempt ${attempt + 1} failed:`, err?.message || err);
+      if (attempt >= retries) {
+        if (isAbort) {
+          throw new Error(`${label} timed out after ${timeoutMs}ms. Meta or our service didn't respond in time — please try again.`);
+        }
+        throw err;
+      }
+      await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+    }
+  }
+  // unreachable
+  throw lastErr instanceof Error ? lastErr : new Error(`${label} failed`);
+}
+
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
