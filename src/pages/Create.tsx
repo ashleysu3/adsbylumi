@@ -725,7 +725,7 @@ export default function Create() {
       navigate(`/creative-studio?workspace=${workspace.id}`);
     } catch (error: any) {
       console.error("Error creating campaign:", error);
-      toast.error(error.message || "Failed to create campaign");
+      toast.error(formatInvokeError(error) || error.message || "Failed to create campaign — please try again");
     } finally {
       setIsGeneratingAngles(false);
     }
@@ -1420,7 +1420,7 @@ export default function Create() {
                       navigate(`/campaigns/build?workspace=${workspace.id}`);
                     } catch (error: any) {
                       console.error("Error creating workspace:", error);
-                      toast.error(error.message || "Failed to create campaign");
+                      toast.error(formatInvokeError(error) || error.message || "Failed to create campaign — please try again");
                     } finally {
                       setIsCreatingCampaign(false);
                     }
@@ -1596,7 +1596,7 @@ export default function Create() {
                             navigate(`/campaigns/build?workspace=${workspace.id}`);
                           } catch (error: any) {
                             console.error("Error creating workspace:", error);
-                            toast.error(error.message || "Failed to create campaign");
+                            toast.error(formatInvokeError(error) || error.message || "Failed to create campaign — please try again");
                           } finally {
                             setIsCreatingCampaign(false);
                           }
