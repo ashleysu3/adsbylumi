@@ -418,6 +418,26 @@ Deno.serve(async (req) => {
     } else {
       console.log('Token expiration updated:', tokenExpiresAt.toISOString());
     }
+
+    // Clear stale "Meta is broken" alerts for this brand. A successful reconnect
+    // must drop the prior meta_token_expired / meta_token_invalid /
+    // meta_token_expiring banners — otherwise the user still sees the old
+    // warning even though everything is healthy again.
+    try {
+      const { error: dismissErr } = await supabase
+        .from('user_alerts')
+        .update({ dismissed_at: new Date().toISOString() })
+        .eq('brand_id', brandId)
+        .in('type', ['meta_token_invalid', 'meta_token_expired', 'meta_token_expiring'])
+        .is('dismissed_at', null);
+      if (dismissErr) {
+        console.warn('[meta-oauth-callback] could not dismiss stale meta alerts:', dismissErr);
+      } else {
+        console.log('[meta-oauth-callback] dismissed stale meta token alerts for brand', brandId);
+      }
+    } catch (alertErr) {
+      console.warn('[meta-oauth-callback] alert cleanup skipped (non-fatal):', alertErr);
+    }
       
     // Check if user has already selected an account (on re-connection)
     const { data: brandData } = await supabase
