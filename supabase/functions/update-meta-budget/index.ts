@@ -34,6 +34,41 @@ const logStep = (step: string, details?: any) => {
 // must explicitly call per-ad-set (or do it in Meta Ads Manager).
 // ============================================================================
 
+// ---------------------------------------------------------------
+// Helpers shared across branches.
+// ---------------------------------------------------------------
+// Meta's POST /{entity_id} endpoints are inconsistent: some return
+// {"success": true}, others return {"id": "..."}, and the budget
+// endpoints have been observed returning both. Checking `result.success`
+// alone made us throw "Failed to update ... unknown error" even when
+// Meta accepted the change. The correct signal is: HTTP non-2xx OR a
+// populated `error` object.
+const metaPostFailed = (resp: Response, body: any): { failed: boolean; reason?: string } => {
+  if (!resp.ok) {
+    const err = body?.error;
+    const parts = [
+      err?.message || `HTTP ${resp.status}`,
+      err?.code ? `code ${err.code}` : null,
+      err?.error_subcode ? `subcode ${err.error_subcode}` : null,
+      err?.error_user_msg ? `(${err.error_user_msg})` : null,
+      err?.fbtrace_id ? `trace ${err.fbtrace_id}` : null,
+    ].filter(Boolean);
+    return { failed: true, reason: parts.join(" · ") };
+  }
+  if (body?.error) {
+    const err = body.error;
+    const parts = [
+      err.message || "Meta returned an error",
+      err.code ? `code ${err.code}` : null,
+      err.error_subcode ? `subcode ${err.error_subcode}` : null,
+      err.error_user_msg ? `(${err.error_user_msg})` : null,
+      err.fbtrace_id ? `trace ${err.fbtrace_id}` : null,
+    ].filter(Boolean);
+    return { failed: true, reason: parts.join(" · ") };
+  }
+  return { failed: false };
+};
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(origin);
@@ -146,6 +181,49 @@ Deno.serve(async (req) => {
       throw new Error(msg);
     };
 
+    // Update an ad set's daily budget, then read it back from Meta to
+    // confirm the change actually landed. Returns either { ok: true,
+    // verifiedCents } or { ok: false, error }.
+    const updateAndVerifyAdSet = async (
+      targetAdSetId: string,
+    ): Promise<{ ok: true; verifiedCents: number } | { ok: false; error: string }> => {
+      const url = `https://graph.facebook.com/v25.0/${targetAdSetId}`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ access_token: accessToken, daily_budget: budgetCents }),
+      });
+      const body = await resp.json().catch(() => ({}));
+      const fail = metaPostFailed(resp, body);
+      if (fail.failed) {
+        logStep("Ad-set budget update rejected by Meta", { adSetId: targetAdSetId, reason: fail.reason });
+        return { ok: false, error: `Meta rejected the ad set budget update: ${fail.reason}` };
+      }
+      const verifyUrl =
+        `https://graph.facebook.com/v25.0/${targetAdSetId}` +
+        `?fields=id,daily_budget,lifetime_budget&access_token=${encodeURIComponent(accessToken)}`;
+      const verify = await fetchMetaJson(verifyUrl, "ad set (verify)").catch((e) => ({ _err: e?.message }));
+      const verifiedCents = (verify as any)?.daily_budget
+        ? parseInt((verify as any).daily_budget, 10)
+        : null;
+      if (verifiedCents == null || Math.abs(verifiedCents - parseInt(budgetCents, 10)) > 1) {
+        logStep("Ad-set budget verification mismatch", {
+          adSetId: targetAdSetId,
+          expected: budgetCents,
+          got: verifiedCents,
+        });
+        return {
+          ok: false,
+          error:
+            `Meta accepted the request but the budget didn't change. ` +
+            `Expected $${newBudget}/day; Meta still reports ${
+              verifiedCents == null ? "no daily budget" : `$${(verifiedCents / 100).toFixed(2)}/day`
+            }. Try again in a moment, or update it directly in Ads Manager.`,
+        };
+      }
+      return { ok: true, verifiedCents };
+    };
+
     const campFieldsUrl =
       `https://graph.facebook.com/v25.0/${campaignId}` +
       `?fields=id,daily_budget,lifetime_budget&access_token=${encodeURIComponent(accessToken)}`;
@@ -198,11 +276,31 @@ Deno.serve(async (req) => {
           daily_budget: budgetCents,
         }),
       });
-      const result = await resp.json();
-      if (!result.success) {
-        throw new Error(
-          `Failed to update campaign budget: ${result.error?.message || "unknown error"}`,
-        );
+      const result = await resp.json().catch(() => ({}));
+      const fail = metaPostFailed(resp, result);
+      if (fail.failed) {
+        logStep("Campaign budget update rejected by Meta", { reason: fail.reason });
+        return jsonResponse({
+          success: false,
+          error: `Meta rejected the campaign budget update: ${fail.reason}`,
+        });
+      }
+
+      // Read-back: confirm Meta actually persisted the new value.
+      const verifyUrl =
+        `https://graph.facebook.com/v25.0/${campaignId}` +
+        `?fields=id,daily_budget,lifetime_budget&access_token=${encodeURIComponent(accessToken)}`;
+      const verify = await fetchMetaJson(verifyUrl, "campaign (verify)").catch((e) => ({ _err: e?.message }));
+      const verifiedCents = (verify as any)?.daily_budget ? parseInt((verify as any).daily_budget, 10) : null;
+      if (verifiedCents == null || Math.abs(verifiedCents - parseInt(budgetCents, 10)) > 1) {
+        logStep("Campaign budget verification mismatch", { expected: budgetCents, got: verifiedCents });
+        return jsonResponse({
+          success: false,
+          error:
+            `Meta accepted the request but the budget didn't change. ` +
+            `Expected $${newBudget}/day; Meta still reports ${verifiedCents == null ? "no daily budget" : `$${(verifiedCents / 100).toFixed(2)}/day`}. ` +
+            `Try again in a moment, or update it directly in Ads Manager.`,
+        });
       }
 
       await supabase.from("ad_action_log").insert({
@@ -213,6 +311,7 @@ Deno.serve(async (req) => {
           level: "campaign",
           campaign_id: campaignId,
           new_budget: newBudget,
+          verified_daily_budget: verifiedCents / 100,
         },
         source: "user",
       });
@@ -221,6 +320,7 @@ Deno.serve(async (req) => {
         success: true,
         level: "campaign",
         new_budget: newBudget,
+        verified_daily_budget: verifiedCents / 100,
         message: `Budget updated to $${newBudget}/day on Meta`,
       });
     }
@@ -256,21 +356,8 @@ Deno.serve(async (req) => {
         });
       }
 
-      const targetUrl = `https://graph.facebook.com/v25.0/${adSetId}`;
-      const resp = await fetch(targetUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          access_token: accessToken,
-          daily_budget: budgetCents,
-        }),
-      });
-      const result = await resp.json();
-      if (!result.success) {
-        throw new Error(
-          `Failed to update ad set budget: ${result.error?.message || "unknown error"}`,
-        );
-      }
+      const r = await updateAndVerifyAdSet(adSetId);
+      if (!r.ok) return jsonResponse({ success: false, error: r.error });
 
       await supabase.from("ad_action_log").insert({
         brand_id: brand.id,
@@ -281,6 +368,7 @@ Deno.serve(async (req) => {
           campaign_id: campaignId,
           ad_set_id: adSetId,
           new_budget: newBudget,
+          verified_daily_budget: r.verifiedCents / 100,
         },
         source: "user",
         meta_entity_id: adSetId,
@@ -291,6 +379,7 @@ Deno.serve(async (req) => {
         level: "adset_targeted",
         ad_set_id: adSetId,
         new_budget: newBudget,
+        verified_daily_budget: r.verifiedCents / 100,
         message: `Budget updated to $${newBudget}/day on the target ad set`,
       });
     }
@@ -376,21 +465,8 @@ Deno.serve(async (req) => {
         throw new Error(`Ad set ${adSetId} not found under campaign ${campaignId}`);
       }
 
-      const targetUrl = `https://graph.facebook.com/v25.0/${adSetId}`;
-      const resp = await fetch(targetUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          access_token: accessToken,
-          daily_budget: budgetCents,
-        }),
-      });
-      const result = await resp.json();
-      if (!result.success) {
-        throw new Error(
-          `Failed to update ad set budget: ${result.error?.message || "unknown error"}`,
-        );
-      }
+      const r = await updateAndVerifyAdSet(adSetId);
+      if (!r.ok) return jsonResponse({ success: false, error: r.error });
 
       await supabase.from("ad_action_log").insert({
         brand_id: brand.id,
@@ -401,20 +477,20 @@ Deno.serve(async (req) => {
           campaign_id: campaignId,
           ad_set_id: adSetId,
           new_budget: newBudget,
+          verified_daily_budget: r.verifiedCents / 100,
         },
         source: "user",
         meta_entity_id: adSetId,
       });
 
-      return jsonResponse(
-        {
-          success: true,
-          level: "adset_targeted",
-          ad_set_id: adSetId,
-          new_budget: newBudget,
-          message: `Budget updated to $${newBudget}/day on the target ad set`,
-        }
-      );
+      return jsonResponse({
+        success: true,
+        level: "adset_targeted",
+        ad_set_id: adSetId,
+        new_budget: newBudget,
+        verified_daily_budget: r.verifiedCents / 100,
+        message: `Budget updated to $${newBudget}/day on the target ad set`,
+      });
     }
 
     // ------------------------------------------------------------
@@ -430,20 +506,8 @@ Deno.serve(async (req) => {
 
     if (activeAdSets.length === 1) {
       const only = activeAdSets[0];
-      const resp = await fetch(`https://graph.facebook.com/v25.0/${only.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          access_token: accessToken,
-          daily_budget: budgetCents,
-        }),
-      });
-      const result = await resp.json();
-      if (!result.success) {
-        throw new Error(
-          `Failed to update ad set budget: ${result.error?.message || "unknown error"}`,
-        );
-      }
+      const r = await updateAndVerifyAdSet(only.id);
+      if (!r.ok) return jsonResponse({ success: false, error: r.error });
 
       await supabase.from("ad_action_log").insert({
         brand_id: brand.id,
@@ -454,20 +518,20 @@ Deno.serve(async (req) => {
           campaign_id: campaignId,
           ad_set_id: only.id,
           new_budget: newBudget,
+          verified_daily_budget: r.verifiedCents / 100,
         },
         source: "user",
         meta_entity_id: only.id,
       });
 
-      return jsonResponse(
-        {
-          success: true,
-          level: "adset_single",
-          ad_set_id: only.id,
-          new_budget: newBudget,
-          message: `Budget updated to $${newBudget}/day on the only active ad set`,
-        }
-      );
+      return jsonResponse({
+        success: true,
+        level: "adset_single",
+        ad_set_id: only.id,
+        new_budget: newBudget,
+        verified_daily_budget: r.verifiedCents / 100,
+        message: `Budget updated to $${newBudget}/day on the only active ad set`,
+      });
     }
 
     // Multiple active ad sets — ambiguous. Refuse to act. This is the
