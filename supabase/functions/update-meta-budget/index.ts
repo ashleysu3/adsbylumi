@@ -181,6 +181,49 @@ Deno.serve(async (req) => {
       throw new Error(msg);
     };
 
+    // Update an ad set's daily budget, then read it back from Meta to
+    // confirm the change actually landed. Returns either { ok: true,
+    // verifiedCents } or { ok: false, error }.
+    const updateAndVerifyAdSet = async (
+      targetAdSetId: string,
+    ): Promise<{ ok: true; verifiedCents: number } | { ok: false; error: string }> => {
+      const url = `https://graph.facebook.com/v25.0/${targetAdSetId}`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ access_token: accessToken, daily_budget: budgetCents }),
+      });
+      const body = await resp.json().catch(() => ({}));
+      const fail = metaPostFailed(resp, body);
+      if (fail.failed) {
+        logStep("Ad-set budget update rejected by Meta", { adSetId: targetAdSetId, reason: fail.reason });
+        return { ok: false, error: `Meta rejected the ad set budget update: ${fail.reason}` };
+      }
+      const verifyUrl =
+        `https://graph.facebook.com/v25.0/${targetAdSetId}` +
+        `?fields=id,daily_budget,lifetime_budget&access_token=${encodeURIComponent(accessToken)}`;
+      const verify = await fetchMetaJson(verifyUrl, "ad set (verify)").catch((e) => ({ _err: e?.message }));
+      const verifiedCents = (verify as any)?.daily_budget
+        ? parseInt((verify as any).daily_budget, 10)
+        : null;
+      if (verifiedCents == null || Math.abs(verifiedCents - parseInt(budgetCents, 10)) > 1) {
+        logStep("Ad-set budget verification mismatch", {
+          adSetId: targetAdSetId,
+          expected: budgetCents,
+          got: verifiedCents,
+        });
+        return {
+          ok: false,
+          error:
+            `Meta accepted the request but the budget didn't change. ` +
+            `Expected $${newBudget}/day; Meta still reports ${
+              verifiedCents == null ? "no daily budget" : `$${(verifiedCents / 100).toFixed(2)}/day`
+            }. Try again in a moment, or update it directly in Ads Manager.`,
+        };
+      }
+      return { ok: true, verifiedCents };
+    };
+
     const campFieldsUrl =
       `https://graph.facebook.com/v25.0/${campaignId}` +
       `?fields=id,daily_budget,lifetime_budget&access_token=${encodeURIComponent(accessToken)}`;
