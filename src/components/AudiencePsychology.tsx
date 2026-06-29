@@ -166,7 +166,10 @@ export function AudiencePsychology({
   };
 
   const isApproved = status === 'approved';
-  const canApprove = status === 'completed' && psychology;
+  // Accept any non-approved state that has psychology data — previously this
+  // required status === 'completed', so brands with status null/generating/error
+  // but real psychology data had no way to approve and the setup gate locked.
+  const canApprove = !!psychology && status !== 'approved';
 
   if (!psychology && status !== 'completed' && status !== 'approved') {
     return (
