@@ -302,52 +302,109 @@ Deno.serve(async (req) => {
     
     console.log(`Found ${angles.length} angles, ${Object.keys(angleCopy).length} angle copies, ${Object.keys(copySelections).length} copy selections`);
 
-    // Resolve linkedAsset from user_uploaded_assets if not directly on the item
+    // Resolve linkedAsset from user_uploaded_assets if not directly on the item.
+    // Mirror the client-side resolver in src/lib/sync-production-assets.ts +
+    // src/components/CampaignReview.tsx so the server accepts every linkage
+    // shape the UI considers valid (concept_id, uploaded_asset_id, linkedAsset.id,
+    // matching URL, or matching storage_path).
     const uploadedAssetsList: any[] = workspace.user_uploaded_assets || [];
+
+    function resolveAssetForItem(item: any): any | null {
+      if (!uploadedAssetsList.length) return null;
+      const itemAny = item || {};
+      const candidateConceptIds = [itemAny.id, itemAny.concept_id, itemAny.conceptId]
+        .filter((v) => typeof v === 'string' && v.length > 0);
+      const candidateAssetIds = [
+        itemAny.uploaded_asset_id,
+        itemAny.linkedAsset?.id,
+      ].filter((v) => typeof v === 'string' && v.length > 0);
+      const candidateUrls = [
+        itemAny.uploaded_asset_url,
+        itemAny.linkedAsset?.url,
+        itemAny.asset_url,
+      ].filter((v) => typeof v === 'string' && v.length > 0);
+      const candidateStoragePaths = [
+        itemAny.linkedAsset?.storagePath,
+        itemAny.linkedAsset?.storage_path,
+        itemAny.storage_path,
+      ].filter((v) => typeof v === 'string' && v.length > 0);
+
+      return (
+        uploadedAssetsList.find((a: any) => a?.linked_concept_id && candidateConceptIds.includes(a.linked_concept_id)) ||
+        uploadedAssetsList.find((a: any) => a?.id && candidateAssetIds.includes(a.id)) ||
+        uploadedAssetsList.find((a: any) => a?.file_url && candidateUrls.includes(a.file_url)) ||
+        uploadedAssetsList.find((a: any) => a?.storage_path && candidateStoragePaths.includes(a.storage_path)) ||
+        null
+      );
+    }
+
     const productionItems: ProductionItem[] = (workspace.production_items || []).map(
       (item: any) => {
-        // If item already has linkedAsset, keep it
-        if (item.linkedAsset) return item;
-        // Try to resolve from user_uploaded_assets by matching linked_concept_id
-        const matchingAsset = uploadedAssetsList.find(
-          (a: any) => a.linked_concept_id === item.id
-        );
-        if (matchingAsset) {
-          return {
-            ...item,
-            linkedAsset: {
-              id: matchingAsset.id,
-              url: matchingAsset.file_url,
-              storagePath: matchingAsset.storage_path,
-              type: matchingAsset.file_type,
-              fileName: matchingAsset.file_name,
-            },
-          };
+        const matchingAsset = resolveAssetForItem(item);
+        if (!matchingAsset) {
+          // Preserve any pre-existing linkedAsset; just normalize storagePath if missing
+          if (item.linkedAsset?.url && !item.linkedAsset?.storagePath && item.linkedAsset?.storage_path) {
+            return { ...item, linkedAsset: { ...item.linkedAsset, storagePath: item.linkedAsset.storage_path } };
+          }
+          return item;
         }
-        return item;
+        // Merge: prefer item's own linkedAsset fields but backfill from the resolved asset
+        const existing = item.linkedAsset || {};
+        return {
+          ...item,
+          uploaded_asset_id: item.uploaded_asset_id || matchingAsset.id,
+          linkedAsset: {
+            id: existing.id || matchingAsset.id,
+            url: existing.url || matchingAsset.file_url,
+            storagePath: existing.storagePath || existing.storage_path || matchingAsset.storage_path,
+            type: existing.type || matchingAsset.file_type,
+            fileName: existing.fileName || matchingAsset.file_name,
+          },
+        };
       }
     );
 
-    // Get production items with linked assets
-    // Accept items that are approved OR completed OR simply have a linked asset
-    // Copy can come from either item-level finalCopy OR angle-level angle_copy
-    const approvedConcepts: ProductionItem[] = productionItems.filter(
-      (item: ProductionItem) => {
-        // Any production item with a linked asset is valid for publishing.
-        // The act of uploading an asset means the creative is ready.
-        const hasLinkedAsset = !!(item.linkedAsset?.url || item.linkedAsset?.storagePath);
-        const hasUploadedAssetId = !!item.uploaded_asset_id;
-        return hasLinkedAsset || hasUploadedAssetId;
+    // Bucket items so we can give a specific, useful error if nothing publishable
+    const itemsWithAsset: ProductionItem[] = [];
+    const itemsMissingAsset: ProductionItem[] = [];
+    for (const item of productionItems) {
+      const hasLinkedAsset = !!(item.linkedAsset?.url || item.linkedAsset?.storagePath);
+      const hasUploadedAssetId = !!item.uploaded_asset_id;
+      if (hasLinkedAsset || hasUploadedAssetId) {
+        itemsWithAsset.push(item);
+      } else {
+        itemsMissingAsset.push(item);
       }
-    );
-    
+    }
+    const approvedConcepts: ProductionItem[] = itemsWithAsset;
+
     console.log(`Resolved assets: ${uploadedAssetsList.length} uploaded, ${productionItems.filter((i: any) => i.linkedAsset).length} linked to items`);
-    console.log(`Approved concepts: ${approvedConcepts.length} of ${productionItems.length} total items`);
-    
+    console.log(`Publishable concepts: ${approvedConcepts.length} of ${productionItems.length} total items`);
+
     if (approvedConcepts.length < 1) {
-      const itemStatuses = productionItems.map((i: any) => ({ id: i.id, status: i.status, completed: i.completed, hasAsset: !!i.linkedAsset, hasCopy: !!(i.finalCopy || i.final_copy) }));
-      console.error('No approved concepts found. Item details:', JSON.stringify(itemStatuses));
-      throw new Error('At least 1 approved creative with linked asset is required. Please complete the Production workflow first.');
+      const itemStatuses = productionItems.map((i: any) => ({
+        id: i.id,
+        status: i.status,
+        completed: i.completed,
+        title: i?.concept?.title,
+        hasAsset: !!i.linkedAsset,
+        hasUploadedAssetId: !!i.uploaded_asset_id,
+        hasCopy: !!(i.finalCopy || i.final_copy),
+      }));
+      console.error('No publishable concepts found. Item details:', JSON.stringify(itemStatuses));
+      console.error('Uploaded assets present:', uploadedAssetsList.map((a: any) => ({
+        id: a?.id, linked_concept_id: a?.linked_concept_id, file_url: !!a?.file_url, storage_path: !!a?.storage_path,
+      })));
+
+      if (productionItems.length === 0) {
+        throw new Error('No creatives found in this campaign. Add at least one creative with an uploaded asset, then try again.');
+      }
+      const missingNames = itemsMissingAsset
+        .map((i: any) => i?.concept?.title || i?.angleName || `Creative ${String(i?.id || '').slice(0, 6)}`)
+        .filter(Boolean)
+        .slice(0, 5);
+      const list = missingNames.length ? ` Missing an upload: ${missingNames.join(', ')}.` : '';
+      throw new Error(`No creatives have an uploaded asset attached yet.${list} Upload a file to at least one creative in the Production step, then try again.`);
     }
 
     console.log(`Creating campaign with ${approvedConcepts.length} approved concepts`);
