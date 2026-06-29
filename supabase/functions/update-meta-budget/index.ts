@@ -465,21 +465,8 @@ Deno.serve(async (req) => {
         throw new Error(`Ad set ${adSetId} not found under campaign ${campaignId}`);
       }
 
-      const targetUrl = `https://graph.facebook.com/v25.0/${adSetId}`;
-      const resp = await fetch(targetUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          access_token: accessToken,
-          daily_budget: budgetCents,
-        }),
-      });
-      const result = await resp.json();
-      if (!result.success) {
-        throw new Error(
-          `Failed to update ad set budget: ${result.error?.message || "unknown error"}`,
-        );
-      }
+      const r = await updateAndVerifyAdSet(adSetId);
+      if (!r.ok) return jsonResponse({ success: false, error: r.error });
 
       await supabase.from("ad_action_log").insert({
         brand_id: brand.id,
@@ -490,20 +477,20 @@ Deno.serve(async (req) => {
           campaign_id: campaignId,
           ad_set_id: adSetId,
           new_budget: newBudget,
+          verified_daily_budget: r.verifiedCents / 100,
         },
         source: "user",
         meta_entity_id: adSetId,
       });
 
-      return jsonResponse(
-        {
-          success: true,
-          level: "adset_targeted",
-          ad_set_id: adSetId,
-          new_budget: newBudget,
-          message: `Budget updated to $${newBudget}/day on the target ad set`,
-        }
-      );
+      return jsonResponse({
+        success: true,
+        level: "adset_targeted",
+        ad_set_id: adSetId,
+        new_budget: newBudget,
+        verified_daily_budget: r.verifiedCents / 100,
+        message: `Budget updated to $${newBudget}/day on the target ad set`,
+      });
     }
 
     // ------------------------------------------------------------
