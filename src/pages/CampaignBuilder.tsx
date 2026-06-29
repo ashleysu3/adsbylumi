@@ -224,19 +224,35 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
         console.warn('Pre-publish status refresh failed (continuing):', syncErr);
       }
 
-      const { count, error: countError } = await supabase
+      // Count only genuinely-live Meta campaigns for this brand:
+      //   - status is the Meta effective_status "active" (or our "live" alias)
+      //   - has an actual meta_campaign_ids link (excludes drafts with stale status)
+      //   - not archived in LUMI
+      // Dedupe by the first meta_campaign_id so duplicate workspace rows pointing
+      // at the same Meta campaign don't double-count toward the limit.
+      const { data: liveRows, error: countError } = await supabase
         .from('campaign_workspaces')
-        .select('*', { count: 'exact', head: true })
+        .select('id, meta_campaign_ids, meta_campaign_status, archived')
         .eq('brand_id', workspace.brand_id)
+        .eq('archived', false)
         .in('meta_campaign_status', ['active', 'live']);
 
       if (countError) throw countError;
 
-      if (count !== null && count >= 10) {
-        toast.error("You've reached the maximum of 10 live campaigns. Please pause or archive an existing campaign before publishing a new one.");
+      const uniqueLiveMetaIds = new Set<string>();
+      (liveRows || []).forEach((row: any) => {
+        const ids: string[] = Array.isArray(row?.meta_campaign_ids) ? row.meta_campaign_ids : [];
+        const realIds = ids.filter((id) => typeof id === 'string' && id && !id.startsWith('LUMI_'));
+        if (realIds.length > 0) uniqueLiveMetaIds.add(realIds[0]);
+      });
+      const liveCount = uniqueLiveMetaIds.size;
+
+      if (liveCount >= 10) {
+        toast.error(`You've reached the maximum of 10 live campaigns (currently ${liveCount}). Pause or archive an existing campaign before publishing a new one.`);
         setPublishing(false);
         return;
       }
+
 
       setPublishError(null); // clear any prior error before retry
       setStage('publishing');
