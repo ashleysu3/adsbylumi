@@ -719,10 +719,13 @@ export default function ContentLibrary({ embedded = false }: { embedded?: boolea
       </div>
 
       {/* Add/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingIdea ? "Edit Idea" : "Add New Idea"}</DialogTitle>
+            <div className="flex items-center justify-between gap-3">
+              <DialogTitle>{editingIdea ? "Edit Idea" : "Add New Idea"}</DialogTitle>
+              {editingIdea ? <AutoSaveIndicator status={autosave.status} /> : null}
+            </div>
           </DialogHeader>
           
           <div className="space-y-4">
