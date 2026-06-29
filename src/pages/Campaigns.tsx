@@ -86,12 +86,12 @@ export default function Campaigns() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-3xl font-display font-bold tracking-tight">
-              <span className="text-gradient-lumi">Drafts</span>
+              My <span className="text-gradient-lumi">Campaigns</span>
             </h1>
             <p className="text-muted-foreground mt-2">
               {isAddCreativeMode
                 ? "Select an ad to add new creative to"
-                : "Campaigns you're still building."}
+                : "Drafts you're still building plus every campaign connected to Meta."}
             </p>
           </div>
           {isAddCreativeMode && (
@@ -104,12 +104,12 @@ export default function Campaigns() {
           )}
         </div>
 
-        {/* Explainer: what shows here vs Live Ads */}
+        {/* Explainer: how this view relates to Ad Performance */}
         {!isAddCreativeMode && (
           <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/40 border border-border/60 rounded-xl px-3 py-2">
             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground/70" />
             <p>
-              Campaigns you're building in LUMI. Once you launch one, it moves to <button onClick={() => navigate("/ad-performance")} className="underline underline-offset-2 hover:text-foreground">Live Ads</button>.
+              Everything here — drafts and live ads — is openable so you can add or refresh creative. For day-to-day performance, head to <button onClick={() => navigate("/ad-performance")} className="underline underline-offset-2 hover:text-foreground">Ad Performance</button>.
             </p>
           </div>
         )}
