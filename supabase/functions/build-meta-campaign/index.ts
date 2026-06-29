@@ -234,7 +234,18 @@ Deno.serve(async (req) => {
 
     console.log('User authenticated:', user.id);
 
-    const { workspaceId, answers, actAsUserId } = await req.json();
+    let parsedBody: any = null;
+    try {
+      parsedBody = await req.json();
+    } catch (parseErr) {
+      console.error('Failed to parse request body as JSON:', parseErr);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid request body. Please refresh and try again.' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const { workspaceId, answers, actAsUserId } = parsedBody || {};
+
 
     if (!workspaceId) {
       throw new Error('Workspace ID is required');
