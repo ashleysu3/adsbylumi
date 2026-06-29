@@ -81,6 +81,7 @@ export function SocialGrowthFlow({
   const loadPostsFromApi = async () => {
     if (!instagramAccountId) return;
     setIsLoading(true);
+    setError(null);
     try {
       const { data, error: fetchError } = await supabase.functions.invoke("analyze-instagram-posts", {
         body: { brandId, instagramAccountId, simple: true },
@@ -89,11 +90,22 @@ export function SocialGrowthFlow({
 
       if (data?.fallbackMode === "url_paste") {
         setFallbackMode(true);
+        // Tell the user *why* we're showing the paste box instead of their feed —
+        // previously this silently switched modes and looked like a generic "error".
+        setError(
+          data?.message ||
+            "We couldn't read your Instagram feed automatically (this usually means we don't have the right permission yet). You can still paste post URLs below to keep going.",
+        );
         return;
       }
       if (data?.error) {
         console.warn("Post fetch error:", data.error);
         setFallbackMode(true);
+        setError(
+          typeof data.error === "string"
+            ? `Instagram said: ${data.error}. You can paste post URLs below to keep going.`
+            : "Instagram blocked the request. You can paste post URLs below to keep going.",
+        );
         return;
       }
 
@@ -110,13 +122,28 @@ export function SocialGrowthFlow({
         instagram_account_id: instagramAccountId,
       }));
       setPosts(fetched);
+      if (fetched.length === 0) {
+        // Empty feed isn't necessarily an error, but it IS the most common
+        // "stuck" state for early-setup accounts — show what's going on.
+        setError(
+          "We didn't find any posts on this Instagram account yet. Paste a post URL below to add one manually.",
+        );
+        setFallbackMode(true);
+      }
     } catch (e: any) {
       console.error("Failed to load IG posts:", e);
+      const detail = formatInvokeError(e);
+      setError(
+        detail
+          ? `Couldn't load your Instagram posts: ${detail} You can paste post URLs below to keep going.`
+          : "Couldn't load your Instagram posts. You can paste post URLs below to keep going.",
+      );
       setFallbackMode(true);
     } finally {
       setIsLoading(false);
     }
   };
+
 
   // Skip scraping — go straight to post selection with URL paste UX
   const handleObjectiveSelect = (selected: "traffic" | "video_views" | "engagement") => {
