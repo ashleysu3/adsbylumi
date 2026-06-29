@@ -237,6 +237,11 @@ export default function Create() {
   const [brand, setBrand] = useState<any>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [templates, setTemplates] = useState<CampaignTemplate[]>([]);
+  // Surface a real, actionable failure instead of a bare toast that disappears.
+  // Each entry names what failed (brand / offers / templates) so the user can
+  // see which piece of /create isn't loading.
+  const [loadError, setLoadError] = useState<{ what: string; detail: string } | null>(null);
+
 
   // Wizard state
   const [selectedGoal, setSelectedGoal] = useState<string>(initialGoal);
