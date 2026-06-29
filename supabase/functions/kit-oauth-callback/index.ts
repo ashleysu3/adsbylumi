@@ -128,6 +128,6 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('[KIT-OAUTH-CALLBACK] Error:', error);
-    return Response.redirect('https://youradassistant.lovable.app/settings?tab=integrations&kit=error', 302);
+    return Response.redirect(`${getPublicAppUrl()}/settings?tab=integrations&kit=error`, 302);
   }
 });
