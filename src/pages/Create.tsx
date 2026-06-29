@@ -48,6 +48,7 @@ import { SocialGrowthFlow } from "@/components/SocialGrowthFlow";
 import { LumiEducationCard } from "@/components/LumiEducationCard";
 import { StrategyPlanBanner } from "@/components/StrategyPlanBanner";
 import { loadStrategyPlan } from "@/pages/StrategyPlan";
+import { formatInvokeError } from "@/lib/formatInvokeError";
 
 // System offer IDs
 const SOCIAL_GROWTH_OFFER_ID = "system-social-growth";
