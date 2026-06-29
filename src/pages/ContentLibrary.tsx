@@ -199,6 +199,70 @@ export default function ContentLibrary({ embedded = false }: { embedded?: boolea
     });
     setDialogOpen(true);
   };
+
+  // ─── Autosave for existing-idea edits ────────────────────────────────
+  // Before this hook, typing in the edit dialog and closing without hitting
+  // "Save Changes" silently discarded the edit. Now every keystroke schedules
+  // a debounced UPDATE scoped to the editing idea + brand, and the dialog's
+  // onOpenChange handler flushes pending writes before unmounting.
+  const editingIdeaIdRef = useRef<string | null>(null);
+  editingIdeaIdRef.current = editingIdea?.id ?? null;
+  const brandIdRef = useRef<string | null>(null);
+  brandIdRef.current = brand?.id ?? null;
+
+  const autosave = useAutosave<typeof formData>(
+    async (value) => {
+      const ideaId = editingIdeaIdRef.current;
+      const bId = brandIdRef.current;
+      if (!ideaId || !bId) return; // only autosave existing ideas
+      if (!value.title.trim()) return; // never persist an empty title
+      const tagsArray = value.tags.split(",").map(t => t.trim()).filter(Boolean);
+      const { error, data } = await supabase
+        .from("content_ideas")
+        .update({
+          title: value.title.trim(),
+          content: value.content.trim() || null,
+          type: value.type,
+          offer_id: value.offer_id || null,
+          tags: tagsArray,
+        })
+        .eq("id", ideaId)
+        .eq("brand_id", bId) // scope guard: never cross brands
+        .select("id")
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("Save rejected — idea may have been deleted or belongs to another brand.");
+      // Patch the local list so card previews reflect the latest edit
+      setIdeas((prev) => prev.map((i) => i.id === ideaId ? {
+        ...i,
+        title: value.title.trim(),
+        content: value.content.trim() || null,
+        type: value.type,
+        offer_id: value.offer_id || null,
+        tags: tagsArray,
+      } : i));
+    },
+    { delay: 1200 },
+  );
+
+  // Schedule autosave whenever the form changes (only when editing existing).
+  useEffect(() => {
+    if (!editingIdea) return;
+    autosave.schedule(formData);
+    // Intentionally exclude `autosave` from deps — its identity is stable
+    // enough and we only care about reacting to form / edit-target changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData, editingIdea?.id]);
+
+  const handleDialogOpenChange = useCallback(async (open: boolean) => {
+    if (!open) {
+      // Flush any pending edits before the dialog tears down.
+      await autosave.flush();
+    }
+    setDialogOpen(open);
+  }, [autosave]);
+
+
   const handleSave = async () => {
     if (!formData.title.trim()) {
       toast.error("Please enter a title");
