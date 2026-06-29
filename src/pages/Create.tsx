@@ -874,6 +874,48 @@ export default function Create() {
 
   }
 
+  // Specific, actionable error state — replaces the old bare "error" toast
+  // that vanished after a few seconds with no way for the user to know what
+  // actually failed or what to do next.
+  if (loadError) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-2xl mx-auto py-10">
+          <Card className="border-destructive/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-destructive" />
+                {loadError.what}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">{loadError.detail}</p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={() => {
+                    setLoading(true);
+                    fetchData();
+                  }}
+                >
+                  <Loader2 className="h-4 w-4 mr-2" />
+                  Try again
+                </Button>
+                <Button variant="outline" onClick={() => navigate("/onboarding")}>
+                  Finish setup
+                </Button>
+                <Button variant="ghost" onClick={() => navigate("/start")}>
+                  Back to start
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+
+
   return (
     <DashboardLayout>
       <div className="max-w-2xl mx-auto">
