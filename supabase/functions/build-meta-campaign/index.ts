@@ -627,30 +627,31 @@ Deno.serve(async (req) => {
     const budgetString = String(answers?.budget || '20').replace(/[$,\s]/g, '');
     const dailyBudgetCents = Math.round((parseInt(budgetString) || 20) * 100);
 
-    // Step 1: Upload all assets to Meta
-    console.log('Uploading creative assets to Meta...');
+    // Step 1: Upload all assets to Meta — run in parallel with bounded
+    // concurrency so 4+ video uploads don't serialize past the edge runtime
+    // wall clock. Each sub-call gets its own timeout so a single hung upload
+    // cannot kill the whole publish.
+    console.log(`Uploading ${approvedConcepts.length} creative asset(s) to Meta (parallel)...`);
     const uploadedAssets: Array<{ item: ProductionItem; assetId: string; assetType: 'image' | 'video' }> = [];
 
-    for (const item of approvedConcepts) {
+    async function uploadOne(item: ProductionItem): Promise<void> {
       if (!item.linkedAsset) {
         result.failedAds.push({
           conceptId: item.id,
           conceptTitle: item.concept?.title || 'Unknown',
-          error: 'No linked asset found'
+          error: 'No linked asset found',
         });
-        continue;
+        return;
       }
-
+      const conceptTitle = item.concept?.title || 'Unknown';
       try {
-        console.log(`Uploading asset for concept ${item.id}...`);
-        
         const normalizedStoragePath = item.linkedAsset.storagePath
           ? (item.linkedAsset.storagePath.startsWith(`${brand.id}/`)
             ? item.linkedAsset.storagePath
             : `${brand.id}/${item.linkedAsset.storagePath}`)
           : undefined;
 
-        const uploadResponse = await fetch(`${supabaseUrl}/functions/v1/upload-creative-to-meta`, {
+        const uploadResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/upload-creative-to-meta`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -662,25 +663,22 @@ Deno.serve(async (req) => {
             brandId: brand.id,
             fileName: item.linkedAsset.url?.split('/').pop(),
           }),
+          // Video uploads to Meta can take a while; allow up to 90s per asset.
+          // No retry — re-uploading a partially-accepted video would duplicate.
+          timeoutMs: 90_000,
+          retries: 0,
+          label: `upload-creative-to-meta(${item.id})`,
         });
 
         const uploadRawText = await uploadResponse.text();
         let uploadResult: any = null;
         if (uploadRawText) {
-          try {
-            uploadResult = JSON.parse(uploadRawText);
-          } catch {
-            uploadResult = null;
-          }
+          try { uploadResult = JSON.parse(uploadRawText); } catch { uploadResult = null; }
         }
 
         if (uploadResult?.success && uploadResult?.assetId) {
-          uploadedAssets.push({
-            item,
-            assetId: uploadResult.assetId,
-            assetType: uploadResult.assetType,
-          });
-          console.log(`Asset uploaded: ${uploadResult.assetType} - ${uploadResult.assetId}`);
+          uploadedAssets.push({ item, assetId: uploadResult.assetId, assetType: uploadResult.assetType });
+          console.log(`Asset uploaded for ${item.id}: ${uploadResult.assetType} - ${uploadResult.assetId}`);
         } else {
           const uploadErrorMessage =
             uploadResult?.error ||
@@ -689,33 +687,36 @@ Deno.serve(async (req) => {
             (!uploadResponse.ok ? `Upload service returned ${uploadResponse.status}` : '') ||
             (uploadRawText?.trim() ? uploadRawText.trim().slice(0, 500) : '') ||
             'Unknown error';
-
           console.error(`Failed to upload asset for ${item.id}:`, {
             status: uploadResponse.status,
             ok: uploadResponse.ok,
             result: uploadResult,
             raw: uploadRawText?.slice(0, 500) || '',
           });
-
-          result.failedAds.push({
-            conceptId: item.id,
-            conceptTitle: item.concept?.title || 'Unknown',
-            error: `Asset upload failed: ${uploadErrorMessage}`
-          });
+          result.failedAds.push({ conceptId: item.id, conceptTitle, error: `Asset upload failed: ${uploadErrorMessage}` });
         }
       } catch (uploadError: any) {
         console.error(`Error uploading asset for ${item.id}:`, uploadError);
-        result.failedAds.push({
-          conceptId: item.id,
-          conceptTitle: item.concept?.title || 'Unknown',
-          error: `Asset upload error: ${uploadError.message}`
-        });
+        result.failedAds.push({ conceptId: item.id, conceptTitle, error: `Asset upload error: ${uploadError?.message || String(uploadError)}` });
       }
     }
 
+    // Bounded concurrency = 3 (keeps memory/CPU sane, still ~3x faster).
+    const CONCURRENCY = 3;
+    let cursor = 0;
+    const workers = Array.from({ length: Math.min(CONCURRENCY, approvedConcepts.length) }, async () => {
+      while (cursor < approvedConcepts.length) {
+        const next = approvedConcepts[cursor++];
+        await uploadOne(next);
+      }
+    });
+    await Promise.all(workers);
+
     if (uploadedAssets.length === 0) {
-      throw new Error('Failed to upload any creative assets to Meta. Please check your files and try again.');
+      const firstReason = result.failedAds[0]?.error || 'No creative assets could be uploaded.';
+      throw new Error(`Failed to upload any creative assets to Meta. ${firstReason}`);
     }
+
 
     console.log(`Successfully uploaded ${uploadedAssets.length} of ${approvedConcepts.length} assets`);
     
