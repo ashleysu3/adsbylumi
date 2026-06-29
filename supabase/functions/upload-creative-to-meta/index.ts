@@ -246,18 +246,24 @@ Deno.serve(async (req) => {
     };
 
 
+    // Generic Graph response → JSON parser that also surfaces HTTP-level failures.
+    const parseGraphResponse = async (resp: Response) => {
+      const raw = await resp.text();
+      let json: any = null;
+      try { json = raw ? JSON.parse(raw) : null; } catch { /* leave null */ }
+      return { ok: resp.ok, status: resp.status, json, raw };
+    };
+
     if (isVideo) {
       // Upload video using resumable upload
       console.log('Uploading video to Meta...');
-      
+
       // Step 1: Initialize upload session
       const initResponse = await fetch(
         `https://graph.facebook.com/v25.0/act_${accountId}/advideos`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: new URLSearchParams({
             access_token: metaAccessToken,
             upload_phase: 'start',
@@ -266,20 +272,22 @@ Deno.serve(async (req) => {
         }
       );
 
-      const initData = await initResponse.json();
-      
-      if (initData.error) {
-        console.error('Video upload init error:', initData.error);
+      const init = await parseGraphResponse(initResponse);
+      if (!init.ok || init.json?.error || !init.json?.upload_session_id) {
+        console.error('Video upload init error:', { status: init.status, json: init.json, raw: init.raw?.slice(0, 500) });
         return new Response(
-          JSON.stringify({ success: false, error: initData.error.message || 'Failed to initialize video upload' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({
+            success: false,
+            error: friendlyMetaError(init.json?.error, `Meta wouldn't start the video upload (HTTP ${init.status}). Try a smaller MP4 (under 1GB, vertical 9:16).`),
+          }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      const { upload_session_id, video_id } = initData;
+      const { upload_session_id, video_id } = init.json;
       console.log('Video upload session started:', upload_session_id);
 
-      // Step 2: Upload video data
+      // Step 2: Upload video data (single chunk)
       const formData = new FormData();
       formData.append('access_token', metaAccessToken);
       formData.append('upload_phase', 'transfer');
@@ -289,19 +297,17 @@ Deno.serve(async (req) => {
 
       const transferResponse = await fetch(
         `https://graph.facebook.com/v25.0/act_${accountId}/advideos`,
-        {
-          method: 'POST',
-          body: formData,
-        }
+        { method: 'POST', body: formData }
       );
-
-      const transferData = await transferResponse.json();
-      
-      if (transferData.error) {
-        console.error('Video transfer error:', transferData.error);
+      const transfer = await parseGraphResponse(transferResponse);
+      if (!transfer.ok || transfer.json?.error) {
+        console.error('Video transfer error:', { status: transfer.status, json: transfer.json, raw: transfer.raw?.slice(0, 500) });
         return new Response(
-          JSON.stringify({ success: false, error: transferData.error.message || 'Failed to transfer video' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({
+            success: false,
+            error: friendlyMetaError(transfer.json?.error, `Meta rejected the video transfer (HTTP ${transfer.status}). Check that your file is MP4 / MOV, vertical 9:16, and under 1GB.`),
+          }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -310,9 +316,7 @@ Deno.serve(async (req) => {
         `https://graph.facebook.com/v25.0/act_${accountId}/advideos`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: new URLSearchParams({
             access_token: metaAccessToken,
             upload_phase: 'finish',
@@ -320,100 +324,71 @@ Deno.serve(async (req) => {
           }),
         }
       );
-
-      const finishData = await finishResponse.json();
-      
-      if (finishData.error) {
-        console.error('Video finish error:', finishData.error);
+      const finish = await parseGraphResponse(finishResponse);
+      if (!finish.ok || finish.json?.error || finish.json?.success === false) {
+        console.error('Video finish error:', { status: finish.status, json: finish.json, raw: finish.raw?.slice(0, 500) });
         return new Response(
-          JSON.stringify({ success: false, error: finishData.error.message || 'Failed to finish video upload' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({
+            success: false,
+            error: friendlyMetaError(finish.json?.error, `Meta couldn't finalize the video (HTTP ${finish.status}). The file may be corrupted — try re-exporting it.`),
+          }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       console.log('Video uploaded successfully:', video_id);
 
       return new Response(
-        JSON.stringify({
-          success: true,
-          assetId: video_id,
-          assetType: 'video',
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
+        JSON.stringify({ success: true, assetId: video_id, assetType: 'video' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     } else {
       // Upload image
       console.log('Uploading image to Meta...');
 
-      // Use multipart upload to avoid loading and re-encoding large assets in memory
       const imageFormData = new FormData();
       imageFormData.append('access_token', metaAccessToken);
       imageFormData.append('filename', assetData, fileName || 'image.jpg');
 
       const imageResponse = await fetch(
         `https://graph.facebook.com/v25.0/act_${accountId}/adimages`,
-        {
-          method: 'POST',
-          body: imageFormData,
-        }
+        { method: 'POST', body: imageFormData }
       );
 
-      const imageRawText = await imageResponse.text();
-      let imageData: any = null;
-      try {
-        imageData = imageRawText ? JSON.parse(imageRawText) : null;
-      } catch {
-        imageData = null;
-      }
-
-      if (!imageResponse.ok || imageData?.error) {
-        const imageErrorMessage =
-          imageData?.error?.message ||
-          imageData?.message ||
-          (imageRawText?.trim() ? imageRawText.trim().slice(0, 500) : '') ||
-          `Meta image upload failed (HTTP ${imageResponse.status})`;
-
-        console.error('Image upload error:', {
-          status: imageResponse.status,
-          response: imageData,
-          raw: imageRawText?.slice(0, 500) || '',
-        });
-
+      const img = await parseGraphResponse(imageResponse);
+      if (!img.ok || img.json?.error) {
+        console.error('Image upload error:', { status: img.status, json: img.json, raw: img.raw?.slice(0, 500) });
         return new Response(
-          JSON.stringify({ success: false, error: imageErrorMessage }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({
+            success: false,
+            error: friendlyMetaError(
+              img.json?.error,
+              `Meta rejected the image (HTTP ${img.status}). Use a JPG, PNG, WEBP, or GIF under 30MB.`,
+            ),
+          }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // Extract hash from response - response format is { images: { bytes: { hash: "...", url: "..." } } }
-      const imageKey = Object.keys(imageData.images || {})[0];
-      const imageHash = imageData.images?.[imageKey]?.hash;
+      const imageKey = Object.keys(img.json?.images || {})[0];
+      const imageHash = img.json?.images?.[imageKey]?.hash;
 
       if (!imageHash) {
-        console.error('Unexpected image response:', imageData);
+        console.error('Unexpected image response:', img.json);
         return new Response(
-          JSON.stringify({ success: false, error: 'Failed to get image hash from Meta response' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ success: false, error: "Meta accepted the upload but didn't return an image ID. Try re-uploading the file." }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       console.log('Image uploaded successfully:', imageHash);
 
       return new Response(
-        JSON.stringify({
-          success: true,
-          assetId: imageHash,
-          assetType: 'image',
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
+        JSON.stringify({ success: true, assetId: imageHash, assetType: 'image' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
+
   } catch (error: any) {
     console.error('Error uploading asset to Meta:', error);
     const errorMessage =
