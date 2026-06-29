@@ -11,6 +11,7 @@ import { Loader2, Sparkles, CheckCircle2, AlertCircle, ChevronDown, ChevronUp } 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { LinkNewOfferToCampaignDialog } from "./LinkNewOfferToCampaignDialog";
+import { getHighTicketGuidance } from "@/lib/high-ticket";
 
 type PageGoal = 'purchase' | 'discovery_call' | 'free_resource' | 'other';
 
