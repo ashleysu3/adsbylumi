@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
       if (downloadError) {
         console.error('Download error:', downloadError);
         return new Response(
-          JSON.stringify({ success: false, error: `Failed to download asset: ${downloadError.message}` }),
+          JSON.stringify({ success: false, error: `Couldn't read your file from storage: ${downloadError.message}. Try re-uploading the file in LUMI and publishing again.` }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
       if (!response.ok) {
         console.error('Failed to fetch asset from URL:', response.statusText);
         return new Response(
-          JSON.stringify({ success: false, error: `Failed to fetch asset from URL: ${response.statusText}` }),
+          JSON.stringify({ success: false, error: `Couldn't download your file from its source URL (HTTP ${response.status}). Re-upload the file in LUMI and try again.` }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -156,12 +156,95 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Determine if image or video based on content type or file extension
-    const isVideo = contentType.startsWith('video/') || 
-      (fileName && /\.(mp4|mov|avi|webm)$/i.test(fileName)) ||
-      (assetStoragePath && /\.(mp4|mov|avi|webm)$/i.test(assetStoragePath));
+    // ----- Pre-flight: validate type + size BEFORE we hit Meta -----
+    // These caps match what Meta will accept; failing fast here gives the
+    // user a specific message instead of a generic "non-2xx" from Graph.
+    const MAX_IMAGE_BYTES = 30 * 1024 * 1024;        // Meta hard cap ~30MB
+    const MAX_VIDEO_BYTES = 1024 * 1024 * 1024;      // 1GB practical cap
+    const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/x-m4v', 'video/webm'];
+    const lowerName = (fileName || assetStoragePath || '').toLowerCase();
+    const looksLikeVideoByName = /\.(mp4|mov|m4v|webm|avi)$/i.test(lowerName);
+    const looksLikeImageByName = /\.(jpe?g|png|webp|gif)$/i.test(lowerName);
+
+    const isVideo =
+      contentType.startsWith('video/') ||
+      (!contentType.startsWith('image/') && looksLikeVideoByName);
+
+    if (!isVideo && !contentType.startsWith('image/') && !looksLikeImageByName) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Meta can't use this file type (${contentType || 'unknown'}). Upload a JPG, PNG, WEBP, or GIF image — or an MP4 / MOV video.`,
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (assetData.size === 0) {
+      return new Response(
+        JSON.stringify({ success: false, error: "This file is empty (0 bytes). Re-upload it in LUMI and try again." }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (isVideo) {
+      if (contentType && !contentType.startsWith('video/') && !ALLOWED_VIDEO_TYPES.includes(contentType) && !looksLikeVideoByName) {
+        return new Response(
+          JSON.stringify({ success: false, error: `Meta doesn't accept this video format (${contentType}). Use MP4 or MOV.` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (assetData.size > MAX_VIDEO_BYTES) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: `This video is ${(assetData.size / 1024 / 1024).toFixed(0)}MB. Meta's limit is 1GB — please compress it and re-upload.`,
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      if (contentType && !ALLOWED_IMAGE_TYPES.includes(contentType) && !looksLikeImageByName) {
+        return new Response(
+          JSON.stringify({ success: false, error: `Meta doesn't accept this image format (${contentType}). Use JPG, PNG, WEBP, or GIF.` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (assetData.size > MAX_IMAGE_BYTES) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: `This image is ${(assetData.size / 1024 / 1024).toFixed(1)}MB. Meta's limit is 30MB — please resize or compress it.`,
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     const accountId = metaAccountId.replace('act_', '');
+
+    // Translate raw Meta Graph errors into copy a non-technical creator can act on.
+    const friendlyMetaError = (err: any, fallback: string): string => {
+      if (!err) return fallback;
+      const code = err.code;
+      const sub = err.error_subcode;
+      const msg = err.message || err.error_user_msg || '';
+      if (code === 190 || sub === 463 || sub === 467) {
+        return "Your Meta connection has expired. Reconnect Meta in Settings and try again.";
+      }
+      if (code === 200 || code === 10 || code === 294) {
+        return "Meta says LUMI doesn't have permission to upload to this ad account. Reconnect Meta and make sure you grant ad-account access.";
+      }
+      if (code === 100 && /file|format|image|video|size|dimension/i.test(msg)) {
+        return `Meta rejected this file: ${msg}. Try a different image (JPG/PNG, under 30MB) or video (MP4/MOV, vertical 9:16).`;
+      }
+      if (code === 1 || code === 2 || code === 4 || code === 17 || code === 32) {
+        return "Meta is rate-limiting or temporarily failing. Wait a minute and try again.";
+      }
+      return msg || fallback;
+    };
+
 
     if (isVideo) {
       // Upload video using resumable upload
