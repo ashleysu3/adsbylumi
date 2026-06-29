@@ -459,7 +459,7 @@ export default function AdvancedBuild({ embedded = false }: { embedded?: boolean
             };
           });
 
-          await supabase
+          const { error: persistError } = await supabase
             .from("campaign_workspaces")
             .update({
               progress_status: "ready_to_publish",
@@ -468,6 +468,12 @@ export default function AdvancedBuild({ embedded = false }: { embedded?: boolean
               production_items: synthesizedItems as any,
             })
             .eq("id", workspaceId!);
+
+          if (persistError) {
+            console.error("Failed to persist production_items before publish:", persistError);
+            toast.error("Couldn't save your creatives. Please try again.");
+            return;
+          }
 
           toast.success("Campaign ready! Heading to build...");
           navigate(`/campaigns/build?workspace=${workspaceId}`);
