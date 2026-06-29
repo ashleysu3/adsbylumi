@@ -34,6 +34,41 @@ const logStep = (step: string, details?: any) => {
 // must explicitly call per-ad-set (or do it in Meta Ads Manager).
 // ============================================================================
 
+// ---------------------------------------------------------------
+// Helpers shared across branches.
+// ---------------------------------------------------------------
+// Meta's POST /{entity_id} endpoints are inconsistent: some return
+// {"success": true}, others return {"id": "..."}, and the budget
+// endpoints have been observed returning both. Checking `result.success`
+// alone made us throw "Failed to update ... unknown error" even when
+// Meta accepted the change. The correct signal is: HTTP non-2xx OR a
+// populated `error` object.
+const metaPostFailed = (resp: Response, body: any): { failed: boolean; reason?: string } => {
+  if (!resp.ok) {
+    const err = body?.error;
+    const parts = [
+      err?.message || `HTTP ${resp.status}`,
+      err?.code ? `code ${err.code}` : null,
+      err?.error_subcode ? `subcode ${err.error_subcode}` : null,
+      err?.error_user_msg ? `(${err.error_user_msg})` : null,
+      err?.fbtrace_id ? `trace ${err.fbtrace_id}` : null,
+    ].filter(Boolean);
+    return { failed: true, reason: parts.join(" · ") };
+  }
+  if (body?.error) {
+    const err = body.error;
+    const parts = [
+      err.message || "Meta returned an error",
+      err.code ? `code ${err.code}` : null,
+      err.error_subcode ? `subcode ${err.error_subcode}` : null,
+      err.error_user_msg ? `(${err.error_user_msg})` : null,
+      err.fbtrace_id ? `trace ${err.fbtrace_id}` : null,
+    ].filter(Boolean);
+    return { failed: true, reason: parts.join(" · ") };
+  }
+  return { failed: false };
+};
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(origin);
