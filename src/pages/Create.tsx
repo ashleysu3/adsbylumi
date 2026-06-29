@@ -38,6 +38,7 @@ import {
   Globe,
   MapPin,
   Ticket,
+  AlertCircle,
   Loader2 } from
 "lucide-react";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,7 @@ import { SocialGrowthFlow } from "@/components/SocialGrowthFlow";
 import { LumiEducationCard } from "@/components/LumiEducationCard";
 import { StrategyPlanBanner } from "@/components/StrategyPlanBanner";
 import { loadStrategyPlan } from "@/pages/StrategyPlan";
+import { formatInvokeError } from "@/lib/formatInvokeError";
 
 // System offer IDs
 const SOCIAL_GROWTH_OFFER_ID = "system-social-growth";
@@ -237,6 +239,11 @@ export default function Create() {
   const [brand, setBrand] = useState<any>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [templates, setTemplates] = useState<CampaignTemplate[]>([]);
+  // Surface a real, actionable failure instead of a bare toast that disappears.
+  // Each entry names what failed (brand / offers / templates) so the user can
+  // see which piece of /create isn't loading.
+  const [loadError, setLoadError] = useState<{ what: string; detail: string } | null>(null);
+
 
   // Wizard state
   const [selectedGoal, setSelectedGoal] = useState<string>(initialGoal);
@@ -333,8 +340,19 @@ export default function Create() {
   }, [activeBrand?.id, fromStrategy, strategyOfferId]);
 
   const fetchData = async () => {
+    setLoadError(null);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: userResp, error: userErr } = await supabase.auth.getUser();
+      if (userErr) {
+        // Auth lookup failed entirely — show what happened rather than a bare
+        // "error" toast that vanishes after 4s.
+        setLoadError({
+          what: "We couldn't verify your sign-in.",
+          detail: userErr.message || "Please sign in again and reload this page.",
+        });
+        return;
+      }
+      const user = userResp?.user;
       if (!user) {
         navigate("/auth");
         return;
@@ -349,32 +367,66 @@ export default function Create() {
         brandQuery = brandQuery.eq("user_id", user.id).order("created_at", { ascending: false }).limit(1);
       }
 
-      const { data: brandData } = await brandQuery.maybeSingle();
+      const { data: brandData, error: brandErr } = await brandQuery.maybeSingle();
 
+      if (brandErr) {
+        setLoadError({
+          what: "We couldn't load your brand.",
+          detail: brandErr.message || "There was a problem reading your brand profile. Try refreshing.",
+        });
+        return;
+      }
       if (!brandData) {
         navigate("/onboarding");
         return;
       }
       setBrand(brandData);
 
-      // Fetch offers for the correct brand
-      const { data: offersData } = await supabase.
-      from("offers").
-      select("*").
-      eq("brand_id", brandData.id).
-      eq("archived", false).
-      order("created_at", { ascending: false });
+      // Fetch offers + templates in parallel so a slow query doesn't gate the
+      // other, and so we can attribute failures specifically.
+      const [offersRes, templatesRes] = await Promise.all([
+        supabase
+          .from("offers")
+          .select("*")
+          .eq("brand_id", brandData.id)
+          .eq("archived", false)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("campaign_templates")
+          .select("*")
+          .eq("active", true)
+          .order("sort_order"),
+      ]);
 
-      setOffers(offersData || []);
+      if (offersRes.error) {
+        setLoadError({
+          what: "We couldn't load your offers.",
+          detail: offersRes.error.message || "Try refreshing. If this keeps happening, your account may be missing permission to read offers.",
+        });
+        return;
+      }
+      const offersData = offersRes.data || [];
+      setOffers(offersData);
 
-      // Fetch templates
-      const { data: templatesData } = await supabase.
-      from("campaign_templates").
-      select("*").
-      eq("active", true).
-      order("sort_order");
+      if (templatesRes.error) {
+        setLoadError({
+          what: "We couldn't load the campaign strategies.",
+          detail: templatesRes.error.message || "Try refreshing. If this keeps happening, contact support — the strategy library didn't load.",
+        });
+        return;
+      }
+      const templatesData = templatesRes.data || [];
+      setTemplates(templatesData);
 
-      setTemplates(templatesData || []);
+      // Early-setup safety net: if templates somehow came back empty, the user
+      // would silently get stuck on step 2 with no strategy to pick. Surface it.
+      if (templatesData.length === 0) {
+        setLoadError({
+          what: "No campaign strategies are available yet.",
+          detail: "Your account doesn't have any active strategy templates loaded. Please contact support so we can finish setting up your workspace.",
+        });
+        return;
+      }
 
       // Check for saved progress after data is loaded
       const saved = fromStrategy ? null : localStorage.getItem(STORAGE_KEY);
@@ -386,7 +438,7 @@ export default function Create() {
 
           if (isRecent && hasMeaningfulProgress) {
             const offerStillExists = !progress.selectedOfferId ||
-            (offersData || []).some((o) => o.id === progress.selectedOfferId);
+            offersData.some((o) => o.id === progress.selectedOfferId);
 
             if (offerStillExists) {
               setSavedProgress(progress);
@@ -401,13 +453,17 @@ export default function Create() {
           localStorage.removeItem(STORAGE_KEY);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching data:", error);
-      toast.error("Failed to load data");
+      setLoadError({
+        what: "Something went wrong loading /create.",
+        detail: error?.message || "An unexpected error happened. Please try again in a moment.",
+      });
     } finally {
       setLoading(false);
     }
   };
+
 
   // When offer is selected, find recommended template
   useEffect(() => {
@@ -669,7 +725,7 @@ export default function Create() {
       navigate(`/creative-studio?workspace=${workspace.id}`);
     } catch (error: any) {
       console.error("Error creating campaign:", error);
-      toast.error(error.message || "Failed to create campaign");
+      toast.error(formatInvokeError(error) || error.message || "Failed to create campaign — please try again");
     } finally {
       setIsGeneratingAngles(false);
     }
@@ -819,6 +875,48 @@ export default function Create() {
       </DashboardLayout>);
 
   }
+
+  // Specific, actionable error state — replaces the old bare "error" toast
+  // that vanished after a few seconds with no way for the user to know what
+  // actually failed or what to do next.
+  if (loadError) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-2xl mx-auto py-10">
+          <Card className="border-destructive/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-destructive" />
+                {loadError.what}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">{loadError.detail}</p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={() => {
+                    setLoading(true);
+                    fetchData();
+                  }}
+                >
+                  <Loader2 className="h-4 w-4 mr-2" />
+                  Try again
+                </Button>
+                <Button variant="outline" onClick={() => navigate("/onboarding")}>
+                  Finish setup
+                </Button>
+                <Button variant="ghost" onClick={() => navigate("/start")}>
+                  Back to start
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+
 
   return (
     <DashboardLayout>
@@ -1322,7 +1420,7 @@ export default function Create() {
                       navigate(`/campaigns/build?workspace=${workspace.id}`);
                     } catch (error: any) {
                       console.error("Error creating workspace:", error);
-                      toast.error(error.message || "Failed to create campaign");
+                      toast.error(formatInvokeError(error) || error.message || "Failed to create campaign — please try again");
                     } finally {
                       setIsCreatingCampaign(false);
                     }
@@ -1498,7 +1596,7 @@ export default function Create() {
                             navigate(`/campaigns/build?workspace=${workspace.id}`);
                           } catch (error: any) {
                             console.error("Error creating workspace:", error);
-                            toast.error(error.message || "Failed to create campaign");
+                            toast.error(formatInvokeError(error) || error.message || "Failed to create campaign — please try again");
                           } finally {
                             setIsCreatingCampaign(false);
                           }
