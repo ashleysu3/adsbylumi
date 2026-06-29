@@ -1106,15 +1106,25 @@ Deno.serve(async (req) => {
       
       // Normalize copy fields - prioritizes angle-level selected copy, then item-level copy
       const copy = normalizeCopy(item, angles, angleCopy, copySelections);
-      if (!copy) {
-        console.error(`No copy found for ${adName}, skipping...`);
+      // Treat copy as missing only if BOTH headline and primary text are empty —
+      // Meta requires at least a message (primary text) or a headline on the ad.
+      const hasUsableCopy = !!copy && (!!copy.headline?.trim() || !!copy.primaryText?.trim());
+      if (!hasUsableCopy) {
+        const itemAny = item as any;
+        const angleLabel = itemAny?.angleName || itemAny?.angle_name || itemAny?.angle || 'no angle';
+        const angleKeyCount = Object.keys(angleCopy || {}).length;
+        const detail = angleKeyCount === 0
+          ? `no ad copy has been saved for this campaign yet`
+          : `couldn't find saved copy for angle "${angleLabel}" (have copy for ${angleKeyCount} angle(s): ${Object.keys(angleCopy).slice(0, 4).join(', ')}${angleKeyCount > 4 ? '…' : ''})`;
+        console.error(`No copy found for ${adName} (item.id=${item.id}, angleId=${itemAny?.angleId || itemAny?.angle_id || 'n/a'}, angleName=${angleLabel}). angleCopy keys: ${Object.keys(angleCopy || {}).join(',') || 'none'}`);
         result.failedAds.push({
           conceptId: item.id,
-          conceptTitle: item.concept?.title || 'Unknown',
-          error: 'No ad copy found'
+          conceptTitle: item.concept?.title || descriptor,
+          error: `Missing ad copy for "${descriptor}" — ${detail}. Open the Copy step and add a headline + primary text for this creative.`,
         });
         continue;
       }
+
       
       try {
         // Build object_story_spec based on asset type
