@@ -268,20 +268,55 @@ Deno.serve(async req => {
     }
 
     // ----- 6. Instagram account -----
-    // Detect the #1 hangup: IG is connected to the Page but NOT added to the
-    // ad account, so ads can't use it.
-    let pageIg: { id: string; username: string | null } | null = null;
+    // IG can be linked at multiple levels and the field names differ:
+    //   - Page → instagram_business_account (IG Business/Creator account)
+    //   - Page → connected_instagram_account (personal IG linked via Page settings)
+    //   - Ad account → /act_X/instagram_accounts (BM-level link)
+    //   - Business Manager → /{biz}/instagram_accounts
+    // User access tokens often return null for IG fields when instagram_basic
+    // isn't granted — using a Page Access Token is far more reliable.
+    let pageAccessToken: string | null = null;
     if (brand.page_id) {
       try {
-        const r = await fetch(`https://graph.facebook.com/v25.0/${brand.page_id}?fields=instagram_business_account{id,username}&access_token=${token}`);
-        const d = await r.json();
-        if (r.ok && d?.instagram_business_account?.id) {
-          pageIg = {
-            id: d.instagram_business_account.id,
-            username: d.instagram_business_account.username || null,
-          };
+        const accountsRes = await fetch(
+          `https://graph.facebook.com/v25.0/me/accounts?fields=id,access_token&limit=200&access_token=${token}`
+        );
+        const accountsData = await accountsRes.json();
+        if (accountsRes.ok && Array.isArray(accountsData?.data)) {
+          const match = accountsData.data.find((p: any) => String(p.id) === String(brand.page_id));
+          if (match?.access_token) pageAccessToken = match.access_token;
         }
       } catch { /* non-fatal */ }
+    }
+
+    let pageIg: { id: string; username: string | null; via: 'business' | 'connected' } | null = null;
+    if (brand.page_id) {
+      const fields = 'instagram_business_account{id,username},connected_instagram_account{id,username}';
+      const tokensToTry = [pageAccessToken, token].filter(Boolean) as string[];
+      for (const tk of tokensToTry) {
+        try {
+          const r = await fetch(`https://graph.facebook.com/v25.0/${brand.page_id}?fields=${fields}&access_token=${tk}`);
+          const d = await r.json();
+          if (r.ok) {
+            if (d?.instagram_business_account?.id) {
+              pageIg = {
+                id: d.instagram_business_account.id,
+                username: d.instagram_business_account.username || null,
+                via: 'business',
+              };
+              break;
+            }
+            if (d?.connected_instagram_account?.id) {
+              pageIg = {
+                id: d.connected_instagram_account.id,
+                username: d.connected_instagram_account.username || null,
+                via: 'connected',
+              };
+              break;
+            }
+          }
+        } catch { /* try next token */ }
+      }
     }
 
     let adAccountIgs: Array<{ id: string; username: string | null }> = [];
@@ -298,39 +333,96 @@ Deno.serve(async req => {
       } catch { /* non-fatal */ }
     }
 
+    // Last-resort: if we still have no IG, scan business managers the user owns
+    // — IG may be linked at the BM level only (common with agencies).
+    let bmIgs: Array<{ id: string; username: string | null }> = [];
+    if (!pageIg && adAccountIgs.length === 0) {
+      try {
+        const bizRes = await fetch(`https://graph.facebook.com/v25.0/me/businesses?fields=id&limit=50&access_token=${token}`);
+        const bizData = await bizRes.json();
+        if (bizRes.ok && Array.isArray(bizData?.data)) {
+          for (const biz of bizData.data.slice(0, 10)) {
+            try {
+              const igRes = await fetch(`https://graph.facebook.com/v25.0/${biz.id}/instagram_accounts?fields=id,username&access_token=${token}`);
+              const igData = await igRes.json();
+              if (igRes.ok && Array.isArray(igData?.data)) {
+                for (const ig of igData.data) {
+                  if (!bmIgs.some(x => x.id === ig.id)) {
+                    bmIgs.push({ id: ig.id, username: ig.username || null });
+                  }
+                }
+              }
+            } catch { /* skip this BM */ }
+          }
+        }
+      } catch { /* non-fatal */ }
+    }
+
     const pageIgInAdAccount = !!(pageIg && adAccountIgs.some(ig => ig.id === pageIg!.id));
     const adAccountHasAnyIg = adAccountIgs.length > 0;
+    const pageLabel = brand.page_name ? `your "${brand.page_name}" Page` : 'your Facebook Page';
 
-    if (pageIg && !pageIgInAdAccount) {
-      // The mismatch we're targeting.
-      m.igMismatch = {
-        pageIgId: pageIg.id,
-        pageIgUsername: pageIg.username,
-      };
+    if (pageIg && pageIgInAdAccount) {
+      // Best case — linked at Page AND ad account.
+      const display = pageIg.username ? `@${pageIg.username}` : (brand.instagram_account_name || 'Linked');
+      checks.push({
+        id: 'instagram',
+        label: 'Instagram account',
+        status: 'pass',
+        detail: `${display} — linked through ${pageLabel}.`,
+      });
+      m.instagramUsername = pageIg.username;
+      m.instagramName = brand.instagram_account_name || null;
+      m.instagramLinkedPageId = brand.page_id;
+      m.instagramLinkedPageName = brand.page_name;
+    } else if (pageIg && !pageIgInAdAccount) {
+      // Linked to Page, not to ad account — the most common gotcha.
+      m.igMismatch = { pageIgId: pageIg.id, pageIgUsername: pageIg.username };
+      m.instagramLinkedPageId = brand.page_id;
+      m.instagramLinkedPageName = brand.page_name;
+      const display = pageIg.username ? `@${pageIg.username}` : 'Your Instagram';
       checks.push({
         id: 'instagram',
         label: 'Instagram on ad account',
         status: 'warn',
-        detail: "Your Instagram is connected to your Facebook Page but isn't added to your ad account yet — that's why ads can't use it. One click fixes it.",
+        detail: `${display} is linked through ${pageLabel}, but isn't added to your ad account yet — that's why ads can't use it. One click fixes it.`,
         fix: { kind: 'ig_link', label: 'Connect it for me' },
       });
-    } else if (pageIgInAdAccount || adAccountHasAnyIg) {
-      const display = pageIg?.username
-        ? `@${pageIg.username}`
-        : adAccountIgs[0]?.username
-          ? `@${adAccountIgs[0].username}`
-          : (brand.instagram_account_name || 'Linked');
-      checks.push({ id: 'instagram', label: 'Instagram account', status: 'pass', detail: display });
-      m.instagramUsername = pageIg?.username || adAccountIgs[0]?.username || null;
+    } else if (adAccountHasAnyIg) {
+      // No Page-level link visible (often a permissions issue) but the ad
+      // account itself has an IG — that's enough to run ads.
+      const display = adAccountIgs[0].username
+        ? `@${adAccountIgs[0].username}`
+        : (brand.instagram_account_name || 'Linked');
+      checks.push({
+        id: 'instagram',
+        label: 'Instagram account',
+        status: 'pass',
+        detail: `${display} — linked at the ad-account level.`,
+      });
+      m.instagramUsername = adAccountIgs[0].username;
       m.instagramName = brand.instagram_account_name || null;
+    } else if (bmIgs.length > 0) {
+      // Visible at Business Manager but not attached to Page or ad account.
+      const display = bmIgs[0].username ? `@${bmIgs[0].username}` : 'Your Instagram';
+      checks.push({
+        id: 'instagram',
+        label: 'Instagram on ad account',
+        status: 'warn',
+        detail: `${display} is in your Business Manager but isn't added to ${pageLabel} or your ad account yet. Connect it in Meta to use it for ads.`,
+      });
+      m.instagramUsername = bmIgs[0].username;
     } else {
       checks.push({
         id: 'instagram',
         label: 'Instagram account',
         status: 'skip',
-        detail: 'No Instagram linked. Optional — only needed for IG-targeted ads.',
+        detail: brand.page_id
+          ? `No Instagram detected on ${pageLabel}. If you have one connected on Meta's side, reconnect Lumi and grant instagram_basic so we can see it.`
+          : 'No Instagram linked. Optional — only needed for IG-targeted ads.',
       });
     }
+
 
     // ----- 7. Pixel -----
     if (!brand.meta_pixel_id) {
