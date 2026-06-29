@@ -52,59 +52,120 @@ interface CopySelections {
   primary_copy: number[];
 }
 
-// Get selected copy from angle-level copy based on selections
-function getSelectedAngleCopy(
-  angleName: string,
-  angles: any[],
-  angleCopy: Record<string, AngleCopy>,
-  copySelections: Record<string, CopySelections>
-): { headline: string; primaryText: string; description: string } | null {
-  // Find the angle by name to get its ID
-  const angle = angles?.find(a => a.name === angleName);
-  if (!angle) return null;
-  
-  const angleId = angle.id;
-  const copy = angleCopy?.[angleId];
-  const selections = copySelections?.[angleId];
-  
-  if (!copy) return null;
-  
-  // Get selected variations (or first if none selected)
-  const headlineIndices = selections?.headlines?.length > 0 ? selections.headlines : [0];
-  const descriptionIndices = selections?.descriptions?.length > 0 ? selections.descriptions : [0];
-  const primaryIndices = selections?.primary_copy?.length > 0 ? selections.primary_copy : [0];
-  
-  // Use first selected variation for the ad
-  const headline = copy.headlines?.[headlineIndices[0]]?.text || '';
-  const description = copy.descriptions?.[descriptionIndices[0]]?.text || '';
-  const primaryText = copy.primary_copy?.[primaryIndices[0]]?.text || '';
-  
-  return { headline, primaryText, description };
+// Normalize a string for tolerant key matching (mirrors the client helpers
+// used in CampaignReview.tsx and ProductionManager.tsx).
+function normalizeLookup(value: unknown): string {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+// Resolve the angle_copy entry for a production item. The client persists
+// angle_copy under several possible keys depending on which surface saved it
+// (angle id, angle name, normalized angle name, or — as a last-resort
+// fallback used by the checklist card editor — the production item id).
+// The server MUST accept all of those shapes or copy that the user clearly
+// saved will look "missing" at publish time.
+function resolveAngleCopyForItem(
+  item: any,
+  angles: any[] | undefined,
+  angleCopy: Record<string, AngleCopy> | undefined,
+): AngleCopy | null {
+  if (!angleCopy || Object.keys(angleCopy).length === 0) return null;
+
+  // 1) Direct id-based keys on the item.
+  const directKeys = [item?.angleId, item?.angle, item?.angle_id]
+    .filter((v: unknown) => typeof v === 'string' && v.length > 0) as string[];
+  for (const key of directKeys) {
+    if (angleCopy[key]) return angleCopy[key];
+  }
+
+  // 2) Match by angle name (tolerant) -> angle.id -> angleCopy[id].
+  const normalizedName = normalizeLookup(item?.angleName || item?.angle_name || item?.angle);
+  if (normalizedName) {
+    const matchedAngle = (angles || []).find(
+      (a: any) => normalizeLookup(a?.name) === normalizedName,
+    );
+    if (matchedAngle?.id && angleCopy[matchedAngle.id]) return angleCopy[matchedAngle.id];
+
+    // 3) Match a key in angleCopy whose normalized form equals the angle name.
+    const nameKeyMatch = Object.keys(angleCopy).find(
+      (key) => normalizeLookup(key) === normalizedName,
+    );
+    if (nameKeyMatch) return angleCopy[nameKeyMatch];
+  }
+
+  // 4) Fallback: copy was saved under the item's own id.
+  if (item?.id && angleCopy[item.id]) return angleCopy[item.id];
+
+  return null;
+}
+
+// Pick the active variation out of an AngleCopy block, honoring copy_selections
+// when present and falling back to the first non-empty variation otherwise.
+function pickFromAngleCopy(
+  copy: AngleCopy,
+  selections: CopySelections | undefined,
+): { headline: string; primaryText: string; description: string } {
+  const pickIndex = (arr: number[] | undefined, max: number) => {
+    if (Array.isArray(arr) && arr.length > 0 && arr[0] >= 0 && arr[0] < max) return arr[0];
+    return 0;
+  };
+  const pickText = (variations: CopyVariation[] | undefined, idxArr: number[] | undefined): string => {
+    if (!variations || variations.length === 0) return '';
+    const idx = pickIndex(idxArr, variations.length);
+    const primary = variations[idx]?.text?.trim();
+    if (primary) return primary;
+    // Fallback: first non-empty
+    return variations.find((v) => v?.text?.trim())?.text?.trim() || '';
+  };
+  return {
+    headline: pickText(copy.headlines, selections?.headlines),
+    description: pickText(copy.descriptions, selections?.descriptions),
+    primaryText: pickText(copy.primary_copy, selections?.primary_copy),
+  };
 }
 
 // Helper to normalize production item copy fields
 function normalizeCopy(
-  item: ProductionItem, 
+  item: ProductionItem,
   angles?: any[],
   angleCopy?: Record<string, AngleCopy>,
-  copySelections?: Record<string, CopySelections>
+  copySelections?: Record<string, CopySelections>,
 ): { headline: string; primaryText: string; description: string; cta: string } | null {
-  // First, try to get copy from angle-level selections (preferred)
-  if (item.angleName && angleCopy && Object.keys(angleCopy).length > 0) {
-    const selectedCopy = getSelectedAngleCopy(item.angleName, angles || [], angleCopy, copySelections || {});
-    if (selectedCopy && (selectedCopy.headline || selectedCopy.primaryText)) {
-      console.log(`Using selected angle copy for ${item.angleName}`);
+  // 1) Preferred: angle-level copy (robust key matching).
+  const matchedCopy = resolveAngleCopyForItem(item, angles, angleCopy);
+  if (matchedCopy) {
+    // Find the selection key the same way we found the copy key, so selections
+    // line up with the AngleCopy entry we actually picked.
+    let selectionKey: string | null = null;
+    if (copySelections && Object.keys(copySelections).length > 0) {
+      const candidateKeys: string[] = [
+        ...(([item?.angleId, item?.angle, item?.angle_id].filter(
+          (v: unknown) => typeof v === 'string' && v.length > 0,
+        ) as string[])),
+      ];
+      const normalizedName = normalizeLookup((item as any)?.angleName || (item as any)?.angle_name || (item as any)?.angle);
+      if (normalizedName) {
+        const matchedAngle = (angles || []).find((a: any) => normalizeLookup(a?.name) === normalizedName);
+        if (matchedAngle?.id) candidateKeys.push(matchedAngle.id);
+        const nameKeyMatch = Object.keys(copySelections).find((k) => normalizeLookup(k) === normalizedName);
+        if (nameKeyMatch) candidateKeys.push(nameKeyMatch);
+      }
+      if (item?.id) candidateKeys.push(item.id);
+      selectionKey = candidateKeys.find((k) => !!copySelections[k]) || null;
+    }
+    const picked = pickFromAngleCopy(matchedCopy, selectionKey ? copySelections![selectionKey] : undefined);
+    if (picked.headline || picked.primaryText || picked.description) {
       return {
-        headline: selectedCopy.headline,
-        primaryText: selectedCopy.primaryText,
-        description: selectedCopy.description,
-        cta: 'LEARN_MORE',
+        headline: picked.headline,
+        primaryText: picked.primaryText,
+        description: picked.description,
+        cta: (item as any)?.finalCopy?.cta || (item as any)?.final_copy?.cta || 'LEARN_MORE',
       };
     }
   }
-  
-  // Fall back to item-level finalCopy (legacy)
-  if (item.finalCopy) {
+
+  // 2) Fall back to item-level finalCopy (camelCase).
+  if (item.finalCopy && (item.finalCopy.headline || item.finalCopy.primaryText)) {
     return {
       headline: item.finalCopy.headline || '',
       primaryText: item.finalCopy.primaryText || '',
@@ -112,8 +173,8 @@ function normalizeCopy(
       cta: item.finalCopy.cta || 'LEARN_MORE',
     };
   }
-  // Fall back to legacy naming
-  if (item.final_copy) {
+  // 3) Fall back to legacy snake_case final_copy.
+  if (item.final_copy && (item.final_copy.headline || item.final_copy.primaryText || item.final_copy.primary_text)) {
     return {
       headline: item.final_copy.headline || '',
       primaryText: item.final_copy.primaryText || item.final_copy.primary_text || '',
@@ -123,6 +184,7 @@ function normalizeCopy(
   }
   return null;
 }
+
 
 interface BuildResult {
   success: boolean;
