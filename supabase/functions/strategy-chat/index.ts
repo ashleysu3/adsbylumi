@@ -94,6 +94,11 @@ Always respond with ONLY a JSON object matching this shape:
 Default starting budget when unsure: "$20/day to start".
 Default audience when unsure: "Broad+ (LUMI's smart default — no narrow targeting)".
 
+High-ticket rule:
+- Any offer priced at $500 or more is "high-ticket." Cold strangers almost never buy high-ticket on a first ad.
+- For high-ticket promote_offer / book_calls intents, propose a SALES campaign to a WARM audience ONLY (existing list, retargeting, page/IG engagers, past customers), paired with a cold top-of-funnel campaign (engagement, traffic, awareness, or leads) that fills the warm pool over time. Say this plainly in "why".
+- If the user insists on running a high-ticket sales campaign cold, do not refuse — but warn them in "why" that the budget needs to be significantly higher (recommend at least price ÷ 10 per day, minimum $50/day) for any real chance of working, and set "startingBudget" to that floor (e.g. "$100/day to start").
+
 Brand context:
 ${JSON.stringify({ brand, offers }, null, 2)}`;
 

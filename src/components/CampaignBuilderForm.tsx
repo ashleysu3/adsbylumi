@@ -28,6 +28,7 @@ import {
   Globe,
 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
+import { getHighTicketGuidance } from "@/lib/high-ticket";
 import { ExistingPostPicker, type SelectedPost } from "@/components/ExistingPostPicker";
 import { BudgetCalculator } from "@/components/BudgetCalculator";
 
@@ -213,6 +214,74 @@ export function CampaignBuilderForm({
               </div>
             </div>
           )}
+
+          {/* High-ticket guidance: a $500+ offer to a cold audience needs a
+              warm-audience sales play (and a real budget floor if the user
+              insists on cold). Surfaces only when the offer clears the
+              high-ticket threshold. */}
+          {(() => {
+            const ht = getHighTicketGuidance(workspace?.offer_price);
+            if (!ht.isHighTicket) return null;
+            const isSales =
+              template?.objective === "OUTCOME_SALES" ||
+              template?.objective === "sales";
+            const isWarm =
+              (template?.audience_type || "").toLowerCase().includes("warm") ||
+              (template?.audience_type || "").toLowerCase().includes("retarget");
+            const underFloor = isSales && !isWarm && budget < ht.minDailyForCold;
+            return (
+              <div
+                className={`p-4 rounded-xl border ${
+                  underFloor
+                    ? "border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-950/30"
+                    : "border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30"
+                }`}
+              >
+                <h4
+                  className={`text-sm font-semibold ${
+                    underFloor
+                      ? "text-red-900 dark:text-red-200"
+                      : "text-amber-900 dark:text-amber-200"
+                  }`}
+                >
+                  {ht.headline}
+                </h4>
+                <p
+                  className={`text-xs mt-1 leading-snug ${
+                    underFloor
+                      ? "text-red-800 dark:text-red-300"
+                      : "text-amber-800 dark:text-amber-300"
+                  }`}
+                >
+                  {ht.recommendation}
+                </p>
+                {isSales && !isWarm && (
+                  <p
+                    className={`text-xs mt-2 leading-snug ${
+                      underFloor
+                        ? "text-red-900 dark:text-red-200 font-medium"
+                        : "text-amber-900 dark:text-amber-200"
+                    }`}
+                  >
+                    {ht.coldOverrideWarning}
+                    {underFloor && (
+                      <>
+                        {" "}
+                        <button
+                          type="button"
+                          className="underline font-semibold"
+                          onClick={() => setBudget(ht.minDailyForCold)}
+                        >
+                          Set to ${ht.minDailyForCold}/day
+                        </button>
+                      </>
+                    )}
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+
 
           <div className="text-center">
             <div className="inline-flex items-baseline gap-1">

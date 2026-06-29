@@ -11,6 +11,7 @@ import { Loader2, Sparkles, CheckCircle2, AlertCircle, ChevronDown, ChevronUp } 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { LinkNewOfferToCampaignDialog } from "./LinkNewOfferToCampaignDialog";
+import { getHighTicketGuidance } from "@/lib/high-ticket";
 
 type PageGoal = 'purchase' | 'discovery_call' | 'free_resource' | 'other';
 
@@ -641,7 +642,22 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
                   : ''
               }`}
             />
+            {(() => {
+              const ht = getHighTicketGuidance(formData.price_point);
+              if (!ht.isHighTicket) return null;
+              return (
+                <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-2.5">
+                  <p className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                    {ht.headline}
+                  </p>
+                  <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-1 leading-snug">
+                    {ht.recommendation}
+                  </p>
+                </div>
+              );
+            })()}
           </div>
+
 
           {/* Before & After is auto-generated and used in ads, but hidden from the user */}
 

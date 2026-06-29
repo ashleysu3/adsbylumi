@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { getHighTicketGuidance } from "@/lib/high-ticket";
 
 interface OfferEditDialogProps {
   open: boolean;
@@ -143,7 +144,22 @@ export function OfferEditDialog({ open, onOpenChange, offer, onSuccess }: OfferE
               onChange={(e) => setFormData((prev) => ({ ...prev, price_point: e.target.value }))}
               placeholder="$997 or Free"
             />
+            {(() => {
+              const ht = getHighTicketGuidance(formData.price_point);
+              if (!ht.isHighTicket) return null;
+              return (
+                <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-2.5">
+                  <p className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                    {ht.headline}
+                  </p>
+                  <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-1 leading-snug">
+                    {ht.recommendation}
+                  </p>
+                </div>
+              );
+            })()}
           </div>
+
 
           {/* Before & After is auto-generated and used in ads, but hidden from the user */}
 
