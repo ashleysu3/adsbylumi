@@ -128,7 +128,7 @@ ${(() => {
   return recs.join('\n');
 })()}
 
-👉 Approve all recommendations with one click: ${Deno.env.get('SUPABASE_URL')?.replace('https://', 'https://').split('.supabase.co')[0]}.lovable.app/data?workspace=${workspaceId}
+👉 Approve all recommendations with one click: ${appUrl(`/data?workspace=${workspaceId}`)}
 
 === 💡 TRY THIS: CREATIVE IDEAS BASED ON YOUR TOP PERFORMERS ===
 ${(() => {
