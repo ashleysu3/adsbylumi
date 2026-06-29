@@ -1451,11 +1451,16 @@ Deno.serve(async (req) => {
       }
     );
   } catch (error: any) {
-    console.error('Error building campaign:', error);
+    const rawMsg = error?.message || String(error) || 'Unknown error';
+    console.error('Error building campaign:', rawMsg, error?.stack || '');
 
-    // Slack alert for campaign build failures
+    // Fire-and-forget Slack alert with its own short timeout so a slow
+    // Slack call can never delay or block our 200 response to the client.
     try {
-      await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/slack-error-alert`, {
+      const slackCtrl = new AbortController();
+      const slackTimer = setTimeout(() => slackCtrl.abort(), 3_000);
+      // Intentionally NOT awaited.
+      fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/slack-error-alert`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1465,17 +1470,31 @@ Deno.serve(async (req) => {
           category: 'Meta API',
           severity: 'error',
           title: 'Campaign Build Failed',
-          message: `Error building Meta campaign: ${error.message}`,
+          message: `Error building Meta campaign: ${rawMsg}`,
           source: 'build-meta-campaign',
         }),
-      });
+        signal: slackCtrl.signal,
+      }).catch(() => { /* ignore */ }).finally(() => clearTimeout(slackTimer));
     } catch { /* ignore */ }
+
+    // Translate raw error shapes into a clear, actionable user message.
+    const lower = rawMsg.toLowerCase();
+    const isTimeout = /timed out|aborted|timeout|deadline/.test(lower);
+    const isNetwork = /network|fetch failed|connection|econnreset|enotfound/.test(lower);
+    let friendly = rawMsg;
+    if (isTimeout) {
+      friendly = `Publishing took too long and was cut off before finishing. This usually means a Meta API call (often a video upload) stalled. Please try again — if it keeps happening, try publishing with fewer creatives at once.`;
+    } else if (isNetwork) {
+      friendly = `We couldn't reach Meta to finish publishing. ${rawMsg}. Please try again in a moment.`;
+    }
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
-        failedAds: Array.isArray(error?.failedAds) ? error.failedAds : []
+        error: friendly,
+        rawError: rawMsg,
+        timedOut: isTimeout,
+        failedAds: Array.isArray(error?.failedAds) ? error.failedAds : [],
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -1483,4 +1502,5 @@ Deno.serve(async (req) => {
       }
     );
   }
+
 });
