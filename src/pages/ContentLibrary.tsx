@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
@@ -17,6 +17,8 @@ import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { CreativeFlowModal } from "@/components/creative/CreativeFlowModal";
+import { AutoSaveIndicator } from "@/components/AutoSaveIndicator";
+import { useAutosave } from "@/hooks/useAutosave";
 type ContentIdea = {
   id: string;
   brand_id: string;
