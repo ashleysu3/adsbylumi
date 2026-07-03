@@ -339,6 +339,23 @@ export default function Create() {
     setCurrentStep(fromStrategy && strategyOfferId ? 2 : fromStrategy ? 1 : 0);
   }, [activeBrand?.id, fromStrategy, strategyOfferId]);
 
+  // Guard against a stale strategy hand-off: `strategyOfferId` can come from a
+  // leftover sessionStorage plan (see loadStrategyPlan) rather than the URL,
+  // so it may point at an offer that's since been archived/deleted or belongs
+  // to a different brand. That silently jumps straight to step 2 and makes
+  // handleGenerateAndNavigate throw "Missing offer selection" the instant the
+  // page loads, with no way for the user to see why. Once offers have loaded,
+  // verify the inherited offer actually exists and bounce back to manual
+  // selection instead of letting the auto-build effect fail.
+  useEffect(() => {
+    if (loading || !fromStrategy || !selectedOfferId) return;
+    if (SYSTEM_OFFER_IDS.includes(selectedOfferId)) return;
+    if (offers.some((o) => o.id === selectedOfferId)) return;
+    setSelectedOfferId("");
+    setCurrentStep(1);
+    toast.error("We couldn't find that offer anymore — please pick one to continue.");
+  }, [loading, fromStrategy, selectedOfferId, offers]);
+
   const fetchData = async () => {
     setLoadError(null);
     try {
@@ -571,7 +588,7 @@ export default function Create() {
       return;
     }
 
-    const isSystemOffer = LOCAL_STRATEGY_IDS.includes(selectedOfferId) || DM_LEADS_IDS.includes(selectedOfferId);
+    const isSystemOffer = SYSTEM_OFFER_IDS.includes(selectedOfferId);
 
     if (!isSystemOffer && !selectedOfferId) {
       toast.error("Please select an offer and strategy");
