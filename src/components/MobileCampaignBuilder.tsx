@@ -121,7 +121,9 @@ export function MobileCampaignBuilder({
       budget,
       creativeType: defaultCreativeType,
       audience: defaultAudience,
-      startDate: answers.startDate || new Date(Date.now() + 86400000).toISOString().split("T")[0],
+      startDate: (answers.startDate && answers.startDate >= new Date().toISOString().split("T")[0])
+        ? answers.startDate
+        : new Date(Date.now() + 86400000).toISOString().split("T")[0],
       launchActive,
       budgetType: "daily",
       metaAdvantage: true,
