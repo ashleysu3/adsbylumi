@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import AdminTabs from "@/components/AdminTabs";
@@ -14,14 +14,14 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { 
-  Bug, 
-  RefreshCw, 
-  Mail, 
-  DollarSign, 
-  XCircle, 
-  Gift, 
-  Eye, 
+import {
+  Bug,
+  RefreshCw,
+  Mail,
+  DollarSign,
+  XCircle,
+  Gift,
+  Eye,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -30,7 +30,10 @@ import {
   Loader2,
   Send,
   Archive,
-  Sparkles
+  Sparkles,
+  Wand2,
+  Copy,
+  Brain
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
