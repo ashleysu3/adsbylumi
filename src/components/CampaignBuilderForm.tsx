@@ -128,10 +128,17 @@ export function CampaignBuilderForm({
     : { isLocal: false, example: "" };
 
   // Ad scheduling state
+  const todayStr = new Date().toISOString().split("T")[0];
+  const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split("T")[0];
   const [hasEndDate, setHasEndDate] = useState(!!answers.endDate);
-  const [endDate, setEndDate] = useState(answers.endDate || "");
+  const [endDate, setEndDate] = useState(
+    // Auto-bump stale end dates so resumed drafts don't submit past dates to Meta
+    answers.endDate && answers.endDate < todayStr ? "" : (answers.endDate || "")
+  );
   const [startDate, setStartDate] = useState(
-    answers.startDate || new Date(Date.now() + 86400000).toISOString().split("T")[0]
+    // If a draft was started earlier and the stored start date is now in the past,
+    // bump it forward to tomorrow so Meta doesn't reject the campaign on launch.
+    answers.startDate && answers.startDate >= todayStr ? answers.startDate : tomorrowStr
   );
 
   const { activeBrand } = useBrand();
@@ -622,32 +629,39 @@ export function CampaignBuilderForm({
             </div>
           </div>
 
+          {/* Start Date — always editable so resumed drafts can update it */}
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Start Date</Label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                min={todayStr}
+              />
+              {answers.startDate && answers.startDate < todayStr && (
+                <p className="text-[11px] text-amber-700">
+                  Your saved start date was in the past — we bumped it to tomorrow. Adjust if you'd like.
+                </p>
+              )}
+            </div>
+            {hasEndDate && (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">End Date</Label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  min={startDate}
+                />
+              </div>
+            )}
+          </div>
+
           {hasEndDate && (
-            <>
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Start Date</Label>
-                  <Input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    min={new Date().toISOString().split("T")[0]}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">End Date</Label>
-                  <Input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    min={startDate}
-                  />
-                </div>
-              </div>
-              <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-xs leading-relaxed">
-                Heads up: Scheduled campaigns auto-stop on the end date — Meta resets audience learning when they do. If you want to reuse these ads later (next sale, next launch), flip back to Run Continuously and pause manually when you're done. Pausing keeps the learning data so the ads come back warm next time.
-              </div>
-            </>
+            <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-xs leading-relaxed">
+              Heads up: Scheduled campaigns auto-stop on the end date — Meta resets audience learning when they do. If you want to reuse these ads later (next sale, next launch), flip back to Run Continuously and pause manually when you're done. Pausing keeps the learning data so the ads come back warm next time.
+            </div>
           )}
         </CardContent>
       </Card>
