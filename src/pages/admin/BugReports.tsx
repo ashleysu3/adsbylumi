@@ -1209,6 +1209,73 @@ Please investigate the root cause, propose a fix, and implement it.`;
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Draft Fix Email Dialog */}
+        <Dialog open={draftEmailOpen} onOpenChange={(o) => !draftSending && setDraftEmailOpen(o)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-green-700">
+                <Wand2 className="h-4 w-4" /> Draft fix email
+              </DialogTitle>
+              <DialogDescription>
+                {selectedReport ? (
+                  <>To <span className="font-medium">{selectedReport.user_email}</span> — edit anything, then send. Sending will mark the bug as resolved.</>
+                ) : null}
+              </DialogDescription>
+            </DialogHeader>
+
+            {draftEmailLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <span className="ml-3 text-sm text-muted-foreground">Drafting…</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <Label>Subject</Label>
+                  <Input
+                    value={draftSubject}
+                    onChange={(e) => setDraftSubject(e.target.value)}
+                    className="mt-2"
+                  />
+                </div>
+                <div>
+                  <Label>Body</Label>
+                  <Textarea
+                    value={draftBody}
+                    onChange={(e) => setDraftBody(e.target.value)}
+                    className="mt-2 min-h-[280px]"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    A "Best, The Lumi Team" signature and branded header are added automatically.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setDraftEmailOpen(false)}
+                disabled={draftSending}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendDraftedEmail}
+                disabled={draftSending || draftEmailLoading || !draftSubject.trim() || !draftBody.trim()}
+                className="bg-green-600 hover:bg-green-700 text-white gap-2"
+              >
+                {draftSending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                Send & mark resolved
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
