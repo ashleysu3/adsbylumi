@@ -1255,7 +1255,12 @@ export default function AdminUsers() {
                   ) : (
                     <div className="space-y-2 sm:space-y-3">
                       {userDetails.bugReports.map((bug: any) => (
-                        <Card key={bug.id}>
+                        <Card
+                          key={bug.id}
+                          className="cursor-pointer hover:border-primary/50 transition-colors"
+                          onClick={() => navigate(`/admin/bug-reports?open=${bug.id}`)}
+                          role="button"
+                        >
                           <CardContent className="pt-3 sm:pt-4 px-3 sm:px-6 pb-3 sm:pb-4">
                             <div className="flex flex-col gap-2">
                               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
@@ -1269,6 +1274,7 @@ export default function AdminUsers() {
                                 <span className="text-xs text-muted-foreground">
                                   {format(new Date(bug.created_at), "MMM d, yyyy")}
                                 </span>
+                                <span className="ml-auto text-xs text-primary">Open →</span>
                               </div>
                               <p className="text-xs sm:text-sm">{bug.details}</p>
                               {bug.current_page && (
