@@ -128,10 +128,17 @@ export function CampaignBuilderForm({
     : { isLocal: false, example: "" };
 
   // Ad scheduling state
+  const todayStr = new Date().toISOString().split("T")[0];
+  const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split("T")[0];
   const [hasEndDate, setHasEndDate] = useState(!!answers.endDate);
-  const [endDate, setEndDate] = useState(answers.endDate || "");
+  const [endDate, setEndDate] = useState(
+    // Auto-bump stale end dates so resumed drafts don't submit past dates to Meta
+    answers.endDate && answers.endDate < todayStr ? "" : (answers.endDate || "")
+  );
   const [startDate, setStartDate] = useState(
-    answers.startDate || new Date(Date.now() + 86400000).toISOString().split("T")[0]
+    // If a draft was started earlier and the stored start date is now in the past,
+    // bump it forward to tomorrow so Meta doesn't reject the campaign on launch.
+    answers.startDate && answers.startDate >= todayStr ? answers.startDate : tomorrowStr
   );
 
   const { activeBrand } = useBrand();
