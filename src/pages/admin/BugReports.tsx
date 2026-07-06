@@ -533,8 +533,31 @@ Please investigate the root cause, propose a fix, and implement it.`;
   const openDetail = (report: BugReport) => {
     setSelectedReport(report);
     setResolutionNotes(report.resolution_notes || "");
+    setTriage(null);
+    setTriageLoading(false);
     setDetailOpen(true);
   };
+
+  // Deep-link: /admin/bug-reports?open=<id> auto-opens the detail dialog.
+  useEffect(() => {
+    const openId = searchParams.get("open");
+    if (!openId || reports.length === 0) return;
+    const match = reports.find((r) => r.id === openId);
+    if (match && (!selectedReport || selectedReport.id !== openId || !detailOpen)) {
+      openDetail(match);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reports, searchParams]);
+
+  const handleDetailOpenChange = (open: boolean) => {
+    setDetailOpen(open);
+    if (!open && searchParams.get("open")) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("open");
+      setSearchParams(next, { replace: true });
+    }
+  };
+
 
   return (
     <DashboardLayout>
