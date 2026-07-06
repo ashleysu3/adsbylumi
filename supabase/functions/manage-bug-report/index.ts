@@ -13,6 +13,7 @@ interface ManageRequest {
   resolutionNotes?: string;
   emailTemplate?: string;
   customMessage?: string;
+  customSubject?: string;
   refundAmount?: number;
   creditMonths?: number;
 }
@@ -114,7 +115,7 @@ Deno.serve(async (req) => {
     }
 
     const body: ManageRequest = await req.json();
-    const { action, reportId, status, priority, resolutionNotes, emailTemplate, customMessage, refundAmount, creditMonths } = body;
+    const { action, reportId, status, priority, resolutionNotes, emailTemplate, customMessage, customSubject, refundAmount, creditMonths } = body;
 
     // Get the bug report
     const { data: report, error: reportError } = await supabaseAdmin
@@ -158,15 +159,23 @@ Deno.serve(async (req) => {
           subject = EMAIL_TEMPLATES[emailTemplate].subject;
           body = EMAIL_TEMPLATES[emailTemplate].body;
         } else if (customMessage) {
-          subject = "Update on Your Bug Report - Lumi";
+          subject = customSubject?.trim() || "Update on Your Bug Report - Lumi";
           body = customMessage;
         } else {
           throw new Error('Email template or custom message required');
         }
 
+        // If a template was chosen AND a custom subject was passed, prefer the custom subject.
+        if (emailTemplate && customSubject?.trim()) {
+          subject = customSubject.trim();
+        }
+
         // Add custom message to template if both provided
-        if (emailTemplate && customMessage) {
+        if (emailTemplate && customMessage && !customSubject?.trim()) {
           body += `\n\n---\n\n${customMessage}`;
+        } else if (emailTemplate && customMessage && customSubject?.trim()) {
+          // Custom subject + message means admin drafted the whole email — replace template body.
+          body = customMessage;
         }
 
         const emailHtml = `
