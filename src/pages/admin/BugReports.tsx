@@ -329,13 +329,114 @@ ${report.context || '(none)'}
 Please investigate the root cause, propose a fix, and implement it.`;
   };
 
-  const handleFixInCode = (report: BugReport) => {
-    setFixPromptText(buildLovablePrompt(report));
+  const handleFixInCode = (report: BugReport, promptOverride?: string) => {
+    setFixPromptText(promptOverride || buildLovablePrompt(report));
     setFixPromptOpen(true);
     if (report.status === 'new') {
       handleUpdateStatus(report.id, 'in_progress');
     }
   };
+
+  const handleRunTriage = async () => {
+    if (!selectedReport) return;
+    setTriageLoading(true);
+    setTriage(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("triage-bug-report", {
+        body: { reportId: selectedReport.id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const t = (data as any)?.triage;
+      if (!t) throw new Error("No triage returned");
+      setTriage(t);
+      toast.success("AI triage complete");
+    } catch (e: any) {
+      toast.error(e?.message || "Triage failed");
+    } finally {
+      setTriageLoading(false);
+    }
+  };
+
+  const handleDraftFixEmail = async () => {
+    if (!selectedReport) return;
+    setDraftEmailLoading(true);
+    setDraftEmailOpen(true);
+    setDraftSubject("");
+    setDraftBody("");
+    try {
+      const fixSummary = [
+        triage?.user_facing_summary,
+        triage?.suggested_fix,
+        resolutionNotes,
+      ].filter(Boolean).join("\n\n");
+      const { data, error } = await supabase.functions.invoke("draft-bug-fix-email", {
+        body: { reportId: selectedReport.id, fixSummary: fixSummary || undefined },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const draft = (data as any)?.draft;
+      if (!draft) throw new Error("No draft returned");
+      setDraftSubject(draft.subject || "Your bug report — update from Lumi");
+      setDraftBody(draft.body || "");
+    } catch (e: any) {
+      toast.error(e?.message || "Email draft failed");
+      setDraftEmailOpen(false);
+    } finally {
+      setDraftEmailLoading(false);
+    }
+  };
+
+  const handleSendDraftedEmail = async () => {
+    if (!selectedReport) return;
+    if (!draftSubject.trim() || !draftBody.trim()) {
+      toast.error("Subject and body are required");
+      return;
+    }
+    setDraftSending(true);
+    try {
+      const { error } = await supabase.functions.invoke("manage-bug-report", {
+        body: {
+          action: "send_email",
+          reportId: selectedReport.id,
+          customSubject: draftSubject.trim(),
+          customMessage: draftBody.trim(),
+        },
+      });
+      if (error) throw error;
+      // Mark resolved automatically since the drafted email tells user it's fixed.
+      await supabase.functions.invoke("manage-bug-report", {
+        body: {
+          action: "update_status",
+          reportId: selectedReport.id,
+          status: "resolved",
+          resolutionNotes: resolutionNotes || "Resolved — AI-drafted fix email sent to user.",
+        },
+      });
+      toast.success("✅ Email sent & bug marked resolved", {
+        description: `${selectedReport.user_email} has been notified.`,
+      });
+      setDraftEmailOpen(false);
+      setDetailOpen(false);
+      setSelectedReport(null);
+      fetchReports();
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send email");
+    } finally {
+      setDraftSending(false);
+    }
+  };
+
+  const handleCopyAiPrompt = async () => {
+    if (!triage?.lovable_prompt) return;
+    try {
+      await navigator.clipboard.writeText(triage.lovable_prompt);
+      toast.success("AI-generated prompt copied — paste it into Lovable");
+    } catch {
+      toast.error("Couldn't copy automatically.");
+    }
+  };
+
 
   const handleCopyFixPrompt = async () => {
     try {
