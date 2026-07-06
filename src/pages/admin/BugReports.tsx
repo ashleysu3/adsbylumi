@@ -674,7 +674,7 @@ Please investigate the root cause, propose a fix, and implement it.`;
         </div>
 
         {/* Detail Dialog */}
-        <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <Dialog open={detailOpen} onOpenChange={handleDetailOpenChange}>
           <DialogContent className="max-w-4xl h-[90dvh] overflow-hidden flex flex-col min-h-0 p-0">
             <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
               <DialogTitle className="flex items-center gap-2">
