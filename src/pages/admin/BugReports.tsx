@@ -885,12 +885,103 @@ Please investigate the root cause, propose a fix, and implement it.`;
                       </CardContent>
                     </Card>
 
-                    {/* Fix in Lovable */}
+                    {/* AI Triage */}
+                    <Card className="border-primary/40">
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Brain className="h-4 w-4 text-primary" />
+                          AI Triage
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                          Runs Lovable AI over the report to diagnose the likely cause, name suspect files, and generate a ready-to-paste Lovable prompt.
+                        </p>
+                        <Button
+                          onClick={handleRunTriage}
+                          disabled={triageLoading}
+                          className="w-full gap-2"
+                        >
+                          {triageLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Brain className="h-4 w-4" />
+                          )}
+                          {triage ? "Re-run AI triage" : "Analyze with AI"}
+                        </Button>
+
+                        {triage && (
+                          <div className="space-y-3 pt-2 border-t">
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              {triage.severity && (
+                                <Badge variant="outline">Severity: {triage.severity}</Badge>
+                              )}
+                              {triage.category && (
+                                <Badge variant="outline">{triage.category}</Badge>
+                              )}
+                            </div>
+
+                            {triage.diagnosis && (
+                              <div>
+                                <Label className="text-xs">Diagnosis</Label>
+                                <p className="mt-1 text-sm p-3 bg-muted rounded-md whitespace-pre-wrap">
+                                  {triage.diagnosis}
+                                </p>
+                              </div>
+                            )}
+
+                            {triage.suggested_fix && (
+                              <div>
+                                <Label className="text-xs">Suggested fix</Label>
+                                <p className="mt-1 text-sm p-3 bg-muted rounded-md whitespace-pre-wrap">
+                                  {triage.suggested_fix}
+                                </p>
+                              </div>
+                            )}
+
+                            {Array.isArray(triage.likely_files) && triage.likely_files.length > 0 && (
+                              <div>
+                                <Label className="text-xs">Likely files</Label>
+                                <ul className="mt-1 text-xs space-y-1">
+                                  {triage.likely_files.map((f: string) => (
+                                    <li key={f}>
+                                      <code className="bg-muted px-1.5 py-0.5 rounded">{f}</code>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {triage.lovable_prompt && (
+                              <div className="flex flex-col sm:flex-row gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleCopyAiPrompt}
+                                  className="gap-2"
+                                >
+                                  <Copy className="h-3 w-3" /> Copy AI prompt
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleFixInCode(selectedReport, triage.lovable_prompt)}
+                                  className="gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+                                >
+                                  <Sparkles className="h-3 w-3" /> Open in Fix dialog
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Fix in Lovable — manual/basic prompt */}
                     <Card className="border-purple-200">
                       <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2 text-purple-600">
                           <Sparkles className="h-4 w-4" />
-                          Fix it in the Code
+                          Fix it in the Code (manual prompt)
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
@@ -911,6 +1002,34 @@ Please investigate the root cause, propose a fix, and implement it.`;
                         </Button>
                       </CardContent>
                     </Card>
+
+                    {/* Draft fix email */}
+                    <Card className="border-green-200">
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2 text-green-700">
+                          <Wand2 className="h-4 w-4" />
+                          Mark as fixed & draft email
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Once you've shipped the fix, this drafts a warm plain-language email to {selectedReport.user_email} — acknowledging what they reported, explaining what was fixed, and asking them to try again. You'll be able to edit before sending.
+                        </p>
+                        <Button
+                          onClick={handleDraftFixEmail}
+                          disabled={draftEmailLoading}
+                          className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          {draftEmailLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Wand2 className="h-4 w-4" />
+                          )}
+                          Draft fix email
+                        </Button>
+                      </CardContent>
+                    </Card>
+
 
                     {/* Quick Status Actions */}
                     <Card>
