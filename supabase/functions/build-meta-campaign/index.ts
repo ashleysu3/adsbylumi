@@ -1063,6 +1063,11 @@ Deno.serve(async (req) => {
     // Add end_time only if user explicitly set an end date
     if (answers?.endDate) {
       const endTimestamp = new Date(answers.endDate + 'T23:59:59').toISOString();
+      if (new Date(endTimestamp).getTime() <= Date.now()) {
+        throw new Error(
+          `Your campaign end date (${answers.endDate}) is in the past. Go back to the Ad Schedule step and pick a future end date (or turn off "Set end date" to run continuously).`
+        );
+      }
       coldAdSetParams.end_time = endTimestamp;
       console.log('Ad set end date:', endTimestamp);
     }
