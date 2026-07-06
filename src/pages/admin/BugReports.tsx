@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import AdminTabs from "@/components/AdminTabs";
@@ -14,14 +14,14 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { 
-  Bug, 
-  RefreshCw, 
-  Mail, 
-  DollarSign, 
-  XCircle, 
-  Gift, 
-  Eye, 
+import {
+  Bug,
+  RefreshCw,
+  Mail,
+  DollarSign,
+  XCircle,
+  Gift,
+  Eye,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -30,7 +30,10 @@ import {
   Loader2,
   Send,
   Archive,
-  Sparkles
+  Sparkles,
+  Wand2,
+  Copy,
+  Brain
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -80,6 +83,7 @@ const EMAIL_TEMPLATES = [
 
 export default function AdminBugReports() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [reports, setReports] = useState<BugReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -91,11 +95,22 @@ export default function AdminBugReports() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [fixPromptOpen, setFixPromptOpen] = useState(false);
   const [fixPromptText, setFixPromptText] = useState("");
-  
+
+  // AI triage state
+  const [triage, setTriage] = useState<any | null>(null);
+  const [triageLoading, setTriageLoading] = useState(false);
+
+  // Draft-fix-email state
+  const [draftEmailOpen, setDraftEmailOpen] = useState(false);
+  const [draftEmailLoading, setDraftEmailLoading] = useState(false);
+  const [draftSubject, setDraftSubject] = useState("");
+  const [draftBody, setDraftBody] = useState("");
+  const [draftSending, setDraftSending] = useState(false);
+
   // Email form state
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [customMessage, setCustomMessage] = useState("");
-  
+
   // Resolution notes
   const [resolutionNotes, setResolutionNotes] = useState("");
   
@@ -314,13 +329,114 @@ ${report.context || '(none)'}
 Please investigate the root cause, propose a fix, and implement it.`;
   };
 
-  const handleFixInCode = (report: BugReport) => {
-    setFixPromptText(buildLovablePrompt(report));
+  const handleFixInCode = (report: BugReport, promptOverride?: string) => {
+    setFixPromptText(promptOverride || buildLovablePrompt(report));
     setFixPromptOpen(true);
     if (report.status === 'new') {
       handleUpdateStatus(report.id, 'in_progress');
     }
   };
+
+  const handleRunTriage = async () => {
+    if (!selectedReport) return;
+    setTriageLoading(true);
+    setTriage(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("triage-bug-report", {
+        body: { reportId: selectedReport.id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const t = (data as any)?.triage;
+      if (!t) throw new Error("No triage returned");
+      setTriage(t);
+      toast.success("AI triage complete");
+    } catch (e: any) {
+      toast.error(e?.message || "Triage failed");
+    } finally {
+      setTriageLoading(false);
+    }
+  };
+
+  const handleDraftFixEmail = async () => {
+    if (!selectedReport) return;
+    setDraftEmailLoading(true);
+    setDraftEmailOpen(true);
+    setDraftSubject("");
+    setDraftBody("");
+    try {
+      const fixSummary = [
+        triage?.user_facing_summary,
+        triage?.suggested_fix,
+        resolutionNotes,
+      ].filter(Boolean).join("\n\n");
+      const { data, error } = await supabase.functions.invoke("draft-bug-fix-email", {
+        body: { reportId: selectedReport.id, fixSummary: fixSummary || undefined },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const draft = (data as any)?.draft;
+      if (!draft) throw new Error("No draft returned");
+      setDraftSubject(draft.subject || "Your bug report — update from Lumi");
+      setDraftBody(draft.body || "");
+    } catch (e: any) {
+      toast.error(e?.message || "Email draft failed");
+      setDraftEmailOpen(false);
+    } finally {
+      setDraftEmailLoading(false);
+    }
+  };
+
+  const handleSendDraftedEmail = async () => {
+    if (!selectedReport) return;
+    if (!draftSubject.trim() || !draftBody.trim()) {
+      toast.error("Subject and body are required");
+      return;
+    }
+    setDraftSending(true);
+    try {
+      const { error } = await supabase.functions.invoke("manage-bug-report", {
+        body: {
+          action: "send_email",
+          reportId: selectedReport.id,
+          customSubject: draftSubject.trim(),
+          customMessage: draftBody.trim(),
+        },
+      });
+      if (error) throw error;
+      // Mark resolved automatically since the drafted email tells user it's fixed.
+      await supabase.functions.invoke("manage-bug-report", {
+        body: {
+          action: "update_status",
+          reportId: selectedReport.id,
+          status: "resolved",
+          resolutionNotes: resolutionNotes || "Resolved — AI-drafted fix email sent to user.",
+        },
+      });
+      toast.success("✅ Email sent & bug marked resolved", {
+        description: `${selectedReport.user_email} has been notified.`,
+      });
+      setDraftEmailOpen(false);
+      setDetailOpen(false);
+      setSelectedReport(null);
+      fetchReports();
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send email");
+    } finally {
+      setDraftSending(false);
+    }
+  };
+
+  const handleCopyAiPrompt = async () => {
+    if (!triage?.lovable_prompt) return;
+    try {
+      await navigator.clipboard.writeText(triage.lovable_prompt);
+      toast.success("AI-generated prompt copied — paste it into Lovable");
+    } catch {
+      toast.error("Couldn't copy automatically.");
+    }
+  };
+
 
   const handleCopyFixPrompt = async () => {
     try {
@@ -417,8 +533,31 @@ Please investigate the root cause, propose a fix, and implement it.`;
   const openDetail = (report: BugReport) => {
     setSelectedReport(report);
     setResolutionNotes(report.resolution_notes || "");
+    setTriage(null);
+    setTriageLoading(false);
     setDetailOpen(true);
   };
+
+  // Deep-link: /admin/bug-reports?open=<id> auto-opens the detail dialog.
+  useEffect(() => {
+    const openId = searchParams.get("open");
+    if (!openId || reports.length === 0) return;
+    const match = reports.find((r) => r.id === openId);
+    if (match && (!selectedReport || selectedReport.id !== openId || !detailOpen)) {
+      openDetail(match);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reports, searchParams]);
+
+  const handleDetailOpenChange = (open: boolean) => {
+    setDetailOpen(open);
+    if (!open && searchParams.get("open")) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("open");
+      setSearchParams(next, { replace: true });
+    }
+  };
+
 
   return (
     <DashboardLayout>
@@ -535,7 +674,7 @@ Please investigate the root cause, propose a fix, and implement it.`;
         </div>
 
         {/* Detail Dialog */}
-        <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <Dialog open={detailOpen} onOpenChange={handleDetailOpenChange}>
           <DialogContent className="max-w-4xl h-[90dvh] overflow-hidden flex flex-col min-h-0 p-0">
             <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
               <DialogTitle className="flex items-center gap-2">
@@ -746,12 +885,103 @@ Please investigate the root cause, propose a fix, and implement it.`;
                       </CardContent>
                     </Card>
 
-                    {/* Fix in Lovable */}
+                    {/* AI Triage */}
+                    <Card className="border-primary/40">
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Brain className="h-4 w-4 text-primary" />
+                          AI Triage
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                          Runs Lovable AI over the report to diagnose the likely cause, name suspect files, and generate a ready-to-paste Lovable prompt.
+                        </p>
+                        <Button
+                          onClick={handleRunTriage}
+                          disabled={triageLoading}
+                          className="w-full gap-2"
+                        >
+                          {triageLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Brain className="h-4 w-4" />
+                          )}
+                          {triage ? "Re-run AI triage" : "Analyze with AI"}
+                        </Button>
+
+                        {triage && (
+                          <div className="space-y-3 pt-2 border-t">
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              {triage.severity && (
+                                <Badge variant="outline">Severity: {triage.severity}</Badge>
+                              )}
+                              {triage.category && (
+                                <Badge variant="outline">{triage.category}</Badge>
+                              )}
+                            </div>
+
+                            {triage.diagnosis && (
+                              <div>
+                                <Label className="text-xs">Diagnosis</Label>
+                                <p className="mt-1 text-sm p-3 bg-muted rounded-md whitespace-pre-wrap">
+                                  {triage.diagnosis}
+                                </p>
+                              </div>
+                            )}
+
+                            {triage.suggested_fix && (
+                              <div>
+                                <Label className="text-xs">Suggested fix</Label>
+                                <p className="mt-1 text-sm p-3 bg-muted rounded-md whitespace-pre-wrap">
+                                  {triage.suggested_fix}
+                                </p>
+                              </div>
+                            )}
+
+                            {Array.isArray(triage.likely_files) && triage.likely_files.length > 0 && (
+                              <div>
+                                <Label className="text-xs">Likely files</Label>
+                                <ul className="mt-1 text-xs space-y-1">
+                                  {triage.likely_files.map((f: string) => (
+                                    <li key={f}>
+                                      <code className="bg-muted px-1.5 py-0.5 rounded">{f}</code>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {triage.lovable_prompt && (
+                              <div className="flex flex-col sm:flex-row gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleCopyAiPrompt}
+                                  className="gap-2"
+                                >
+                                  <Copy className="h-3 w-3" /> Copy AI prompt
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleFixInCode(selectedReport, triage.lovable_prompt)}
+                                  className="gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+                                >
+                                  <Sparkles className="h-3 w-3" /> Open in Fix dialog
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Fix in Lovable — manual/basic prompt */}
                     <Card className="border-purple-200">
                       <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2 text-purple-600">
                           <Sparkles className="h-4 w-4" />
-                          Fix it in the Code
+                          Fix it in the Code (manual prompt)
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
@@ -772,6 +1002,34 @@ Please investigate the root cause, propose a fix, and implement it.`;
                         </Button>
                       </CardContent>
                     </Card>
+
+                    {/* Draft fix email */}
+                    <Card className="border-green-200">
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2 text-green-700">
+                          <Wand2 className="h-4 w-4" />
+                          Mark as fixed & draft email
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Once you've shipped the fix, this drafts a warm plain-language email to {selectedReport.user_email} — acknowledging what they reported, explaining what was fixed, and asking them to try again. You'll be able to edit before sending.
+                        </p>
+                        <Button
+                          onClick={handleDraftFixEmail}
+                          disabled={draftEmailLoading}
+                          className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          {draftEmailLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Wand2 className="h-4 w-4" />
+                          )}
+                          Draft fix email
+                        </Button>
+                      </CardContent>
+                    </Card>
+
 
                     {/* Quick Status Actions */}
                     <Card>
@@ -947,6 +1205,73 @@ Please investigate the root cause, propose a fix, and implement it.`;
               <Button variant="outline" onClick={() => setFixPromptOpen(false)}>Close</Button>
               <Button onClick={handleCopyFixPrompt} className="bg-purple-600 hover:bg-purple-700 text-white gap-2">
                 <Sparkles className="h-4 w-4" /> Copy prompt
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Draft Fix Email Dialog */}
+        <Dialog open={draftEmailOpen} onOpenChange={(o) => !draftSending && setDraftEmailOpen(o)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-green-700">
+                <Wand2 className="h-4 w-4" /> Draft fix email
+              </DialogTitle>
+              <DialogDescription>
+                {selectedReport ? (
+                  <>To <span className="font-medium">{selectedReport.user_email}</span> — edit anything, then send. Sending will mark the bug as resolved.</>
+                ) : null}
+              </DialogDescription>
+            </DialogHeader>
+
+            {draftEmailLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <span className="ml-3 text-sm text-muted-foreground">Drafting…</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <Label>Subject</Label>
+                  <Input
+                    value={draftSubject}
+                    onChange={(e) => setDraftSubject(e.target.value)}
+                    className="mt-2"
+                  />
+                </div>
+                <div>
+                  <Label>Body</Label>
+                  <Textarea
+                    value={draftBody}
+                    onChange={(e) => setDraftBody(e.target.value)}
+                    className="mt-2 min-h-[280px]"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    A "Best, The Lumi Team" signature and branded header are added automatically.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setDraftEmailOpen(false)}
+                disabled={draftSending}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendDraftedEmail}
+                disabled={draftSending || draftEmailLoading || !draftSubject.trim() || !draftBody.trim()}
+                className="bg-green-600 hover:bg-green-700 text-white gap-2"
+              >
+                {draftSending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                Send & mark resolved
               </Button>
             </div>
           </DialogContent>

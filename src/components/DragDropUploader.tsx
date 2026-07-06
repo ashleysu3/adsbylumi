@@ -93,7 +93,7 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
         validFiles.push(file);
       } catch (error) {
         if (error instanceof z.ZodError) {
-          toast.error(`${file.name}: ${error.errors[0].message}`);
+          toast.error(`${file.name}: ${error.issues[0].message}`);
         }
       }
     });
