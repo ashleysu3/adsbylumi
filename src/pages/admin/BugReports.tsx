@@ -83,6 +83,7 @@ const EMAIL_TEMPLATES = [
 
 export default function AdminBugReports() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [reports, setReports] = useState<BugReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -94,11 +95,22 @@ export default function AdminBugReports() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [fixPromptOpen, setFixPromptOpen] = useState(false);
   const [fixPromptText, setFixPromptText] = useState("");
-  
+
+  // AI triage state
+  const [triage, setTriage] = useState<any | null>(null);
+  const [triageLoading, setTriageLoading] = useState(false);
+
+  // Draft-fix-email state
+  const [draftEmailOpen, setDraftEmailOpen] = useState(false);
+  const [draftEmailLoading, setDraftEmailLoading] = useState(false);
+  const [draftSubject, setDraftSubject] = useState("");
+  const [draftBody, setDraftBody] = useState("");
+  const [draftSending, setDraftSending] = useState(false);
+
   // Email form state
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [customMessage, setCustomMessage] = useState("");
-  
+
   // Resolution notes
   const [resolutionNotes, setResolutionNotes] = useState("");
   
