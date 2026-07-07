@@ -891,7 +891,7 @@ export default function GuidedOnboarding() {
         )}
 
         {/* ============== STEP 1 — Website only ============== */}
-        {step === 1 && (
+        {step === 1 && !autoStartFiredRef.current && !step1Busy && (
           <div className="min-h-[70vh] flex items-center justify-center py-8">
             <div className="w-full max-w-xl mx-auto">
               <div className="text-center mb-10 animate-fade-in">
@@ -907,28 +907,38 @@ export default function GuidedOnboarding() {
               </div>
 
               <div className="rounded-3xl border bg-card shadow-sm p-6 sm:p-8 space-y-5 animate-fade-in">
-                <div className="space-y-2">
-                  <Input
-                    value={websiteUrl}
-                    onChange={(e) => setWebsiteUrl(e.target.value)}
-                    placeholder="yourbrand.com"
-                    autoFocus
-                    className="h-14 text-base rounded-xl"
-                    onKeyDown={(e) => { if (e.key === "Enter" && websiteUrl.trim()) startStep1(); }}
-                    disabled={step1Busy}
-                  />
-                </div>
+                <Input
+                  value={websiteUrl}
+                  onChange={(e) => setWebsiteUrl(e.target.value)}
+                  placeholder="yourbrand.com"
+                  autoFocus
+                  className="h-14 text-base rounded-xl"
+                  onKeyDown={(e) => { if (e.key === "Enter" && websiteUrl.trim()) startStep1(); }}
+                  disabled={step1Busy}
+                />
 
-                <div className="space-y-2">
-                  <Input
-                    value={instagramHandle}
-                    onChange={(e) => setInstagramHandle(e.target.value)}
-                    placeholder="add your Instagram (optional)"
-                    className="h-12 text-sm rounded-xl bg-muted/30 border-dashed"
-                    onKeyDown={(e) => { if (e.key === "Enter" && websiteUrl.trim()) startStep1(); }}
-                    disabled={step1Busy}
-                  />
-                </div>
+                {showIgField ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-sm">@</span>
+                    <Input
+                      value={instagramHandle}
+                      onChange={(e) => setInstagramHandle(e.target.value)}
+                      placeholder="your.instagram"
+                      className="h-12 text-sm rounded-xl bg-muted/30"
+                      onKeyDown={(e) => { if (e.key === "Enter" && websiteUrl.trim()) startStep1(); }}
+                      disabled={step1Busy}
+                      autoFocus
+                    />
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowIgField(true)}
+                    className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
+                  >
+                    + add your Instagram (optional)
+                  </button>
+                )}
 
                 <Button
                   onClick={startStep1}
