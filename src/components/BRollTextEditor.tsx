@@ -237,9 +237,9 @@ export function BRollTextEditor({
         };
 
     enqueue({
-      title: clipName || 'B-roll video',
-      sourceClipName: clipName,
-      videoUrl,
+      title: activeClipName || 'B-roll video',
+      sourceClipName: activeClipName,
+      videoUrl: activeVideoUrl,
       overlays: specs,
       style: renderStyle,
       loopVideo: overflows && fitMode === 'loop',
