@@ -839,30 +839,58 @@ export default function GuidedOnboarding() {
 
         {/* ============== STEP 1 — Website only ============== */}
         {step === 1 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-lumi-pink-1" /> Drop your website</CardTitle>
-              <CardDescription>One field. LUMI reads it instantly and pulls your brand — voice, audience, colors, the works.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="space-y-2">
-                <Label>Website URL *</Label>
-                <div className="flex gap-2">
+          <div className="min-h-[70vh] flex items-center justify-center py-8">
+            <div className="w-full max-w-xl mx-auto">
+              <div className="text-center mb-10 animate-fade-in">
+                <div className="inline-block mb-8">
+                  <span className="text-5xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600">
+                    LUMI
+                  </span>
+                </div>
+                <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground leading-tight">
+                  Drop your website.<br />
+                  <span className="text-muted-foreground">Watch LUMI do the rest.</span>
+                </h1>
+              </div>
+
+              <div className="rounded-3xl border bg-card shadow-sm p-6 sm:p-8 space-y-5 animate-fade-in">
+                <div className="space-y-2">
                   <Input
                     value={websiteUrl}
                     onChange={(e) => setWebsiteUrl(e.target.value)}
-                    placeholder="https://yourbrand.com"
-                    onKeyDown={(e) => { if (e.key === "Enter") startStep1(); }}
+                    placeholder="yourbrand.com"
+                    autoFocus
+                    className="h-14 text-base rounded-xl"
+                    onKeyDown={(e) => { if (e.key === "Enter" && websiteUrl.trim()) startStep1(); }}
                     disabled={step1Busy}
                   />
-                  <Button onClick={startStep1} disabled={step1Busy}>
-                    {step1Busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Read my site"}
-                  </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">We'll pull everything and show you the full picture next — you'll be able to edit anything that's off.</p>
+
+                <div className="space-y-2">
+                  <Input
+                    value={instagramHandle}
+                    onChange={(e) => setInstagramHandle(e.target.value)}
+                    placeholder="add your Instagram (optional)"
+                    className="h-12 text-sm rounded-xl bg-muted/30 border-dashed"
+                    onKeyDown={(e) => { if (e.key === "Enter" && websiteUrl.trim()) startStep1(); }}
+                    disabled={step1Busy}
+                  />
+                </div>
+
+                <Button
+                  onClick={startStep1}
+                  disabled={step1Busy || !websiteUrl.trim()}
+                  className="w-full h-14 text-base font-semibold rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity shadow-lg shadow-pink-500/20"
+                >
+                  {step1Busy ? (
+                    <><Loader2 className="h-5 w-5 animate-spin mr-2" /> Reading your brand…</>
+                  ) : (
+                    <>Read my brand <ArrowRight className="h-5 w-5 ml-2" /></>
+                  )}
+                </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
         {/* ============== STEP 2 — Reveal page (streams in live) ============== */}
