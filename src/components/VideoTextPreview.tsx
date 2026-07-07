@@ -104,6 +104,10 @@ interface VideoTextPreviewProps {
   /** Fires whenever the video's duration is known. Lets parents detect when
    *  overlay timings exceed the video length and offer fit options. */
   onDurationChange?: (duration: number) => void;
+  /** Optional trim window — the preview clamps playback to [trimStart, trimEnd]
+   *  so users see exactly what will render. */
+  trimStart?: number;
+  trimEnd?: number;
 }
 
 function parseTimingString(timing?: string): { start: number; end: number } | null {
@@ -213,6 +217,8 @@ export function VideoTextPreview({
   loopVideo = true,
   playbackRate = 1,
   onDurationChange,
+  trimStart,
+  trimEnd,
 }: VideoTextPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -249,7 +255,25 @@ export function VideoTextPreview({
     const video = videoRef.current;
     if (!video) return;
 
+    const tStart = Math.max(0, trimStart ?? 0);
+    const tEndRaw = typeof trimEnd === 'number' ? trimEnd : Infinity;
+
     const handleTimeUpdate = () => {
+      const tEnd = tEndRaw === Infinity ? (video.duration || Infinity) : tEndRaw;
+      // Clamp playback to the trim window so the preview matches the export.
+      if (video.currentTime >= tEnd - 0.02) {
+        if (loopVideo) {
+          video.currentTime = tStart;
+          if (isPlayingRef.current) {
+            void video.play().catch(() => {});
+          }
+        } else {
+          video.pause();
+          video.currentTime = tEnd;
+        }
+      } else if (video.currentTime < tStart - 0.02) {
+        video.currentTime = tStart;
+      }
       setCurrentTime(video.currentTime);
       if (!isPlayingRef.current) {
         timelineTimeRef.current = video.currentTime;
@@ -270,6 +294,10 @@ export function VideoTextPreview({
       const d = video.duration || 0;
       setDuration(d);
       onDurationChange?.(d);
+      // Seek into the trim window on load so scrubbing/preview start matches.
+      if (tStart > 0.02 && video.currentTime < tStart) {
+        video.currentTime = tStart;
+      }
     };
 
     video.addEventListener("timeupdate", handleTimeUpdate);
@@ -283,7 +311,7 @@ export function VideoTextPreview({
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("loadedmetadata", handleMeta);
     };
-  }, [onDurationChange]);
+  }, [onDurationChange, trimStart, trimEnd, loopVideo]);
 
   // Apply playbackRate to the video element whenever it changes.
   useEffect(() => {
