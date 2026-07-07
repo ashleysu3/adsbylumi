@@ -826,7 +826,7 @@ export default function GuidedOnboarding() {
   return (
     <div className="min-h-screen bg-background py-10 px-4">
       <div className="max-w-3xl mx-auto">
-        {step > 2 && (
+        {step > 3 && (
           <div className="mb-8">
             <div className="flex items-center justify-between text-sm text-muted-foreground mb-3 gap-3">
               <span className="truncate">Step {step} of {TOTAL} — {STEPS[step - 1]}</span>
