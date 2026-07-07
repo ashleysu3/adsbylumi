@@ -253,9 +253,10 @@ export default function GuidedOnboarding() {
       if (!id) {
         const placeholder = domainName(normalized);
         placeholderNameRef.current = placeholder;
-        const { data, error } = await supabase.from("brands").insert({
-          user_id: user.id, name: placeholder, website_url: normalized, onboarding_step: 1,
-        }).select().single();
+        const igClean = instagramHandle.trim().replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/\/+$/, "");
+        const insertRow: any = { user_id: user.id, name: placeholder, website_url: normalized, onboarding_step: 1 };
+        if (igClean) insertRow.instagram_account_name = igClean;
+        const { data, error } = await supabase.from("brands").insert(insertRow).select().single();
         if (error) throw error;
         id = data.id; row = data;
         setBrandId(id!); setBrand(row);
