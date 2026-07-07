@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Plus, Palette, MessageSquare, Users, Image as ImageIcon, Check, Link2, Sparkles, Rocket, BarChart3, Star } from "lucide-react";
+import { ArrowRight, Plus, Palette, MessageSquare, Users, Image as ImageIcon, Check, X, Link2, Sparkles, Rocket, BarChart3, Star, GraduationCap, Briefcase, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollReveal, StaggerChildren, StaggerItem } from "@/components/animations";
 import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
 import { toast } from "sonner";
@@ -490,19 +491,343 @@ const Sales = () => {
         </div>
       </section>
 
-      {/* Simple footer */}
-      <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
-        <div className="max-w-6xl mx-auto px-5 flex flex-col md:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <img src={lumiLogo} alt="LUMI" className="h-6 w-auto" />
-            <span>© {new Date().getFullYear()} LUMI</span>
-          </div>
-          <div className="flex items-center gap-5">
-            <a href="/pricing" className="hover:text-foreground transition-colors">Pricing</a>
-            <a href="/auth" className="hover:text-foreground transition-colors">Sign in</a>
+      {/* WHO IT'S FOR */}
+      <section id="who" className="px-5 md:px-8 py-20 md:py-28 bg-fog-grey/40">
+        <div className="max-w-6xl mx-auto">
+          <ScrollReveal className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
+            <div className="text-xs md:text-sm uppercase tracking-widest text-lumi-pink-1 mb-3">Built for your business</div>
+            <h2 className="font-display text-3xl md:text-5xl leading-tight text-warm-black">
+              If you sell what you know, LUMI's for you.
+            </h2>
+            <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
+              LUMI learns your specific offer and audience — so the ads fit your world, not a generic mold.
+            </p>
+          </ScrollReveal>
+
+          <StaggerChildren className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
+            {[
+              {
+                icon: Heart,
+                title: "Coaches",
+                body: "Fill your calendar with discovery calls and applications — without hiring an agency or guessing at targeting.",
+                tags: ["Life", "Business", "Health", "Relationship"],
+                accent: "from-lumi-orange-1 to-lumi-pink-1",
+              },
+              {
+                icon: GraduationCap,
+                title: "Course creators",
+                body: "Launch, fill your webinar, and sell out your program with ads that match your brand and your promise.",
+                tags: ["Memberships", "Cohorts", "Digital products"],
+                accent: "from-lumi-pink-1 to-lumi-purple-1",
+              },
+              {
+                icon: Briefcase,
+                title: "Service providers",
+                body: "Book more of the right clients — designers, consultants, agencies, local pros — on autopilot.",
+                tags: ["Agencies", "Freelancers", "Local", "Done-for-you"],
+                accent: "from-lumi-purple-1 to-lumi-blue-1",
+              },
+            ].map((p) => (
+              <StaggerItem key={p.title}>
+                <Card className="p-6 md:p-8 rounded-2xl border-border shadow-card h-full hover:shadow-elevated transition-shadow bg-card">
+                  <div className={`h-12 w-12 rounded-2xl bg-gradient-to-br ${p.accent} flex items-center justify-center text-white shadow-glow mb-4`}>
+                    <p.icon className="h-6 w-6" />
+                  </div>
+                  <div className="font-display text-xl md:text-2xl text-warm-black">{p.title}</div>
+                  <p className="mt-2 text-muted-foreground text-sm md:text-base leading-relaxed">{p.body}</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {p.tags.map((t) => (
+                      <span key={t} className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">{t}</span>
+                    ))}
+                  </div>
+                </Card>
+              </StaggerItem>
+            ))}
+          </StaggerChildren>
+
+          <ScrollReveal className="mt-12 text-center">
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Loved by thousands of women founders — and plenty of guys too. If you've got an offer and a website, you're in.
+            </p>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* BRAND DNA */}
+      <section className="px-5 md:px-8 py-20 md:py-28">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 items-center">
+          <ScrollReveal>
+            <div className="text-xs md:text-sm uppercase tracking-widest text-lumi-pink-1 mb-3">Your brand, understood</div>
+            <h2 className="font-display text-3xl md:text-5xl leading-tight text-warm-black">
+              It doesn't sound like AI. It sounds like <span className="text-gradient-lumi">you.</span>
+            </h2>
+            <p className="mt-4 text-muted-foreground">
+              Most tools hand you a blank box and a generic template. LUMI starts by learning what makes you, you — then never forgets it.
+            </p>
+            <ul className="mt-6 space-y-3">
+              {[
+                "Your real colors & fonts pulled straight from your site",
+                "Your voice, captured",
+                "Your ideal client's fears and desires",
+                "Your photos, when you have them",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <span className="shrink-0 h-6 w-6 rounded-full bg-gradient-lumi flex items-center justify-center text-white shadow-glow">
+                    <Check className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="text-foreground">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </ScrollReveal>
+
+          <ScrollReveal>
+            <Card className="p-6 md:p-8 rounded-3xl border-border shadow-elevated bg-card">
+              <div className="text-xs uppercase tracking-widest text-muted-foreground mb-4">Extracted brand kit</div>
+              <div className="space-y-5">
+                <div>
+                  <div className="text-xs text-muted-foreground mb-2">Brand kit</div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex gap-1.5">
+                      {["bg-lumi-orange-1", "bg-lumi-pink-1", "bg-lumi-purple-1", "bg-lumi-blue-1"].map((c) => (
+                        <span key={c} className={`h-8 w-8 rounded-lg ${c}`} />
+                      ))}
+                    </div>
+                    <span className="text-sm text-muted-foreground">4 colors · 2 fonts · logo</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-2">Voice</div>
+                  <div className="flex flex-wrap gap-2">
+                    {["Warm", "Direct", "Encouraging"].map((t) => (
+                      <span key={t} className="rounded-full bg-muted px-3 py-1 text-sm">{t}</span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-2">Ideal client</div>
+                  <p className="text-sm text-foreground">Coaches drowning in busywork — craves a booked calendar, fears wasted ad spend.</p>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-2">Proof</div>
+                  <div className="flex items-center gap-2 text-sm text-foreground">
+                    <div className="flex text-lumi-orange-1 gap-0.5">{[0,1,2,3,4].map(i => <Star key={i} className="h-3.5 w-3.5 fill-current" />)}</div>
+                    3 testimonials
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* COMPARISON */}
+      <section id="why" className="px-5 md:px-8 py-20 md:py-28 bg-fog-grey/40">
+        <div className="max-w-6xl mx-auto">
+          <ScrollReveal className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
+            <div className="text-xs md:text-sm uppercase tracking-widest text-lumi-pink-1 mb-3">The honest comparison</div>
+            <h2 className="font-display text-3xl md:text-5xl leading-tight text-warm-black">
+              Not a chatbot that read about ads on the internet.
+            </h2>
+            <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
+              LUMI knows what's working on Meta right now, writes in your voice, and actually runs the campaigns.
+            </p>
+          </ScrollReveal>
+
+          <ScrollReveal>
+            <div className="rounded-3xl border border-border bg-card shadow-elevated overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm md:text-base">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left p-4 md:p-5 font-medium text-muted-foreground"></th>
+                      <th className="p-4 md:p-5 text-center">
+                        <div className="inline-flex items-center gap-1.5 rounded-full bg-gradient-lumi text-white px-3 py-1 font-semibold shadow-glow">
+                          <Sparkles className="h-3.5 w-3.5" /> LUMI
+                        </div>
+                      </th>
+                      <th className="p-4 md:p-5 text-center font-medium text-muted-foreground">An agency</th>
+                      <th className="p-4 md:p-5 text-center font-medium text-muted-foreground">DIY + Ads Manager</th>
+                      <th className="p-4 md:p-5 text-center font-medium text-muted-foreground">ChatGPT / Canva</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {([
+                      ["Knows your brand & voice", true, true, false, false],
+                      ["Writes the copy for you", true, true, false, true],
+                      ["Designs on-brand creative", true, true, false, true],
+                      ["Runs & optimizes on Meta", true, true, true, false],
+                      ["Ready today, not next week", true, false, true, true],
+                    ] as [string, boolean, boolean, boolean, boolean][]).map(([label, a, b, c, d]) => (
+                      <tr key={label} className="border-b border-border last:border-0">
+                        <td className="p-4 md:p-5 text-foreground">{label}</td>
+                        {[a, b, c, d].map((v, i) => (
+                          <td key={i} className={`p-4 md:p-5 text-center ${i === 0 ? "bg-gradient-lumi/5" : ""}`}>
+                            {v ? (
+                              <Check className="inline h-5 w-5 text-lumi-pink-1" />
+                            ) : (
+                              <X className="inline h-5 w-5 text-muted-foreground/50" />
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                    <tr>
+                      <td className="p-4 md:p-5 text-foreground">Monthly cost</td>
+                      <td className="p-4 md:p-5 text-center bg-gradient-lumi/5 font-semibold text-warm-black">One low fee</td>
+                      <td className="p-4 md:p-5 text-center text-muted-foreground">$2k–$10k</td>
+                      <td className="p-4 md:p-5 text-center text-muted-foreground">Your time</td>
+                      <td className="p-4 md:p-5 text-center text-muted-foreground">Cheap, but on you</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* TESTIMONIALS */}
+      <section className="px-5 md:px-8 py-20 md:py-28">
+        <div className="max-w-6xl mx-auto">
+          <ScrollReveal className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
+            <div className="text-xs md:text-sm uppercase tracking-widest text-lumi-pink-1 mb-3">Built for people doing the work</div>
+            <h2 className="font-display text-3xl md:text-5xl leading-tight text-warm-black">
+              Coaches who'd never touched ads. Now booked.
+            </h2>
+          </ScrollReveal>
+
+          <StaggerChildren className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
+            {[
+              {
+                quote: "I run everything solo. LUMI pulled my brand, wrote the ad, and I had discovery calls booked the same week. It sounded exactly like me.",
+                name: "Maya R.",
+                role: "Business coach",
+              },
+              {
+                quote: "I'm not techy at all and I was live on Meta in about ten minutes. The creative actually matched my website. I finally stopped boosting random posts.",
+                name: "Jenna P.",
+                role: "Course creator",
+              },
+              {
+                quote: "Cancelled my $3k/mo agency. LUMI does the strategy and the daily 'do this one thing' is genuinely smarter than what they sent me.",
+                name: "Devon K.",
+                role: "Agency owner",
+              },
+            ].map((t) => (
+              <StaggerItem key={t.name}>
+                <Card className="p-6 md:p-7 rounded-2xl border-border shadow-card h-full bg-card">
+                  <div className="flex text-lumi-orange-1 gap-0.5 mb-3">
+                    {[0,1,2,3,4].map(i => <Star key={i} className="h-4 w-4 fill-current" />)}
+                  </div>
+                  <p className="font-display text-lg leading-snug text-warm-black">"{t.quote}"</p>
+                  <div className="mt-4 text-sm text-muted-foreground">
+                    — {t.name}, {t.role}
+                  </div>
+                </Card>
+              </StaggerItem>
+            ))}
+          </StaggerChildren>
+
+          <ScrollReveal className="mt-10 text-center">
+            <p className="text-muted-foreground">
+              Join 4,000+ coaches, creators, and service providers running smarter ads with LUMI.
+            </p>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="px-5 md:px-8 py-20 md:py-28 bg-fog-grey/40">
+        <div className="max-w-3xl mx-auto">
+          <ScrollReveal className="text-center mb-10 md:mb-14">
+            <h2 className="font-display text-3xl md:text-5xl leading-tight text-warm-black">
+              Questions, answered.
+            </h2>
+          </ScrollReveal>
+
+          <ScrollReveal>
+            <Accordion type="single" collapsible className="rounded-2xl border border-border bg-card shadow-card divide-y divide-border overflow-hidden">
+              {[
+                { q: "Do I need to know anything about Meta ads?", a: "Nope — that's the whole point. LUMI handles strategy, copy, creative, targeting, and daily optimization. You approve; it does the heavy lifting." },
+                { q: "What if I don't have a website?", a: "A website makes it instant, but you're not stuck. Drop your Instagram instead, or answer a couple of quick questions and LUMI builds your brand from there." },
+                { q: "Will the ads actually look and sound like my brand?", a: "Yes — LUMI pulls your real colors, fonts, voice, and photos from your site, so every ad is on-brand automatically." },
+                { q: "How is this different from ChatGPT or Canva?", a: "Those give you words or a design and stop there. LUMI knows what's working on Meta now, writes in your voice, designs the creative, launches, and optimizes daily." },
+                { q: "Can I use my own photos or creative?", a: "Absolutely. Bring your own anytime, or let LUMI build from what it finds on your site." },
+                { q: "Is there a free trial?", a: "You can see your first ad free — no card to start. When you're ready to launch, there's a 7-day free trial, then one simple monthly price. Cancel anytime." },
+              ].map((f, i) => (
+                <AccordionItem key={i} value={`item-${i}`} className="border-0 px-5 md:px-6">
+                  <AccordionTrigger className="text-left font-display text-base md:text-lg text-warm-black hover:no-underline py-5">
+                    {f.q}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground text-sm md:text-base pb-5">
+                    {f.a}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* FINAL CTA */}
+      <section className="px-3 md:px-6 pb-16 md:pb-24">
+        <div className="max-w-6xl mx-auto rounded-3xl bg-warm-black text-warm-white py-16 md:py-24 px-5 md:px-10 text-center relative overflow-hidden">
+          <div aria-hidden className="absolute inset-0 bg-gradient-lumi opacity-[0.15] blur-3xl pointer-events-none" />
+          <div className="relative">
+            <h2 className="font-display text-3xl md:text-5xl leading-tight">
+              See your first ad in <span className="text-gradient-lumi">60 seconds.</span>
+            </h2>
+            <p className="mt-4 text-white/70 max-w-xl mx-auto">
+              Drop your website. Watch LUMI build an ad that sounds like you — before you pay a cent.
+            </p>
+            <div className="mt-8">
+              <CaptureBar size="lg" />
+            </div>
+            <p className="mt-5 text-sm text-white/60">
+              No card to begin · 7-day free trial to launch · cancel anytime
+            </p>
           </div>
         </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="border-t border-border py-12 md:py-16">
+        <div className="max-w-6xl mx-auto px-5 md:px-8 grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="col-span-2 md:col-span-1">
+            <img src={lumiLogo} alt="LUMI" className="h-8 w-auto mb-3" />
+            <p className="text-sm text-muted-foreground max-w-xs">
+              Your Meta ads team — powered by AI, made for coaches and creators.
+            </p>
+          </div>
+          <div>
+            <div className="font-semibold text-warm-black mb-3 text-sm">Product</div>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li><a href="#how" className="hover:text-foreground transition-colors">How it works</a></li>
+              <li><a href="#who" className="hover:text-foreground transition-colors">Who it's for</a></li>
+              <li><a href="/pricing" className="hover:text-foreground transition-colors">Pricing</a></li>
+            </ul>
+          </div>
+          <div>
+            <div className="font-semibold text-warm-black mb-3 text-sm">Company</div>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li><a href="/auth" className="hover:text-foreground transition-colors">Sign in</a></li>
+              <li><a href="/partners" className="hover:text-foreground transition-colors">Partners</a></li>
+              <li><a href="/refer" className="hover:text-foreground transition-colors">Refer</a></li>
+            </ul>
+          </div>
+          <div>
+            <div className="font-semibold text-warm-black mb-3 text-sm">Legal</div>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li><a href="/cancellation-policy" className="hover:text-foreground transition-colors">Cancellation policy</a></li>
+            </ul>
+          </div>
+        </div>
+        <div className="max-w-6xl mx-auto px-5 md:px-8 mt-10 pt-6 border-t border-border text-xs text-muted-foreground text-center">
+          © {new Date().getFullYear()} LUMI. All rights reserved.
+        </div>
       </footer>
+
 
       {/* marquee keyframes */}
       <style>{`
