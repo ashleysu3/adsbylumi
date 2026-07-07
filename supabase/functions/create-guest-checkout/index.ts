@@ -78,7 +78,12 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      success_url: `${returnOrigin}/auth?signup=true&paid=true&session_id={CHECKOUT_SESSION_ID}`,
+      // Only accept safe same-origin app paths for returnTo.
+      success_url: (() => {
+        const safeReturn = typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "";
+        const rt = safeReturn ? `&returnTo=${encodeURIComponent(safeReturn)}` : "";
+        return `${returnOrigin}/auth?signup=true&paid=true&session_id={CHECKOUT_SESSION_ID}${rt}`;
+      })(),
       cancel_url: `${returnOrigin}/`,
       allow_promotion_codes: true,
       subscription_data: {
