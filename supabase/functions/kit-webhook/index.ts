@@ -1,7 +1,27 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-// Public webhook endpoint — no JWT required.
-// Kit sends POST requests here when subscribers fill out forms.
+// Public webhook endpoint — Kit signs each request with HMAC-SHA256 using a
+// shared secret. Reject any request that doesn't carry a valid signature.
+
+async function verifyKitSignature(secret: string, rawBody: string, headerSig: string | null): Promise<boolean> {
+  if (!headerSig) return false;
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const sigBuf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(rawBody));
+  const expected = Array.from(new Uint8Array(sigBuf))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+  const provided = headerSig.replace(/^sha256=/i, '').trim().toLowerCase();
+  if (expected.length !== provided.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < expected.length; i++) mismatch |= expected.charCodeAt(i) ^ provided.charCodeAt(i);
+  return mismatch === 0;
+}
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') {
@@ -9,7 +29,23 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const payload = await req.json();
+    const rawBody = await req.text();
+    const kitSecret = Deno.env.get('KIT_WEBHOOK_SECRET');
+    if (!kitSecret) {
+      console.error('[KIT-WEBHOOK] KIT_WEBHOOK_SECRET not configured — rejecting');
+      return new Response(JSON.stringify({ error: 'Webhook not configured' }), {
+        status: 503, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    const signature = req.headers.get('X-Kit-Signature') || req.headers.get('x-kit-signature');
+    const ok = await verifyKitSignature(kitSecret, rawBody, signature);
+    if (!ok) {
+      console.warn('[KIT-WEBHOOK] Invalid or missing signature — rejecting');
+      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+        status: 401, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    const payload = JSON.parse(rawBody);
     console.log('[KIT-WEBHOOK] Received event:', JSON.stringify(payload).slice(0, 500));
 
     // Kit V4 webhook payload structure
