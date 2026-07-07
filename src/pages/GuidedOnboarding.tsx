@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import {
   Loader2, ArrowRight, ChevronLeft, CheckCircle2, Sparkles,
   Upload, Image as ImageIcon, Palette, MessageSquare, Brain, Target, Quote, ListChecks, Trash2, Check, Film,
-  Pencil, Type, Award, BarChart3, Newspaper, GraduationCap, Users, Briefcase
+  Pencil, Type, Award, BarChart3, Newspaper, GraduationCap, Users, Briefcase, Lock
 } from "lucide-react";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { PayoffAdScreen } from "@/components/onboarding/PayoffAdScreen";
@@ -34,6 +34,50 @@ const STEPS = [
 ];
 const TOTAL = STEPS.length;
 type AssetRow = { id: string; url: string; role: string | null; kept: boolean; source_url?: string | null; signedUrl?: string };
+
+// Roles that read as "real photos of you/your work" for the onboarding preview —
+// deliberately excludes logo/texture/graphic/background, which aren't what a
+// user means by "example images."
+const PHOTO_PREVIEW_ROLES = ["headshot", "lifestyle", "full_body", "product"];
+
+// brand.social_proof is written by TWO different extractors with different
+// shapes depending on which one last resolved: extract-social-proof writes a
+// flat string[] ("items"), analyze-brand-voice writes a richer
+// { testimonials: [{quote, attribution, result}], ... } object. Normalize both
+// (plus a lone string, just in case) into a flat list of quote-like strings so
+// the preview can show real testimonial text regardless of which shape landed.
+type TestimonialQuote = { text: string; attribution?: string };
+
+function getTestimonialQuotes(sp: unknown): TestimonialQuote[] {
+  if (!sp) return [];
+  if (typeof sp === "string") return sp.trim() ? [{ text: sp.trim() }] : [];
+  if (Array.isArray(sp)) {
+    const out: TestimonialQuote[] = [];
+    for (const item of sp) {
+      if (typeof item === "string") {
+        if (item.trim()) out.push({ text: item.trim() });
+        continue;
+      }
+      if (item && typeof item === "object" && typeof (item as any).quote === "string") {
+        const q = (item as any).quote.trim();
+        if (q) out.push({ text: q, attribution: (item as any).attribution || undefined });
+      }
+    }
+    return out;
+  }
+  if (typeof sp === "object") {
+    const testimonials = (sp as any).testimonials;
+    if (Array.isArray(testimonials)) {
+      const out: TestimonialQuote[] = [];
+      for (const t of testimonials) {
+        const q = typeof t?.quote === "string" ? t.quote.trim() : "";
+        if (q) out.push({ text: q, attribution: t?.attribution || undefined });
+      }
+      return out;
+    }
+  }
+  return [];
+}
 
 function pathFromUrl(url: string): string | null {
   const m = url.match(/\/storage\/v1\/object\/(?:public|sign)\/brand-assets\/([^?]+)/);
@@ -1095,32 +1139,26 @@ export default function GuidedOnboarding() {
           const firstPain: string = Array.isArray(ap.pain_points) ? (ap.pain_points[0] || "") : "";
           const firstDesire: string = Array.isArray(ap.desires) ? (ap.desires[0] || "") : "";
 
-          // Proof: count testimonials from social_proof shape (object with .testimonials[], array, or string).
-          const sp: any = brand?.social_proof;
-          let testimonialCount = 0;
-          if (Array.isArray(sp)) testimonialCount = sp.filter(Boolean).length;
-          else if (typeof sp === "string" && sp.trim()) testimonialCount = 1;
-          else if (sp && typeof sp === "object") {
-            const buckets = ["testimonials", "case_studies", "stats", "awards", "press_features", "credentials", "notable_clients"];
-            for (const b of buckets) if (Array.isArray(sp[b])) testimonialCount += sp[b].filter(Boolean).length;
-          }
-          const photosCount = assets.length;
+          // Proof + photos: show a REAL taste (1-3 photos, 1-2 testimonial quotes),
+          // then tease anything beyond that as a reason to start the trial — same
+          // "never announce an absence" principle as before, just with actual
+          // previews instead of bare counts. See getTestimonialQuotes/
+          // PHOTO_PREVIEW_ROLES above for why both shapes of social_proof are
+          // normalized and why photos are role-filtered.
+          const testimonialItems = getTestimonialQuotes(brand?.social_proof);
+          const TESTIMONIAL_FREE_COUNT = 2;
+          const testimonialsShown = testimonialItems.slice(0, TESTIMONIAL_FREE_COUNT);
+          const testimonialTeaser = testimonialItems[TESTIMONIAL_FREE_COUNT] || null;
+          const testimonialRemaining = Math.max(0, testimonialItems.length - TESTIMONIAL_FREE_COUNT - (testimonialTeaser ? 1 : 0));
 
-          // "Found on your site" chips — only ever POSITIVE findings or an honest
-          // in-progress state. Never announce an absence ("no testimonials yet",
-          // "no photos found") — that reads as a failure when it's often just
-          // normal (plenty of real sites have no testimonials page). If nothing
-          // positive has turned up and nothing is still in flight, the section
-          // renders nothing at all rather than a discouraging chip.
-          const foundChips: { key: string; label: string }[] = [];
-          if (testimonialCount > 0) {
-            foundChips.push({ key: "testimonials", label: `${testimonialCount} testimonial${testimonialCount === 1 ? "" : "s"}` });
-          }
-          if (photosCount > 0) {
-            foundChips.push({ key: "photos", label: `${photosCount} photo${photosCount === 1 ? "" : "s"} harvested` });
-          } else if (loadingAssets) {
-            foundChips.push({ key: "harvesting", label: "Harvesting photos…" });
-          }
+          const previewPhotos = assets.filter((a) => PHOTO_PREVIEW_ROLES.includes((a.role || "").toLowerCase()));
+          const PHOTO_FREE_COUNT = 3;
+          const photosShown = previewPhotos.slice(0, PHOTO_FREE_COUNT);
+          const photoTeaser = previewPhotos[PHOTO_FREE_COUNT] || null;
+          const photoRemaining = Math.max(0, previewPhotos.length - PHOTO_FREE_COUNT - (photoTeaser ? 1 : 0));
+
+          const hasFoundContent = testimonialsShown.length > 0 || photosShown.length > 0;
+          const showFoundSection = hasFoundContent || loadingAssets;
 
           const brandDisplayName = brand?.name && brand.name !== placeholderNameRef.current ? brand.name : "";
           const siteHost = brand?.website_url ? brand.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "") : "";
@@ -1389,23 +1427,82 @@ export default function GuidedOnboarding() {
                     </div>
                   )}
 
-                  {(revealed.proof || revealed.images) && foundChips.length > 0 && <div className="h-px bg-border" />}
+                  {(revealed.proof || revealed.images) && showFoundSection && <div className="h-px bg-border" />}
 
-                  {/* Found on your site — only renders when there's something
-                      positive to report or genuinely still in flight; see
-                      foundChips above for why we never announce an absence. */}
-                  {(revealed.proof || revealed.images) && foundChips.length > 0 && (
-                    <div className="animate-fade-in space-y-3">
+                  {/* Found on your site — a real taste (up to 3 photos, up to 2
+                      testimonials), never a bare count and never an announced
+                      absence. Anything beyond the free preview is teased with a
+                      blur + lock rather than hidden outright, so "start your
+                      trial to see the rest" reads as a reason to convert, not
+                      a wall. Renders nothing at all if there's genuinely
+                      nothing found and nothing still in flight. */}
+                  {(revealed.proof || revealed.images) && showFoundSection && (
+                    <div className="animate-fade-in space-y-4">
                       <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <Sparkles className="h-4 w-4 text-muted-foreground" /> Found on your site
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {foundChips.map((c) => (
-                          <span key={c.key} className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted/60 text-foreground border">
-                            {c.label}
-                          </span>
-                        ))}
-                      </div>
+
+                      {photosShown.length > 0 && (
+                        <div className="grid grid-cols-4 gap-2">
+                          {photosShown.map((a) => (
+                            <div key={a.id} className="aspect-square rounded-xl overflow-hidden bg-muted border">
+                              <img src={a.signedUrl || a.url} alt="" className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                          {photoTeaser && (
+                            <div className="relative aspect-square rounded-xl overflow-hidden border">
+                              <img
+                                src={photoTeaser.signedUrl || photoTeaser.url}
+                                alt=""
+                                className="w-full h-full object-cover blur-md scale-110"
+                              />
+                              <div className="absolute inset-0 bg-black/55 flex flex-col items-center justify-center gap-1 text-white text-center px-1">
+                                <Lock className="h-3.5 w-3.5" />
+                                {photoRemaining > 0 && (
+                                  <span className="text-[10px] font-semibold leading-tight">+{photoRemaining} more</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {photosShown.length === 0 && loadingAssets && (
+                        <p className="text-xs text-muted-foreground">Harvesting photos…</p>
+                      )}
+
+                      {testimonialsShown.length > 0 && (
+                        <div className="grid sm:grid-cols-2 gap-2">
+                          {testimonialsShown.map((t, i) => (
+                            <div key={i} className="rounded-2xl bg-muted/40 p-3 space-y-1">
+                              <Quote className="h-3.5 w-3.5 text-muted-foreground" />
+                              <p className="text-sm text-foreground leading-snug line-clamp-3">{t.text}</p>
+                              {t.attribution && (
+                                <p className="text-[11px] text-muted-foreground font-medium">— {t.attribution}</p>
+                              )}
+                            </div>
+                          ))}
+                          {testimonialTeaser && (
+                            <div className="relative rounded-2xl bg-muted/40 p-3 overflow-hidden">
+                              <Quote className="h-3.5 w-3.5 text-muted-foreground/60" />
+                              <p className="text-sm text-foreground/60 leading-snug line-clamp-3 blur-[3px] select-none">
+                                {testimonialTeaser.text}
+                              </p>
+                              <div className="absolute inset-0 bg-background/70 flex items-center justify-center">
+                                <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                  <Lock className="h-3 w-3" />
+                                  {testimonialRemaining > 0 ? `+${testimonialRemaining + 1} more` : "1 more"}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {(photoTeaser || testimonialTeaser) && (
+                        <p className="text-[11px] text-muted-foreground text-center pt-1">
+                          Unlock everything we found when you start your free trial.
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
