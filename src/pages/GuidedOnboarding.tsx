@@ -214,6 +214,10 @@ export default function GuidedOnboarding() {
     ((brand?._kit?.colors as string[] | undefined)?.length ?? 0) > 0 ||
     !!(brand?.name && brand.name !== placeholderNameRef.current);
   const canContinue = allRevealed || phaseTimedOut || (hasCoreBrandData && !loadingBrandBasics);
+  // When the site couldn't be read (bot-blocked / thin), we surface the "who do
+  // you serve?" input prominently — the user's answer is what saves the ad from a
+  // wrong guess (many coach/creator sites block scrapers).
+  const readWasThin = !hasCoreBrandData || failed.audience || failed.basics;
   // Fallback state: extraction finished but produced nothing useful (no colors
   // AND no real brand name AND no audience picture). We show a friendly nudge
   // instead of a spinning card.
@@ -1116,6 +1120,99 @@ export default function GuidedOnboarding() {
                   </div>
                 </div>
 
+                {/* Concurrent engagement card — placed ABOVE the reveal card, in a
+                    fixed position, so it never gets pushed down the page as reveal
+                    cards pop in below it while the user is typing. Runs while
+                    extraction is still working so the wait feels like collaboration,
+                    not staring at a spinner. Answers persist into
+                    brand.audience_psychology + target_audience and localStorage so
+                    PayoffAd + recommend-strategy pick them up. */}
+                <div className="rounded-3xl border bg-gradient-to-br from-orange-500/5 via-pink-500/5 to-purple-600/5 p-6 sm:p-8 space-y-5 animate-fade-in">
+                  <div>
+                    <div className="text-xs uppercase tracking-wide font-semibold text-muted-foreground mb-1">
+                      While LUMI reads…
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground">
+                      What do you want more of right now?
+                    </h3>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {([
+                      { id: "booked_calls", label: "Booked calls" },
+                      { id: "leads", label: "Leads & email signups" },
+                      { id: "sales", label: "Course or launch sales" },
+                      { id: "followers", label: "More followers & DMs" },
+                    ] as { id: GoalChoice; label: string }[]).map((opt) => {
+                      const selected = goalChoice === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={async () => {
+                            setGoalChoice(opt.id);
+                            if (brandId && !goalPersistedRef.current) {
+                              goalPersistedRef.current = true;
+                              try {
+                                localStorage.setItem(`lumi_onboarding_goal_${brandId}`, opt.id);
+                                const currentAp = (brand?.audience_psychology as any) || {};
+                                const nextAp = { ...currentAp, onboarding_goal: opt.id };
+                                await supabase.from("brands").update({ audience_psychology: nextAp }).eq("id", brandId);
+                                setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: nextAp }));
+                              } catch { /* non-blocking */ }
+                            } else if (brandId) {
+                              localStorage.setItem(`lumi_onboarding_goal_${brandId}`, opt.id);
+                              const currentAp = (brand?.audience_psychology as any) || {};
+                              const nextAp = { ...currentAp, onboarding_goal: opt.id };
+                              supabase.from("brands").update({ audience_psychology: nextAp }).eq("id", brandId);
+                            }
+                          }}
+                          className={
+                            "text-left px-4 py-3 rounded-2xl border text-sm font-medium transition-all " +
+                            (selected
+                              ? "border-pink-500 bg-white shadow-md text-foreground"
+                              : "border-border bg-white/60 hover:border-pink-500/40 hover:bg-white text-foreground")
+                          }
+                          aria-pressed={selected}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="space-y-2 pt-1">
+                    {readWasThin && (
+                      <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-900 leading-relaxed">
+                        We couldn't fully read your site — a lot of sites block automated access. Tell us who you serve, in your own words, and we'll make your ad (and the psychology behind it) spot-on.
+                      </div>
+                    )}
+                    <label htmlFor="dream-client" className="text-sm font-semibold text-foreground">
+                      {readWasThin ? (
+                        "Who do you serve, and what do they struggle with?"
+                      ) : (
+                        <>Your dream client <span className="text-muted-foreground font-normal">(optional — the more you share, the sharper your ad)</span></>
+                      )}
+                    </label>
+                    <Textarea
+                      id="dream-client"
+                      value={dreamClient}
+                      onChange={(e) => setDreamClient(e.target.value)}
+                      onBlur={async () => {
+                        const val = dreamClient.trim();
+                        if (!brandId || !val) return;
+                        try {
+                          await supabase.from("brands").update({ target_audience: val }).eq("id", brandId);
+                          setBrand((prev: any) => ({ ...(prev || {}), target_audience: val }));
+                        } catch { /* non-blocking */ }
+                      }}
+                      placeholder="e.g. Course creators who hit $10k months and want to scale to $50k but keep getting stuck on inconsistent leads. The more detail here, the juicier your ad copy."
+                      maxLength={800}
+                      rows={4}
+                      className="rounded-xl resize-y"
+                    />
+                  </div>
+                </div>
+
                 {/* One rounded card wrapping all reveals */}
                 <div className="rounded-3xl border bg-card shadow-sm p-6 sm:p-8 space-y-6 min-h-[200px]">
                   {revealedCount === 0 && (
@@ -1242,87 +1339,6 @@ export default function GuidedOnboarding() {
                       </div>
                     </div>
                   )}
-                </div>
-
-                {/* Concurrent engagement card — runs while extraction is still working
-                    so the wait feels like collaboration, not staring at a spinner.
-                    Answers are persisted into brand.audience_psychology + target_audience
-                    and localStorage so PayoffAd + recommend-strategy pick them up. */}
-                <div className="rounded-3xl border bg-gradient-to-br from-orange-500/5 via-pink-500/5 to-purple-600/5 p-6 sm:p-8 space-y-5 animate-fade-in">
-                  <div>
-                    <div className="text-xs uppercase tracking-wide font-semibold text-muted-foreground mb-1">
-                      While LUMI reads…
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground">
-                      What do you want more of right now?
-                    </h3>
-                  </div>
-                  <div className="grid sm:grid-cols-2 gap-2">
-                    {([
-                      { id: "booked_calls", label: "Booked calls" },
-                      { id: "leads", label: "Leads & email signups" },
-                      { id: "sales", label: "Course or launch sales" },
-                      { id: "followers", label: "More followers & DMs" },
-                    ] as { id: GoalChoice; label: string }[]).map((opt) => {
-                      const selected = goalChoice === opt.id;
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={async () => {
-                            setGoalChoice(opt.id);
-                            if (brandId && !goalPersistedRef.current) {
-                              goalPersistedRef.current = true;
-                              try {
-                                localStorage.setItem(`lumi_onboarding_goal_${brandId}`, opt.id);
-                                const currentAp = (brand?.audience_psychology as any) || {};
-                                const nextAp = { ...currentAp, onboarding_goal: opt.id };
-                                await supabase.from("brands").update({ audience_psychology: nextAp }).eq("id", brandId);
-                                setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: nextAp }));
-                              } catch { /* non-blocking */ }
-                            } else if (brandId) {
-                              localStorage.setItem(`lumi_onboarding_goal_${brandId}`, opt.id);
-                              const currentAp = (brand?.audience_psychology as any) || {};
-                              const nextAp = { ...currentAp, onboarding_goal: opt.id };
-                              supabase.from("brands").update({ audience_psychology: nextAp }).eq("id", brandId);
-                            }
-                          }}
-                          className={
-                            "text-left px-4 py-3 rounded-2xl border text-sm font-medium transition-all " +
-                            (selected
-                              ? "border-pink-500 bg-white shadow-md text-foreground"
-                              : "border-border bg-white/60 hover:border-pink-500/40 hover:bg-white text-foreground")
-                          }
-                          aria-pressed={selected}
-                        >
-                          {opt.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="space-y-2 pt-1">
-                    <label htmlFor="dream-client" className="text-sm font-semibold text-foreground">
-                      Your dream client, in one line <span className="text-muted-foreground font-normal">(optional)</span>
-                    </label>
-                    <Input
-                      id="dream-client"
-                      value={dreamClient}
-                      onChange={(e) => setDreamClient(e.target.value)}
-                      onBlur={async () => {
-                        const val = dreamClient.trim();
-                        if (!brandId || !val || dreamPersistedRef.current) return;
-                        dreamPersistedRef.current = true;
-                        try {
-                          await supabase.from("brands").update({ target_audience: val }).eq("id", brandId);
-                          setBrand((prev: any) => ({ ...(prev || {}), target_audience: val }));
-                        } catch { /* non-blocking */ }
-                      }}
-                      placeholder="e.g. Course creators who hit $10k months and want to scale to $50k"
-                      maxLength={160}
-                      className="h-11 rounded-xl"
-                    />
-                  </div>
                 </div>
 
                 {/* Primary CTA */}
