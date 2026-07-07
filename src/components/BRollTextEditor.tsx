@@ -236,6 +236,15 @@ export function BRollTextEditor({
           emphasisStyle: style.emphasisStyle,
         };
 
+    // Belt-and-suspenders auto-trim: if the video is meaningfully longer
+    // than the copy and the user hasn't set a trim, clip the render to the
+    // end of the last overlay so the ad doesn't trail off with silent b-roll.
+    const effectiveTrim =
+      trim ??
+      (videoDuration > 0 && maxOverlayEnd > 0 && videoDuration > maxOverlayEnd + 0.25
+        ? { start: 0, end: +Math.min(videoDuration, maxOverlayEnd).toFixed(2) }
+        : null);
+
     enqueue({
       title: activeClipName || 'B-roll video',
       sourceClipName: activeClipName,
@@ -243,8 +252,8 @@ export function BRollTextEditor({
       overlays: specs,
       style: renderStyle,
       loopVideo: overflows && fitMode === 'loop',
-      trimStart: trim?.start,
-      trimEnd: trim?.end,
+      trimStart: effectiveTrim?.start,
+      trimEnd: effectiveTrim?.end,
       context: brandId ? { brandId } : undefined,
     });
 
