@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { SparkleIcon } from "@/components/SparkleIcon";
 import { mapAuthError } from "@/lib/mapAuthError";
+import { seedDeferredTask } from "@/lib/onboarding-tasks";
 import lumiLogo from "@/assets/lumi-logo.png";
 
 const REMEMBERED_EMAIL_KEY = "lumi_remembered_email";
@@ -202,6 +203,24 @@ export default function Auth() {
 
         if (userId && hasSession) {
           toast.success(isAnon ? "Account created! Your ad is saved." : "Account created! Welcome to Lumi.");
+          // If the ad-first onboarding flow already assembled a b-roll ad from
+          // stock footage, nudge them to swap in their own now that they have
+          // an account to save it to.
+          if (isAnon && safeReturnTo) {
+            try {
+              const brandIdFromReturn = new URLSearchParams(safeReturnTo.split("?")[1] || "").get("brand");
+              const flagKey = brandIdFromReturn ? `lumi_onboarding_broll_ready_${brandIdFromReturn}` : null;
+              if (flagKey && localStorage.getItem(flagKey)) {
+                localStorage.removeItem(flagKey);
+                seedDeferredTask({
+                  title: "Swap in your own b-roll footage",
+                  description: "Your first ad's b-roll video used stock footage to get you moving fast — head to Creative Studio to replace it with your own clips.",
+                  link_to: "/creative-studio",
+                  brand_id: brandIdFromReturn,
+                });
+              }
+            } catch { /* localStorage unavailable — skip the nudge */ }
+          }
           // Anonymous → paid upgrade: honor the returnTo they came in with
           // (e.g. /launch?brand=xyz) so they land back on the ad they built.
           navigate(safeReturnTo || "/welcome");

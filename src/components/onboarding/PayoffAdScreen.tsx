@@ -482,11 +482,18 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       setVideoUrl(url);
       setVideoCredit(clip.credit_name ? { name: clip.credit_name, url: clip.credit_url || null } : null);
       setVideoState("ready");
+      // Read by Auth.tsx right after signup completes, to nudge them toward
+      // swapping this stock footage for their own once they have an account.
+      try {
+        if (typeof window !== "undefined" && brandId) {
+          localStorage.setItem(`lumi_onboarding_broll_ready_${brandId}`, "1");
+        }
+      } catch { /* localStorage unavailable — non-fatal, just skip the nudge */ }
     } catch (e) {
       console.error("[payoff-ad] b-roll video assembly failed", e);
       setVideoState("error");
     }
-  }, []);
+  }, [brandId]);
 
   const generateBonusCreatives = useCallback(async () => {
     setScriptState("loading");
