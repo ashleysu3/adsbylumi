@@ -66,10 +66,11 @@ export default function Auth() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Redirect already-authenticated users away from auth page
+  // Redirect already-authenticated (non-anonymous) users away from auth page.
+  // Anonymous users need to stay so they can upgrade to a permanent account.
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
+      if (session && !(session.user as any)?.is_anonymous) {
         if (inviteToken) {
           await acceptInvite(inviteToken);
         }
@@ -77,6 +78,23 @@ export default function Auth() {
       }
     });
   }, [navigate, safeReturnTo, inviteToken]);
+
+  // Ensure public.profiles.email matches auth.users.email. The handle_new_user
+  // trigger only fires on user creation, so anonymous→permanent upgrades leave
+  // profiles.email null. Call this after any signUp/updateUser that sets email.
+  const syncProfileEmail = async (userId: string, emailValue: string, fullNameValue?: string) => {
+    try {
+      const patch: Record<string, any> = { email: emailValue };
+      if (fullNameValue && fullNameValue.trim()) patch.full_name = fullNameValue.trim();
+      const { error } = await supabase
+        .from("profiles")
+        .update(patch)
+        .eq("id", userId);
+      if (error) console.error("[auth] syncProfileEmail failed:", error);
+    } catch (err) {
+      console.error("[auth] syncProfileEmail threw:", err);
+    }
+  };
 
   const acceptInvite = async (token: string) => {
     try {
