@@ -33,23 +33,6 @@ const STEPS = [
   "Strategy & launch",
 ];
 const TOTAL = STEPS.length;
-// Remap any historical onboarding_step value into the new 6-step flow (with the
-// "Your first ad" payoff screen at position 3). Values we could disambiguate:
-//   - Old 5-step (site, reveal, offer, meta, strategy) → shift offer/meta/strategy by +1.
-//   - Old 8-step (site, basics, audience, design, proof, offer, meta, strategy) → collapse
-//     basics/audience/design/proof into reveal, then shift.
-// We prefer the 5-step interpretation for values 3–5 since that flow was in use most recently.
-const RESUME_REMAP: Record<number, number> = {
-  1: 1,
-  2: 2,
-  3: 4,
-  4: 5,
-  5: 6,
-  6: 4,
-  7: 5,
-  8: 6,
-};
-
 type AssetRow = { id: string; url: string; role: string | null; kept: boolean; source_url?: string | null; signedUrl?: string };
 
 function pathFromUrl(url: string): string | null {
@@ -271,9 +254,11 @@ export default function GuidedOnboarding() {
         prefillWebsite = navState.websiteUrl || sessionStorage.getItem("lumi_prefill_website") || "";
         prefillInstagram = navState.instagramHandle || sessionStorage.getItem("lumi_prefill_instagram") || "";
       } catch { /* ignore */ }
-      // When user explicitly asked to add a new brand, do NOT resume an in-progress one.
+      // Ad-first flow: if they arrived with a fresh website from the homepage,
+      // always start fresh toward a new first ad — never resume an old brand.
+      // When explicitly adding a new brand, also skip resume.
       let resumedExisting = false;
-      if (!addBrandMode) {
+      if (!addBrandMode && !prefillWebsite) {
         const { data: existing } = await supabase
           .from("brands").select("*").eq("user_id", user.id)
           .order("created_at", { ascending: false }).limit(1);
@@ -283,10 +268,9 @@ export default function GuidedOnboarding() {
           setBrandId(latest.id);
           setBrand(latest);
           setWebsiteUrl(latest.website_url || "");
-          const stored = latest.onboarding_step || 1;
-          const remapped = stored <= 6 && stored in RESUME_REMAP ? RESUME_REMAP[stored] : stored;
-          const resumeStep = Math.max(1, Math.min(TOTAL, remapped));
-          setStep(resumeStep);
+          // Never resume into the legacy offer/Meta/strategy steps (4–6). Land the
+          // user on the website step so they always continue toward their first ad.
+          setStep(1);
         }
       }
       if (!resumedExisting && prefillWebsite) {
