@@ -427,7 +427,7 @@ const Sales = () => {
               From link to launched
             </div>
             <h2 className="font-display text-3xl md:text-5xl leading-tight text-warm-black">
-              Your ad, in four calm steps.
+              Your ad, in four steps.
             </h2>
             <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
               No blank page. No Ads Manager maze. You paste one link and watch it happen.
