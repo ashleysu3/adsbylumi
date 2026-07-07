@@ -91,11 +91,26 @@ type RenderImage = { placement: string; width: number; height: number; base64: s
 
 const PHOTO_ROLES = new Set(["photo", "lifestyle", "full_body", "headshot"]);
 
+// When a photo is available, rotate across every photo-forward template
+// instead of always defaulting to "spotlight" — deterministic per brand
+// (stable across re-renders/hook swaps for one visitor) but varied across
+// different visitors.
+const PHOTO_TEMPLATES = ["spotlight", "cutout", "framed", "highlighter"] as const;
+type PhotoTemplate = typeof PHOTO_TEMPLATES[number];
+function pickPhotoTemplate(seed: string): PhotoTemplate {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) | 0;
+  return PHOTO_TEMPLATES[Math.abs(hash) % PHOTO_TEMPLATES.length];
+}
+
 // Extract a headline preview string from a compose-ad option for a given template.
 function optionToHeadline(template: string, opt: any): string {
   if (!opt || typeof opt !== "object") return "";
-  if (template === "bigtype") {
+  if (template === "bigtype" || template === "cutout" || template === "framed") {
     return [opt.headlinePre, opt.headlineHL, opt.headlinePost].filter(Boolean).join(" ").trim();
+  }
+  if (template === "highlighter") {
+    return [opt.headlinePre, opt.headlineAccent, opt.headlineHL].filter(Boolean).join(" ").trim();
   }
   return String(opt.headline || opt.quote || "").trim();
 }
@@ -162,7 +177,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const fontsRef = useRef<{ displayFamily?: string; bodyFamily?: string }>({});
   const logoUrlRef = useRef<string | undefined>(undefined);
   const photoUrlRef = useRef<string | undefined>(undefined);
-  const templateRef = useRef<"testimonial" | "spotlight" | "checklist" | "bigtype">("bigtype");
+  const templateRef = useRef<"testimonial" | PhotoTemplate | "checklist" | "bigtype">("bigtype");
   const socialProofRef = useRef<TestimonialQuote | null>(null);
   const offerPsychologyRef = useRef<Record<string, any> | null>(null);
 
@@ -360,7 +375,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         templateRef.current = socialProofRef.current
           ? "testimonial"
           : photoUrl
-            ? "spotlight"
+            ? pickPhotoTemplate(brandId)
             : offerHint
               ? "checklist"
               : "bigtype";
@@ -405,7 +420,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         const brief = {
           template,
           format: "single",
-          styleHint: template === "bigtype" || template === "checklist" ? template : "card",
+          styleHint: template,
           goal: userGoal,
           concept: brand?.value_proposition || "",
           keyMessage: brand?.value_proposition || "",
