@@ -428,35 +428,31 @@ export default function GuidedOnboarding() {
         }
       }).catch(() => {}).finally(() => { clearBrandCap(); setLoadingBrandBasics(false); });
 
-      const pVoice = pBrand.then(() =>
-        supabase.functions.invoke("analyze-brand-voice", { body: { brandId: brandIdLocal } })
-          .then(async () => {
-            const { data: refreshed } = await supabase.from("brands").select("brand_voice").eq("id", brandIdLocal).maybeSingle();
-            if (refreshed?.brand_voice) {
-              setBrand((prev: any) => ({ ...(prev || {}), brand_voice: (refreshed as any).brand_voice }));
-            }
-          })
-      ).catch(() => {}).finally(() => { clearVoiceCap(); setLoadingVoice(false); });
+      // Fire all extractors IN PARALLEL — total wait ≈ slowest one, not the sum.
+      // Each one settles its own reveal flag independently so cards pop in as they arrive.
+      const pVoice = supabase.functions.invoke("analyze-brand-voice", { body: { brandId: brandIdLocal } })
+        .then(async () => {
+          const { data: refreshed } = await supabase.from("brands").select("brand_voice, voice_profile").eq("id", brandIdLocal).maybeSingle();
+          if (refreshed) {
+            setBrand((prev: any) => ({ ...(prev || {}), ...(refreshed as any) }));
+          }
+        }).catch(() => {}).finally(() => { clearVoiceCap(); setLoadingVoice(false); });
 
-      const pAud = pBrand.then(() =>
-        supabase.functions.invoke("generate-audience-psychology", { body: { brandId: brandIdLocal } })
-          .then(async () => {
-            const { data: refreshed } = await supabase.from("brands").select("audience_psychology").eq("id", brandIdLocal).maybeSingle();
-            if (refreshed) {
-              setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: (refreshed as any).audience_psychology }));
-            }
-          })
-      ).catch(() => {}).finally(() => { clearAudCap(); setLoadingAudience(false); });
+      const pAud = supabase.functions.invoke("generate-audience-psychology", { body: { brandId: brandIdLocal } })
+        .then(async () => {
+          const { data: refreshed } = await supabase.from("brands").select("audience_psychology").eq("id", brandIdLocal).maybeSingle();
+          if (refreshed) {
+            setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: (refreshed as any).audience_psychology }));
+          }
+        }).catch(() => {}).finally(() => { clearAudCap(); setLoadingAudience(false); });
 
-      const pProof = pBrand.then(() =>
-        supabase.functions.invoke("extract-social-proof", { body: { brandId: brandIdLocal, url: websiteForCall } })
-          .then(async () => {
-            const { data: refreshed } = await supabase.from("brands").select("social_proof").eq("id", brandIdLocal).maybeSingle();
-            if (refreshed) {
-              setBrand((prev: any) => ({ ...(prev || {}), social_proof: (refreshed as any).social_proof }));
-            }
-          })
-      ).catch(() => {}).finally(() => { clearProofCap(); setLoadingProof(false); });
+      const pProof = supabase.functions.invoke("extract-social-proof", { body: { brandId: brandIdLocal, url: websiteForCall } })
+        .then(async () => {
+          const { data: refreshed } = await supabase.from("brands").select("social_proof").eq("id", brandIdLocal).maybeSingle();
+          if (refreshed) {
+            setBrand((prev: any) => ({ ...(prev || {}), social_proof: (refreshed as any).social_proof }));
+          }
+        }).catch(() => {}).finally(() => { clearProofCap(); setLoadingProof(false); });
 
       const pAssets = supabase.functions.invoke("harvest-brand-assets", { body: { url: websiteForCall, brandId: brandIdLocal } })
         .catch(() => {})
