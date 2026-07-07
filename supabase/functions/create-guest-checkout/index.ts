@@ -19,9 +19,9 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const { priceId, promoCode, rewardful_referral, partnerCode } = await req.json();
+    const { priceId, promoCode, rewardful_referral, partnerCode, returnTo } = await req.json();
     if (!priceId) throw new Error("Price ID is required");
-    logStep("Price ID received", { priceId, promoCode: promoCode || "none", rewardful_referral: rewardful_referral || "none", partnerCode: partnerCode || "none" });
+    logStep("Price ID received", { priceId, promoCode: promoCode || "none", rewardful_referral: rewardful_referral || "none", partnerCode: partnerCode || "none", returnTo: returnTo || "none" });
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
