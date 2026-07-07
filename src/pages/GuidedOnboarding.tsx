@@ -1343,20 +1343,34 @@ export default function GuidedOnboarding() {
 
                 {/* Primary CTA */}
                 <div className="flex flex-col items-center gap-2 pt-2">
-                  {allRevealed && !goalChoice && (
+                  {canContinue && !goalChoice && (
                     <p className="text-xs text-muted-foreground animate-fade-in">
-                      Pick a goal above so your first ad matches what you want more of.
+                      No goal picked? We'll aim for leads &amp; booked calls — you can change it anytime.
                     </p>
                   )}
                   <Button
-                    onClick={advance}
-                    disabled={!allRevealed || !goalChoice}
+                    onClick={async () => {
+                      // Default to a sensible lead-gen goal so the user is never trapped.
+                      if (!goalChoice) {
+                        const fallback: GoalChoice = "leads";
+                        setGoalChoice(fallback);
+                        if (brandId) {
+                          try {
+                            localStorage.setItem(`lumi_onboarding_goal_${brandId}`, fallback);
+                            const currentAp = (brand?.audience_psychology as any) || {};
+                            const nextAp = { ...currentAp, onboarding_goal: fallback };
+                            supabase.from("brands").update({ audience_psychology: nextAp }).eq("id", brandId);
+                            setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: nextAp }));
+                          } catch { /* non-blocking */ }
+                        }
+                      }
+                      advance();
+                    }}
+                    disabled={!canContinue}
                     className="h-14 px-8 text-base font-semibold rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity shadow-lg shadow-pink-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {allRevealed && goalChoice ? (
+                    {canContinue ? (
                       <>That's me — make my ad <ArrowRight className="h-5 w-5 ml-2" /></>
-                    ) : allRevealed && !goalChoice ? (
-                      <>Almost ready — pick a goal <ArrowRight className="h-5 w-5 ml-2" /></>
                     ) : (
                       <><Loader2 className="h-5 w-5 animate-spin mr-2" /> Still reading…</>
                     )}
