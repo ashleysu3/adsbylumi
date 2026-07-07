@@ -109,6 +109,49 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const [images, setImages] = useState<RenderImage[]>([]);
   const [renderErr, setRenderErr] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const startTrialCheckout = useCallback(async () => {
+    if (checkoutLoading) return;
+    setCheckoutLoading(true);
+    try {
+      // After Stripe returns to /auth?paid=true, sign-up upgrades the anonymous
+      // user in place (keeping this brand + ad), then routes to /launch so they
+      // can push the ad they just built live.
+      const returnTo = `/launch?brand=${brandId}`;
+      let rewardful_referral = "";
+      try {
+        if ((window as any).rewardful) {
+          rewardful_referral = await Promise.race([
+            new Promise<string>((resolve) => {
+              (window as any).rewardful("ready", function () {
+                resolve((window as any).Rewardful?.referral || "");
+              });
+            }),
+            new Promise<string>((resolve) => setTimeout(() => resolve(""), 2500)),
+          ]);
+        }
+      } catch { /* ignore */ }
+
+      const { data, error } = await supabase.functions.invoke("create-guest-checkout", {
+        body: {
+          priceId: SUBSCRIPTION_TIERS.solo.monthlyPriceId,
+          rewardful_referral,
+          returnTo,
+        },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("Checkout didn't return a URL");
+      }
+    } catch (err: any) {
+      console.error("[payoff] checkout error", err);
+      toast.error("Could not start checkout. Please try again.");
+      setCheckoutLoading(false);
+    }
+  }, [brandId, checkoutLoading]);
 
   // Prepared inputs
   const engineColorsRef = useRef<EngineColors>(DEFAULT_ENGINE_COLORS);
