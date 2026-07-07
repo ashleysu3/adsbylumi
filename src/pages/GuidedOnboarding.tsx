@@ -167,6 +167,14 @@ export default function GuidedOnboarding() {
     return () => clearTimeout(t);
   }, [extractionPhase]);
 
+  // Phase-level escape hatch: no matter what, after ~25s we let the user proceed
+  // so a slow Firecrawl / engine scrape can never trap them on this screen.
+  useEffect(() => {
+    if (extractionPhase !== 'running') { setPhaseTimedOut(false); return; }
+    const t = setTimeout(() => setPhaseTimedOut(true), 25_000);
+    return () => clearTimeout(t);
+  }, [extractionPhase]);
+
   // Orchestrated reveal: each section waits for (a) its extractor to settle AND
   // (b) the prior section to reveal, plus a stagger, so it always feels paced.
   const markRevealed = useCallback((k: RevealKey) => {
