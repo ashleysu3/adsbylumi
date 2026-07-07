@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowRight, RefreshCw, Sparkles, ChevronLeft, Target } from "lucide-react";
 import { toast } from "sonner";
+import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
+
 
 // Coerce however brand_kits.colors is shaped (array of hexes from extract-brand,
 // or the {bg, ink, accent, pop, highlight, cream} object the Style page saves)
