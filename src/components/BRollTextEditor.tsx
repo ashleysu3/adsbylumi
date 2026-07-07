@@ -536,7 +536,7 @@ export function BRollTextEditor({
 
 
             <VideoTextPreview
-              videoUrl={videoUrl}
+              videoUrl={activeVideoUrl}
               overlays={fittedOverlays}
               style={effectiveStyle}
               editable
