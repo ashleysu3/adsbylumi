@@ -208,9 +208,20 @@ export default function GuidedOnboarding() {
   const autoStartFiredRef = useRef(false);
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { navigate("/auth"); return; }
-      // Prefill from homepage capture bar (sessionStorage survives /auth round-trip).
+      let { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        // Ad-first flow: mint an anonymous session so onboarding + first-ad
+        // render before any sign-up. Account creation happens later at the
+        // "Start free trial to launch this" step (anonymous → permanent upgrade).
+        const { data: anon, error: anonErr } = await supabase.auth.signInAnonymously();
+        if (anonErr || !anon?.user) {
+          toast.error("Couldn't start your session. Please try again.");
+          setCheckingAuth(false);
+          return;
+        }
+        user = anon.user;
+      }
+      // Prefill from homepage capture bar (sessionStorage survives round-trips).
       let prefillWebsite = "";
       let prefillInstagram = "";
       try {
