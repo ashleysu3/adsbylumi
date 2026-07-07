@@ -1171,8 +1171,8 @@ export default function GuidedOnboarding() {
           </Card>
         )}
 
-        {/* ============== STEP 4 — Connect Meta ============== */}
-        {step === 4 && (
+        {/* ============== STEP 5 — Connect Meta ============== */}
+        {step === 5 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" /> Connect Meta <span className="text-xs font-normal text-muted-foreground ml-1">· optional</span></CardTitle>
