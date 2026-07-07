@@ -202,7 +202,9 @@ export default function Auth() {
 
         if (userId && hasSession) {
           toast.success(isAnon ? "Account created! Your ad is saved." : "Account created! Welcome to Lumi.");
-          navigate("/welcome");
+          // Anonymous → paid upgrade: honor the returnTo they came in with
+          // (e.g. /launch?brand=xyz) so they land back on the ad they built.
+          navigate(safeReturnTo || "/welcome");
         } else if (userId) {
           toast.success("Account created! Please check your email to confirm.");
         }
