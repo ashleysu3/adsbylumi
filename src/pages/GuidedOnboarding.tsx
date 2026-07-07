@@ -896,282 +896,208 @@ export default function GuidedOnboarding() {
         )}
 
         {/* ============== STEP 2 — Reveal page (streams in live) ============== */}
-        {step === 2 && (
-          <div
-            className="space-y-4"
-            style={{
-              ["--brand-accent" as any]: (brand?._kit?.colors?.[0] as string) || "hsl(var(--primary))",
-              ["--brand-accent-soft" as any]: (brand?._kit?.colors?.[0] as string)
-                ? `${brand._kit.colors[0]}1a`
-                : "hsl(var(--primary) / 0.1)",
-            }}
-          >
-            <BrandHeroCard brand={brand} />
-            <Card className="border-primary/20 bg-primary/5 overflow-hidden">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Sparkles className="h-4 w-4 text-primary animate-pulse" />
-                  {allRevealed
-                    ? <>Here's what we found ✨</>
-                    : <>Reading {brand?.website_url ? brand.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "") : "your site"}…</>}
-                </CardTitle>
-                <CardDescription className="min-h-[20px]">
-                  {allRevealed ? (
-                    <>Edit anything that's off — rebrand, outdated copy, new audience — and we'll use the updated version everywhere.</>
-                  ) : slowMode ? (
-                    <span className="inline-block animate-fade-in text-foreground/80">
-                      This one's taking a little longer than usual — hang tight, almost there.
+        {step === 2 && (() => {
+          const colors: string[] = (brand?._kit?.colors as string[] | undefined) || [];
+          // Voice tone chips — prefer structured voice_profile.tone_traits, fall back to splitting brand_voice.
+          const vp: any = brand?.voice_profile || {};
+          let tones: string[] = [];
+          if (Array.isArray(vp?.tone_traits)) tones = vp.tone_traits;
+          else if (Array.isArray(vp?.tones)) tones = vp.tones;
+          else if (Array.isArray(vp?.traits)) tones = vp.traits;
+          else if (typeof brand?.brand_voice === "string" && brand.brand_voice.trim()) {
+            tones = brand.brand_voice
+              .split(/[,;•·\n]+/)
+              .map((s: string) => s.trim().replace(/\.+$/, ""))
+              .filter((s: string) => s && s.length <= 40)
+              .slice(0, 5);
+          }
+          tones = tones.filter(Boolean).slice(0, 5);
+
+          const ap: any = brand?.audience_psychology || {};
+          const idealClient: string =
+            (typeof ap.target_audience === "string" && ap.target_audience) ||
+            (typeof ap.ideal_client === "string" && ap.ideal_client) ||
+            brand?.target_audience ||
+            "";
+          const firstPain: string = Array.isArray(ap.pain_points) ? (ap.pain_points[0] || "") : "";
+          const firstDesire: string = Array.isArray(ap.desires) ? (ap.desires[0] || "") : "";
+
+          // Proof: count testimonials from social_proof shape (object with .testimonials[], array, or string).
+          const sp: any = brand?.social_proof;
+          let testimonialCount = 0;
+          if (Array.isArray(sp)) testimonialCount = sp.filter(Boolean).length;
+          else if (typeof sp === "string" && sp.trim()) testimonialCount = 1;
+          else if (sp && typeof sp === "object") {
+            const buckets = ["testimonials", "case_studies", "stats", "awards", "press_features", "credentials", "notable_clients"];
+            for (const b of buckets) if (Array.isArray(sp[b])) testimonialCount += sp[b].filter(Boolean).length;
+          }
+          const photosCount = assets.length;
+
+          const brandDisplayName = brand?.name && brand.name !== placeholderNameRef.current ? brand.name : "";
+          const siteHost = brand?.website_url ? brand.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "") : "";
+
+          return (
+            <div className="min-h-[70vh] py-4">
+              <div className="max-w-2xl mx-auto space-y-6">
+                {/* Header */}
+                <div className="text-center space-y-3 animate-fade-in">
+                  <div className="inline-block">
+                    <span className="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600">
+                      LUMI
                     </span>
-                  ) : (
-                    <span key={narrationIdx} className="inline-block animate-fade-in text-foreground/80">
-                      {WITTY_LINES[narrationIdx]}
-                    </span>
-                  )}
-                </CardDescription>
-                <div className="mt-2 flex items-center gap-3">
-                  <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full bg-primary transition-all duration-500"
-                      style={{ width: `${(revealedCount / REVEAL_SECTIONS.length) * 100}%` }}
-                    />
                   </div>
-                  <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
-                    Found {revealedCount} of {REVEAL_SECTIONS.length} ✨
-                  </span>
-                </div>
-              </CardHeader>
-            </Card>
-
-            <RevealGate revealed={revealed.basics} kind="basics">
-              {failed.basics && <TimeoutNotice label="brand basics" />}
-              <BrandBasicsCard brand={brand} placeholderName={placeholderNameRef.current} onSave={updateBrand} />
-            </RevealGate>
-
-            <RevealGate revealed={revealed.design} kind="design">
-              {failed.design && <TimeoutNotice label="your design guide" />}
-              <ReviewDesignCard brand={brand} onSave={updateBrand} />
-            </RevealGate>
-
-            <RevealGate revealed={revealed.audience} kind="audience">
-              {failed.audience && <TimeoutNotice label="your audience" />}
-              <ReviewAudienceCard brand={brand} onSave={updateBrand} />
-            </RevealGate>
-
-            <RevealGate revealed={revealed.proof} kind="proof">
-              {failed.proof ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base"><Quote className="h-4 w-4" /> Social proof</CardTitle>
-                    <CardDescription className="text-xs">We couldn't grab this one — add a testimonial or stat in a sec, it takes 10 seconds.</CardDescription>
-                  </CardHeader>
-                </Card>
-              ) : hasProof ? (
-                <ReviewProofCard brand={brand} onSave={updateBrand} loading={proofExtracting} />
-              ) : (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base"><Quote className="h-4 w-4" /> Social proof</CardTitle>
-                    <CardDescription className="text-xs">We didn't spot testimonials, press, or stats on your site — you can add them anytime from Brand.</CardDescription>
-                  </CardHeader>
-                </Card>
-              )}
-            </RevealGate>
-
-
-            <RevealGate revealed={revealed.images} kind="images">
-              {failed.images && <TimeoutNotice label="your brand images" />}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base"><ImageIcon className="h-4 w-4" /> Brand images</CardTitle>
-                  <CardDescription>Keep what looks like your brand. Toss what doesn't. Add the missing pieces.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-5">
-                  {(loadingAssets || classifying) && (
-                    <div className="text-xs text-muted-foreground flex items-center gap-2">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      {loadingAssets ? "📸 Hunting for logos and pretty photos…" : "LUMI is sorting your images by type…"}
-                    </div>
-                  )}
-
-                  {!logoUrl && (
-                    <SetupPrompt
-                      title="Add a logo"
-                      description="We use it on every ad — even a transparent PNG works."
-                      ctaLabel="Upload logo"
-                      onCta={() => document.getElementById("upload-any")?.click()}
-                      autoTask={{ title: "Add a brand logo", link_to: "/dashboard" }}
-                    />
-                  )}
-                  {grouped.headshot.length === 0 && (
-                    <SetupPrompt
-                      title="Add a headshot"
-                      description="A founder/face photo lifts ad performance a lot. Plain backdrop works best."
-                      ctaLabel="Upload headshot"
-                      onCta={() => document.getElementById("upload-any")?.click()}
-                      autoTask={{ title: "Add a headshot photo", link_to: "/dashboard" }}
-                    />
-                  )}
-                  {grouped.lifestyle.length === 0 && grouped.background.length === 0 && (
-                    <SetupPrompt
-                      title="Upload a lifestyle photo or backdrop"
-                      description="You at work, with clients, behind the scenes — anything that feels like your world."
-                      ctaLabel="Upload lifestyle"
-                      onCta={() => document.getElementById("upload-any")?.click()}
-                      autoTask={{ title: "Upload a lifestyle photo", link_to: "/dashboard" }}
-                    />
-                  )}
-
-                  {assetsLoading && (
-                    <div className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Loading your library…
-                    </div>
-                  )}
-
-                  {(() => {
-                    const ASSET_CATEGORIES: { key: keyof typeof grouped; label: string; hint: string }[] = [
-                      { key: "logo", label: "Logo", hint: "Wordmarks and brand marks. Transparent PNG preferred." },
-                      { key: "headshot", label: "Headshot", hint: "Close-up of a face — founder, coach, team." },
-                      { key: "full_body", label: "Full body", hint: "Head-to-toe photos. Great for hero shots." },
-                      { key: "lifestyle", label: "Lifestyle", hint: "You in context — working, teaching, with clients." },
-                      { key: "product", label: "Product", hint: "Physical products, packaging, mockups." },
-                      { key: "graphic", label: "Graphics", hint: "Icons, illustrations, charts, UI screenshots." },
-                      { key: "texture", label: "Textures", hint: "Abstract surfaces and patterns." },
-                      { key: "background", label: "Backgrounds", hint: "Empty scenes — rooms, landscapes — to layer on." },
-                      { key: "other", label: "Other", hint: "Anything else we couldn't auto-sort." },
-                    ];
-                    const ROLE_OPTIONS = ASSET_CATEGORIES.map((c) => ({ value: c.key as string, label: c.label }));
-                    return ASSET_CATEGORIES.map(({ key, label, hint }) => {
-                      const list = grouped[key];
-                      if (!list || list.length === 0) return null;
-                      return (
-                        <div key={key} className="space-y-2">
-                          <div className="flex items-baseline justify-between gap-2">
-                            <div>
-                              <h3 className="text-sm font-semibold">{label} <span className="text-muted-foreground font-normal">· {list.length}</span></h3>
-                              <p className="text-xs text-muted-foreground">{hint}</p>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {list.map((a) => {
-                              const isEditingRole = editingRoleId === a.id;
-                              const currentLabel = ROLE_OPTIONS.find((r) => r.value === (a.role || "other"))?.label || "Other";
-                              return (
-                                <div key={a.id} className={`group relative rounded-lg overflow-hidden border bg-card transition ${a.kept ? "ring-2 ring-lumi-pink-1" : "opacity-70 hover:opacity-100"}`}>
-                                  {a.signedUrl ? (
-                                    <img src={a.signedUrl} alt="" className="aspect-square object-cover w-full" loading="lazy" />
-                                  ) : (
-                                    <div className="aspect-square bg-muted" />
-                                  )}
-                                  <div className="absolute top-2 right-2 flex gap-1">
-                                    <button onClick={() => toggleKept(a.id, !a.kept)} className="bg-background/90 hover:bg-background rounded-full p-1.5 shadow-sm" title={a.kept ? "Remove from set" : "Keep"}>
-                                      <Check className={`h-3.5 w-3.5 ${a.kept ? "" : "text-muted-foreground"}`} />
-                                    </button>
-                                    <button onClick={() => removeAsset(a.id)} className="bg-background/90 hover:bg-background rounded-full p-1.5 shadow-sm" title="Delete">
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </button>
-                                  </div>
-                                  <div className="px-3 py-2 border-t bg-background/60">
-                                    {isEditingRole ? (
-                                      <Select
-                                        value={a.role || "other"}
-                                        onValueChange={(v) => { setRole(a.id, v); setEditingRoleId(null); }}
-                                        open
-                                        onOpenChange={(o) => { if (!o) setEditingRoleId(null); }}
-                                      >
-                                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                          {ROLE_OPTIONS.map((r) => (
-                                            <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        onClick={() => setEditingRoleId(a.id)}
-                                        className="w-full flex items-center justify-between text-xs text-foreground/80 hover:text-foreground group/retag"
-                                        title="Click to retag"
-                                      >
-                                        <span className="truncate">{currentLabel}</span>
-                                        <span className="text-[10px] text-muted-foreground opacity-0 group-hover/retag:opacity-100 transition-opacity ml-2">retag</span>
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    });
-                  })()}
-
-                  <div className="pt-3 border-t space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Add more</p>
-                    <UploadBtn
-                      id="upload-any"
-                      label="Drop in photos or video — sort them after"
-                      accept="image/*,video/*"
-                      multiple
-                      onFile={uploadAny}
-                    />
-                    <p className="text-[11px] text-muted-foreground">
-                      Upload anything (logo, headshot, lifestyle, product, b-roll…). You'll tag each one with the dropdown on its tile.
-                    </p>
-                  </div>
-
-                  {/* B-roll */}
-                  <div className="pt-4 border-t space-y-3">
-                    <h3 className="text-sm font-semibold flex items-center gap-2"><Film className="h-4 w-4" /> B-roll</h3>
-                    <Button variant="outline" size="sm" onClick={saveShotList} disabled={!brollIdeas?.length}>
-                      <ListChecks className="h-3 w-3 mr-1" /> Save suggested shot list
-                    </Button>
-                    {brollIdeas?.length ? (
-                      <div className="rounded-md border bg-muted/30 p-3 space-y-2 max-h-60 overflow-auto">
-                        <p className="text-xs font-medium mb-1">Suggested shots</p>
-                        {brollIdeas.slice(0, 8).map((i: any, idx: number) => {
-                          const scene = i.scene || i.title || "Shot idea";
-                          const direction = i.direction || i.description || "";
-                          const emoji = i.emoji || "🎬";
-                          const mood = i.mood;
-                          return (
-                            <div key={idx} className="flex gap-2 text-xs">
-                              <span className="text-base leading-tight shrink-0" aria-hidden>{emoji}</span>
-                              <div className="min-w-0">
-                                <div className="font-medium text-foreground">
-                                  {scene}
-                                  {mood && <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground font-normal">· {mood}</span>}
-                                </div>
-                                {direction && <div className="text-muted-foreground leading-snug">{direction}</div>}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                  <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
+                    {allRevealed ? (
+                      <>This is you.{brandDisplayName ? <span className="text-muted-foreground"> {brandDisplayName}.</span> : null}</>
                     ) : (
-                      <p className="text-xs text-muted-foreground">LUMI is brewing custom b-roll ideas for you…</p>
+                      <>Watch LUMI read you.</>
+                    )}
+                  </h1>
+                  <div className="min-h-[24px] text-sm text-muted-foreground">
+                    {allRevealed ? (
+                      <>Everything below came from {siteHost || "your site"}. Ready when you are.</>
+                    ) : slowMode ? (
+                      <span className="animate-fade-in">Almost there — the deep read takes a beat longer.</span>
+                    ) : (
+                      <span key={narrationIdx} className="animate-fade-in inline-flex items-center gap-2">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        {WITTY_LINES[narrationIdx]}
+                      </span>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-            </RevealGate>
+                </div>
 
-            {allRevealed && (
-              <div className="flex justify-between pt-2 animate-fade-in">
-                <Button variant="ghost" onClick={back}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                <div className="flex gap-2">
-                  
+                {/* One rounded card wrapping all reveals */}
+                <div className="rounded-3xl border bg-card shadow-sm p-6 sm:p-8 space-y-6">
+                  {/* Your palette */}
+                  {revealed.design && (
+                    <div className="animate-fade-in space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <Palette className="h-4 w-4 text-muted-foreground" /> Your palette
+                      </div>
+                      {colors.length > 0 ? (
+                        <div className="flex flex-wrap gap-3">
+                          {colors.slice(0, 8).map((c, i) => (
+                            <div key={`${c}-${i}`} className="flex flex-col items-center gap-1.5">
+                              <div
+                                className="h-14 w-14 rounded-2xl border shadow-sm"
+                                style={{ backgroundColor: c }}
+                                aria-label={c}
+                              />
+                              <span className="text-[10px] font-mono text-muted-foreground uppercase">{c.replace("#", "")}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Nothing loud came through — we'll use a neutral palette to start.</p>
+                      )}
+                    </div>
+                  )}
+
+                  {revealed.design && (revealed.basics || revealed.audience) && (
+                    <div className="h-px bg-border" />
+                  )}
+
+                  {/* Your voice */}
+                  {revealed.basics && (
+                    <div className="animate-fade-in space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <MessageSquare className="h-4 w-4 text-muted-foreground" /> Your voice
+                      </div>
+                      {tones.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {tones.map((t, i) => (
+                            <span
+                              key={`${t}-${i}`}
+                              className="px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-orange-500/10 via-pink-500/10 to-purple-600/10 border border-pink-500/20 text-foreground"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      ) : brand?.brand_voice ? (
+                        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{brand.brand_voice}</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Your tone is still coming through…</p>
+                      )}
+                    </div>
+                  )}
+
+                  {revealed.audience && <div className="h-px bg-border" />}
+
+                  {/* Who you're for */}
+                  {revealed.audience && (
+                    <div className="animate-fade-in space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <Target className="h-4 w-4 text-muted-foreground" /> Who you're for
+                      </div>
+                      {idealClient ? (
+                        <p className="text-sm text-foreground leading-relaxed">{idealClient}</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic">We're still shaping the ideal client picture…</p>
+                      )}
+                      {(firstPain || firstDesire) && (
+                        <div className="grid sm:grid-cols-2 gap-3 pt-1">
+                          {firstPain && (
+                            <div className="rounded-2xl bg-muted/40 p-3">
+                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Pain point</div>
+                              <div className="text-sm text-foreground leading-snug">{firstPain}</div>
+                            </div>
+                          )}
+                          {firstDesire && (
+                            <div className="rounded-2xl bg-muted/40 p-3">
+                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Desire</div>
+                              <div className="text-sm text-foreground leading-snug">{firstDesire}</div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {(revealed.proof || revealed.images) && <div className="h-px bg-border" />}
+
+                  {/* Found on your site */}
+                  {(revealed.proof || revealed.images) && (
+                    <div className="animate-fade-in space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <Sparkles className="h-4 w-4 text-muted-foreground" /> Found on your site
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted/60 text-foreground border">
+                          {testimonialCount > 0
+                            ? `${testimonialCount} testimonial${testimonialCount === 1 ? "" : "s"}`
+                            : "No testimonials yet"}
+                        </span>
+                        <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted/60 text-foreground border">
+                          {photosCount > 0
+                            ? `${photosCount} photo${photosCount === 1 ? "" : "s"} harvested`
+                            : (loadingAssets ? "Harvesting photos…" : "No photos found")}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Primary CTA */}
+                <div className="flex justify-center pt-2">
                   <Button
                     onClick={advance}
-                    style={brand?._kit?.colors?.[0] ? { backgroundColor: brand._kit.colors[0], color: "#fff", borderColor: brand._kit.colors[0] } : undefined}
+                    disabled={!allRevealed}
+                    className="h-14 px-8 text-base font-semibold rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity shadow-lg shadow-pink-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    Looks good <ArrowRight className="h-4 w-4 ml-1" />
+                    {allRevealed ? (
+                      <>That's me — make my ad <ArrowRight className="h-5 w-5 ml-2" /></>
+                    ) : (
+                      <><Loader2 className="h-5 w-5 animate-spin mr-2" /> Still reading…</>
+                    )}
                   </Button>
                 </div>
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          );
+        })()}
+
 
         {/* ============== STEP 3 — Offer sales page ============== */}
         {step === 3 && (
