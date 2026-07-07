@@ -95,7 +95,11 @@ export default function AdminStockBroll() {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      setClips(((data as any) || []).map((c: StockBrollClip) => ({ ...c, signedUrl: publicUrl(c.video_url) })));
+      const rows = (data as any) || [];
+      const withUrls = await Promise.all(
+        rows.map(async (c: StockBrollClip) => ({ ...c, signedUrl: await signedUrl(c.video_url) })),
+      );
+      setClips(withUrls);
     } catch (e: any) {
       console.error(e);
       toast.error("Failed to load stock b-roll library");
