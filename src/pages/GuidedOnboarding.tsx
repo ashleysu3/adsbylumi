@@ -1106,7 +1106,18 @@ export default function GuidedOnboarding() {
 
 
         {/* ============== STEP 3 — Offer sales page ============== */}
-        {step === 3 && (
+        {/* ============== STEP 3 — Payoff: real ad in their brand ============== */}
+        {step === 3 && brandId && (
+          <PayoffAdScreen
+            brandId={brandId}
+            brand={brand}
+            onAdvance={advance}
+            onBack={back}
+          />
+        )}
+
+        {/* ============== STEP 4 — Offer sales page ============== */}
+        {step === 4 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5" /> Your offer</CardTitle>
