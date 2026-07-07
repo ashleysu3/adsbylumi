@@ -68,6 +68,7 @@ export function BRollTextEditor({
   clipName,
   style = DEFAULT_OVERLAY_STYLE,
   brandId,
+  availableClips,
 }: BRollTextEditorProps) {
   const { enqueue } = useRenderQueue();
   const [overlays, setOverlays] = useState<TextOverlay[]>([
@@ -76,12 +77,25 @@ export function BRollTextEditor({
   const [templateStyle, setTemplateStyle] = useState<RenderStyle | null>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(0);
+  // Active clip — swappable inside the editor when availableClips is provided.
+  const [activeVideoUrl, setActiveVideoUrl] = useState<string>(videoUrl);
+  const [activeClipName, setActiveClipName] = useState<string | undefined>(clipName);
   // null = no fit mode chosen yet (overlays render as-typed). 'loop' = loop
   // the preview video so all overlays play through. 'speed' = compress overlay
   // timings to fit within the video's duration.
   const [fitMode, setFitMode] = useState<'loop' | 'speed' | null>(null);
   // Trim window applied to the source clip on render. null = no trim.
   const [trim, setTrim] = useState<{ start: number; end: number } | null>(null);
+
+  // Whenever the caller opens the editor with a new clip, or the user swaps
+  // clips inside the editor, reset fit + trim (they're clip-specific).
+  useEffect(() => {
+    setActiveVideoUrl(videoUrl);
+    setActiveClipName(clipName);
+    setFitMode(null);
+    setTrim(null);
+    setVideoDuration(0);
+  }, [videoUrl, clipName]);
 
   // Compute the latest end time across all overlays. Used to detect when
   // text would run past the end of the video.
