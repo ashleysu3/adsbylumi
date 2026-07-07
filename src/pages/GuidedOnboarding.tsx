@@ -231,6 +231,10 @@ export default function GuidedOnboarding() {
     ((brand?._kit?.colors as string[] | undefined)?.length ?? 0) > 0 ||
     !!(brand?.name && brand.name !== placeholderNameRef.current);
   const canContinue = allRevealed || phaseTimedOut || (hasCoreBrandData && !loadingBrandBasics);
+  // When the site couldn't be read (bot-blocked / thin), we surface the "who do
+  // you serve?" input prominently — the user's answer is what saves the ad from a
+  // wrong guess (many coach/creator sites block scrapers).
+  const readWasThin = !hasCoreBrandData || failed.audience || failed.basics;
   // Fallback state: extraction finished but produced nothing useful (no colors
   // AND no real brand name AND no audience picture). We show a friendly nudge
   // instead of a spinning card.
@@ -1318,8 +1322,17 @@ export default function GuidedOnboarding() {
                   </div>
 
                   <div className="space-y-2 pt-1">
+                    {readWasThin && (
+                      <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-900 leading-relaxed">
+                        We couldn't fully read your site — a lot of sites block automated access. Tell us who you serve and we'll make your ad spot-on.
+                      </div>
+                    )}
                     <label htmlFor="dream-client" className="text-sm font-semibold text-foreground">
-                      Your dream client, in one line <span className="text-muted-foreground font-normal">(optional)</span>
+                      {readWasThin ? (
+                        "Who do you serve?"
+                      ) : (
+                        <>Your dream client, in one line <span className="text-muted-foreground font-normal">(optional)</span></>
+                      )}
                     </label>
                     <Input
                       id="dream-client"
