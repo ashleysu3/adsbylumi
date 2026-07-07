@@ -616,7 +616,7 @@ export function BRollTextEditor({
                 )}
                 {trim && (trim.start > 0.05 || trim.end < videoDuration - 0.05) && (
                   <p className="text-[11px] text-muted-foreground italic">
-                    Preview shows the full clip — your final MP4 will be trimmed to {trim.start.toFixed(1)}–{trim.end.toFixed(1)}s.
+                    Preview is clipped to {trim.start.toFixed(1)}–{trim.end.toFixed(1)}s — exactly what your final MP4 will look like.
                   </p>
                 )}
               </div>
@@ -633,7 +633,10 @@ export function BRollTextEditor({
               onOverlayResize={handleResize}
               onDurationChange={setVideoDuration}
               loopVideo={fitMode !== 'speed'}
+              trimStart={trim?.start}
+              trimEnd={trim?.end}
             />
+
             <p className="text-[11px] text-muted-foreground mt-2 text-center">
               Pause the video to see all overlays. Drag any line to move it. Hover any line and use the
               right-edge handle to change line wrapping, or the corner handle to resize the text.
