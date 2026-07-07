@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowRight, RefreshCw, Sparkles, ChevronLeft, Target } from "lucide-react";
+import { Loader2, ArrowRight, RefreshCw, Sparkles, ChevronLeft, Target, Download, Mic, Film } from "lucide-react";
 import { toast } from "sonner";
 import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
+import type { RenderOverlay } from "@/lib/ffmpeg-renderer";
+
+type ScriptBeat = { line: string; category: string; seconds: number };
 
 
 // Coerce however brand_kits.colors is shaped (array of hexes from extract-brand,
@@ -167,6 +170,25 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   // Strategy summary
   const [strategy, setStrategy] = useState<any>(null);
 
+  // Bonus creatives: a talking-head script + a b-roll ad assembled from stock
+  // footage, both usable without creating an account. Neither blocks the main
+  // ad/CTA — they load in the background and simply don't appear if they fail
+  // or if there's no stock footage on file yet.
+  const userGoalRef = useRef<string>("get_leads");
+  const offerHintRef = useRef<string>("");
+  const bonusStartedRef = useRef(false);
+  const [scriptBeats, setScriptBeats] = useState<ScriptBeat[] | null>(null);
+  const [scriptState, setScriptState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [videoState, setVideoState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoCredit, setVideoCredit] = useState<{ name: string; url: string | null } | null>(null);
+
+  useEffect(() => {
+    return () => { if (videoUrl) URL.revokeObjectURL(videoUrl); };
+  }, [videoUrl]);
+
+  const brandSlug = (brand?.name || "lumi-ad").trim().replace(/\s+/g, "-").toLowerCase();
+
   const rotatedLines = useMemo(
     () => [
       "🎨 Loading your palette…",
@@ -302,6 +324,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           : null) ||
           ((brand?.audience_psychology as any)?.onboarding_goal ?? null);
         const userGoal = onboardingGoal ? (goalMap[onboardingGoal] || "get_leads") : "get_leads";
+        userGoalRef.current = userGoal;
 
         // The user's own words on what actually happens when someone clicks —
         // collected on the reveal step (see OFFER_HINT_COPY in
@@ -313,6 +336,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           ? localStorage.getItem(`lumi_onboarding_offer_hint_${brandId}`)
           : null) ||
           ((brand?.audience_psychology as any)?.onboarding_offer_hint ?? "");
+        offerHintRef.current = offerHint;
 
         setStatusLine("🧠 Picking your best angle…");
         try {
@@ -393,6 +417,105 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brandId]);
+
+  // Pick a stock clip whose categories best match the script's beats and burn
+  // the beats in as timed captions, looping the clip to cover the full script.
+  const assembleBrollVideo = useCallback(async (beats: ScriptBeat[]) => {
+    setVideoState("loading");
+    try {
+      const { data: rows, error } = await supabase
+        .from("stock_broll_clips" as any)
+        .select("video_url, categories, credit_name, credit_url")
+        .limit(200);
+      if (error) throw error;
+      const pool = (rows as any[]) || [];
+      if (!pool.length) {
+        setVideoState("idle");
+        return;
+      }
+
+      const tally: Record<string, number> = {};
+      for (const b of beats) tally[b.category] = (tally[b.category] || 0) + 1;
+      const rankedCategories = Object.keys(tally).sort((a, b) => tally[b] - tally[a]);
+      let clip: any = null;
+      for (const cat of [...rankedCategories, "misc"]) {
+        clip = pool.find((c) => Array.isArray(c.categories) && c.categories.includes(cat));
+        if (clip) break;
+      }
+      if (!clip) clip = pool[0];
+
+      const { data: signed } = await supabase.storage
+        .from("stock-broll")
+        .createSignedUrl(clip.video_url, 60 * 30);
+      const clipUrl = signed?.signedUrl;
+      if (!clipUrl) throw new Error("Could not sign stock clip URL");
+
+      let t = 0;
+      const overlays: RenderOverlay[] = beats.map((b, i) => {
+        const startSeconds = t;
+        const endSeconds = t + b.seconds;
+        t = endSeconds;
+        const type: RenderOverlay["type"] = i === 0 ? "hook" : i === beats.length - 1 ? "cta" : undefined;
+        return { text: b.line, startSeconds, endSeconds, type };
+      });
+
+      const { renderVideoWithText, DEFAULT_RENDER_STYLE } = await import("@/lib/ffmpeg-renderer");
+      const blob = await renderVideoWithText({
+        videoUrl: clipUrl,
+        overlays,
+        style: DEFAULT_RENDER_STYLE,
+        loopVideo: true,
+      });
+      const url = URL.createObjectURL(blob);
+      setVideoUrl(url);
+      setVideoCredit(clip.credit_name ? { name: clip.credit_name, url: clip.credit_url || null } : null);
+      setVideoState("ready");
+    } catch (e) {
+      console.error("[payoff-ad] b-roll video assembly failed", e);
+      setVideoState("error");
+    }
+  }, []);
+
+  const generateBonusCreatives = useCallback(async () => {
+    setScriptState("loading");
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-ad-script", {
+        body: {
+          brand_id: brandId,
+          user_goal: userGoalRef.current,
+          offer_hint: offerHintRef.current || undefined,
+        },
+      });
+      if (error) throw error;
+      const beats = (data as any)?.beats as ScriptBeat[] | undefined;
+      if (!Array.isArray(beats) || !beats.length) throw new Error("No script beats returned");
+      setScriptBeats(beats);
+      setScriptState("ready");
+      assembleBrollVideo(beats);
+    } catch (e) {
+      console.error("[payoff-ad] script generation failed", e);
+      setScriptState("error");
+    }
+  }, [brandId, assembleBrollVideo]);
+
+  // Fires once, right after the main ad is ready — never blocks or delays it.
+  useEffect(() => {
+    if (phase !== "ready" || bonusStartedRef.current) return;
+    bonusStartedRef.current = true;
+    generateBonusCreatives();
+  }, [phase, generateBonusCreatives]);
+
+  const downloadScript = () => {
+    if (!scriptBeats) return;
+    const text = scriptBeats.map((b) => b.line).join("\n\n");
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${brandSlug}-talking-head-script.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const showAnother = async () => {
     if (!options.length) return;
@@ -528,6 +651,69 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
                   </p>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bonus creatives: talking-head script + b-roll ad, ready without an account */}
+        {(scriptState === "loading" || videoState === "loading") && (
+          <div className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5 animate-fade-in">
+            <Loader2 className="h-3 w-3 animate-spin" /> Also brewing: a talking-head script + a b-roll ad…
+          </div>
+        )}
+
+        {scriptState === "ready" && scriptBeats && (
+          <div className="rounded-2xl border bg-card p-4 sm:p-5 space-y-3 animate-fade-in">
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
+              <Mic className="h-3.5 w-3.5" /> Talking-head script — read this on camera
+            </div>
+            <p className="text-sm leading-relaxed text-foreground">
+              {scriptBeats.map((b) => b.line).join(" ")}
+            </p>
+            <button
+              onClick={downloadScript}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition"
+            >
+              <Download className="h-3.5 w-3.5" /> Download this script
+            </button>
+          </div>
+        )}
+
+        {videoState === "ready" && videoUrl && (
+          <div className="rounded-2xl border bg-card p-4 sm:p-5 space-y-3 animate-fade-in">
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
+              <Film className="h-3.5 w-3.5" /> Your b-roll ad
+            </div>
+            <video
+              src={videoUrl}
+              controls
+              muted
+              loop
+              className="w-full rounded-xl bg-black mx-auto"
+              style={{ maxWidth: 460 }}
+            />
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <a
+                href={videoUrl}
+                download={`${brandSlug}-broll-ad.mp4`}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition"
+              >
+                <Download className="h-3.5 w-3.5" /> Download this video
+              </a>
+              {videoCredit && (
+                videoCredit.url ? (
+                  <a
+                    href={videoCredit.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] text-muted-foreground hover:text-foreground transition"
+                  >
+                    Footage via {videoCredit.name}
+                  </a>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground">Footage via {videoCredit.name}</span>
+                )
+              )}
             </div>
           </div>
         )}
