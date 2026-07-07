@@ -16,6 +16,7 @@ import {
   Pencil, Type, Award, BarChart3, Newspaper, GraduationCap, Users, Briefcase
 } from "lucide-react";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
+import { PayoffAdScreen } from "@/components/onboarding/PayoffAdScreen";
 import { SetupPrompt } from "@/components/SetupPrompt";
 import { LumiThinkingInline } from "@/components/LumiThinking";
 import { LumiPageLoader } from "@/components/LumiLoader";
