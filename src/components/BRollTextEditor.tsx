@@ -48,6 +48,8 @@ interface BRollTextEditorProps {
   clipName?: string;
   style?: OverlayStyle;
   brandId?: string;
+  /** Optional list of other clips the user can swap to without leaving the editor. */
+  availableClips?: Array<{ id: string; file_name: string; file_url: string }>;
 }
 
 function parseTimingRange(raw: string): { start: number; end: number } | null {
