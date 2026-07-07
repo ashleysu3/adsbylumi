@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 import type { RenderOverlay } from "@/lib/ffmpeg-renderer";
 import { getTestimonialQuotes, type TestimonialQuote } from "@/lib/social-proof";
+import lumiLogo from "@/assets/lumi-logo.png";
 
 type ScriptBeat = { line: string; category: string; seconds: number };
 
@@ -558,9 +559,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         {/* Header */}
         <div className="text-center space-y-3 animate-fade-in">
           <div className="inline-block">
-            <span className="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600">
-              LUMI
-            </span>
+            <img src={lumiLogo} alt="Lumi" className="h-7 object-contain mx-auto" />
           </div>
           <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
             {phase === "ready" ? (

@@ -24,6 +24,7 @@ import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
 import { useBrand } from "@/contexts/BrandContext";
 import { seedDeferredTask, seedFirstCampaignTasks } from "@/lib/onboarding-tasks";
 import { getTestimonialQuotes } from "@/lib/social-proof";
+import lumiLogo from "@/assets/lumi-logo.png";
 
 const STEPS = [
   "Your website",
@@ -76,13 +77,13 @@ function domainName(url: string): string {
 }
 
 const WITTY_LINES = [
-  "🔍 Snooping through your website (politely)…",
-  "🎨 Stealing your color palette — for science…",
-  "🧠 Profiling your dream client (in a kind way)…",
-  "✍️ Listening for how your brand actually sounds…",
-  "💬 Reading every testimonial out loud…",
-  "📸 Hunting for logos and pretty photos…",
-  "🪄 Cross-referencing with what we know about your space…",
+  "🔍 Getting the lay of your site…",
+  "🎨 Pulling your color palette…",
+  "🧠 Mapping out your dream client…",
+  "✍️ Learning how your brand actually sounds…",
+  "💬 Digging up your testimonials…",
+  "📸 Finding your best logos and photos…",
+  "🪄 Comparing notes with brands like yours…",
 ];
 const REVEAL_SECTIONS = ["basics", "design", "audience", "proof", "images"] as const;
 type RevealKey = typeof REVEAL_SECTIONS[number];
@@ -1159,15 +1160,13 @@ export default function GuidedOnboarding() {
                 {/* Header */}
                 <div className="text-center space-y-3 animate-fade-in">
                   <div className="inline-block">
-                    <span className="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600">
-                      LUMI
-                    </span>
+                    <img src={lumiLogo} alt="Lumi" className="h-7 object-contain mx-auto" />
                   </div>
                   <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
                     {allRevealed ? (
                       <>This is you.{brandDisplayName ? <span className="text-muted-foreground"> {brandDisplayName}.</span> : null}</>
                     ) : (
-                      <>Watch LUMI read you.</>
+                      <>Reading your brand.</>
                     )}
                   </h1>
                   <div className="min-h-[24px] text-sm text-muted-foreground">
