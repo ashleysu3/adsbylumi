@@ -787,6 +787,7 @@ export function BRollLibrary({
           videoUrl={editingTextClip.file_url}
           clipName={editingTextClip.file_name}
           style={overlayStyle}
+          availableClips={clips.map(c => ({ id: c.id, file_name: c.file_name, file_url: c.file_url }))}
         />
       )}
 
