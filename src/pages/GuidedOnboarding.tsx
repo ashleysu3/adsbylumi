@@ -117,6 +117,9 @@ export default function GuidedOnboarding() {
   });
   const [slowMode, setSlowMode] = useState(false);
   const [narrationIdx, setNarrationIdx] = useState(0);
+  // Escape hatch: after ~25s (or as soon as we have colors OR a real brand name)
+  // we unlock the CTA so the user is never stranded on "Still reading…".
+  const [phaseTimedOut, setPhaseTimedOut] = useState(false);
 
   // Concurrent engagement questions — asked while extraction runs so total time to
   // first ad ≈ slowest extractor. Answers flow into recommend-strategy + copy gen.
