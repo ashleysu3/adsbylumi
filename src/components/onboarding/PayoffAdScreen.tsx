@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowRight, RefreshCw, Sparkles, ChevronLeft, Target } from "lucide-react";
 import { toast } from "sonner";
+import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
+
 
 // Coerce however brand_kits.colors is shaped (array of hexes from extract-brand,
 // or the {bg, ink, accent, pop, highlight, cream} object the Style page saves)
@@ -107,6 +109,49 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const [images, setImages] = useState<RenderImage[]>([]);
   const [renderErr, setRenderErr] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const startTrialCheckout = useCallback(async () => {
+    if (checkoutLoading) return;
+    setCheckoutLoading(true);
+    try {
+      // After Stripe returns to /auth?paid=true, sign-up upgrades the anonymous
+      // user in place (keeping this brand + ad), then routes to /launch so they
+      // can push the ad they just built live.
+      const returnTo = `/launch?brand=${brandId}`;
+      let rewardful_referral = "";
+      try {
+        if ((window as any).rewardful) {
+          rewardful_referral = await Promise.race([
+            new Promise<string>((resolve) => {
+              (window as any).rewardful("ready", function () {
+                resolve((window as any).Rewardful?.referral || "");
+              });
+            }),
+            new Promise<string>((resolve) => setTimeout(() => resolve(""), 2500)),
+          ]);
+        }
+      } catch { /* ignore */ }
+
+      const { data, error } = await supabase.functions.invoke("create-guest-checkout", {
+        body: {
+          priceId: SUBSCRIPTION_TIERS.solo.monthlyPriceId,
+          rewardful_referral,
+          returnTo,
+        },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("Checkout didn't return a URL");
+      }
+    } catch (err: any) {
+      console.error("[payoff] checkout error", err);
+      toast.error("Could not start checkout. Please try again.");
+      setCheckoutLoading(false);
+    }
+  }, [brandId, checkoutLoading]);
 
   // Prepared inputs
   const engineColorsRef = useRef<EngineColors>(DEFAULT_ENGINE_COLORS);
@@ -503,11 +548,15 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
               Show me another
             </Button>
             <Button
-              onClick={onAdvance}
-              disabled={phase !== "ready"}
+              onClick={startTrialCheckout}
+              disabled={phase !== "ready" || checkoutLoading}
               className="h-12 px-6 text-base font-semibold rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity shadow-lg shadow-pink-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Start free trial to launch this <ArrowRight className="h-5 w-5 ml-2" />
+              {checkoutLoading ? (
+                <><Loader2 className="h-5 w-5 mr-2 animate-spin" /> Opening checkout…</>
+              ) : (
+                <>Start free trial to launch this <ArrowRight className="h-5 w-5 ml-2" /></>
+              )}
             </Button>
           </div>
         </div>
