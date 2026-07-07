@@ -139,27 +139,54 @@ export default function Auth() {
         if (inviteToken) await acceptInvite(inviteToken);
         navigate(safeReturnTo || "/home");
       } else {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: fullName,
+        // If the current session is anonymous (ad-first onboarding), upgrade
+        // it in place with updateUser so the user keeps their brand row and
+        // any generated ads instead of getting a brand new user_id.
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const isAnon = !!(currentSession?.user as any)?.is_anonymous;
+
+        let userId: string | undefined;
+        let hasSession = false;
+
+        if (isAnon) {
+          const { data, error } = await supabase.auth.updateUser({
+            email,
+            password,
+            data: { full_name: fullName },
+          });
+          if (error) throw error;
+          userId = data.user?.id;
+          hasSession = !!userId;
+        } else {
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: { full_name: fullName },
+              emailRedirectTo: `${window.location.origin}/welcome`,
             },
-            emailRedirectTo: `${window.location.origin}/welcome`,
-          },
-        });
-        if (error) throw error;
-        
+          });
+          if (error) throw error;
+          userId = data.user?.id;
+          hasSession = !!data.session;
+        }
+
+        // handle_new_user only fires at user creation, so an anonymous→permanent
+        // upgrade leaves profiles.email null. Sync it here so welcome emails,
+        // Stripe, and email display all work post-signup.
+        if (userId) {
+          await syncProfileEmail(userId, email.toLowerCase().trim(), fullName);
+        }
+
         // Sync to Flodesk + send welcome email (fire-and-forget)
         try {
           await Promise.allSettled([
             supabase.functions.invoke('sync-flodesk', {
-              body: { 
-                email: email.toLowerCase().trim(), 
+              body: {
+                email: email.toLowerCase().trim(),
                 firstName: fullName.split(' ')[0] || '',
                 lastName: fullName.split(' ').slice(1).join(' ') || '',
-                segment: 'active' 
+                segment: 'active'
               }
             }),
             supabase.functions.invoke('send-beta-welcome-email', {
@@ -173,10 +200,10 @@ export default function Auth() {
           console.error('Post-signup sync failed:', err);
         }
 
-        if (data.user && data.session) {
-          toast.success("Account created! Welcome to Lumi.");
+        if (userId && hasSession) {
+          toast.success(isAnon ? "Account created! Your ad is saved." : "Account created! Welcome to Lumi.");
           navigate("/welcome");
-        } else if (data.user && !data.session) {
+        } else if (userId) {
           toast.success("Account created! Please check your email to confirm.");
         }
       }
