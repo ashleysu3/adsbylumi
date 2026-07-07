@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Plus, Palette, MessageSquare, Users, Image as ImageIcon, Check, Link2, Sparkles, Rocket, BarChart3, Star } from "lucide-react";
+import { ArrowRight, Plus, Palette, MessageSquare, Users, Image as ImageIcon, Check, X, Link2, Sparkles, Rocket, BarChart3, Star, GraduationCap, Briefcase, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollReveal, StaggerChildren, StaggerItem } from "@/components/animations";
 import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
 import { toast } from "sonner";
