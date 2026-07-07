@@ -357,6 +357,13 @@ export function ProductionChecklist({ workspace, onUpdate, brand }: ProductionCh
                                   overlays={textOverlays}
                                   style={overlayStyle}
                                   compact
+                                  loopVideo={false}
+                                  trimEnd={textOverlays.reduce((max, overlay) => {
+                                    const m = (overlay.timing || '').match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*s?/i);
+                                    if (!m) return max;
+                                    const end = parseFloat(m[2]);
+                                    return Number.isFinite(end) ? Math.max(max, end) : max;
+                                  }, 0) || undefined}
                                 />
                               )}
                               {assignedClip && textOverlays.length === 0 && (

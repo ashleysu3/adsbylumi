@@ -90,6 +90,8 @@ interface CreativeChecklistCardProps {
     sourceClipName?: string;
     overlays: TextOverlay[];
     style: RenderStyle;
+    trimStart?: number;
+    trimEnd?: number;
   }) => void;
   brand?: any;
 }
@@ -139,6 +141,23 @@ function pickBestBroll(
     };
   }
   return { id: top.clip.id, reason: 'No tag match — picked most recently uploaded' };
+}
+
+function parseOverlayTiming(raw?: string): { start: number; end: number } | null {
+  const m = (raw || "").match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*s?/i);
+  if (!m) return null;
+  const start = parseFloat(m[1]);
+  const end = parseFloat(m[2]);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+  return { start, end };
+}
+
+function getLastOverlayEnd(overlays: TextOverlay[]): number | undefined {
+  const end = overlays.reduce((max, overlay) => {
+    const timing = parseOverlayTiming(overlay.timing);
+    return timing ? Math.max(max, timing.end) : max;
+  }, 0);
+  return end > 0 ? Number(end.toFixed(2)) : undefined;
 }
 
 export function CreativeChecklistCard({
@@ -717,6 +736,8 @@ export function CreativeChecklistCard({
                                     updated[idx] = { ...updated[idx], ...patch };
                                     onOverlaysChange?.(updated as TextOverlay[]);
                                   }}
+                                  loopVideo={false}
+                                  trimEnd={getLastOverlayEnd(tOverlays)}
                                 />
                               ) : (
                                 <video
@@ -737,6 +758,8 @@ export function CreativeChecklistCard({
                                     sourceClipName: customBrollName || undefined,
                                     overlays: tOverlays,
                                     style: oStyle as unknown as RenderStyle,
+                                     trimStart: 0,
+                                     trimEnd: getLastOverlayEnd(tOverlays),
                                   });
                                 }}
                               >
@@ -1023,6 +1046,8 @@ export function CreativeChecklistCard({
                                               updated[idx] = { ...updated[idx], ...patch };
                                               onOverlaysChange?.(updated as TextOverlay[]);
                                             }}
+                                            loopVideo={false}
+                                            trimEnd={getLastOverlayEnd(tOverlays)}
                                           />
                                         ) : (
                                           <video
@@ -1043,6 +1068,8 @@ export function CreativeChecklistCard({
                                               sourceClipName: clip.file_name,
                                               overlays: tOverlays,
                                               style: oStyle as unknown as RenderStyle,
+                                               trimStart: 0,
+                                               trimEnd: getLastOverlayEnd(tOverlays),
                                             });
                                           }}
                                         >
@@ -1099,6 +1126,8 @@ export function CreativeChecklistCard({
                                         updated[idx] = { ...updated[idx], ...patch };
                                         onOverlaysChange?.(updated as TextOverlay[]);
                                       }}
+                                      loopVideo={false}
+                                      trimEnd={getLastOverlayEnd(tOverlays)}
                                     />
                                   ) : (
                                     <video
@@ -1119,6 +1148,8 @@ export function CreativeChecklistCard({
                                         sourceClipName: customBrollName || undefined,
                                         overlays: tOverlays,
                                         style: oStyle as unknown as RenderStyle,
+                                         trimStart: 0,
+                                         trimEnd: getLastOverlayEnd(tOverlays),
                                       });
                                     }}
                                   >
