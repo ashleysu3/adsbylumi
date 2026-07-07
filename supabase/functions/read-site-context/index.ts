@@ -186,6 +186,9 @@ Tone: warm, clever, strategic. Never robotic, never hype.`;
 
     psychology._source = 'read_site_vision';
     psychology._pages_read = pages.map((p) => p.label);
+    // Always grounded — this only ever writes when real multi-page content was
+    // actually captured (see the `if (!pages.length)` bail above).
+    psychology._grounded = true;
 
     // --- 3) Persist: overwrite audience_psychology (strictly richer); only
     // fill target_audience if the user hasn't already told us themselves. ---
