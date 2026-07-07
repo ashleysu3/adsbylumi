@@ -778,13 +778,13 @@ const Sales = () => {
             <h2 className="font-display text-3xl md:text-5xl leading-tight">
               See your first ad in <span className="text-gradient-lumi">60 seconds.</span>
             </h2>
-            <p className="mt-4 text-white/70 max-w-xl mx-auto">
+            <p className="mt-4 text-lumi-black max-w-xl mx-auto">
               Drop your website. Watch LUMI build an ad that sounds like you — before you pay a cent.
             </p>
             <div className="mt-8">
               <CaptureBar size="lg" />
             </div>
-            <p className="mt-5 text-sm text-white/60">
+            <p className="mt-5 text-sm text-lumi-black">
               No card to begin · 7-day free trial to launch · cancel anytime
             </p>
           </div>
