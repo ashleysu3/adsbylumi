@@ -110,18 +110,15 @@ export function BRollTextEditor({
   // Video is meaningfully longer than the overlays — offer a trim.
   const tooLong = videoDuration > 0 && maxOverlayEnd > 0 && videoDuration > maxOverlayEnd + 0.25;
 
-  // Auto-trim: if the video is longer than the copy and the user hasn't
-  // manually set a trim, clip the render to the end of the last overlay so
-  // the ad doesn't trail off with silent b-roll.
-  useEffect(() => {
-    if (tooLong && trim === null) {
-      setTrim({ start: 0, end: +Math.min(videoDuration, maxOverlayEnd).toFixed(2) });
-    }
-    if (!tooLong && trim && trim.start === 0 && Math.abs(trim.end - videoDuration) < 0.05) {
-      // Video no longer needs trimming (user extended overlays past it).
-      setTrim(null);
-    }
-  }, [tooLong, maxOverlayEnd, videoDuration]); // eslint-disable-line react-hooks/exhaustive-deps
+  const autoTrim = useMemo(() => {
+    if (!tooLong) return null;
+    return { start: 0, end: +Math.min(videoDuration, maxOverlayEnd).toFixed(2) };
+  }, [tooLong, videoDuration, maxOverlayEnd]);
+
+  const effectiveTrim = trim ?? autoTrim;
+  const outputTrim = trim ?? (!overflows && maxOverlayEnd > 0
+    ? { start: 0, end: +maxOverlayEnd.toFixed(2) }
+    : null);
 
   // Apply the chosen fit mode to the overlays before they're rendered or
   // sent to the encoder. 'speed' rescales every timing to fit into the
@@ -236,15 +233,6 @@ export function BRollTextEditor({
           emphasisStyle: style.emphasisStyle,
         };
 
-    // Belt-and-suspenders auto-trim: if the video is meaningfully longer
-    // than the copy and the user hasn't set a trim, clip the render to the
-    // end of the last overlay so the ad doesn't trail off with silent b-roll.
-    const effectiveTrim =
-      trim ??
-      (videoDuration > 0 && maxOverlayEnd > 0 && videoDuration > maxOverlayEnd + 0.25
-        ? { start: 0, end: +Math.min(videoDuration, maxOverlayEnd).toFixed(2) }
-        : null);
-
     enqueue({
       title: activeClipName || 'B-roll video',
       sourceClipName: activeClipName,
@@ -252,8 +240,8 @@ export function BRollTextEditor({
       overlays: specs,
       style: renderStyle,
       loopVideo: overflows && fitMode === 'loop',
-      trimStart: effectiveTrim?.start,
-      trimEnd: effectiveTrim?.end,
+      trimStart: outputTrim?.start,
+      trimEnd: outputTrim?.end,
       context: brandId ? { brandId } : undefined,
     });
 
@@ -545,7 +533,7 @@ export function BRollTextEditor({
                     </p>
                   </div>
                 </div>
-                {trim ? (
+                {effectiveTrim ? (
                   <div className="space-y-2">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
@@ -553,12 +541,12 @@ export function BRollTextEditor({
                         <Input
                           type="number"
                           min={0}
-                          max={Math.max(0, trim.end - 0.1)}
+                          max={Math.max(0, effectiveTrim.end - 0.1)}
                           step={0.1}
-                          value={trim.start}
+                          value={effectiveTrim.start}
                           onChange={e => {
-                            const v = Math.max(0, Math.min(trim.end - 0.1, parseFloat(e.target.value) || 0));
-                            setTrim({ start: v, end: trim.end });
+                            const v = Math.max(0, Math.min(effectiveTrim.end - 0.1, parseFloat(e.target.value) || 0));
+                            setTrim({ start: v, end: effectiveTrim.end });
                           }}
                           className="h-8"
                         />
@@ -567,13 +555,13 @@ export function BRollTextEditor({
                         <Label className="text-[11px] text-muted-foreground">End (s)</Label>
                         <Input
                           type="number"
-                          min={trim.start + 0.1}
+                          min={effectiveTrim.start + 0.1}
                           max={videoDuration}
                           step={0.1}
-                          value={trim.end}
+                          value={effectiveTrim.end}
                           onChange={e => {
-                            const v = Math.max(trim.start + 0.1, Math.min(videoDuration, parseFloat(e.target.value) || videoDuration));
-                            setTrim({ start: trim.start, end: v });
+                            const v = Math.max(effectiveTrim.start + 0.1, Math.min(videoDuration, parseFloat(e.target.value) || videoDuration));
+                            setTrim({ start: effectiveTrim.start, end: v });
                           }}
                           className="h-8"
                         />
@@ -581,15 +569,17 @@ export function BRollTextEditor({
                     </div>
                     <div className="flex items-center justify-between">
                       <p className="text-[11px] text-sky-700 font-medium">
-                        Final video: {(trim.end - trim.start).toFixed(1)}s
+                        Final video: {(effectiveTrim.end - effectiveTrim.start).toFixed(1)}s
                       </p>
-                      <button
-                        type="button"
-                        className="text-[11px] text-muted-foreground underline"
-                        onClick={() => setTrim(null)}
-                      >
-                        Don't trim
-                      </button>
+                      {trim && (
+                        <button
+                          type="button"
+                          className="text-[11px] text-muted-foreground underline"
+                          onClick={() => setTrim(null)}
+                        >
+                          Reset to copy end
+                        </button>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -614,9 +604,9 @@ export function BRollTextEditor({
                     </Button>
                   </div>
                 )}
-                {trim && (trim.start > 0.05 || trim.end < videoDuration - 0.05) && (
+                {effectiveTrim && (effectiveTrim.start > 0.05 || effectiveTrim.end < videoDuration - 0.05) && (
                   <p className="text-[11px] text-muted-foreground italic">
-                    Preview is clipped to {trim.start.toFixed(1)}–{trim.end.toFixed(1)}s — exactly what your final MP4 will look like.
+                    Preview is clipped to {effectiveTrim.start.toFixed(1)}–{effectiveTrim.end.toFixed(1)}s — exactly what your final MP4 will look like.
                   </p>
                 )}
               </div>
@@ -632,9 +622,9 @@ export function BRollTextEditor({
               onOverlayPositionChange={handlePositionChange}
               onOverlayResize={handleResize}
               onDurationChange={setVideoDuration}
-              loopVideo={fitMode !== 'speed'}
-              trimStart={trim?.start}
-              trimEnd={trim?.end}
+              loopVideo={overflows && fitMode === 'loop'}
+              trimStart={outputTrim?.start}
+              trimEnd={outputTrim?.end}
             />
 
             <p className="text-[11px] text-muted-foreground mt-2 text-center">

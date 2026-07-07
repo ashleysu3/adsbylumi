@@ -232,6 +232,19 @@ export function VideoTextPreview({
   const playStartedAtRef = useRef(0);
   const playTimelineBaseRef = useRef(0);
 
+  const trimWindow = useMemo(() => {
+    const start = Math.max(0, trimStart ?? 0);
+    const explicitEnd = typeof trimEnd === "number" && Number.isFinite(trimEnd) && trimEnd > 0
+      ? trimEnd
+      : null;
+    const end = explicitEnd ?? (duration > 0 ? duration : Infinity);
+    return {
+      start,
+      end: Math.max(start + 0.01, end),
+      hasEnd: explicitEnd !== null,
+    };
+  }, [trimStart, trimEnd, duration]);
+
   // Drag state — local only, committed to parent via onOverlayPositionChange
   // when the pointer is released.
   const [dragIdx, setDragIdx] = useState<number | null>(null);
@@ -255,11 +268,10 @@ export function VideoTextPreview({
     const video = videoRef.current;
     if (!video) return;
 
-    const tStart = Math.max(0, trimStart ?? 0);
-    const tEndRaw = typeof trimEnd === 'number' ? trimEnd : Infinity;
+    const tStart = trimWindow.start;
 
-    const handleTimeUpdate = () => {
-      const tEnd = tEndRaw === Infinity ? (video.duration || Infinity) : tEndRaw;
+    const clampPlayback = () => {
+      const tEnd = Math.min(trimWindow.end, video.duration || trimWindow.end);
       // Clamp playback to the trim window so the preview matches the export.
       if (video.currentTime >= tEnd - 0.02) {
         if (loopVideo) {
@@ -274,11 +286,16 @@ export function VideoTextPreview({
       } else if (video.currentTime < tStart - 0.02) {
         video.currentTime = tStart;
       }
-      setCurrentTime(video.currentTime);
+      const relativeTime = Math.max(0, video.currentTime - tStart);
+      setCurrentTime(relativeTime);
       if (!isPlayingRef.current) {
-        timelineTimeRef.current = video.currentTime;
-        setTimelineTime(video.currentTime);
+        timelineTimeRef.current = relativeTime;
+        setTimelineTime(relativeTime);
       }
+    };
+
+    const handleTimeUpdate = () => {
+      clampPlayback();
     };
     const handlePlay = () => {
       isPlayingRef.current = true;
@@ -297,6 +314,8 @@ export function VideoTextPreview({
       // Seek into the trim window on load so scrubbing/preview start matches.
       if (tStart > 0.02 && video.currentTime < tStart) {
         video.currentTime = tStart;
+        timelineTimeRef.current = 0;
+        setTimelineTime(0);
       }
     };
 
@@ -311,7 +330,48 @@ export function VideoTextPreview({
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("loadedmetadata", handleMeta);
     };
-  }, [onDurationChange, trimStart, trimEnd, loopVideo]);
+  }, [onDurationChange, trimWindow, loopVideo]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !trimWindow.hasEnd) return;
+
+    let frame = 0;
+    const tick = () => {
+      if (isPlayingRef.current) {
+        const tEnd = Math.min(trimWindow.end, video.duration || trimWindow.end);
+        if (video.currentTime >= tEnd - 0.01) {
+          if (loopVideo) {
+            video.currentTime = trimWindow.start;
+            timelineTimeRef.current = 0;
+            setTimelineTime(0);
+          } else {
+            video.pause();
+            video.currentTime = tEnd;
+            const relativeEnd = Math.max(0, tEnd - trimWindow.start);
+            timelineTimeRef.current = relativeEnd;
+            setTimelineTime(relativeEnd);
+          }
+        }
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [trimWindow, loopVideo]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const tStart = trimWindow.start;
+    const tEnd = Math.min(trimWindow.end, video.duration || trimWindow.end);
+    if (video.currentTime < tStart - 0.02 || video.currentTime > tEnd + 0.02) {
+      video.currentTime = tStart;
+    }
+    timelineTimeRef.current = Math.max(0, video.currentTime - tStart);
+    setCurrentTime(timelineTimeRef.current);
+    setTimelineTime(timelineTimeRef.current);
+  }, [trimWindow.start, trimWindow.end, videoUrl]);
 
   // Apply playbackRate to the video element whenever it changes.
   useEffect(() => {
@@ -410,7 +470,10 @@ export function VideoTextPreview({
       if (timing) return playbackTimelineTime >= timing.start && playbackTimelineTime < timing.end;
       return !isPlaying;
     }
-    if (duration > 0 && playbackTimelineTime >= duration - 3) return true;
+      const effectiveDuration = Number.isFinite(trimWindow.end)
+        ? trimWindow.end - trimWindow.start
+        : duration;
+      if (effectiveDuration > 0 && playbackTimelineTime >= effectiveDuration - 3) return true;
     if (!isPlaying) return true;
     return false;
   })();

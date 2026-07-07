@@ -114,6 +114,8 @@ export function ProductionManager({
     sourceClipName?: string;
     overlays: TextOverlay[];
     style: RenderStyle;
+    trimStart?: number;
+    trimEnd?: number;
     videoDuration: number;
     maxOverlayEnd: number;
   } | null>(null);
@@ -1081,6 +1083,8 @@ export function ProductionManager({
     sourceClipName?: string;
     overlays: TextOverlay[];
     style: RenderStyle;
+    trimStart?: number;
+    trimEnd?: number;
   }, fitMode: 'loop' | 'speed' | null = null) => {
     const maxOverlayEnd = args.overlays.reduce((max, overlay) => {
       const timing = parseOverlayTiming(overlay.timing);
@@ -1131,6 +1135,8 @@ export function ProductionManager({
       overlays: specs,
       style: args.style,
       loopVideo: fitMode === 'loop',
+      trimStart: args.trimStart,
+      trimEnd: args.trimEnd,
       context: brandId
         ? { brandId, workspaceId: workspace?.id, creativeItemId: args.item.id }
         : { creativeItemId: args.item.id },
@@ -1190,6 +1196,8 @@ export function ProductionManager({
     sourceClipName?: string;
     overlays: TextOverlay[];
     style: RenderStyle;
+    trimStart?: number;
+    trimEnd?: number;
   }) => {
     const maxOverlayEnd = args.overlays.reduce((max, overlay) => {
       const timing = parseOverlayTiming(overlay.timing);
@@ -1207,7 +1215,11 @@ export function ProductionManager({
       return;
     }
 
-    queueMakeVideo(args);
+    queueMakeVideo({
+      ...args,
+      trimStart: args.trimStart ?? 0,
+      trimEnd: args.trimEnd ?? (videoDuration > maxOverlayEnd + 0.05 ? maxOverlayEnd : undefined),
+    });
   };
 
   if (productionItems.length === 0) {
