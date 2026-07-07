@@ -3075,6 +3075,39 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_broll_clips: {
+        Row: {
+          categories: string[]
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          source: string | null
+          thumbnail_url: string | null
+          title: string | null
+          video_url: string
+        }
+        Insert: {
+          categories?: string[]
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          source?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          video_url: string
+        }
+        Update: {
+          categories?: string[]
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          source?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          video_url?: string
+        }
+        Relationships: []
+      }
       strategies: {
         Row: {
           audience_psychology: Json | null
