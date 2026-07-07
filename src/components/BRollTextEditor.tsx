@@ -108,7 +108,7 @@ export function BRollTextEditor({
 
   const overflows = videoDuration > 0 && maxOverlayEnd > videoDuration + 0.05;
   // Video is meaningfully longer than the overlays — offer a trim.
-  const tooLong = videoDuration > 0 && maxOverlayEnd > 0 && videoDuration > maxOverlayEnd + 1.0;
+  const tooLong = videoDuration > 0 && maxOverlayEnd > 0 && videoDuration > maxOverlayEnd + 0.25;
 
   // Auto-trim: if the video is longer than the copy and the user hasn't
   // manually set a trim, clip the render to the end of the last overlay so
