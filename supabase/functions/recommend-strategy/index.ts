@@ -40,6 +40,14 @@ Deno.serve(async (req) => {
     const brand_id: string | undefined = body?.brand_id;
     const user_goal: string | undefined = body?.user_goal;
     const offer_id: string | undefined = body?.offer_id;
+    // A short user-written line on WHAT they're actually offering (e.g. "a free
+    // guide on scaling ad spend", "a 20-min discovery call") — collected during
+    // onboarding before any `offers` row exists. Without this, a pre-signup
+    // brand with no offer gives the AI nothing to disambiguate a lead-magnet
+    // funnel from a DM funnel from a call-booking funnel, all of which satisfy
+    // "get_leads" equally well.
+    const offer_hint: string | undefined =
+      typeof body?.offer_hint === "string" && body.offer_hint.trim() ? body.offer_hint.trim() : undefined;
     if (!brand_id) return json({ error: "brand_id required" }, 400);
 
     // Load brand + offers + audiences (scoped to user via RLS)
@@ -88,6 +96,7 @@ Deno.serve(async (req) => {
       selected_offer: offer_id ? (offers ?? [])[0] ?? null : null,
       audiences: audiences ?? [],
       user_goal,
+      offer_hint,
     };
 
     // If no templates exist OR no API key, log a request immediately
@@ -139,8 +148,8 @@ Deno.serve(async (req) => {
                 "- A podcast / show / clip-based growth play → podcast-grow funnel.\n" +
                 "- A standard paid product or course with a sales page (no webinar, no challenge) → the matching sales funnel (e.g. coach-course-creator-3step).\n" +
                 "- A local in-person service → local-service funnel.\n" +
-                "Use the offer name, description, price, page_goal, and the user_goal to decide. Only return no_match if literally none of the templates fit the offer type.\n\n" +
-                "IMPORTANT — the template you match was AUTHORED once as a generic funnel shape, often using an illustrative example industry in its stored name/description (e.g. a template literally named 'Wedding Pros — Grow + Leads' really just means \"2-campaign lead-gen funnel\" and has nothing to do with weddings). NEVER let that stored name/description reach the user as-is. Always write a personalized_title and personalized_intro grounded in THIS brand's actual name, industry, and offer — never mention the template's original example industry unless it's genuinely this brand's industry too. Respond ONLY with JSON.",
+                "Use the offer name, description, price, page_goal, and the user_goal to decide. If there is no offer yet, brandSnapshot.offer_hint is the user's own words on what they're actually offering (e.g. 'a free discovery call', 'a free guide on X', 'my $997 program') — treat it as equally authoritative as a real offer's description/page_goal for picking the funnel type. A 'get_leads' goal with a call-shaped offer_hint should match a call/DM funnel, not a generic lead-magnet template, and vice versa. Only return no_match if literally none of the templates fit the offer type.\n\n" +
+                "IMPORTANT — the template you match was AUTHORED once as a generic funnel shape, often using an illustrative example industry in its stored name/description (e.g. a template literally named 'Wedding Pros — Grow + Leads' really just means \"2-campaign lead-gen funnel\" and has nothing to do with weddings). NEVER let that stored name/description reach the user as-is. Always write a personalized_title and personalized_intro grounded in THIS brand's actual name, industry, and offer_hint/offer (e.g. 'Free Guide → Booked Calls for Acme Coaching', not a generic label) — never mention the template's original example industry unless it's genuinely this brand's industry too. Respond ONLY with JSON.",
             },
             {
               role: "user",
@@ -326,6 +335,12 @@ function detectPrimaryObjective(
     offer?.target_outcome,
     offer?.price_point,
     goal,
+    // The user's own free-text answer to "what are they getting/what's the
+    // call for" — the only concrete signal available before any `offers` row
+    // exists (the whole pre-signup ad-first flow). A "leads" goal with an
+    // offer_hint of "a free discovery call" should route to a call-booking
+    // funnel, not the same generic lead-magnet template as "a free PDF guide".
+    snapshot?.offer_hint,
   ]
     .map((v) => String(v || "").toLowerCase())
     .join(" | ");
@@ -387,6 +402,7 @@ function adaptCampaignsToOffer(matched: any, snapshot: any) {
   const offerName: string =
     snapshot?.selected_offer?.name ||
     snapshot?.offers?.[0]?.name ||
+    snapshot?.offer_hint ||
     "your offer";
   const campaigns = Array.isArray(matched?.campaigns)
     ? matched.campaigns.slice()
@@ -394,7 +410,21 @@ function adaptCampaignsToOffer(matched: any, snapshot: any) {
 
   const rewritten = campaigns.map((c: any) => {
     const role = classifyRole(c);
-    if (role === "awareness") return c;
+    if (role === "awareness") {
+      // Every OTHER role gets its name/creative_brief rewritten below — awareness
+      // was the one gap left holding the matched template's raw, sometimes
+      // industry-specific example content (e.g. "newly-engaged couples"), which
+      // rendered straight to users in the campaign list. Give it the same
+      // treatment: a safe, objective-aligned name/brief, never the template's
+      // original wording.
+      return {
+        ...c,
+        name: "Cold traffic (awareness)",
+        creative_brief:
+          `Introduce ${offerName} to a cold, broad audience with the strongest hook or proof point available — ` +
+          `no hard ask yet, just earn the click/save/follow that feeds the next campaign.`,
+      };
+    }
 
     if (role === "primary") {
       if (primaryObjective === "OUTCOME_LEADS") {
