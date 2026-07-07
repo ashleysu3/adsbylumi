@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { requirePaidUser } from "../_shared/check-subscription.ts";
+import { requireAuthedUser } from "../_shared/check-subscription.ts";
 import { buildPositioningBriefBlock } from "../_shared/positioning-brief.ts";
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const cors = {
@@ -244,7 +244,7 @@ async function callModel(systemPrompt: string, userPrompt: string): Promise<any>
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  const gate = await requirePaidUser(req, cors);
+  const gate = await requireAuthedUser(req, cors);
   if (gate.blocked) return gate.blocked;
   try {
     const body = await req.json();

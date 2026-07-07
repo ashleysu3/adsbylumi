@@ -1,6 +1,6 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { requirePaidUser } from "../_shared/check-subscription.ts";
+import { requireAuthedUser } from "../_shared/check-subscription.ts";
 
 const ENGINE_URL = Deno.env.get("ENGINE_URL")!;
 const ENGINE_KEY = Deno.env.get("LUMI_ENGINE_KEY") ?? "";
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
     }
 
     // Gate the render path (POST). The GET/HEAD image proxy above is public by design.
-    const gate = await requirePaidUser(req, headers);
+    const gate = await requireAuthedUser(req, headers);
     if (gate.blocked) return gate.blocked;
 
     const body = await req.json();

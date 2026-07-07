@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -80,6 +80,7 @@ const STAGGER_MS = 800;
 
 export default function GuidedOnboarding() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const addBrandMode = searchParams.get("mode") === "add-brand";
   const { refreshBrands, setActiveBrand } = useBrand();
@@ -91,6 +92,7 @@ export default function GuidedOnboarding() {
   // Step 1
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [instagramHandle, setInstagramHandle] = useState("");
+  const [showIgField, setShowIgField] = useState(false);
   const [step1Busy, setStep1Busy] = useState(false);
   // Per-section streaming flags. Each one flips false the moment its extractor settles,
   // so the reveal page can show inline shimmers and swap to real content as data arrives.
@@ -221,12 +223,14 @@ export default function GuidedOnboarding() {
         }
         user = anon.user;
       }
-      // Prefill from homepage capture bar (sessionStorage survives round-trips).
+      // Prefill from homepage capture bar. Router state is the primary source
+      // (survives without storage); sessionStorage is a fallback for reloads.
+      const navState: any = (location.state as any) || {};
       let prefillWebsite = "";
       let prefillInstagram = "";
       try {
-        prefillWebsite = sessionStorage.getItem("lumi_prefill_website") || "";
-        prefillInstagram = sessionStorage.getItem("lumi_prefill_instagram") || "";
+        prefillWebsite = navState.websiteUrl || sessionStorage.getItem("lumi_prefill_website") || "";
+        prefillInstagram = navState.instagramHandle || sessionStorage.getItem("lumi_prefill_instagram") || "";
       } catch { /* ignore */ }
       // When user explicitly asked to add a new brand, do NOT resume an in-progress one.
       let resumedExisting = false;
@@ -248,7 +252,7 @@ export default function GuidedOnboarding() {
       }
       if (!resumedExisting && prefillWebsite) {
         setWebsiteUrl(prefillWebsite);
-        if (prefillInstagram) setInstagramHandle(prefillInstagram);
+        if (prefillInstagram) { setInstagramHandle(prefillInstagram); setShowIgField(true); }
         autoStartFiredRef.current = true;
         try {
           sessionStorage.removeItem("lumi_prefill_website");
@@ -888,7 +892,7 @@ export default function GuidedOnboarding() {
         )}
 
         {/* ============== STEP 1 — Website only ============== */}
-        {step === 1 && (
+        {step === 1 && !autoStartFiredRef.current && !step1Busy && (
           <div className="min-h-[70vh] flex items-center justify-center py-8">
             <div className="w-full max-w-xl mx-auto">
               <div className="text-center mb-10 animate-fade-in">
@@ -904,28 +908,38 @@ export default function GuidedOnboarding() {
               </div>
 
               <div className="rounded-3xl border bg-card shadow-sm p-6 sm:p-8 space-y-5 animate-fade-in">
-                <div className="space-y-2">
-                  <Input
-                    value={websiteUrl}
-                    onChange={(e) => setWebsiteUrl(e.target.value)}
-                    placeholder="yourbrand.com"
-                    autoFocus
-                    className="h-14 text-base rounded-xl"
-                    onKeyDown={(e) => { if (e.key === "Enter" && websiteUrl.trim()) startStep1(); }}
-                    disabled={step1Busy}
-                  />
-                </div>
+                <Input
+                  value={websiteUrl}
+                  onChange={(e) => setWebsiteUrl(e.target.value)}
+                  placeholder="yourbrand.com"
+                  autoFocus
+                  className="h-14 text-base rounded-xl"
+                  onKeyDown={(e) => { if (e.key === "Enter" && websiteUrl.trim()) startStep1(); }}
+                  disabled={step1Busy}
+                />
 
-                <div className="space-y-2">
-                  <Input
-                    value={instagramHandle}
-                    onChange={(e) => setInstagramHandle(e.target.value)}
-                    placeholder="add your Instagram (optional)"
-                    className="h-12 text-sm rounded-xl bg-muted/30 border-dashed"
-                    onKeyDown={(e) => { if (e.key === "Enter" && websiteUrl.trim()) startStep1(); }}
-                    disabled={step1Busy}
-                  />
-                </div>
+                {showIgField ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-sm">@</span>
+                    <Input
+                      value={instagramHandle}
+                      onChange={(e) => setInstagramHandle(e.target.value)}
+                      placeholder="your.instagram"
+                      className="h-12 text-sm rounded-xl bg-muted/30"
+                      onKeyDown={(e) => { if (e.key === "Enter" && websiteUrl.trim()) startStep1(); }}
+                      disabled={step1Busy}
+                      autoFocus
+                    />
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowIgField(true)}
+                    className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
+                  >
+                    + add your Instagram (optional)
+                  </button>
+                )}
 
                 <Button
                   onClick={startStep1}
