@@ -117,12 +117,12 @@ Deno.serve(async (req) => {
       // Fire-and-forget notification
       try {
         const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-        const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+        const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
         fetch(`${supabaseUrl}/functions/v1/send-portal-notification`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${anonKey}`,
+            'Authorization': `Bearer ${serviceKey}`,
           },
           body: JSON.stringify({
             portalId,
