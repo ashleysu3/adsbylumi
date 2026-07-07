@@ -118,6 +118,14 @@ export default function GuidedOnboarding() {
   const [slowMode, setSlowMode] = useState(false);
   const [narrationIdx, setNarrationIdx] = useState(0);
 
+  // Concurrent engagement questions — asked while extraction runs so total time to
+  // first ad ≈ slowest extractor. Answers flow into recommend-strategy + copy gen.
+  type GoalChoice = "booked_calls" | "leads" | "sales" | "followers";
+  const [goalChoice, setGoalChoice] = useState<GoalChoice | null>(null);
+  const [dreamClient, setDreamClient] = useState("");
+  const goalPersistedRef = useRef(false);
+  const dreamPersistedRef = useRef(false);
+
   // Step 2 — review (uses brand state)
   const [proofExtracting, setProofExtracting] = useState(false);
 
@@ -162,7 +170,9 @@ export default function GuidedOnboarding() {
     setRevealed((r) => (r[k] ? r : { ...r, [k]: true }));
   }, []);
 
-  // basics — gated by brand extractor; also needs min first-delay from start
+  // Streamed reveal: each card animates in the moment its OWN extractor settles,
+  // independent of the others, so total wait ≈ slowest single extractor.
+  // FIRST_DELAY_MS gives the header a beat before the first pop-in.
   useEffect(() => {
     if (!revealStartedAt || revealed.basics) return;
     if (loadingBrandBasics) return;
@@ -171,37 +181,34 @@ export default function GuidedOnboarding() {
     return () => clearTimeout(t);
   }, [revealStartedAt, loadingBrandBasics, revealed.basics, markRevealed]);
 
-  // design — after basics, same extractor (brand) drives colors/fonts
   useEffect(() => {
-    if (!revealed.basics || revealed.design) return;
+    if (!revealStartedAt || revealed.design) return;
     if (loadingBrandBasics) return;
-    const t = setTimeout(() => markRevealed("design"), STAGGER_MS);
+    const wait = Math.max(0, revealStartedAt + FIRST_DELAY_MS - Date.now());
+    const t = setTimeout(() => markRevealed("design"), wait);
     return () => clearTimeout(t);
-  }, [revealed.basics, revealed.design, loadingBrandBasics, markRevealed]);
+  }, [revealStartedAt, loadingBrandBasics, revealed.design, markRevealed]);
 
-  // audience — after design
   useEffect(() => {
-    if (!revealed.design || revealed.audience) return;
+    if (!revealStartedAt || revealed.audience) return;
     if (loadingAudience) return;
-    const t = setTimeout(() => markRevealed("audience"), STAGGER_MS);
+    const t = setTimeout(() => markRevealed("audience"), 0);
     return () => clearTimeout(t);
-  }, [revealed.design, revealed.audience, loadingAudience, markRevealed]);
+  }, [revealStartedAt, loadingAudience, revealed.audience, markRevealed]);
 
-  // proof — after audience
   useEffect(() => {
-    if (!revealed.audience || revealed.proof) return;
+    if (!revealStartedAt || revealed.proof) return;
     if (loadingProof) return;
-    const t = setTimeout(() => markRevealed("proof"), STAGGER_MS);
+    const t = setTimeout(() => markRevealed("proof"), 0);
     return () => clearTimeout(t);
-  }, [revealed.audience, revealed.proof, loadingProof, markRevealed]);
+  }, [revealStartedAt, loadingProof, revealed.proof, markRevealed]);
 
-  // images — last
   useEffect(() => {
-    if (!revealed.proof || revealed.images) return;
+    if (!revealStartedAt || revealed.images) return;
     if (loadingAssets) return;
-    const t = setTimeout(() => markRevealed("images"), STAGGER_MS);
+    const t = setTimeout(() => markRevealed("images"), 0);
     return () => clearTimeout(t);
-  }, [revealed.proof, revealed.images, loadingAssets, markRevealed]);
+  }, [revealStartedAt, loadingAssets, revealed.images, markRevealed]);
 
   const revealedCount = REVEAL_SECTIONS.filter((k) => revealed[k]).length;
   const allRevealed = revealedCount === REVEAL_SECTIONS.length;
@@ -428,35 +435,31 @@ export default function GuidedOnboarding() {
         }
       }).catch(() => {}).finally(() => { clearBrandCap(); setLoadingBrandBasics(false); });
 
-      const pVoice = pBrand.then(() =>
-        supabase.functions.invoke("analyze-brand-voice", { body: { brandId: brandIdLocal } })
-          .then(async () => {
-            const { data: refreshed } = await supabase.from("brands").select("brand_voice").eq("id", brandIdLocal).maybeSingle();
-            if (refreshed?.brand_voice) {
-              setBrand((prev: any) => ({ ...(prev || {}), brand_voice: (refreshed as any).brand_voice }));
-            }
-          })
-      ).catch(() => {}).finally(() => { clearVoiceCap(); setLoadingVoice(false); });
+      // Fire all extractors IN PARALLEL — total wait ≈ slowest one, not the sum.
+      // Each one settles its own reveal flag independently so cards pop in as they arrive.
+      const pVoice = supabase.functions.invoke("analyze-brand-voice", { body: { brandId: brandIdLocal } })
+        .then(async () => {
+          const { data: refreshed } = await supabase.from("brands").select("brand_voice, voice_profile").eq("id", brandIdLocal).maybeSingle();
+          if (refreshed) {
+            setBrand((prev: any) => ({ ...(prev || {}), ...(refreshed as any) }));
+          }
+        }).catch(() => {}).finally(() => { clearVoiceCap(); setLoadingVoice(false); });
 
-      const pAud = pBrand.then(() =>
-        supabase.functions.invoke("generate-audience-psychology", { body: { brandId: brandIdLocal } })
-          .then(async () => {
-            const { data: refreshed } = await supabase.from("brands").select("audience_psychology").eq("id", brandIdLocal).maybeSingle();
-            if (refreshed) {
-              setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: (refreshed as any).audience_psychology }));
-            }
-          })
-      ).catch(() => {}).finally(() => { clearAudCap(); setLoadingAudience(false); });
+      const pAud = supabase.functions.invoke("generate-audience-psychology", { body: { brandId: brandIdLocal } })
+        .then(async () => {
+          const { data: refreshed } = await supabase.from("brands").select("audience_psychology").eq("id", brandIdLocal).maybeSingle();
+          if (refreshed) {
+            setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: (refreshed as any).audience_psychology }));
+          }
+        }).catch(() => {}).finally(() => { clearAudCap(); setLoadingAudience(false); });
 
-      const pProof = pBrand.then(() =>
-        supabase.functions.invoke("extract-social-proof", { body: { brandId: brandIdLocal, url: websiteForCall } })
-          .then(async () => {
-            const { data: refreshed } = await supabase.from("brands").select("social_proof").eq("id", brandIdLocal).maybeSingle();
-            if (refreshed) {
-              setBrand((prev: any) => ({ ...(prev || {}), social_proof: (refreshed as any).social_proof }));
-            }
-          })
-      ).catch(() => {}).finally(() => { clearProofCap(); setLoadingProof(false); });
+      const pProof = supabase.functions.invoke("extract-social-proof", { body: { brandId: brandIdLocal, url: websiteForCall } })
+        .then(async () => {
+          const { data: refreshed } = await supabase.from("brands").select("social_proof").eq("id", brandIdLocal).maybeSingle();
+          if (refreshed) {
+            setBrand((prev: any) => ({ ...(prev || {}), social_proof: (refreshed as any).social_proof }));
+          }
+        }).catch(() => {}).finally(() => { clearProofCap(); setLoadingProof(false); });
 
       const pAssets = supabase.functions.invoke("harvest-brand-assets", { body: { url: websiteForCall, brandId: brandIdLocal } })
         .catch(() => {})
@@ -1035,8 +1038,60 @@ export default function GuidedOnboarding() {
                   </div>
                 </div>
 
+                {/* Live progress bar — always visible so the card never feels stuck. */}
+                <div className="space-y-2" aria-hidden={allRevealed}>
+                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 transition-all duration-500 ease-out"
+                      style={{ width: `${Math.round((revealedCount / REVEAL_SECTIONS.length) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 text-[10px] font-medium">
+                    {[
+                      { key: "design", label: "Palette", loading: loadingBrandBasics },
+                      { key: "basics", label: "Voice", loading: loadingBrandBasics },
+                      { key: "audience", label: "Audience", loading: loadingAudience },
+                      { key: "proof", label: "Proof", loading: loadingProof },
+                      { key: "images", label: "Photos", loading: loadingAssets },
+                    ].map((s) => {
+                      const done = (revealed as any)[s.key];
+                      return (
+                        <span
+                          key={s.key}
+                          className={
+                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-full border " +
+                            (done
+                              ? "bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400"
+                              : s.loading
+                              ? "bg-muted border-border text-muted-foreground"
+                              : "bg-muted border-border text-muted-foreground")
+                          }
+                        >
+                          {done ? "✓" : <Loader2 className="h-2.5 w-2.5 animate-spin" />} {s.label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* One rounded card wrapping all reveals */}
-                <div className="rounded-3xl border bg-card shadow-sm p-6 sm:p-8 space-y-6">
+                <div className="rounded-3xl border bg-card shadow-sm p-6 sm:p-8 space-y-6 min-h-[200px]">
+                  {revealedCount === 0 && (
+                    <div className="space-y-4 animate-pulse">
+                      <div className="h-4 w-32 bg-muted rounded" />
+                      <div className="flex gap-3">
+                        {[0,1,2,3,4].map((i) => (
+                          <div key={i} className="h-14 w-14 rounded-2xl bg-muted" />
+                        ))}
+                      </div>
+                      <div className="h-3 w-48 bg-muted rounded mt-6" />
+                      <div className="flex gap-2">
+                        {[0,1,2].map((i) => (
+                          <div key={i} className="h-6 w-20 rounded-full bg-muted" />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {/* Your palette */}
                   {revealed.design && (
                     <div className="animate-fade-in space-y-3">
@@ -1147,15 +1202,103 @@ export default function GuidedOnboarding() {
                   )}
                 </div>
 
+                {/* Concurrent engagement card — runs while extraction is still working
+                    so the wait feels like collaboration, not staring at a spinner.
+                    Answers are persisted into brand.audience_psychology + target_audience
+                    and localStorage so PayoffAd + recommend-strategy pick them up. */}
+                <div className="rounded-3xl border bg-gradient-to-br from-orange-500/5 via-pink-500/5 to-purple-600/5 p-6 sm:p-8 space-y-5 animate-fade-in">
+                  <div>
+                    <div className="text-xs uppercase tracking-wide font-semibold text-muted-foreground mb-1">
+                      While LUMI reads…
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground">
+                      What do you want more of right now?
+                    </h3>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {([
+                      { id: "booked_calls", label: "Booked calls" },
+                      { id: "leads", label: "Leads & email signups" },
+                      { id: "sales", label: "Course or launch sales" },
+                      { id: "followers", label: "More followers & DMs" },
+                    ] as { id: GoalChoice; label: string }[]).map((opt) => {
+                      const selected = goalChoice === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={async () => {
+                            setGoalChoice(opt.id);
+                            if (brandId && !goalPersistedRef.current) {
+                              goalPersistedRef.current = true;
+                              try {
+                                localStorage.setItem(`lumi_onboarding_goal_${brandId}`, opt.id);
+                                const currentAp = (brand?.audience_psychology as any) || {};
+                                const nextAp = { ...currentAp, onboarding_goal: opt.id };
+                                await supabase.from("brands").update({ audience_psychology: nextAp }).eq("id", brandId);
+                                setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: nextAp }));
+                              } catch { /* non-blocking */ }
+                            } else if (brandId) {
+                              localStorage.setItem(`lumi_onboarding_goal_${brandId}`, opt.id);
+                              const currentAp = (brand?.audience_psychology as any) || {};
+                              const nextAp = { ...currentAp, onboarding_goal: opt.id };
+                              supabase.from("brands").update({ audience_psychology: nextAp }).eq("id", brandId);
+                            }
+                          }}
+                          className={
+                            "text-left px-4 py-3 rounded-2xl border text-sm font-medium transition-all " +
+                            (selected
+                              ? "border-pink-500 bg-white shadow-md text-foreground"
+                              : "border-border bg-white/60 hover:border-pink-500/40 hover:bg-white text-foreground")
+                          }
+                          aria-pressed={selected}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="space-y-2 pt-1">
+                    <label htmlFor="dream-client" className="text-sm font-semibold text-foreground">
+                      Your dream client, in one line <span className="text-muted-foreground font-normal">(optional)</span>
+                    </label>
+                    <Input
+                      id="dream-client"
+                      value={dreamClient}
+                      onChange={(e) => setDreamClient(e.target.value)}
+                      onBlur={async () => {
+                        const val = dreamClient.trim();
+                        if (!brandId || !val || dreamPersistedRef.current) return;
+                        dreamPersistedRef.current = true;
+                        try {
+                          await supabase.from("brands").update({ target_audience: val }).eq("id", brandId);
+                          setBrand((prev: any) => ({ ...(prev || {}), target_audience: val }));
+                        } catch { /* non-blocking */ }
+                      }}
+                      placeholder="e.g. Course creators who hit $10k months and want to scale to $50k"
+                      maxLength={160}
+                      className="h-11 rounded-xl"
+                    />
+                  </div>
+                </div>
+
                 {/* Primary CTA */}
-                <div className="flex justify-center pt-2">
+                <div className="flex flex-col items-center gap-2 pt-2">
+                  {allRevealed && !goalChoice && (
+                    <p className="text-xs text-muted-foreground animate-fade-in">
+                      Pick a goal above so your first ad matches what you want more of.
+                    </p>
+                  )}
                   <Button
                     onClick={advance}
-                    disabled={!allRevealed}
+                    disabled={!allRevealed || !goalChoice}
                     className="h-14 px-8 text-base font-semibold rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity shadow-lg shadow-pink-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {allRevealed ? (
+                    {allRevealed && goalChoice ? (
                       <>That's me — make my ad <ArrowRight className="h-5 w-5 ml-2" /></>
+                    ) : allRevealed && !goalChoice ? (
+                      <>Almost ready — pick a goal <ArrowRight className="h-5 w-5 ml-2" /></>
                     ) : (
                       <><Loader2 className="h-5 w-5 animate-spin mr-2" /> Still reading…</>
                     )}
