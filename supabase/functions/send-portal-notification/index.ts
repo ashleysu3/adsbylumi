@@ -11,12 +11,31 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Restrict to service-role callers (invoked internally by client-portal-actions).
+    const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const authHeader = req.headers.get('Authorization') || '';
+    if (!authHeader.includes(SERVICE_KEY)) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { portalId, action, productionItemId, comment, clientName } = await req.json();
+
+    // Escape user-supplied strings before embedding in the email HTML.
+    const escapeHtml = (s: unknown): string =>
+      String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      SERVICE_KEY
     );
+
 
     // Fetch portal to get created_by and portal_name
     const { data: portalData } = await supabase.rpc('validate_portal_access', {
