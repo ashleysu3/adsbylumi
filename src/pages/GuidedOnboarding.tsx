@@ -118,6 +118,14 @@ export default function GuidedOnboarding() {
   const [slowMode, setSlowMode] = useState(false);
   const [narrationIdx, setNarrationIdx] = useState(0);
 
+  // Concurrent engagement questions — asked while extraction runs so total time to
+  // first ad ≈ slowest extractor. Answers flow into recommend-strategy + copy gen.
+  type GoalChoice = "booked_calls" | "leads" | "sales" | "followers";
+  const [goalChoice, setGoalChoice] = useState<GoalChoice | null>(null);
+  const [dreamClient, setDreamClient] = useState("");
+  const goalPersistedRef = useRef(false);
+  const dreamPersistedRef = useRef(false);
+
   // Step 2 — review (uses brand state)
   const [proofExtracting, setProofExtracting] = useState(false);
 
