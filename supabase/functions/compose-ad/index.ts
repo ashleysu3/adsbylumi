@@ -71,8 +71,15 @@ function truncate(v: unknown, max = 1400): string {
 }
 
 function buildContextBlock(payload: any): string {
-  const { offerContext, offerPsychology, audiencePsychology, brandContext } = payload || {};
+  const { offerContext, offerPsychology, audiencePsychology, brandContext, socialProofContext } = payload || {};
   const parts: string[] = [];
+  if (socialProofContext && socialProofContext.quote) {
+    parts.push(
+      `=== REAL TESTIMONIAL (from this brand's actual site — use it, do not invent a different one) ===\n` +
+      `Quote: "${truncate(socialProofContext.quote, 500)}"\n` +
+      (socialProofContext.attribution ? `Attribution: ${truncate(socialProofContext.attribution, 120)}\n` : "")
+    );
+  }
   if (offerContext && (offerContext.name || offerContext.description || offerContext.price || offerContext.url)) {
     parts.push(
       `=== OFFER ===\n` +
@@ -255,6 +262,9 @@ serve(async (req) => {
       : "";
     const contextBlock = buildContextBlock(body);
     const positioningBlock = buildPositioningBriefBlock(positioningBrief);
+    const realTestimonialRule = template === "testimonial" && body.socialProofContext?.quote
+      ? `Hard rule: the "quote" field must be the REAL TESTIMONIAL above, verbatim or lightly trimmed to fit the word limit without changing its meaning or voice — never write a new/invented testimonial. Set "author"/"role" from its real attribution (split "Name, context" into author="Name", role="context"); if no attribution was given, use author="Verified client" and role="".\n\n`
+      : "";
     const user =
       `${contextBlock ? contextBlock + "\n\n" : ""}` +
       `${positioningBlock}` +
@@ -262,6 +272,7 @@ serve(async (req) => {
       `=== BRAND VOICE SAMPLES (mirror the tone, rhythm, punctuation) ===\n${JSON.stringify(brandVoice)}` +
       `${feedbackBlock}\n\n` +
       `${instruction(template, count)}\n\n` +
+      `${realTestimonialRule}` +
       `Hard rule: every option must reference at least one SPECIFIC element from the OFFER PSYCHOLOGY or AUDIENCE PSYCHOLOGY above (a named moment, a real pain, a real hesitation, a concrete before/after). Generic copy that could belong to any brand is an instant fail.\n\n` +
       `Output ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
 
