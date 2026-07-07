@@ -16,6 +16,7 @@ import {
   Pencil, Type, Award, BarChart3, Newspaper, GraduationCap, Users, Briefcase
 } from "lucide-react";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
+import { PayoffAdScreen } from "@/components/onboarding/PayoffAdScreen";
 import { SetupPrompt } from "@/components/SetupPrompt";
 import { LumiThinkingInline } from "@/components/LumiThinking";
 import { LumiPageLoader } from "@/components/LumiLoader";
@@ -26,22 +27,27 @@ import { seedDeferredTask, seedFirstCampaignTasks } from "@/lib/onboarding-tasks
 const STEPS = [
   "Your website",
   "Here's what we found",
+  "Your first ad",
   "Your offer",
   "Connect Meta",
   "Strategy & launch",
 ];
 const TOTAL = STEPS.length;
-// Remap any historical onboarding_step value into the new 5-step flow.
-// Old 8-step flow (1=site, 2=basics, 3=audience, 4=design, 5=proof, 6=offer, 7=meta, 8=strategy)
-// Old 6-step flow (1=site, 2=basics, 3=offer, 4=design, 5=meta, 6=strategy)
-// We can't distinguish 6-step values 3/5/6 from 8-step — prefer the 8-step interpretation
-// since the 6-step variant is older and rarely in-progress now.
+// Remap any historical onboarding_step value into the new 6-step flow (with the
+// "Your first ad" payoff screen at position 3). Values we could disambiguate:
+//   - Old 5-step (site, reveal, offer, meta, strategy) → shift offer/meta/strategy by +1.
+//   - Old 8-step (site, basics, audience, design, proof, offer, meta, strategy) → collapse
+//     basics/audience/design/proof into reveal, then shift.
+// We prefer the 5-step interpretation for values 3–5 since that flow was in use most recently.
 const RESUME_REMAP: Record<number, number> = {
   1: 1,
-  2: 2, 3: 2, 4: 2, 5: 2,
-  6: 3,
-  7: 4,
-  8: 5,
+  2: 2,
+  3: 4,
+  4: 5,
+  5: 6,
+  6: 4,
+  7: 5,
+  8: 6,
 };
 
 type AssetRow = { id: string; url: string; role: string | null; kept: boolean; source_url?: string | null; signedUrl?: string };
@@ -820,7 +826,7 @@ export default function GuidedOnboarding() {
   return (
     <div className="min-h-screen bg-background py-10 px-4">
       <div className="max-w-3xl mx-auto">
-        {step > 2 && (
+        {step > 3 && (
           <div className="mb-8">
             <div className="flex items-center justify-between text-sm text-muted-foreground mb-3 gap-3">
               <span className="truncate">Step {step} of {TOTAL} — {STEPS[step - 1]}</span>
@@ -1100,7 +1106,18 @@ export default function GuidedOnboarding() {
 
 
         {/* ============== STEP 3 — Offer sales page ============== */}
-        {step === 3 && (
+        {/* ============== STEP 3 — Payoff: real ad in their brand ============== */}
+        {step === 3 && brandId && (
+          <PayoffAdScreen
+            brandId={brandId}
+            brand={brand}
+            onAdvance={advance}
+            onBack={back}
+          />
+        )}
+
+        {/* ============== STEP 4 — Offer sales page ============== */}
+        {step === 4 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5" /> Your offer</CardTitle>
@@ -1154,8 +1171,8 @@ export default function GuidedOnboarding() {
           </Card>
         )}
 
-        {/* ============== STEP 4 — Connect Meta ============== */}
-        {step === 4 && (
+        {/* ============== STEP 5 — Connect Meta ============== */}
+        {step === 5 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" /> Connect Meta <span className="text-xs font-normal text-muted-foreground ml-1">· optional</span></CardTitle>
@@ -1199,8 +1216,8 @@ export default function GuidedOnboarding() {
           </Card>
         )}
 
-        {/* ============== STEP 8 — Strategy + first campaign ============== */}
-        {step === 5 && (() => {
+        {/* ============== STEP 6 — Strategy + first campaign ============== */}
+        {step === 6 && (() => {
           const primaryOffer = offers?.[0];
           const offerName = primaryOffer?.name || "your offer";
           const GOAL_OPTIONS: { value: string; label: string; hint: string }[] = [
