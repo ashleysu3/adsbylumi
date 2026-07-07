@@ -73,7 +73,30 @@ const isNearGrayscale = (hex: string): boolean => {
   return max - min < 20;
 };
 
-async function firecrawlBranding(url: string): Promise<{ suggested: Suggested; raw: Raw } | null> {
+const DESKTOP_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+// Signals that a scrape hit a bot-protection wall (Cloudflare, Akamai, PerimeterX,
+// Wix/Squarespace challenge pages, etc.) so we can bail fast instead of retrying.
+function looksBlocked(status: number, body: string): boolean {
+  if (status === 401 || status === 403 || status === 429 || status === 503) return true;
+  const s = (body || "").toLowerCase();
+  return (
+    s.includes("just a moment") ||
+    s.includes("attention required") ||
+    s.includes("checking your browser") ||
+    s.includes("cf-challenge") ||
+    s.includes("cf-browser-verification") ||
+    s.includes("access denied") ||
+    s.includes("captcha") ||
+    s.includes("are you a human") ||
+    s.includes("bot detection")
+  );
+}
+
+async function firecrawlBranding(
+  url: string,
+): Promise<{ suggested: Suggested; raw: Raw } | { blocked: true } | null> {
   if (!FIRECRAWL_API_KEY) return null;
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 20_000);
@@ -89,10 +112,21 @@ async function firecrawlBranding(url: string): Promise<{ suggested: Suggested; r
         url,
         formats: ["branding"],
         onlyMainContent: true,
+        // Stealth proxy + realistic browser fingerprint so Cloudflare / Wix /
+        // Squarespace / Showit sites are less likely to serve a challenge page.
+        proxy: "stealth",
+        blockAds: true,
+        location: { country: "US", languages: ["en-US"] },
+        headers: {
+          "User-Agent": DESKTOP_UA,
+          "Accept-Language": "en-US,en;q=0.9",
+        },
       }),
     });
     if (!resp.ok) {
-      console.warn("firecrawl branding failed", resp.status, await resp.text().catch(() => ""));
+      const errBody = await resp.text().catch(() => "");
+      console.warn("firecrawl branding failed", resp.status, errBody.slice(0, 200));
+      if (looksBlocked(resp.status, errBody)) return { blocked: true };
       return null;
     }
     const data = await resp.json();
