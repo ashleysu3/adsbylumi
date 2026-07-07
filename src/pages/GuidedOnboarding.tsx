@@ -80,6 +80,7 @@ const STAGGER_MS = 800;
 
 export default function GuidedOnboarding() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const addBrandMode = searchParams.get("mode") === "add-brand";
   const { refreshBrands, setActiveBrand } = useBrand();
