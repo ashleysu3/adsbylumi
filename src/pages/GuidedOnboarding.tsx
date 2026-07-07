@@ -186,9 +186,19 @@ export default function GuidedOnboarding() {
   useEffect(() => {
     if (!revealStartedAt || revealed.audience) return;
     if (loadingAudience) return;
+    // Only reveal once the psychology is actually grounded (real source material,
+    // not the deliberately-generic fallback used when a site can't be read) —
+    // never a vague "we're still shaping this" placeholder. If the first pass
+    // isn't grounded, this effect simply waits; it re-fires when the background
+    // read-site-context enrichment (if it lands) replaces brand.audience_psychology
+    // with a grounded version. If neither ever grounds, the card just never
+    // reveals — the user still isn't blocked, since canContinue has its own
+    // escape hatches, and the "who do you serve" input above covers the gap.
+    const ap: any = brand?.audience_psychology;
+    if (!ap?._grounded) return;
     const t = setTimeout(() => markRevealed("audience"), 0);
     return () => clearTimeout(t);
-  }, [revealStartedAt, loadingAudience, revealed.audience, markRevealed]);
+  }, [revealStartedAt, loadingAudience, revealed.audience, markRevealed, brand?.audience_psychology]);
 
   useEffect(() => {
     if (!revealStartedAt || revealed.proof) return;
@@ -217,7 +227,17 @@ export default function GuidedOnboarding() {
   // When the site couldn't be read (bot-blocked / thin), we surface the "who do
   // you serve?" input prominently — the user's answer is what saves the ad from a
   // wrong guess (many coach/creator sites block scrapers).
-  const readWasThin = !hasCoreBrandData || failed.audience || failed.basics;
+  //
+  // IMPORTANT: only show this once we actually KNOW the read is thin — either an
+  // explicit failure signal (failed.basics/failed.audience, set by a confirmed
+  // "blocked" response or the 40s per-extractor cap) or the WHOLE phase finishing
+  // /timing out with nothing to show. `!hasCoreBrandData` alone is true at the very
+  // start of every run (before anything has loaded), so gating on it unconditionally
+  // flashed a "couldn't read your site" warning on every load, correct or not.
+  const readWasThin =
+    failed.basics ||
+    failed.audience ||
+    ((extractionPhase === "done" || phaseTimedOut) && !hasCoreBrandData);
   // Fallback state: extraction finished but produced nothing useful (no colors
   // AND no real brand name AND no audience picture). We show a friendly nudge
   // instead of a spinning card.
@@ -1040,18 +1060,29 @@ export default function GuidedOnboarding() {
         {/* ============== STEP 2 — Reveal page (streams in live) ============== */}
         {step === 2 && (() => {
           const colors: string[] = (brand?._kit?.colors as string[] | undefined) || [];
-          // Voice tone chips — prefer structured voice_profile.tone_traits, fall back to splitting brand_voice.
+          // Voice tone chips — prefer structured, standalone descriptors.
+          // analyze-brand-voice actually writes this array as `tone_descriptors`
+          // (see supabase/functions/analyze-brand-voice), each entry a short
+          // adjective meant to stand alone ("warm", "no-nonsense", "editorial").
+          // The old code checked tone_traits/tones/traits — none of which the
+          // backend ever writes — so it always fell through to splitting the
+          // narrative `brand_voice` SENTENCE on commas, which produces fragments
+          // that only make sense read together, not as standalone chips.
           const vp: any = brand?.voice_profile || {};
           let tones: string[] = [];
-          if (Array.isArray(vp?.tone_traits)) tones = vp.tone_traits;
+          if (Array.isArray(vp?.tone_descriptors)) tones = vp.tone_descriptors;
+          else if (Array.isArray(vp?.tone_traits)) tones = vp.tone_traits;
           else if (Array.isArray(vp?.tones)) tones = vp.tones;
           else if (Array.isArray(vp?.traits)) tones = vp.traits;
+          // Last-resort fallback only — a comma-split sentence can still read as
+          // connected fragments, so cap it at 3 short words instead of 5 longer
+          // clauses to reduce how often that shows through.
           else if (typeof brand?.brand_voice === "string" && brand.brand_voice.trim()) {
             tones = brand.brand_voice
               .split(/[,;•·\n]+/)
               .map((s: string) => s.trim().replace(/\.+$/, ""))
-              .filter((s: string) => s && s.length <= 40)
-              .slice(0, 5);
+              .filter((s: string) => s && s.length <= 20)
+              .slice(0, 3);
           }
           tones = tones.filter(Boolean).slice(0, 5);
 
@@ -1074,6 +1105,22 @@ export default function GuidedOnboarding() {
             for (const b of buckets) if (Array.isArray(sp[b])) testimonialCount += sp[b].filter(Boolean).length;
           }
           const photosCount = assets.length;
+
+          // "Found on your site" chips — only ever POSITIVE findings or an honest
+          // in-progress state. Never announce an absence ("no testimonials yet",
+          // "no photos found") — that reads as a failure when it's often just
+          // normal (plenty of real sites have no testimonials page). If nothing
+          // positive has turned up and nothing is still in flight, the section
+          // renders nothing at all rather than a discouraging chip.
+          const foundChips: { key: string; label: string }[] = [];
+          if (testimonialCount > 0) {
+            foundChips.push({ key: "testimonials", label: `${testimonialCount} testimonial${testimonialCount === 1 ? "" : "s"}` });
+          }
+          if (photosCount > 0) {
+            foundChips.push({ key: "photos", label: `${photosCount} photo${photosCount === 1 ? "" : "s"} harvested` });
+          } else if (loadingAssets) {
+            foundChips.push({ key: "harvesting", label: "Harvesting photos…" });
+          }
 
           const brandDisplayName = brand?.name && brand.name !== placeholderNameRef.current ? brand.name : "";
           const siteHost = brand?.website_url ? brand.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "") : "";
@@ -1125,7 +1172,11 @@ export default function GuidedOnboarding() {
                       { key: "proof", label: "Proof", loading: loadingProof },
                       { key: "images", label: "Photos", loading: loadingAssets },
                     ].map((s) => {
-                      const done = (revealed as any)[s.key];
+                      // Reflects whether the NETWORK CALL settled, not whether we chose
+                      // to reveal its content — a quality-gated section (e.g. audience,
+                      // withheld until it's genuinely grounded) shouldn't spin forever
+                      // here just because we're deliberately not showing it yet below.
+                      const done = !s.loading;
                       return (
                         <span
                           key={s.key}
@@ -1133,8 +1184,6 @@ export default function GuidedOnboarding() {
                             "inline-flex items-center gap-1 px-2 py-0.5 rounded-full border " +
                             (done
                               ? "bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400"
-                              : s.loading
-                              ? "bg-muted border-border text-muted-foreground"
                               : "bg-muted border-border text-muted-foreground")
                           }
                         >
@@ -1318,10 +1367,8 @@ export default function GuidedOnboarding() {
                       <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <Target className="h-4 w-4 text-muted-foreground" /> Who you're for
                       </div>
-                      {idealClient ? (
+                      {idealClient && (
                         <p className="text-sm text-foreground leading-relaxed">{idealClient}</p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">We're still shaping the ideal client picture…</p>
                       )}
                       {(firstPain || firstDesire) && (
                         <div className="grid sm:grid-cols-2 gap-3 pt-1">
@@ -1342,25 +1389,22 @@ export default function GuidedOnboarding() {
                     </div>
                   )}
 
-                  {(revealed.proof || revealed.images) && <div className="h-px bg-border" />}
+                  {(revealed.proof || revealed.images) && foundChips.length > 0 && <div className="h-px bg-border" />}
 
-                  {/* Found on your site */}
-                  {(revealed.proof || revealed.images) && (
+                  {/* Found on your site — only renders when there's something
+                      positive to report or genuinely still in flight; see
+                      foundChips above for why we never announce an absence. */}
+                  {(revealed.proof || revealed.images) && foundChips.length > 0 && (
                     <div className="animate-fade-in space-y-3">
                       <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <Sparkles className="h-4 w-4 text-muted-foreground" /> Found on your site
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted/60 text-foreground border">
-                          {testimonialCount > 0
-                            ? `${testimonialCount} testimonial${testimonialCount === 1 ? "" : "s"}`
-                            : "No testimonials yet"}
-                        </span>
-                        <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted/60 text-foreground border">
-                          {photosCount > 0
-                            ? `${photosCount} photo${photosCount === 1 ? "" : "s"} harvested`
-                            : (loadingAssets ? "Harvesting photos…" : "No photos found")}
-                        </span>
+                        {foundChips.map((c) => (
+                          <span key={c.key} className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted/60 text-foreground border">
+                            {c.label}
+                          </span>
+                        ))}
                       </div>
                     </div>
                   )}

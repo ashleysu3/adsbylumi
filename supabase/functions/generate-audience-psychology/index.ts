@@ -327,6 +327,14 @@ Reminder: ground every claim in the source. Be specific. Skip the clichés.`;
       throw new Error('AI returned non-JSON response. Try again or add more brand details.');
     }
 
+    // Signal confidence explicitly so the onboarding UI can tell a genuinely
+    // well-grounded read from a thin/generic one and only reveal the "who
+    // you're for" card once it has something real to show — never a vague
+    // placeholder built on hasRealSource === false.
+    if (psychology && typeof psychology === 'object') {
+      psychology._grounded = hasRealSource;
+    }
+
     // Update brand with psychology data
     const { error: updateError } = await supabase
       .from('brands')
