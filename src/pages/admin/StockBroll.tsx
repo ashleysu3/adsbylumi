@@ -277,7 +277,19 @@ export default function AdminStockBroll() {
                   <div key={clip.id} className="group relative rounded-lg overflow-hidden border bg-muted/20">
                     <div className="aspect-video bg-black">
                       {clip.signedUrl && (
-                        <video src={clip.signedUrl} className="w-full h-full object-cover" muted controls preload="metadata" />
+                        <video
+                          src={`${clip.signedUrl}#t=0.5`}
+                          className="w-full h-full object-cover cursor-pointer"
+                          muted
+                          playsInline
+                          preload="metadata"
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLVideoElement).play().catch(() => {}); }}
+                          onMouseLeave={(e) => { const v = e.currentTarget as HTMLVideoElement; v.pause(); v.currentTime = 0.5; }}
+                          onClick={(e) => {
+                            const v = e.currentTarget as HTMLVideoElement;
+                            if (v.paused) v.play().catch(() => {}); else v.pause();
+                          }}
+                        />
                       )}
                     </div>
                     <div className="p-2 space-y-1.5">
