@@ -352,7 +352,15 @@ serve(async (req) => {
       });
     }
 
-    if (fc && "suggested" in fc && (fc.suggested.colors?.background || (fc.suggested.colors?.pops?.length ?? 0) > 0)) {
+    // Require a genuinely useful color set (a background AND at least one accent/pop)
+    // before accepting Firecrawl's branding result over the engine fallback below —
+    // a "200 OK but nearly empty" branding response (e.g. a mostly-blank page that
+    // slipped past bot detection) shouldn't short-circuit past a much richer
+    // engine-rendered result.
+    const fcColors = fc && "suggested" in fc ? fc.suggested.colors : undefined;
+    const fcHasUsefulColors =
+      !!fcColors?.background && (!!fcColors?.accent || (fcColors?.pops?.length ?? 0) > 0);
+    if (fc && "suggested" in fc && fcHasUsefulColors) {
       // Normalize into the flat shape the client reads (name, description, colors, fonts, logoUrl)
       const colors = [
         fc.suggested.colors?.accent,
@@ -383,12 +391,18 @@ serve(async (req) => {
       const raw = parsed?.raw ?? {};
       const suggested = parsed?.suggested ?? {};
 
-      // Colors: prefer curated suggested.colors (accent, pops, bg, ink); fall back to raw.backgrounds.
+      // Colors: prefer curated suggested.colors. IMPORTANT — the engine's extractBrand()
+      // (render.js pickBrandColors) returns { bg, ink, accent, pop, highlight, cream,
+      // candidates }, NOT { background, pops[] } (that's the Firecrawl-branding shape).
+      // Reading both shapes here so the engine's real colors aren't silently dropped.
       const sc = suggested?.colors ?? {};
       const colorList = [
         sc.accent,
+        sc.pop,
+        sc.highlight,
         ...(Array.isArray(sc.pops) ? sc.pops : []),
-        sc.background,
+        sc.background ?? sc.bg,
+        sc.cream,
         sc.ink,
       ].filter((c: unknown): c is string => typeof c === "string" && /^#[0-9a-f]{3,8}$/i.test(c));
       const fallbackColors = Array.isArray(raw?.backgrounds)
