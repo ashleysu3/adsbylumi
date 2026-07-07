@@ -40,6 +40,28 @@ type AssetRow = { id: string; url: string; role: string | null; kept: boolean; s
 // user means by "example images."
 const PHOTO_PREVIEW_ROLES = ["headshot", "lifestyle", "full_body", "product"];
 
+// Goal-specific copy for the "what happens when they click" follow-up —
+// concrete and specific per goal beats one generic "what's your offer?" box,
+// and only appears once a goal is picked so it's never a non-sequitur.
+const OFFER_HINT_COPY: Record<string, { label: string; placeholder: string }> = {
+  booked_calls: {
+    label: "What's the call for?",
+    placeholder: "A free 20-minute strategy call to see if we're a fit",
+  },
+  leads: {
+    label: "What do they get for handing over their email?",
+    placeholder: "A free guide — “5 Ways to Scale Your Ad Spend Without Burning Out”",
+  },
+  sales: {
+    label: "What's the offer, and what's the price?",
+    placeholder: "The Client Engine — $997, our flagship 8-week program",
+  },
+  followers: {
+    label: "What's the hook, or what should they DM you?",
+    placeholder: "DM “SCALE” and I'll send you my free training",
+  },
+};
+
 // brand.social_proof is written by TWO different extractors with different
 // shapes depending on which one last resolved: extract-social-proof writes a
 // flat string[] ("items"), analyze-brand-voice writes a richer
@@ -153,8 +175,14 @@ export default function GuidedOnboarding() {
   type GoalChoice = "booked_calls" | "leads" | "sales" | "followers";
   const [goalChoice, setGoalChoice] = useState<GoalChoice | null>(null);
   const [dreamClient, setDreamClient] = useState("");
+  // What they're actually offering — the one concrete thing the ad-first flow
+  // was missing. Without it, compose-ad gets an empty "offer" and writes
+  // generic copy with no real CTA/objections to grab onto. Goal-conditional so
+  // the question is specific ("what's the call for?") instead of abstract.
+  const [offerHint, setOfferHint] = useState("");
   const goalPersistedRef = useRef(false);
   const dreamPersistedRef = useRef(false);
+  const offerHintPersistedRef = useRef(false);
 
   // Step 2 — review (uses brand state)
   const [proofExtracting, setProofExtracting] = useState(false);
@@ -1291,6 +1319,41 @@ export default function GuidedOnboarding() {
                       );
                     })}
                   </div>
+
+                  {/* The one field that turns "generic AI slop" into a real ad:
+                      what actually happens when someone clicks. Goal-conditional
+                      so the question is concrete, not abstract — persists into
+                      audience_psychology.onboarding_offer_hint (mirroring the
+                      goalChoice pattern) and flows into recommend-strategy
+                      (funnel matching) + compose-ad (offerContext) so the copy
+                      has a real CTA/objections to write toward instead of "". */}
+                  {goalChoice && (
+                    <div className="space-y-2 pt-1 animate-fade-in">
+                      <label htmlFor="offer-hint" className="text-sm font-semibold text-foreground">
+                        {OFFER_HINT_COPY[goalChoice].label}
+                      </label>
+                      <Textarea
+                        id="offer-hint"
+                        value={offerHint}
+                        onChange={(e) => setOfferHint(e.target.value)}
+                        onBlur={async () => {
+                          const val = offerHint.trim();
+                          if (!brandId || !val) return;
+                          try {
+                            localStorage.setItem(`lumi_onboarding_offer_hint_${brandId}`, val);
+                            const currentAp = (brand?.audience_psychology as any) || {};
+                            const nextAp = { ...currentAp, onboarding_offer_hint: val };
+                            await supabase.from("brands").update({ audience_psychology: nextAp }).eq("id", brandId);
+                            setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: nextAp }));
+                          } catch { /* non-blocking */ }
+                        }}
+                        placeholder={OFFER_HINT_COPY[goalChoice].placeholder}
+                        maxLength={280}
+                        rows={2}
+                        className="rounded-xl resize-y"
+                      />
+                    </div>
+                  )}
 
                   <div className="space-y-2 pt-1">
                     {readWasThin && (

@@ -257,10 +257,22 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           : null) ||
           ((brand?.audience_psychology as any)?.onboarding_goal ?? null);
         const userGoal = onboardingGoal ? (goalMap[onboardingGoal] || "get_leads") : "get_leads";
+
+        // The user's own words on what actually happens when someone clicks —
+        // collected on the reveal step (see OFFER_HINT_COPY in
+        // GuidedOnboarding.tsx). Without this, there's no `offers` row yet
+        // (that step comes AFTER the ad in the old flow) and both
+        // recommend-strategy and compose-ad had nothing but an abstract goal
+        // to work with, which is what produced generic, CTA-less copy.
+        const offerHint: string = (typeof window !== "undefined"
+          ? localStorage.getItem(`lumi_onboarding_offer_hint_${brandId}`)
+          : null) ||
+          ((brand?.audience_psychology as any)?.onboarding_offer_hint ?? "");
+
         setStatusLine("🧠 Picking your best angle…");
         try {
           const { data: recData } = await supabase.functions.invoke("recommend-strategy", {
-            body: { brand_id: brandId, offer_id: null, user_goal: userGoal },
+            body: { brand_id: brandId, offer_id: null, user_goal: userGoal, offer_hint: offerHint || undefined },
           });
           if (!cancelled) {
             const s = (recData as any)?.strategy ?? recData ?? null;
@@ -273,6 +285,16 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         // 4) Compose 3 hook options
         setStatusLine("✍️ Writing three hook angles…");
         const template = templateRef.current;
+        // A goal-appropriate default CTA — still far better than always
+        // "Learn more" even when there's no offerHint, and compose-ad's own
+        // prompt (which explicitly matches the CTA to the real offer once
+        // offerContext is present) takes precedence over this when it can.
+        const ctaByGoal: Record<string, string> = {
+          booked_calls: "Book your call",
+          leads: "Send it to me",
+          sales: "Learn more",
+          followers: "DM me",
+        };
         const brief = {
           template,
           format: "single",
@@ -280,8 +302,8 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           goal: userGoal,
           concept: brand?.value_proposition || "",
           keyMessage: brand?.value_proposition || "",
-          offer: "",
-          cta: "Learn more",
+          offer: offerHint || "",
+          cta: ctaByGoal[onboardingGoal || ""] || "Learn more",
           brandName: brand?.name || "",
         };
         const composeRes = await supabase.functions.invoke("compose-ad", {
@@ -290,6 +312,11 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             brandVoice: brand?.voice_profile || brand?.brand_voice || {},
             count: 3,
             audiencePsychology: brand?.audience_psychology || null,
+            // compose-ad reads offer details from `offerContext`, not `brief.offer`
+            // (brief.offer was a no-op — always "" before this fix). Only sent
+            // when we actually have something, so buildContextBlock's own
+            // truthiness check correctly skips it otherwise.
+            offerContext: offerHint ? { description: offerHint } : undefined,
             brandContext: {
               name: brand?.name,
               idealClient: brand?.target_audience || brand?.value_proposition,
