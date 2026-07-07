@@ -257,7 +257,7 @@ export function BRollTextEditor({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Type className="h-5 w-5" />
-            Add Text to "{clipName || 'B-roll clip'}"
+            Add Text to "{activeClipName || 'B-roll clip'}"
           </DialogTitle>
           <DialogDescription>
             Write one or more text blocks, set when each appears, drag any line in the preview to
