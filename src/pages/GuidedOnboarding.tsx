@@ -223,6 +223,21 @@ export default function GuidedOnboarding() {
 
   const revealedCount = REVEAL_SECTIONS.filter((k) => revealed[k]).length;
   const allRevealed = revealedCount === REVEAL_SECTIONS.length;
+  // Have we pulled enough to give the user a real first ad? Colors OR a real
+  // brand name is our "core data" bar. If we hit either — or the 25s cap — the
+  // "Continue to my ad →" CTA is available; slow extractors keep running in
+  // the background and their results still stream into the reveal card.
+  const hasCoreBrandData =
+    ((brand?._kit?.colors as string[] | undefined)?.length ?? 0) > 0 ||
+    !!(brand?.name && brand.name !== placeholderNameRef.current);
+  const canContinue = allRevealed || phaseTimedOut || (hasCoreBrandData && !loadingBrandBasics);
+  // Fallback state: extraction finished but produced nothing useful (no colors
+  // AND no real brand name AND no audience picture). We show a friendly nudge
+  // instead of a spinning card.
+  const extractionEmpty =
+    (extractionPhase === 'done' || phaseTimedOut) &&
+    !hasCoreBrandData &&
+    !brand?.audience_psychology;
 
   // ---------- auth + resume ----------
   const autoStartFiredRef = useRef(false);
