@@ -252,7 +252,7 @@ export default function GuidedOnboarding() {
       }
       if (!resumedExisting && prefillWebsite) {
         setWebsiteUrl(prefillWebsite);
-        if (prefillInstagram) setInstagramHandle(prefillInstagram);
+        if (prefillInstagram) { setInstagramHandle(prefillInstagram); setShowIgField(true); }
         autoStartFiredRef.current = true;
         try {
           sessionStorage.removeItem("lumi_prefill_website");
