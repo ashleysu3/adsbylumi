@@ -75,9 +75,12 @@ const isNearGrayscale = (hex: string): boolean => {
 
 async function firecrawlBranding(url: string): Promise<{ suggested: Suggested; raw: Raw } | null> {
   if (!FIRECRAWL_API_KEY) return null;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 20_000);
   try {
     const resp = await fetch("https://api.firecrawl.dev/v2/scrape", {
       method: "POST",
+      signal: ctrl.signal,
       headers: {
         Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
         "Content-Type": "application/json",
