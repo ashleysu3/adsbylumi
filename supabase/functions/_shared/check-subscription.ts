@@ -118,3 +118,49 @@ export async function requirePaidUser(
     };
   }
 }
+
+// Session-only gate: any valid Supabase session (including anonymous) passes.
+// Used for the free ad-first onboarding preview where a subscription is not
+// yet required. Do NOT use for launch/publish/Meta actions.
+export async function requireAuthedUser(
+  req: Request,
+  corsHeaders: Record<string, string>,
+): Promise<GateResult> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return {
+      userId: null,
+      blocked: new Response(
+        JSON.stringify({ error: "unauthorized", message: "Missing authorization header." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      ),
+    };
+  }
+  const token = authHeader.replace("Bearer ", "");
+  const userClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
+  );
+  let userId: string | null = null;
+  try {
+    const { data: claimsData } = await userClient.auth.getClaims(token);
+    userId = claimsData?.claims?.sub ?? null;
+    if (!userId) {
+      const { data: { user } } = await userClient.auth.getUser();
+      userId = user?.id ?? null;
+    }
+  } catch (_) {
+    userId = null;
+  }
+  if (!userId) {
+    return {
+      userId: null,
+      blocked: new Response(
+        JSON.stringify({ error: "unauthorized", message: "Invalid or expired session." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      ),
+    };
+  }
+  return { userId, blocked: null };
+}
