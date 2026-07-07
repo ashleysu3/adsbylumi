@@ -40,11 +40,12 @@ interface StockBrollClip {
   signedUrl?: string;
 }
 
-function publicUrl(path: string): string {
+async function signedUrl(path: string): Promise<string> {
   if (path.startsWith("http")) return path;
-  const { data } = supabase.storage.from("stock-broll").getPublicUrl(path);
-  return data.publicUrl;
+  const { data } = await supabase.storage.from("stock-broll").createSignedUrl(path, 3600);
+  return data?.signedUrl || "";
 }
+
 
 function readDuration(file: File): Promise<number | null> {
   return new Promise((resolve) => {
