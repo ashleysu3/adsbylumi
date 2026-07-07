@@ -139,7 +139,8 @@ Deno.serve(async (req) => {
                 "- A podcast / show / clip-based growth play → podcast-grow funnel.\n" +
                 "- A standard paid product or course with a sales page (no webinar, no challenge) → the matching sales funnel (e.g. coach-course-creator-3step).\n" +
                 "- A local in-person service → local-service funnel.\n" +
-                "Use the offer name, description, price, page_goal, and the user_goal to decide. Only return no_match if literally none of the templates fit the offer type. Respond ONLY with JSON.",
+                "Use the offer name, description, price, page_goal, and the user_goal to decide. Only return no_match if literally none of the templates fit the offer type.\n\n" +
+                "IMPORTANT — the template you match was AUTHORED once as a generic funnel shape, often using an illustrative example industry in its stored name/description (e.g. a template literally named 'Wedding Pros — Grow + Leads' really just means \"2-campaign lead-gen funnel\" and has nothing to do with weddings). NEVER let that stored name/description reach the user as-is. Always write a personalized_title and personalized_intro grounded in THIS brand's actual name, industry, and offer — never mention the template's original example industry unless it's genuinely this brand's industry too. Respond ONLY with JSON.",
             },
             {
               role: "user",
@@ -158,12 +159,17 @@ Deno.serve(async (req) => {
                 properties: {
                   match_slug: { type: ["string", "null"] },
                   no_match: { type: "boolean" },
+                  personalized_title: {
+                    type: "string",
+                    description: "A short, punchy plan name for THIS brand's offer/goal (e.g. 'Free Class → Booked Calls'). Never the template's original example-industry name.",
+                  },
                   personalized_intro: { type: "string" },
                   reason: { type: "string" },
                 },
                 required: [
                   "match_slug",
                   "no_match",
+                  "personalized_title",
                   "personalized_intro",
                   "reason",
                 ],
@@ -272,12 +278,34 @@ Deno.serve(async (req) => {
     // and aligned to the primary objective so the funnel stays coherent.
     const adapted = adaptCampaignsToOffer(matched, brandSnapshot);
 
+    // Every seeded template was authored once as a generic funnel SHAPE, often
+    // under an illustrative example-industry name (a template literally named
+    // "Wedding Pros — Grow + Leads" gets matched to any brand with the same
+    // 2-campaign lead-gen shape, regardless of actual industry). NEVER let that
+    // raw name/description reach the user. Personalize both here, on the
+    // object the frontend actually stores as `strategy` — not just as sibling
+    // top-level fields, which the frontend previously dropped entirely.
+    const personalizedTitle =
+      (typeof parsed?.personalized_title === "string" && parsed.personalized_title.trim()) ||
+      `${brand.name}'s recommended campaign`;
+    const personalizedIntro =
+      (typeof parsed?.personalized_intro === "string" && parsed.personalized_intro.trim()) ||
+      `Based on what we see for ${brand.name}, this plan is the cleanest path forward.`;
+
     return json({
       matched: true,
-      strategy: adapted,
-      personalized_intro:
-        parsed?.personalized_intro ??
-        `Based on what we see for ${brand.name}, this plan is the cleanest path forward.`,
+      strategy: {
+        ...adapted,
+        name: personalizedTitle,
+        description: personalizedIntro,
+        personalized_title: personalizedTitle,
+        personalized_intro: personalizedIntro,
+        // Keep the original template identity available for debugging/admin use
+        // without ever surfacing it in the UI.
+        _template_slug: matched?.slug ?? null,
+        _template_name: matched?.name ?? null,
+      },
+      personalized_intro: personalizedIntro,
     });
   } catch (err) {
     console.error("recommend-strategy error", err);
