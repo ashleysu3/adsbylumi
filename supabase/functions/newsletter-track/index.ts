@@ -23,6 +23,21 @@ Deno.serve(async (req) => {
       return new Response(PIXEL, { headers: { 'Content-Type': 'image/gif', 'Cache-Control': 'no-store' } });
     }
     if (clickId && target) {
+      // Allowlist redirect targets to prevent open-redirect / phishing abuse.
+      const ALLOWED_HOSTS = new Set([
+        'adsbylumi.com',
+        'www.adsbylumi.com',
+        'adsbylumi.lovable.app',
+      ]);
+      let parsed: URL;
+      try {
+        parsed = new URL(target);
+      } catch {
+        return new Response('Invalid redirect target', { status: 400 });
+      }
+      if (parsed.protocol !== 'https:' || !ALLOWED_HOSTS.has(parsed.hostname)) {
+        return new Response('Redirect target not allowed', { status: 400 });
+      }
       // Increment click_count and set clicked_at
       const { data: row } = await supabase
         .from('newsletter_sends')
@@ -37,7 +52,7 @@ Deno.serve(async (req) => {
           click_count: (row?.click_count || 0) + 1,
         })
         .eq('id', clickId);
-      return Response.redirect(target, 302);
+      return Response.redirect(parsed.toString(), 302);
     }
   } catch (e) {
     console.error('track err', e);
