@@ -205,17 +205,27 @@ export default function GuidedOnboarding() {
   const allRevealed = revealedCount === REVEAL_SECTIONS.length;
 
   // ---------- auth + resume ----------
+  const autoStartFiredRef = useRef(false);
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { navigate("/auth"); return; }
+      // Prefill from homepage capture bar (sessionStorage survives /auth round-trip).
+      let prefillWebsite = "";
+      let prefillInstagram = "";
+      try {
+        prefillWebsite = sessionStorage.getItem("lumi_prefill_website") || "";
+        prefillInstagram = sessionStorage.getItem("lumi_prefill_instagram") || "";
+      } catch { /* ignore */ }
       // When user explicitly asked to add a new brand, do NOT resume an in-progress one.
+      let resumedExisting = false;
       if (!addBrandMode) {
         const { data: existing } = await supabase
           .from("brands").select("*").eq("user_id", user.id)
           .order("created_at", { ascending: false }).limit(1);
         const latest = existing?.[0];
         if (latest && !latest.onboarding_completed_at) {
+          resumedExisting = true;
           setBrandId(latest.id);
           setBrand(latest);
           setWebsiteUrl(latest.website_url || "");
@@ -225,9 +235,30 @@ export default function GuidedOnboarding() {
           setStep(resumeStep);
         }
       }
+      if (!resumedExisting && prefillWebsite) {
+        setWebsiteUrl(prefillWebsite);
+        if (prefillInstagram) setInstagramHandle(prefillInstagram);
+        autoStartFiredRef.current = true;
+        try {
+          sessionStorage.removeItem("lumi_prefill_website");
+          sessionStorage.removeItem("lumi_prefill_instagram");
+        } catch { /* ignore */ }
+      }
       setCheckingAuth(false);
     })();
   }, [navigate, addBrandMode]);
+
+  // Auto-fire step 1 when arriving with a prefilled website (homepage capture bar).
+  useEffect(() => {
+    if (checkingAuth) return;
+    if (!autoStartFiredRef.current) return;
+    if (step !== 1) { autoStartFiredRef.current = false; return; }
+    if (!websiteUrl) return;
+    if (step1Fired.current || step1Busy) return;
+    autoStartFiredRef.current = false;
+    startStep1();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkingAuth, websiteUrl, step]);
 
   const persistStep = useCallback(async (id: string, n: number) => {
     await supabase.from("brands").update({ onboarding_step: n }).eq("id", id);
