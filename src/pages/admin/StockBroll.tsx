@@ -16,12 +16,17 @@ import { toast } from "sonner";
 // Keep this in sync with the beat-tagging categories the talking-head-script generator
 // uses to pick matching footage — a clip can belong to more than one category.
 const CATEGORIES = [
-  "office-work",
-  "candid-lifestyle",
-  "coaching-call",
-  "product-demo",
-  "results-proof",
-  "general",
+  "working-laptop",
+  "coffee",
+  "hobby",
+  "lifestyle",
+  "animals",
+  "driving-in-car",
+  "work-event",
+  "meeting-podcast",
+  "teaching",
+  "travel-vacation",
+  "misc",
 ];
 
 interface StockBrollClip {
@@ -123,7 +128,7 @@ export default function AdminStockBroll() {
             .insert({
               video_url: path,
               title: bulkTitle || file.name,
-              categories: bulkCategories.length ? bulkCategories : ["general"],
+              categories: bulkCategories.length ? bulkCategories : ["misc"],
               duration_seconds: duration,
               source: "stock",
             });
@@ -156,7 +161,7 @@ export default function AdminStockBroll() {
         .from("stock_broll_clips" as any)
         .update({
           title: editTitle || null,
-          categories: editCategories.length ? editCategories : ["general"],
+          categories: editCategories.length ? editCategories : ["misc"],
         })
         .eq("id", editing.id);
       if (error) throw error;
@@ -231,7 +236,7 @@ export default function AdminStockBroll() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              No category selected defaults every file in the batch to "general". Edit individual clips below after upload.
+              No category selected defaults every file in the batch to "misc". Edit individual clips below after upload.
             </p>
             <input
               ref={fileInputRef}
