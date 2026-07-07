@@ -217,7 +217,13 @@ export default function GuidedOnboarding() {
         // "Start free trial to launch this" step (anonymous → permanent upgrade).
         const { data: anon, error: anonErr } = await supabase.auth.signInAnonymously();
         if (anonErr || !anon?.user) {
-          toast.error("Couldn't start your session. Please try again.");
+          const status = (anonErr as any)?.status ?? "unknown";
+          const code = (anonErr as any)?.code ?? (anonErr as any)?.name ?? "unknown";
+          const msg = anonErr?.message || "no user returned";
+          // Log the raw error so we can distinguish captcha blocks, disabled
+          // anonymous sign-ins, rate limits, and DB trigger failures.
+          console.error("[onboarding] signInAnonymously failed", { status, code, message: msg, error: anonErr });
+          toast.error(`Couldn't start your session (${status}): ${msg}`, { duration: 10000 });
           setCheckingAuth(false);
           return;
         }
