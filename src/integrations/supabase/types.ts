@@ -3079,6 +3079,8 @@ export type Database = {
         Row: {
           categories: string[]
           created_at: string
+          credit_name: string | null
+          credit_url: string | null
           duration_seconds: number | null
           id: string
           source: string | null
@@ -3089,6 +3091,8 @@ export type Database = {
         Insert: {
           categories?: string[]
           created_at?: string
+          credit_name?: string | null
+          credit_url?: string | null
           duration_seconds?: number | null
           id?: string
           source?: string | null
@@ -3099,6 +3103,8 @@ export type Database = {
         Update: {
           categories?: string[]
           created_at?: string
+          credit_name?: string | null
+          credit_url?: string | null
           duration_seconds?: number | null
           id?: string
           source?: string | null
