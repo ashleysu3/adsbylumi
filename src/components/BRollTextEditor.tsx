@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -48,6 +48,8 @@ interface BRollTextEditorProps {
   clipName?: string;
   style?: OverlayStyle;
   brandId?: string;
+  /** Optional list of other clips the user can swap to without leaving the editor. */
+  availableClips?: Array<{ id: string; file_name: string; file_url: string }>;
 }
 
 function parseTimingRange(raw: string): { start: number; end: number } | null {
@@ -66,6 +68,7 @@ export function BRollTextEditor({
   clipName,
   style = DEFAULT_OVERLAY_STYLE,
   brandId,
+  availableClips,
 }: BRollTextEditorProps) {
   const { enqueue } = useRenderQueue();
   const [overlays, setOverlays] = useState<TextOverlay[]>([
@@ -74,12 +77,25 @@ export function BRollTextEditor({
   const [templateStyle, setTemplateStyle] = useState<RenderStyle | null>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(0);
+  // Active clip — swappable inside the editor when availableClips is provided.
+  const [activeVideoUrl, setActiveVideoUrl] = useState<string>(videoUrl);
+  const [activeClipName, setActiveClipName] = useState<string | undefined>(clipName);
   // null = no fit mode chosen yet (overlays render as-typed). 'loop' = loop
   // the preview video so all overlays play through. 'speed' = compress overlay
   // timings to fit within the video's duration.
   const [fitMode, setFitMode] = useState<'loop' | 'speed' | null>(null);
   // Trim window applied to the source clip on render. null = no trim.
   const [trim, setTrim] = useState<{ start: number; end: number } | null>(null);
+
+  // Whenever the caller opens the editor with a new clip, or the user swaps
+  // clips inside the editor, reset fit + trim (they're clip-specific).
+  useEffect(() => {
+    setActiveVideoUrl(videoUrl);
+    setActiveClipName(clipName);
+    setFitMode(null);
+    setTrim(null);
+    setVideoDuration(0);
+  }, [videoUrl, clipName]);
 
   // Compute the latest end time across all overlays. Used to detect when
   // text would run past the end of the video.
@@ -93,6 +109,19 @@ export function BRollTextEditor({
   const overflows = videoDuration > 0 && maxOverlayEnd > videoDuration + 0.05;
   // Video is meaningfully longer than the overlays — offer a trim.
   const tooLong = videoDuration > 0 && maxOverlayEnd > 0 && videoDuration > maxOverlayEnd + 1.0;
+
+  // Auto-trim: if the video is longer than the copy and the user hasn't
+  // manually set a trim, clip the render to the end of the last overlay so
+  // the ad doesn't trail off with silent b-roll.
+  useEffect(() => {
+    if (tooLong && trim === null) {
+      setTrim({ start: 0, end: +Math.min(videoDuration, maxOverlayEnd).toFixed(2) });
+    }
+    if (!tooLong && trim && trim.start === 0 && Math.abs(trim.end - videoDuration) < 0.05) {
+      // Video no longer needs trimming (user extended overlays past it).
+      setTrim(null);
+    }
+  }, [tooLong, maxOverlayEnd, videoDuration]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Apply the chosen fit mode to the overlays before they're rendered or
   // sent to the encoder. 'speed' rescales every timing to fit into the
@@ -208,9 +237,9 @@ export function BRollTextEditor({
         };
 
     enqueue({
-      title: clipName || 'B-roll video',
-      sourceClipName: clipName,
-      videoUrl,
+      title: activeClipName || 'B-roll video',
+      sourceClipName: activeClipName,
+      videoUrl: activeVideoUrl,
       overlays: specs,
       style: renderStyle,
       loopVideo: overflows && fitMode === 'loop',
@@ -228,7 +257,7 @@ export function BRollTextEditor({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Type className="h-5 w-5" />
-            Add Text to "{clipName || 'B-roll clip'}"
+            Add Text to "{activeClipName || 'B-roll clip'}"
           </DialogTitle>
           <DialogDescription>
             Write one or more text blocks, set when each appears, drag any line in the preview to
@@ -360,9 +389,36 @@ export function BRollTextEditor({
 
           {/* RIGHT: preview */}
           <div>
-            <Label className="text-xs text-muted-foreground uppercase font-semibold tracking-wide mb-2 block">
-              Preview
-            </Label>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <Label className="text-xs text-muted-foreground uppercase font-semibold tracking-wide">
+                Preview
+              </Label>
+              {availableClips && availableClips.length > 1 && (
+                <Select
+                  value={availableClips.find(c => c.file_url === activeVideoUrl)?.id ?? ''}
+                  onValueChange={(id) => {
+                    const clip = availableClips.find(c => c.id === id);
+                    if (!clip) return;
+                    setActiveVideoUrl(clip.file_url);
+                    setActiveClipName(clip.file_name);
+                    setTrim(null);
+                    setFitMode(null);
+                    setVideoDuration(0);
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-[220px] text-xs">
+                    <SelectValue placeholder="Change clip…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableClips.map(c => (
+                      <SelectItem key={c.id} value={c.id} className="text-xs">
+                        {c.file_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
 
             {overflows && (
               <div className="mb-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
@@ -419,11 +475,12 @@ export function BRollTextEditor({
                   <Scissors className="h-4 w-4 text-sky-600 mt-0.5 shrink-0" />
                   <div className="text-xs flex-1">
                     <p className="font-semibold text-sky-700">
-                      Your video is longer than your text
+                      Auto-trimmed to your text length
                     </p>
                     <p className="text-muted-foreground mt-0.5">
                       Video is {videoDuration.toFixed(1)}s but your last text ends at {maxOverlayEnd.toFixed(1)}s.
-                      Trim it so the ad doesn't trail off with no overlay.
+                      We'll clip the render at {maxOverlayEnd.toFixed(1)}s so the ad doesn't trail off.
+                      Adjust below, or swap to a different clip using the picker above.
                     </p>
                   </div>
                 </div>
@@ -507,7 +564,7 @@ export function BRollTextEditor({
 
 
             <VideoTextPreview
-              videoUrl={videoUrl}
+              videoUrl={activeVideoUrl}
               overlays={fittedOverlays}
               style={effectiveStyle}
               editable
