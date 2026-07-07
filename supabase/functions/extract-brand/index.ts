@@ -340,8 +340,19 @@ serve(async (req) => {
     // Fetch site meta (title, og:site_name, description) in parallel with branding
     const [fc, meta] = await Promise.all([firecrawlBranding(url), fetchSiteMeta(url)]);
 
+    // Firecrawl detected a bot-protection wall → return a clear signal FAST so the
+    // frontend can trigger its fallback flow (OG meta, Instagram, quick questions)
+    // instead of waiting on the engine fallback which will likely also be blocked.
+    if (fc && "blocked" in fc && fc.blocked) {
+      return json(200, {
+        blocked: true,
+        reason: "bot_protection",
+        name: meta.name,
+        description: meta.description,
+      });
+    }
 
-    if (fc && (fc.suggested.colors?.background || (fc.suggested.colors?.pops?.length ?? 0) > 0)) {
+    if (fc && "suggested" in fc && (fc.suggested.colors?.background || (fc.suggested.colors?.pops?.length ?? 0) > 0)) {
       // Normalize into the flat shape the client reads (name, description, colors, fonts, logoUrl)
       const colors = [
         fc.suggested.colors?.accent,
