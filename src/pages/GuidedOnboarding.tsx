@@ -1038,8 +1038,60 @@ export default function GuidedOnboarding() {
                   </div>
                 </div>
 
+                {/* Live progress bar — always visible so the card never feels stuck. */}
+                <div className="space-y-2" aria-hidden={allRevealed}>
+                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 transition-all duration-500 ease-out"
+                      style={{ width: `${Math.round((revealedCount / REVEAL_SECTIONS.length) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 text-[10px] font-medium">
+                    {[
+                      { key: "design", label: "Palette", loading: loadingBrandBasics },
+                      { key: "basics", label: "Voice", loading: loadingBrandBasics },
+                      { key: "audience", label: "Audience", loading: loadingAudience },
+                      { key: "proof", label: "Proof", loading: loadingProof },
+                      { key: "images", label: "Photos", loading: loadingAssets },
+                    ].map((s) => {
+                      const done = (revealed as any)[s.key];
+                      return (
+                        <span
+                          key={s.key}
+                          className={
+                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-full border " +
+                            (done
+                              ? "bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400"
+                              : s.loading
+                              ? "bg-muted border-border text-muted-foreground"
+                              : "bg-muted border-border text-muted-foreground")
+                          }
+                        >
+                          {done ? "✓" : <Loader2 className="h-2.5 w-2.5 animate-spin" />} {s.label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* One rounded card wrapping all reveals */}
-                <div className="rounded-3xl border bg-card shadow-sm p-6 sm:p-8 space-y-6">
+                <div className="rounded-3xl border bg-card shadow-sm p-6 sm:p-8 space-y-6 min-h-[200px]">
+                  {revealedCount === 0 && (
+                    <div className="space-y-4 animate-pulse">
+                      <div className="h-4 w-32 bg-muted rounded" />
+                      <div className="flex gap-3">
+                        {[0,1,2,3,4].map((i) => (
+                          <div key={i} className="h-14 w-14 rounded-2xl bg-muted" />
+                        ))}
+                      </div>
+                      <div className="h-3 w-48 bg-muted rounded mt-6" />
+                      <div className="flex gap-2">
+                        {[0,1,2].map((i) => (
+                          <div key={i} className="h-6 w-20 rounded-full bg-muted" />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {/* Your palette */}
                   {revealed.design && (
                     <div className="animate-fade-in space-y-3">
