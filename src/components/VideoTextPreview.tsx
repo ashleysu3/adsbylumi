@@ -217,6 +217,8 @@ export function VideoTextPreview({
   loopVideo = true,
   playbackRate = 1,
   onDurationChange,
+  trimStart,
+  trimEnd,
 }: VideoTextPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
