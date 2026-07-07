@@ -5,9 +5,9 @@ import { Loader2, ArrowRight, RefreshCw, Sparkles, ChevronLeft, Target, Download
 import { toast } from "sonner";
 import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 import type { RenderOverlay } from "@/lib/ffmpeg-renderer";
+import { getTestimonialQuotes, type TestimonialQuote } from "@/lib/social-proof";
 
 type ScriptBeat = { line: string; category: string; seconds: number };
-
 
 // Coerce however brand_kits.colors is shaped (array of hexes from extract-brand,
 // or the {bg, ink, accent, pop, highlight, cream} object the Style page saves)
@@ -161,7 +161,8 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const fontsRef = useRef<{ displayFamily?: string; bodyFamily?: string }>({});
   const logoUrlRef = useRef<string | undefined>(undefined);
   const photoUrlRef = useRef<string | undefined>(undefined);
-  const templateRef = useRef<"spotlight" | "bigtype">("bigtype");
+  const templateRef = useRef<"testimonial" | "spotlight" | "bigtype">("bigtype");
+  const socialProofRef = useRef<TestimonialQuote | null>(null);
 
   // Copy options + selection
   const [options, setOptions] = useState<any[]>([]);
@@ -309,7 +310,15 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           /* brand_assets may not exist; keep photoUrl undefined */
         }
         photoUrlRef.current = photoUrl;
-        templateRef.current = photoUrl ? "spotlight" : "bigtype";
+
+        // Pick the strongest template this specific brand can support, instead of
+        // always defaulting to the same one:
+        //   1) A real testimonial from their own site — social proof beats everything.
+        //   2) A strong photo of them/their work — faces convert better than text alone.
+        //   3) Otherwise, bold text-only copy — no invented props or stock-feeling photos.
+        const testimonials = getTestimonialQuotes(brand?.social_proof);
+        socialProofRef.current = testimonials[0] || null;
+        templateRef.current = socialProofRef.current ? "testimonial" : photoUrl ? "spotlight" : "bigtype";
 
         // 3) Recommend strategy — respect the goal the user picked on the reveal step.
         // Falls back to lead-gen when no choice was made.
@@ -386,6 +395,9 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             // when we actually have something, so buildContextBlock's own
             // truthiness check correctly skips it otherwise.
             offerContext: offerHint ? { description: offerHint } : undefined,
+            socialProofContext: socialProofRef.current
+              ? { quote: socialProofRef.current.text, attribution: socialProofRef.current.attribution }
+              : undefined,
             brandContext: {
               name: brand?.name,
               idealClient: brand?.target_audience || brand?.value_proposition,
@@ -558,7 +570,15 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> {statusLine}
               </span>
             ) : phase === "ready" ? (
-              <>Rendered in {brand?.name || "your"} brand colors{photoUrlRef.current ? ", with your photo" : ""}.</>
+              <>
+                Rendered in {brand?.name || "your"} brand colors
+                {templateRef.current === "testimonial"
+                  ? ", built around a real testimonial from your site"
+                  : photoUrlRef.current
+                    ? ", with your photo"
+                    : ""}
+                .
+              </>
             ) : (
               <span className="text-destructive">{renderErr || "Something didn't line up."}</span>
             )}
@@ -596,6 +616,18 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
               </div>
             )}
           </div>
+
+          {heroImage && phase === "ready" && (
+            <div className="mt-3 flex justify-center">
+              <a
+                href={`data:image/png;base64,${heroImage.base64}`}
+                download={`${brandSlug}-ad.png`}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition"
+              >
+                <Download className="h-3.5 w-3.5" /> Download this graphic
+              </a>
+            </div>
+          )}
 
           {/* Hook chips */}
           {options.length > 0 && (
