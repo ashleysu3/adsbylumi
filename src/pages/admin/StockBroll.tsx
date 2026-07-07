@@ -40,11 +40,12 @@ interface StockBrollClip {
   signedUrl?: string;
 }
 
-function publicUrl(path: string): string {
+async function signedUrl(path: string): Promise<string> {
   if (path.startsWith("http")) return path;
-  const { data } = supabase.storage.from("stock-broll").getPublicUrl(path);
-  return data.publicUrl;
+  const { data } = await supabase.storage.from("stock-broll").createSignedUrl(path, 3600);
+  return data?.signedUrl || "";
 }
+
 
 function readDuration(file: File): Promise<number | null> {
   return new Promise((resolve) => {
@@ -94,7 +95,11 @@ export default function AdminStockBroll() {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      setClips(((data as any) || []).map((c: StockBrollClip) => ({ ...c, signedUrl: publicUrl(c.video_url) })));
+      const rows = (data as any) || [];
+      const withUrls = await Promise.all(
+        rows.map(async (c: StockBrollClip) => ({ ...c, signedUrl: await signedUrl(c.video_url) })),
+      );
+      setClips(withUrls);
     } catch (e: any) {
       console.error(e);
       toast.error("Failed to load stock b-roll library");
@@ -272,7 +277,19 @@ export default function AdminStockBroll() {
                   <div key={clip.id} className="group relative rounded-lg overflow-hidden border bg-muted/20">
                     <div className="aspect-video bg-black">
                       {clip.signedUrl && (
-                        <video src={clip.signedUrl} className="w-full h-full object-cover" muted controls preload="metadata" />
+                        <video
+                          src={`${clip.signedUrl}#t=0.5`}
+                          className="w-full h-full object-cover cursor-pointer"
+                          muted
+                          playsInline
+                          preload="metadata"
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLVideoElement).play().catch(() => {}); }}
+                          onMouseLeave={(e) => { const v = e.currentTarget as HTMLVideoElement; v.pause(); v.currentTime = 0.5; }}
+                          onClick={(e) => {
+                            const v = e.currentTarget as HTMLVideoElement;
+                            if (v.paused) v.play().catch(() => {}); else v.pause();
+                          }}
+                        />
                       )}
                     </div>
                     <div className="p-2 space-y-1.5">
