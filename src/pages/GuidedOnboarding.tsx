@@ -299,11 +299,26 @@ export default function GuidedOnboarding() {
   };
   const back = () => setStep((s) => Math.max(1, s - 1));
 
+  // Basic sanity check on the URL: must have a hostname with a TLD like ".com".
+  // Catches typos like "notasite" or "http://localhost" so we don't spend 40s
+  // scraping something that will never resolve.
+  const isLikelyLiveSite = (url: string): boolean => {
+    try {
+      const u = new URL(url);
+      const host = u.hostname.replace(/^www\./, "");
+      if (!host.includes(".")) return false;
+      const tld = host.split(".").pop() || "";
+      return /^[a-z]{2,24}$/i.test(tld);
+    } catch {
+      return false;
+    }
+  };
+
   // =================== STEP 1 ===================
   const startStep1 = async () => {
     const normalized = normalizeWebsiteUrl(websiteUrl);
-    if (!normalized || !normalized.includes(".")) {
-      toast.error("Add your website URL");
+    if (!normalized || !isLikelyLiveSite(normalized)) {
+      toast.error("That doesn't look like a live site — check the URL");
       return;
     }
     if (step1Fired.current) return;
