@@ -1343,22 +1343,22 @@ export default function GuidedOnboarding() {
 
                 {/* Primary CTA */}
                 <div className="flex flex-col items-center gap-2 pt-2">
-                  {allRevealed && !goalChoice && (
+                  {canContinue && !goalChoice && (
                     <p className="text-xs text-muted-foreground animate-fade-in">
                       Pick a goal above so your first ad matches what you want more of.
                     </p>
                   )}
                   <Button
                     onClick={advance}
-                    disabled={!allRevealed || !goalChoice}
+                    disabled={!canContinue}
                     className="h-14 px-8 text-base font-semibold rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity shadow-lg shadow-pink-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {allRevealed && goalChoice ? (
-                      <>That's me — make my ad <ArrowRight className="h-5 w-5 ml-2" /></>
-                    ) : allRevealed && !goalChoice ? (
-                      <>Almost ready — pick a goal <ArrowRight className="h-5 w-5 ml-2" /></>
-                    ) : (
+                    {!canContinue ? (
                       <><Loader2 className="h-5 w-5 animate-spin mr-2" /> Still reading…</>
+                    ) : goalChoice ? (
+                      <>That's me — make my ad <ArrowRight className="h-5 w-5 ml-2" /></>
+                    ) : (
+                      <>Make my ad <ArrowRight className="h-5 w-5 ml-2" /></>
                     )}
                   </Button>
                 </div>
