@@ -162,8 +162,9 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const fontsRef = useRef<{ displayFamily?: string; bodyFamily?: string }>({});
   const logoUrlRef = useRef<string | undefined>(undefined);
   const photoUrlRef = useRef<string | undefined>(undefined);
-  const templateRef = useRef<"testimonial" | "spotlight" | "bigtype">("bigtype");
+  const templateRef = useRef<"testimonial" | "spotlight" | "checklist" | "bigtype">("bigtype");
   const socialProofRef = useRef<TestimonialQuote | null>(null);
+  const offerPsychologyRef = useRef<Record<string, any> | null>(null);
 
   // Copy options + selection
   const [options, setOptions] = useState<any[]>([]);
@@ -312,17 +313,8 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         }
         photoUrlRef.current = photoUrl;
 
-        // Pick the strongest template this specific brand can support, instead of
-        // always defaulting to the same one:
-        //   1) A real testimonial from their own site — social proof beats everything.
-        //   2) A strong photo of them/their work — faces convert better than text alone.
-        //   3) Otherwise, bold text-only copy — no invented props or stock-feeling photos.
-        const testimonials = getTestimonialQuotes(brand?.social_proof);
-        socialProofRef.current = testimonials[0] || null;
-        templateRef.current = socialProofRef.current ? "testimonial" : photoUrl ? "spotlight" : "bigtype";
-
-        // 3) Recommend strategy — respect the goal the user picked on the reveal step.
-        // Falls back to lead-gen when no choice was made.
+        // 3) Goal + offer hint — read before the template decision below, since
+        // a real offer hint unlocks the checklist template as a text-only option.
         const goalMap: Record<string, string> = {
           booked_calls: "book_calls",
           leads: "get_leads",
@@ -348,20 +340,47 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           ((brand?.audience_psychology as any)?.onboarding_offer_hint ?? "");
         offerHintRef.current = offerHint;
 
+        // Pick the strongest template this specific brand can support, instead of
+        // always defaulting to the same one:
+        //   1) A real testimonial from their own site — social proof beats everything.
+        //   2) A strong photo of them/their work — faces convert better than text alone.
+        //   3) A real offer to list out — checklist beats a bare headline.
+        //   4) Otherwise, bold text-only copy — no invented props or stock-feeling photos.
+        const testimonials = getTestimonialQuotes(brand?.social_proof);
+        socialProofRef.current = testimonials[0] || null;
+        templateRef.current = socialProofRef.current
+          ? "testimonial"
+          : photoUrl
+            ? "spotlight"
+            : offerHint
+              ? "checklist"
+              : "bigtype";
+
+        // 4) Ground the copy in this specific offer, not just an abstract goal —
+        // run alongside strategy recommendation since neither depends on the other.
+        // Cached server-side per offer hint, so re-renders ("show me another")
+        // and later steps (the b-roll script) don't re-spend AI credits on it.
         setStatusLine("🧠 Picking your best angle…");
-        try {
-          const { data: recData } = await supabase.functions.invoke("recommend-strategy", {
+        const [strategyResult, offerPsychologyResult] = await Promise.allSettled([
+          supabase.functions.invoke("recommend-strategy", {
             body: { brand_id: brandId, offer_id: null, user_goal: userGoal, offer_hint: offerHint || undefined },
-          });
-          if (!cancelled) {
-            const s = (recData as any)?.strategy ?? recData ?? null;
-            if (s && !((recData as any)?.pending)) setStrategy(s);
-          }
-        } catch {
-          /* non-fatal; ad still renders */
+          }),
+          offerHint
+            ? supabase.functions.invoke("generate-offer-psychology", {
+                body: { brand_id: brandId, offer_hint: offerHint, user_goal: userGoal },
+              })
+            : Promise.resolve(null),
+        ]);
+        if (!cancelled && strategyResult.status === "fulfilled" && strategyResult.value) {
+          const recData = strategyResult.value.data;
+          const s = (recData as any)?.strategy ?? recData ?? null;
+          if (s && !((recData as any)?.pending)) setStrategy(s);
+        }
+        if (offerPsychologyResult.status === "fulfilled" && offerPsychologyResult.value) {
+          offerPsychologyRef.current = (offerPsychologyResult.value.data as any)?.offer_psychology || null;
         }
 
-        // 4) Compose 3 hook options
+        // 5) Compose 3 hook options
         setStatusLine("✍️ Writing three hook angles…");
         const template = templateRef.current;
         // A goal-appropriate default CTA — still far better than always
@@ -377,7 +396,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         const brief = {
           template,
           format: "single",
-          styleHint: template === "bigtype" ? "bigtype" : "card",
+          styleHint: template === "bigtype" || template === "checklist" ? template : "card",
           goal: userGoal,
           concept: brand?.value_proposition || "",
           keyMessage: brand?.value_proposition || "",
@@ -396,6 +415,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             // when we actually have something, so buildContextBlock's own
             // truthiness check correctly skips it otherwise.
             offerContext: offerHint ? { description: offerHint } : undefined,
+            offerPsychology: offerPsychologyRef.current || undefined,
             socialProofContext: socialProofRef.current
               ? { quote: socialProofRef.current.text, attribution: socialProofRef.current.attribution }
               : undefined,
@@ -504,6 +524,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           brand_id: brandId,
           user_goal: userGoalRef.current,
           offer_hint: offerHintRef.current || undefined,
+          offer_psychology: offerPsychologyRef.current || undefined,
         },
       });
       if (error) throw error;
