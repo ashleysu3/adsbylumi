@@ -445,6 +445,23 @@ export default function GuidedOnboarding() {
       const pBrand = supabase.functions.invoke("extract-brand", { body: { url: websiteForCall } }).then(async (r) => {
         const d: any = r.data;
         if (!d || r.error) return;
+        // Backend detected a bot-protection wall (Cloudflare/Wix/Squarespace/etc).
+        // Mark basics + design as failed immediately so the reveal shows the
+        // friendly fallback ("we couldn't fully read your site") without waiting
+        // the full 25s escape-hatch timer.
+        if (d.blocked) {
+          console.warn("[onboarding] extract-brand returned blocked:true — using fallback flow");
+          setFailed((f) => ({ ...f, basics: true, design: true }));
+          // Still capture og:title/description if the server managed to read them.
+          const brandPatch: any = {};
+          if (d.name) brandPatch.name = d.name;
+          if (d.description) brandPatch.value_proposition = d.description;
+          if (Object.keys(brandPatch).length) {
+            await supabase.from("brands").update(brandPatch).eq("id", brandIdLocal);
+            setBrand((prev: any) => ({ ...(prev || {}), ...brandPatch }));
+          }
+          return;
+        }
         const kitPatch: any = {
           user_id: user.id, brand_id: brandIdLocal, source_url: websiteForCall, status: "extracted",
         };
