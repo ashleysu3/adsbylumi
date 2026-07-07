@@ -511,6 +511,31 @@ export default function GuidedOnboarding() {
         .catch(() => {})
         .finally(() => { clearAssetsCap(); setLoadingAssetsHarvest(false); });
 
+      // Background enrichment: reads the site like a human (via the engine's real
+      // browser, multi-page — home/about/offers/results) and feeds real text +
+      // screenshots to a vision model for a much juicier audience_psychology than
+      // the single-homepage-fetch above can produce. Deliberately NOT in the
+      // Promise.allSettled gate below — it can take longer than the 25s escape
+      // hatch, so it must never delay "make my ad". It's a pure upgrade: when it
+      // lands (even after the user has moved on), it silently improves brand
+      // state for the next screen/regeneration. Safe no-op if the engine can't
+      // read the site or isn't deployed yet — existing audience data is untouched.
+      supabase.functions.invoke("read-site-context", { body: { brandId: brandIdLocal } })
+        .then(async (r) => {
+          if (r?.data?.success) {
+            const { data: refreshed } = await supabase
+              .from("brands").select("audience_psychology, target_audience").eq("id", brandIdLocal).maybeSingle();
+            if (refreshed) {
+              setBrand((prev: any) => ({
+                ...(prev || {}),
+                audience_psychology: (refreshed as any).audience_psychology,
+                target_audience: (refreshed as any).target_audience,
+              }));
+            }
+          }
+        })
+        .catch(() => {});
+
       // When everything settles, flag the phase as done so the resume logic stops trying.
       Promise.allSettled([pBrand, pVoice, pAud, pProof, pAssets]).then(async () => {
         try {
