@@ -475,11 +475,12 @@ export function BRollTextEditor({
                   <Scissors className="h-4 w-4 text-sky-600 mt-0.5 shrink-0" />
                   <div className="text-xs flex-1">
                     <p className="font-semibold text-sky-700">
-                      Your video is longer than your text
+                      Auto-trimmed to your text length
                     </p>
                     <p className="text-muted-foreground mt-0.5">
                       Video is {videoDuration.toFixed(1)}s but your last text ends at {maxOverlayEnd.toFixed(1)}s.
-                      Trim it so the ad doesn't trail off with no overlay.
+                      We'll clip the render at {maxOverlayEnd.toFixed(1)}s so the ad doesn't trail off.
+                      Adjust below, or swap to a different clip using the picker above.
                     </p>
                   </div>
                 </div>
