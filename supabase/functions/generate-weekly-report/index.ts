@@ -11,6 +11,25 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const anonClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: uData } = await anonClient.auth.getUser();
+    const authedUser = uData?.user;
+    if (!authedUser) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { workspaceId } = await req.json();
 
     if (!workspaceId) {
@@ -25,12 +44,23 @@ Deno.serve(async (req) => {
     // Fetch workspace with latest performance report
     const { data: workspace, error: workspaceError } = await supabase
       .from('campaign_workspaces')
-      .select('*')
+      .select('*, brands!inner(user_id)')
       .eq('id', workspaceId)
       .single();
 
     if (workspaceError || !workspace) {
       throw new Error('Workspace not found');
+    }
+
+    // Verify ownership (or admin)
+    const brandUserId = (workspace as any).brands?.user_id;
+    if (brandUserId !== authedUser.id) {
+      const { data: isAdmin } = await supabase.rpc('has_role', { _user_id: authedUser.id, _role: 'admin' });
+      if (!isAdmin) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const report = workspace.performance_report_latest;
