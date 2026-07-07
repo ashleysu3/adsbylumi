@@ -52,6 +52,7 @@ import AdminUpdatesResults from "./pages/admin/UpdatesResults";
 import AdminFeatures from "./pages/admin/Features";
 import AdminInspiration from "./pages/admin/Inspiration";
 import Inspiration from "./pages/Inspiration";
+import AdminStockBroll from "./pages/admin/StockBroll";
 import Boards from "./pages/Boards";
 import BoardDetail from "./pages/BoardDetail";
 import AdminApprovals from "./pages/admin/Approvals";
@@ -228,6 +229,7 @@ const App = () => {
                   <Route path="/partner-dashboard" element={<PartnerDashboard />} />
                   <Route path="/admin/knowledge" element={<AdminKnowledge />} />
                   <Route path="/admin/inspiration" element={<AdminInspiration />} />
+                  <Route path="/admin/stock-broll" element={<AdminStockBroll />} />
                   <Route path="/inspiration" element={<Inspiration />} />
                   <Route path="/boards" element={<Boards />} />
                   <Route path="/boards/:boardId" element={<BoardDetail />} />
