@@ -92,6 +92,7 @@ export default function GuidedOnboarding() {
   // Step 1
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [instagramHandle, setInstagramHandle] = useState("");
+  const [showIgField, setShowIgField] = useState(false);
   const [step1Busy, setStep1Busy] = useState(false);
   // Per-section streaming flags. Each one flips false the moment its extractor settles,
   // so the reveal page can show inline shimmers and swap to real content as data arrives.
