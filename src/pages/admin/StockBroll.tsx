@@ -10,8 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Upload, Trash2, Edit, Loader2, Video as VideoIcon } from "lucide-react";
+import { Upload, Trash2, Edit, Loader2, Video as VideoIcon, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+
+const DEFAULT_CREDIT_NAME = "Dupe Photo";
+const DEFAULT_CREDIT_URL = "https://dupephotos.com";
 
 // Keep this in sync with the beat-tagging categories the talking-head-script generator
 // uses to pick matching footage — a clip can belong to more than one category.
@@ -36,6 +39,8 @@ interface StockBrollClip {
   title: string | null;
   categories: string[];
   duration_seconds: number | null;
+  credit_name: string | null;
+  credit_url: string | null;
   created_at: string;
   signedUrl?: string;
 }
@@ -70,10 +75,14 @@ export default function AdminStockBroll() {
 
   const [bulkTitle, setBulkTitle] = useState("");
   const [bulkCategories, setBulkCategories] = useState<string[]>([]);
+  const [bulkCreditName, setBulkCreditName] = useState(DEFAULT_CREDIT_NAME);
+  const [bulkCreditUrl, setBulkCreditUrl] = useState(DEFAULT_CREDIT_URL);
 
   const [editing, setEditing] = useState<StockBrollClip | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editCategories, setEditCategories] = useState<string[]>([]);
+  const [editCreditName, setEditCreditName] = useState("");
+  const [editCreditUrl, setEditCreditUrl] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -136,6 +145,8 @@ export default function AdminStockBroll() {
               categories: bulkCategories.length ? bulkCategories : ["misc"],
               duration_seconds: duration,
               source: "stock",
+              credit_name: bulkCreditName.trim() || null,
+              credit_url: bulkCreditUrl.trim() || null,
             });
           if (insErr) throw insErr;
           ok++;
@@ -157,6 +168,8 @@ export default function AdminStockBroll() {
     setEditing(clip);
     setEditTitle(clip.title || "");
     setEditCategories(clip.categories || []);
+    setEditCreditName(clip.credit_name || "");
+    setEditCreditUrl(clip.credit_url || "");
   };
 
   const saveEdit = async () => {
@@ -167,6 +180,8 @@ export default function AdminStockBroll() {
         .update({
           title: editTitle || null,
           categories: editCategories.length ? editCategories : ["misc"],
+          credit_name: editCreditName.trim() || null,
+          credit_url: editCreditUrl.trim() || null,
         })
         .eq("id", editing.id);
       if (error) throw error;
@@ -243,6 +258,19 @@ export default function AdminStockBroll() {
             <p className="text-xs text-muted-foreground">
               No category selected defaults every file in the batch to "misc". Edit individual clips below after upload.
             </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Credit name</Label>
+                <Input value={bulkCreditName} onChange={(e) => setBulkCreditName(e.target.value)} placeholder="e.g. Dupe Photo" />
+              </div>
+              <div>
+                <Label>Credit link</Label>
+                <Input value={bulkCreditUrl} onChange={(e) => setBulkCreditUrl(e.target.value)} placeholder="https://dupephotos.com" />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Shown to users wherever we display this footage in-app, so people can find more or pick their own from the source.
+            </p>
             <input
               ref={fileInputRef}
               type="file"
@@ -302,6 +330,20 @@ export default function AdminStockBroll() {
                           <Badge variant="outline" className="text-[10px]">{Math.round(clip.duration_seconds)}s</Badge>
                         )}
                       </div>
+                      {clip.credit_name && (
+                        clip.credit_url ? (
+                          <a
+                            href={clip.credit_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground truncate"
+                          >
+                            <ExternalLink className="h-3 w-3 shrink-0" /> via {clip.credit_name}
+                          </a>
+                        ) : (
+                          <p className="text-[11px] text-muted-foreground truncate">via {clip.credit_name}</p>
+                        )
+                      )}
                       <div className="flex gap-1 pt-1">
                         <Button size="sm" variant="outline" className="h-7 flex-1 text-xs" onClick={() => openEdit(clip)}>
                           <Edit className="h-3 w-3 mr-1" /> Edit
@@ -342,6 +384,16 @@ export default function AdminStockBroll() {
                     {cat}
                   </label>
                 ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label>Credit name</Label>
+                <Input value={editCreditName} onChange={(e) => setEditCreditName(e.target.value)} placeholder="e.g. Dupe Photo" />
+              </div>
+              <div>
+                <Label>Credit link</Label>
+                <Input value={editCreditUrl} onChange={(e) => setEditCreditUrl(e.target.value)} placeholder="https://dupephotos.com" />
               </div>
             </div>
           </div>
