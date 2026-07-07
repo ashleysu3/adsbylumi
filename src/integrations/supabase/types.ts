@@ -2801,7 +2801,7 @@ export type Database = {
           archived_at: string | null
           beta_feedback_email_sent: boolean
           created_at: string | null
-          email: string
+          email: string | null
           first_campaign_launched_at: string | null
           full_name: string | null
           guided_onboarding_completed_at: string | null
@@ -2821,7 +2821,7 @@ export type Database = {
           archived_at?: string | null
           beta_feedback_email_sent?: boolean
           created_at?: string | null
-          email: string
+          email?: string | null
           first_campaign_launched_at?: string | null
           full_name?: string | null
           guided_onboarding_completed_at?: string | null
@@ -2841,7 +2841,7 @@ export type Database = {
           archived_at?: string | null
           beta_feedback_email_sent?: boolean
           created_at?: string | null
-          email?: string
+          email?: string | null
           first_campaign_launched_at?: string | null
           full_name?: string | null
           guided_onboarding_completed_at?: string | null
