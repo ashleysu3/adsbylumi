@@ -430,7 +430,7 @@ const Sales = () => {
               Your ad, in four steps.
             </h2>
             <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
-              No blank page. No Ads Manager maze. You paste one link and watch it happen.
+              No blank page. No Ads Manager maze. Paste your link and watch the magic.
             </p>
           </ScrollReveal>
 
