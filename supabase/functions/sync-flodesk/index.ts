@@ -77,11 +77,8 @@ serve(async (req) => {
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
-  }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
   }
+
 
   try {
     const FLODESK_API_KEY = Deno.env.get('FLODESK_API_KEY');
