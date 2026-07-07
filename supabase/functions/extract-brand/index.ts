@@ -145,8 +145,10 @@ async function firecrawlBranding(url: string): Promise<{ suggested: Suggested; r
 
     return { suggested, raw };
   } catch (e) {
-    console.warn("firecrawl branding error", e);
+    console.warn("firecrawl branding error/timeout", (e as any)?.message || e);
     return null;
+  } finally {
+    clearTimeout(t);
   }
 }
 
@@ -154,15 +156,25 @@ async function engineFallback(url: string): Promise<Response> {
   if (!ENGINE_URL) {
     return json(502, { error: "No brand extraction provider available" });
   }
-  const r = await fetch(`${ENGINE_URL}/extract-brand`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-api-key": ENGINE_KEY },
-    body: JSON.stringify({ url }),
-  });
-  return new Response(await r.text(), {
-    status: r.status,
-    headers: { ...cors, "content-type": "application/json" },
-  });
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 20_000);
+  try {
+    const r = await fetch(`${ENGINE_URL}/extract-brand`, {
+      method: "POST",
+      signal: ctrl.signal,
+      headers: { "content-type": "application/json", "x-api-key": ENGINE_KEY },
+      body: JSON.stringify({ url }),
+    });
+    return new Response(await r.text(), {
+      status: r.status,
+      headers: { ...cors, "content-type": "application/json" },
+    });
+  } catch (e) {
+    console.warn("engineFallback error/timeout", (e as any)?.message || e);
+    return json(200, { error: "engine_timeout" });
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 function decodeEntities(s: string): string {
