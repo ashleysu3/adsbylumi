@@ -181,6 +181,14 @@ serve(async (req) => {
       }
     }
 
+    // If the site couldn't be read (bot-blocked / empty), we have NO real source
+    // to ground on. Without this guard the model invents a specific niche (e.g.
+    // "wedding pros") out of thin air. Force it generic instead of wrong.
+    const hasRealSource = websiteText.trim().length > 200;
+    const noSourceWarning = hasRealSource ? "" : `
+
+IMPORTANT — LIMITED SOURCE DATA: The brand's website could not be read (it likely blocks automated access) and there is little real copy to work from. Do NOT invent or guess a specific industry, niche, or ideal-client type — for example, do NOT assume "wedding planners", "real estate agents", "fitness coaches", or any other vertical. Base the profile strictly on the brand name and value proposition, keep it deliberately GENERIC, and clearly mark every item as a tentative inference ("likely…"). Being generic and correct is far better than specific and wrong.`;
+
     // Also pull voice profile for tone/vocabulary clues if it exists
     const voiceProfile = (brand as any).voice_profile;
     const voiceContext = voiceProfile && typeof voiceProfile === 'object'
@@ -190,6 +198,7 @@ serve(async (req) => {
     const systemPrompt = `You are an expert in audience psychology and conversion copywriting, trained in the "After Organic" methodology.
 
 Your job: produce a SPECIFIC, GROUNDED audience profile based on the brand's own website copy. NOT a generic "busy entrepreneur" sketch.
+${noSourceWarning}
 ${contentAssetsContext ? `\n${contentAssetsContext}` : ''}
 
 GROUNDING RULES (most important):
