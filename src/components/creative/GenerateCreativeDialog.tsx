@@ -119,6 +119,11 @@ const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
 const ENGINE_SUPPORTED_TEMPLATES = new Set([
   "cutout", "spotlight", "framed", "split", "highlighter", "overlay",
   "devicemockup", "testimonial", "carousel",
+  // Rich text-led formats — now render natively (require the 16-template engine
+  // build to be deployed). Adding them here stops the collapse: toEngineTemplate()
+  // and collapseCopyForFallback() both pass a template through untouched when it's
+  // in this set, so the real layout + full copy slots go straight to the engine.
+  "statgrid", "checklist", "chatproof", "event", "offer", "bigtype", "collage",
 ]);
 const RENDER_FALLBACK: Record<string, string> = {
   statgrid: "spotlight",
