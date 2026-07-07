@@ -110,6 +110,19 @@ export function BRollTextEditor({
   // Video is meaningfully longer than the overlays — offer a trim.
   const tooLong = videoDuration > 0 && maxOverlayEnd > 0 && videoDuration > maxOverlayEnd + 1.0;
 
+  // Auto-trim: if the video is longer than the copy and the user hasn't
+  // manually set a trim, clip the render to the end of the last overlay so
+  // the ad doesn't trail off with silent b-roll.
+  useEffect(() => {
+    if (tooLong && trim === null) {
+      setTrim({ start: 0, end: +Math.min(videoDuration, maxOverlayEnd).toFixed(2) });
+    }
+    if (!tooLong && trim && trim.start === 0 && Math.abs(trim.end - videoDuration) < 0.05) {
+      // Video no longer needs trimming (user extended overlays past it).
+      setTrim(null);
+    }
+  }, [tooLong, maxOverlayEnd, videoDuration]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Apply the chosen fit mode to the overlays before they're rendered or
   // sent to the encoder. 'speed' rescales every timing to fit into the
   // video duration. 'loop' leaves timings alone (preview will loop the
