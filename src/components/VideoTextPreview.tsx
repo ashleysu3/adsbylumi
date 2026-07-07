@@ -104,6 +104,10 @@ interface VideoTextPreviewProps {
   /** Fires whenever the video's duration is known. Lets parents detect when
    *  overlay timings exceed the video length and offer fit options. */
   onDurationChange?: (duration: number) => void;
+  /** Optional trim window — the preview clamps playback to [trimStart, trimEnd]
+   *  so users see exactly what will render. */
+  trimStart?: number;
+  trimEnd?: number;
 }
 
 function parseTimingString(timing?: string): { start: number; end: number } | null {
