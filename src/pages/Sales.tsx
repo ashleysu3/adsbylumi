@@ -784,7 +784,7 @@ const Sales = () => {
             <div className="mt-8">
               <CaptureBar size="lg" />
             </div>
-            <p className="mt-5 text-sm text-white/60">
+            <p className="mt-5 text-sm text-lumi-black">
               No card to begin · 7-day free trial to launch · cancel anytime
             </p>
           </div>
