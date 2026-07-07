@@ -24,6 +24,20 @@ Deno.serve(async (req) => {
     if (!referrer) return new Response(JSON.stringify({ error: 'Invalid code' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     if (referrer.id === user.id) return new Response(JSON.stringify({ error: 'Self-referral not allowed' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
+    // For the `paid` action, verify server-side that this user actually has an
+    // active subscription. Without this check, any authenticated user could
+    // grant their referrer $40 credit without ever paying.
+    let verifiedPaid = false;
+    if (action === 'paid') {
+      const { data: sub } = await supabase
+        .from('subscriptions')
+        .select('status')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const activeStatuses = new Set(['active', 'trialing', 'past_due']);
+      verifiedPaid = !!(sub && activeStatuses.has(String(sub.status)));
+    }
+
     // Upsert referral (one per referred_user)
     const { data: existing } = await supabase.from('referrals').select('id, status').eq('referred_user_id', user.id).maybeSingle();
     if (!existing) {
@@ -32,11 +46,11 @@ Deno.serve(async (req) => {
         referred_user_id: user.id,
         referred_email: user.email,
         code: code.toUpperCase(),
-        status: action === 'paid' ? 'paid' : 'signed_up',
+        status: verifiedPaid ? 'paid' : 'signed_up',
       });
     }
 
-    if (action === 'paid') {
+    if (action === 'paid' && verifiedPaid) {
       // Mark paid and grant $40 credit if not yet credited
       const { data: ref } = await supabase.from('referrals').select('*').eq('referred_user_id', user.id).maybeSingle();
       if (ref && ref.status !== 'credited') {
