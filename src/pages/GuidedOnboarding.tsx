@@ -1150,15 +1150,103 @@ export default function GuidedOnboarding() {
                   )}
                 </div>
 
+                {/* Concurrent engagement card — runs while extraction is still working
+                    so the wait feels like collaboration, not staring at a spinner.
+                    Answers are persisted into brand.audience_psychology + target_audience
+                    and localStorage so PayoffAd + recommend-strategy pick them up. */}
+                <div className="rounded-3xl border bg-gradient-to-br from-orange-500/5 via-pink-500/5 to-purple-600/5 p-6 sm:p-8 space-y-5 animate-fade-in">
+                  <div>
+                    <div className="text-xs uppercase tracking-wide font-semibold text-muted-foreground mb-1">
+                      While LUMI reads…
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground">
+                      What do you want more of right now?
+                    </h3>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {([
+                      { id: "booked_calls", label: "Booked calls" },
+                      { id: "leads", label: "Leads & email signups" },
+                      { id: "sales", label: "Course or launch sales" },
+                      { id: "followers", label: "More followers & DMs" },
+                    ] as { id: GoalChoice; label: string }[]).map((opt) => {
+                      const selected = goalChoice === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={async () => {
+                            setGoalChoice(opt.id);
+                            if (brandId && !goalPersistedRef.current) {
+                              goalPersistedRef.current = true;
+                              try {
+                                localStorage.setItem(`lumi_onboarding_goal_${brandId}`, opt.id);
+                                const currentAp = (brand?.audience_psychology as any) || {};
+                                const nextAp = { ...currentAp, onboarding_goal: opt.id };
+                                await supabase.from("brands").update({ audience_psychology: nextAp }).eq("id", brandId);
+                                setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: nextAp }));
+                              } catch { /* non-blocking */ }
+                            } else if (brandId) {
+                              localStorage.setItem(`lumi_onboarding_goal_${brandId}`, opt.id);
+                              const currentAp = (brand?.audience_psychology as any) || {};
+                              const nextAp = { ...currentAp, onboarding_goal: opt.id };
+                              supabase.from("brands").update({ audience_psychology: nextAp }).eq("id", brandId);
+                            }
+                          }}
+                          className={
+                            "text-left px-4 py-3 rounded-2xl border text-sm font-medium transition-all " +
+                            (selected
+                              ? "border-pink-500 bg-white shadow-md text-foreground"
+                              : "border-border bg-white/60 hover:border-pink-500/40 hover:bg-white text-foreground")
+                          }
+                          aria-pressed={selected}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="space-y-2 pt-1">
+                    <label htmlFor="dream-client" className="text-sm font-semibold text-foreground">
+                      Your dream client, in one line <span className="text-muted-foreground font-normal">(optional)</span>
+                    </label>
+                    <Input
+                      id="dream-client"
+                      value={dreamClient}
+                      onChange={(e) => setDreamClient(e.target.value)}
+                      onBlur={async () => {
+                        const val = dreamClient.trim();
+                        if (!brandId || !val || dreamPersistedRef.current) return;
+                        dreamPersistedRef.current = true;
+                        try {
+                          await supabase.from("brands").update({ target_audience: val }).eq("id", brandId);
+                          setBrand((prev: any) => ({ ...(prev || {}), target_audience: val }));
+                        } catch { /* non-blocking */ }
+                      }}
+                      placeholder="e.g. Course creators who hit $10k months and want to scale to $50k"
+                      maxLength={160}
+                      className="h-11 rounded-xl"
+                    />
+                  </div>
+                </div>
+
                 {/* Primary CTA */}
-                <div className="flex justify-center pt-2">
+                <div className="flex flex-col items-center gap-2 pt-2">
+                  {allRevealed && !goalChoice && (
+                    <p className="text-xs text-muted-foreground animate-fade-in">
+                      Pick a goal above so your first ad matches what you want more of.
+                    </p>
+                  )}
                   <Button
                     onClick={advance}
-                    disabled={!allRevealed}
+                    disabled={!allRevealed || !goalChoice}
                     className="h-14 px-8 text-base font-semibold rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity shadow-lg shadow-pink-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {allRevealed ? (
+                    {allRevealed && goalChoice ? (
                       <>That's me — make my ad <ArrowRight className="h-5 w-5 ml-2" /></>
+                    ) : allRevealed && !goalChoice ? (
+                      <>Almost ready — pick a goal <ArrowRight className="h-5 w-5 ml-2" /></>
                     ) : (
                       <><Loader2 className="h-5 w-5 animate-spin mr-2" /> Still reading…</>
                     )}
