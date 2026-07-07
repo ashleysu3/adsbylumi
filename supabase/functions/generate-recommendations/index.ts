@@ -59,6 +59,25 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const anonClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: userData } = await anonClient.auth.getUser();
+    const authedUser = userData?.user;
+    if (!authedUser) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { workspaceId, brandId, metrics, ads, goals } = await req.json();
 
     if (!workspaceId) {
@@ -77,9 +96,25 @@ Deno.serve(async (req) => {
     // Meta for ad-set names, which the client doesn't currently send).
     const { data: workspace } = await supabase
       .from('campaign_workspaces')
-      .select('*, brands(name, alert_thresholds, notification_preferences, meta_access_token, meta_account_id)')
+      .select('*, brands(user_id, name, alert_thresholds, notification_preferences, meta_access_token, meta_account_id)')
       .eq('id', workspaceId)
       .single();
+
+    // Verify caller owns the brand (or is admin)
+    const brandUserId = (workspace?.brands as any)?.user_id;
+    if (!workspace || !brandUserId) {
+      return new Response(JSON.stringify({ error: 'Workspace not found' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (brandUserId !== authedUser.id) {
+      const { data: isAdmin } = await supabase.rpc('has_role', { _user_id: authedUser.id, _role: 'admin' });
+      if (!isAdmin) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     const alertThresholds = (workspace?.brands as any)?.alert_thresholds || {};
     const creativeAutomation = (workspace?.brands as any)?.notification_preferences?.creative_automation || {};

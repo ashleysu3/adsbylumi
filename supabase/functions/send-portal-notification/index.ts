@@ -11,12 +11,31 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Restrict to service-role callers (invoked internally by client-portal-actions).
+    const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const authHeader = req.headers.get('Authorization') || '';
+    if (!authHeader.includes(SERVICE_KEY)) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { portalId, action, productionItemId, comment, clientName } = await req.json();
+
+    // Escape user-supplied strings before embedding in the email HTML.
+    const escapeHtml = (s: unknown): string =>
+      String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      SERVICE_KEY
     );
+
 
     // Fetch portal to get created_by and portal_name
     const { data: portalData } = await supabase.rpc('validate_portal_access', {
@@ -51,7 +70,7 @@ Deno.serve(async (req) => {
     await resend.emails.send({
       from: 'Lumi <hello@adsbylumi.com>',
       to: [userEmail],
-      subject: `[LUMI] Client action on ${portal.portal_name}`,
+      subject: `[LUMI] Client action on ${escapeHtml(portal.portal_name)}`,
       html: `
 <!DOCTYPE html>
 <html>
@@ -76,10 +95,10 @@ Deno.serve(async (req) => {
             <td style="padding: 30px 40px;">
               <p style="margin: 0 0 16px 0; color: #111; font-size: 15px; line-height: 1.6;">Your client took action on a creative item.</p>
               <table width="100%" cellpadding="12" cellspacing="0" style="background: #FAF9F6; border-radius: 12px; margin-bottom: 20px;">
-                <tr><td style="color: #666; font-size: 13px;">Portal</td><td style="color: #111; font-size: 14px; font-weight: 600;">${portal.portal_name}</td></tr>
-                <tr><td style="color: #666; font-size: 13px;">Client</td><td style="color: #111; font-size: 14px; font-weight: 600;">${displayClient}</td></tr>
-                <tr><td style="color: #666; font-size: 13px;">Action</td><td style="color: #111; font-size: 14px; font-weight: 600;">${actionLabel}</td></tr>
-                ${comment ? `<tr><td style="color: #666; font-size: 13px;">Comment</td><td style="color: #111; font-size: 14px;">"${comment}"</td></tr>` : ''}
+                <tr><td style="color: #666; font-size: 13px;">Portal</td><td style="color: #111; font-size: 14px; font-weight: 600;">${escapeHtml(portal.portal_name)}</td></tr>
+                <tr><td style="color: #666; font-size: 13px;">Client</td><td style="color: #111; font-size: 14px; font-weight: 600;">${escapeHtml(displayClient)}</td></tr>
+                <tr><td style="color: #666; font-size: 13px;">Action</td><td style="color: #111; font-size: 14px; font-weight: 600;">${escapeHtml(actionLabel)}</td></tr>
+                ${comment ? `<tr><td style="color: #666; font-size: 13px;">Comment</td><td style="color: #111; font-size: 14px;">"${escapeHtml(comment)}"</td></tr>` : ''}
               </table>
               <div style="text-align: center;">
                 <a href="https://adsbylumi.com/creative-studio" style="display: inline-block; background: linear-gradient(135deg, #F97316 0%, #EC4899 50%, #A78BFA 100%); color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 12px; font-size: 14px; font-weight: 700;">View Activity in LUMI →</a>
