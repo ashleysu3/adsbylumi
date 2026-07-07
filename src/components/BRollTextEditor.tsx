@@ -108,7 +108,7 @@ export function BRollTextEditor({
 
   const overflows = videoDuration > 0 && maxOverlayEnd > videoDuration + 0.05;
   // Video is meaningfully longer than the overlays — offer a trim.
-  const tooLong = videoDuration > 0 && maxOverlayEnd > 0 && videoDuration > maxOverlayEnd + 1.0;
+  const tooLong = videoDuration > 0 && maxOverlayEnd > 0 && videoDuration > maxOverlayEnd + 0.25;
 
   // Auto-trim: if the video is longer than the copy and the user hasn't
   // manually set a trim, clip the render to the end of the last overlay so
@@ -236,6 +236,15 @@ export function BRollTextEditor({
           emphasisStyle: style.emphasisStyle,
         };
 
+    // Belt-and-suspenders auto-trim: if the video is meaningfully longer
+    // than the copy and the user hasn't set a trim, clip the render to the
+    // end of the last overlay so the ad doesn't trail off with silent b-roll.
+    const effectiveTrim =
+      trim ??
+      (videoDuration > 0 && maxOverlayEnd > 0 && videoDuration > maxOverlayEnd + 0.25
+        ? { start: 0, end: +Math.min(videoDuration, maxOverlayEnd).toFixed(2) }
+        : null);
+
     enqueue({
       title: activeClipName || 'B-roll video',
       sourceClipName: activeClipName,
@@ -243,8 +252,8 @@ export function BRollTextEditor({
       overlays: specs,
       style: renderStyle,
       loopVideo: overflows && fitMode === 'loop',
-      trimStart: trim?.start,
-      trimEnd: trim?.end,
+      trimStart: effectiveTrim?.start,
+      trimEnd: effectiveTrim?.end,
       context: brandId ? { brandId } : undefined,
     });
 
@@ -333,22 +342,37 @@ export function BRollTextEditor({
                     placeholder="Type the text for this overlay… use Enter for a new line"
                     rows={2}
                   />
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-[1fr_1fr_1fr] gap-2">
                     <div>
-                      <Label className="text-[11px] text-muted-foreground">
-                        Timing (seconds)
-                      </Label>
+                      <Label className="text-[11px] text-muted-foreground">Start (s)</Label>
                       <Input
-                        value={o.timing || ''}
-                        onChange={e => updateOverlay(i, { timing: e.target.value })}
-                        placeholder="0-3s"
-                        className={timingInvalid ? 'border-destructive' : ''}
+                        type="number"
+                        min={0}
+                        step={0.1}
+                        value={timing ? timing.start : ''}
+                        onChange={e => {
+                          const start = Math.max(0, parseFloat(e.target.value) || 0);
+                          const end = timing ? Math.max(start + 0.1, timing.end) : start + 3;
+                          updateOverlay(i, { timing: `${+start.toFixed(2)}-${+end.toFixed(2)}s` });
+                        }}
+                        className="h-9"
                       />
-                      {timingInvalid && (
-                        <p className="text-[11px] text-destructive mt-1">
-                          Use the format "start-end", e.g. "0-3s" or "2.5-5".
-                        </p>
-                      )}
+                    </div>
+                    <div>
+                      <Label className="text-[11px] text-muted-foreground">End (s)</Label>
+                      <Input
+                        type="number"
+                        min={timing ? timing.start + 0.1 : 0.1}
+                        step={0.1}
+                        value={timing ? timing.end : ''}
+                        onChange={e => {
+                          const end = parseFloat(e.target.value) || 0;
+                          const start = timing ? timing.start : 0;
+                          const clampedEnd = Math.max(start + 0.1, end);
+                          updateOverlay(i, { timing: `${+start.toFixed(2)}-${+clampedEnd.toFixed(2)}s` });
+                        }}
+                        className="h-9"
+                      />
                     </div>
                     <div>
                       <Label className="text-[11px] text-muted-foreground">Type</Label>
@@ -356,7 +380,7 @@ export function BRollTextEditor({
                         value={o.type || 'hook'}
                         onValueChange={v => updateOverlay(i, { type: v as TextOverlay['type'] })}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="h-9">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -368,6 +392,43 @@ export function BRollTextEditor({
                       </Select>
                     </div>
                   </div>
+                  {timing && (
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>Shows for {(timing.end - timing.start).toFixed(1)}s</span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="underline hover:text-foreground"
+                          onClick={() => {
+                            const dur = Math.max(0.1, timing.end - timing.start);
+                            const newEnd = +(timing.end + 0.5).toFixed(2);
+                            updateOverlay(i, { timing: `${timing.start}-${newEnd}s` });
+                          }}
+                        >
+                          +0.5s longer
+                        </button>
+                        <button
+                          type="button"
+                          className="underline hover:text-foreground"
+                          onClick={() => {
+                            const prev = overlays[i - 1];
+                            const prevEnd = prev ? parseTimingRange(prev.timing || '')?.end ?? 0 : 0;
+                            const gapStart = +(prevEnd + 0.5).toFixed(2);
+                            const dur = Math.max(0.1, timing.end - timing.start);
+                            updateOverlay(i, { timing: `${gapStart}-${+(gapStart + dur).toFixed(2)}s` });
+                          }}
+                          title="Push this text 0.5s after the previous one"
+                        >
+                          add gap before
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {timingInvalid && (
+                    <p className="text-[11px] text-destructive">
+                      Enter a valid start and end time (end must be after start).
+                    </p>
+                  )}
                   {o.xy && (
                     <button
                       className="text-[11px] text-muted-foreground underline"
