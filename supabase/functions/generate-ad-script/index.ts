@@ -30,6 +30,7 @@ HARD RULES:
 - Sound like a real person talking to one person, in THIS brand's voice — never generic marketer-speak.
 - The CTA must match the real offer/goal given. Never say "learn more" or "click the link" — say the actual thing that happens (book a call, get the guide, join the waitlist, etc).
 - Never invent a specific price, stat, or claim that wasn't given in context.
+- When OFFER PSYCHOLOGY is given below, the HOOK and PROBLEM beats must draw on it directly — the moment they realize they need this, or a real hesitation — not a generic pain statement. Generic copy that could belong to any brand is an instant fail.
 - "category" must be exactly one of: ${CATEGORIES.join(", ")}. Pick whichever best matches the VISUAL BACKDROP for that beat (what b-roll should play behind this line while they talk) — not the beat's topic. Vary categories across beats when it makes sense; "misc" is a safe fallback.
 - "seconds" is how long that beat takes to say out loud, normally 3-5.
 
@@ -50,7 +51,7 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const body = await req.json();
-    const { brand_id, user_goal, offer_hint } = body || {};
+    const { brand_id, user_goal, offer_hint, offer_psychology } = body || {};
     if (!brand_id) {
       return new Response(JSON.stringify({ error: "brand_id is required" }), {
         status: 400,
@@ -83,10 +84,21 @@ serve(async (req) => {
       2,
     );
 
+    const op = offer_psychology || null;
+    const offerPsychologyBlock = op
+      ? `\n\nOFFER PSYCHOLOGY (ground the hook/problem beats in this — use verbatim or paraphrased, don't invent something more generic):\n` +
+        (op.moment_they_realize ? `Moment they realize they need this: "${op.moment_they_realize}"\n` : "") +
+        (op.why_they_need_this ? `Why they need this specifically: "${op.why_they_need_this}"\n` : "") +
+        (Array.isArray(op.specific_hesitations) && op.specific_hesitations.length
+          ? `Specific hesitations: ${op.specific_hesitations.slice(0, 3).map((h: string) => `"${h}"`).join(", ")}\n`
+          : "") +
+        (op.what_finally_convinces ? `What finally convinces them: "${op.what_finally_convinces}"\n` : "")
+      : "";
+
     const userPrompt = `Write the 4-beat talking-head script for this brand.
 
 BRAND CONTEXT:
-${brandContext}
+${brandContext}${offerPsychologyBlock}
 
 Remember: this is spoken out loud by the creator, on camera, in one continuous take. Keep every line something a real person would actually say.`;
 
