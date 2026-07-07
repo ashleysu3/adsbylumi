@@ -117,6 +117,9 @@ export default function GuidedOnboarding() {
   });
   const [slowMode, setSlowMode] = useState(false);
   const [narrationIdx, setNarrationIdx] = useState(0);
+  // Escape hatch: after ~25s (or as soon as we have colors OR a real brand name)
+  // we unlock the CTA so the user is never stranded on "Still reading…".
+  const [phaseTimedOut, setPhaseTimedOut] = useState(false);
 
   // Concurrent engagement questions — asked while extraction runs so total time to
   // first ad ≈ slowest extractor. Answers flow into recommend-strategy + copy gen.
@@ -161,6 +164,14 @@ export default function GuidedOnboarding() {
   useEffect(() => {
     if (extractionPhase !== 'running') { setSlowMode(false); return; }
     const t = setTimeout(() => setSlowMode(true), 15_000);
+    return () => clearTimeout(t);
+  }, [extractionPhase]);
+
+  // Phase-level escape hatch: no matter what, after ~25s we let the user proceed
+  // so a slow Firecrawl / engine scrape can never trap them on this screen.
+  useEffect(() => {
+    if (extractionPhase !== 'running') { setPhaseTimedOut(false); return; }
+    const t = setTimeout(() => setPhaseTimedOut(true), 25_000);
     return () => clearTimeout(t);
   }, [extractionPhase]);
 
@@ -212,6 +223,21 @@ export default function GuidedOnboarding() {
 
   const revealedCount = REVEAL_SECTIONS.filter((k) => revealed[k]).length;
   const allRevealed = revealedCount === REVEAL_SECTIONS.length;
+  // Have we pulled enough to give the user a real first ad? Colors OR a real
+  // brand name is our "core data" bar. If we hit either — or the 25s cap — the
+  // "Continue to my ad →" CTA is available; slow extractors keep running in
+  // the background and their results still stream into the reveal card.
+  const hasCoreBrandData =
+    ((brand?._kit?.colors as string[] | undefined)?.length ?? 0) > 0 ||
+    !!(brand?.name && brand.name !== placeholderNameRef.current);
+  const canContinue = allRevealed || phaseTimedOut || (hasCoreBrandData && !loadingBrandBasics);
+  // Fallback state: extraction finished but produced nothing useful (no colors
+  // AND no real brand name AND no audience picture). We show a friendly nudge
+  // instead of a spinning card.
+  const extractionEmpty =
+    (extractionPhase === 'done' || phaseTimedOut) &&
+    !hasCoreBrandData &&
+    !brand?.audience_psychology;
 
   // ---------- auth + resume ----------
   const autoStartFiredRef = useRef(false);
@@ -299,11 +325,26 @@ export default function GuidedOnboarding() {
   };
   const back = () => setStep((s) => Math.max(1, s - 1));
 
+  // Basic sanity check on the URL: must have a hostname with a TLD like ".com".
+  // Catches typos like "notasite" or "http://localhost" so we don't spend 40s
+  // scraping something that will never resolve.
+  const isLikelyLiveSite = (url: string): boolean => {
+    try {
+      const u = new URL(url);
+      const host = u.hostname.replace(/^www\./, "");
+      if (!host.includes(".")) return false;
+      const tld = host.split(".").pop() || "";
+      return /^[a-z]{2,24}$/i.test(tld);
+    } catch {
+      return false;
+    }
+  };
+
   // =================== STEP 1 ===================
   const startStep1 = async () => {
     const normalized = normalizeWebsiteUrl(websiteUrl);
-    if (!normalized || !normalized.includes(".")) {
-      toast.error("Add your website URL");
+    if (!normalized || !isLikelyLiveSite(normalized)) {
+      toast.error("That doesn't look like a live site — check the URL");
       return;
     }
     if (step1Fired.current) return;
