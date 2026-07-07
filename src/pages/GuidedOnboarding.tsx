@@ -162,7 +162,9 @@ export default function GuidedOnboarding() {
     setRevealed((r) => (r[k] ? r : { ...r, [k]: true }));
   }, []);
 
-  // basics — gated by brand extractor; also needs min first-delay from start
+  // Streamed reveal: each card animates in the moment its OWN extractor settles,
+  // independent of the others, so total wait ≈ slowest single extractor.
+  // FIRST_DELAY_MS gives the header a beat before the first pop-in.
   useEffect(() => {
     if (!revealStartedAt || revealed.basics) return;
     if (loadingBrandBasics) return;
@@ -171,37 +173,34 @@ export default function GuidedOnboarding() {
     return () => clearTimeout(t);
   }, [revealStartedAt, loadingBrandBasics, revealed.basics, markRevealed]);
 
-  // design — after basics, same extractor (brand) drives colors/fonts
   useEffect(() => {
-    if (!revealed.basics || revealed.design) return;
+    if (!revealStartedAt || revealed.design) return;
     if (loadingBrandBasics) return;
-    const t = setTimeout(() => markRevealed("design"), STAGGER_MS);
+    const wait = Math.max(0, revealStartedAt + FIRST_DELAY_MS - Date.now());
+    const t = setTimeout(() => markRevealed("design"), wait);
     return () => clearTimeout(t);
-  }, [revealed.basics, revealed.design, loadingBrandBasics, markRevealed]);
+  }, [revealStartedAt, loadingBrandBasics, revealed.design, markRevealed]);
 
-  // audience — after design
   useEffect(() => {
-    if (!revealed.design || revealed.audience) return;
+    if (!revealStartedAt || revealed.audience) return;
     if (loadingAudience) return;
-    const t = setTimeout(() => markRevealed("audience"), STAGGER_MS);
+    const t = setTimeout(() => markRevealed("audience"), 0);
     return () => clearTimeout(t);
-  }, [revealed.design, revealed.audience, loadingAudience, markRevealed]);
+  }, [revealStartedAt, loadingAudience, revealed.audience, markRevealed]);
 
-  // proof — after audience
   useEffect(() => {
-    if (!revealed.audience || revealed.proof) return;
+    if (!revealStartedAt || revealed.proof) return;
     if (loadingProof) return;
-    const t = setTimeout(() => markRevealed("proof"), STAGGER_MS);
+    const t = setTimeout(() => markRevealed("proof"), 0);
     return () => clearTimeout(t);
-  }, [revealed.audience, revealed.proof, loadingProof, markRevealed]);
+  }, [revealStartedAt, loadingProof, revealed.proof, markRevealed]);
 
-  // images — last
   useEffect(() => {
-    if (!revealed.proof || revealed.images) return;
+    if (!revealStartedAt || revealed.images) return;
     if (loadingAssets) return;
-    const t = setTimeout(() => markRevealed("images"), STAGGER_MS);
+    const t = setTimeout(() => markRevealed("images"), 0);
     return () => clearTimeout(t);
-  }, [revealed.proof, revealed.images, loadingAssets, markRevealed]);
+  }, [revealStartedAt, loadingAssets, revealed.images, markRevealed]);
 
   const revealedCount = REVEAL_SECTIONS.filter((k) => revealed[k]).length;
   const allRevealed = revealedCount === REVEAL_SECTIONS.length;
