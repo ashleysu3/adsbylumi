@@ -548,11 +548,15 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
               Show me another
             </Button>
             <Button
-              onClick={onAdvance}
-              disabled={phase !== "ready"}
+              onClick={startTrialCheckout}
+              disabled={phase !== "ready" || checkoutLoading}
               className="h-12 px-6 text-base font-semibold rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity shadow-lg shadow-pink-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Start free trial to launch this <ArrowRight className="h-5 w-5 ml-2" />
+              {checkoutLoading ? (
+                <><Loader2 className="h-5 w-5 mr-2 animate-spin" /> Opening checkout…</>
+              ) : (
+                <>Start free trial to launch this <ArrowRight className="h-5 w-5 ml-2" /></>
+              )}
             </Button>
           </div>
         </div>
