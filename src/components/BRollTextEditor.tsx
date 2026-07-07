@@ -389,9 +389,36 @@ export function BRollTextEditor({
 
           {/* RIGHT: preview */}
           <div>
-            <Label className="text-xs text-muted-foreground uppercase font-semibold tracking-wide mb-2 block">
-              Preview
-            </Label>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <Label className="text-xs text-muted-foreground uppercase font-semibold tracking-wide">
+                Preview
+              </Label>
+              {availableClips && availableClips.length > 1 && (
+                <Select
+                  value={availableClips.find(c => c.file_url === activeVideoUrl)?.id ?? ''}
+                  onValueChange={(id) => {
+                    const clip = availableClips.find(c => c.id === id);
+                    if (!clip) return;
+                    setActiveVideoUrl(clip.file_url);
+                    setActiveClipName(clip.file_name);
+                    setTrim(null);
+                    setFitMode(null);
+                    setVideoDuration(0);
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-[220px] text-xs">
+                    <SelectValue placeholder="Change clip…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableClips.map(c => (
+                      <SelectItem key={c.id} value={c.id} className="text-xs">
+                        {c.file_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
 
             {overflows && (
               <div className="mb-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
