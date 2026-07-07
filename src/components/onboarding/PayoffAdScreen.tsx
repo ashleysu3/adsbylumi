@@ -244,11 +244,23 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         photoUrlRef.current = photoUrl;
         templateRef.current = photoUrl ? "spotlight" : "bigtype";
 
-        // 3) Recommend strategy (default lead-gen goal)
+        // 3) Recommend strategy — respect the goal the user picked on the reveal step.
+        // Falls back to lead-gen when no choice was made.
+        const goalMap: Record<string, string> = {
+          booked_calls: "book_calls",
+          leads: "get_leads",
+          sales: "get_sales",
+          followers: "grow_audience",
+        };
+        const onboardingGoal = (typeof window !== "undefined"
+          ? localStorage.getItem(`lumi_onboarding_goal_${brandId}`)
+          : null) ||
+          ((brand?.audience_psychology as any)?.onboarding_goal ?? null);
+        const userGoal = onboardingGoal ? (goalMap[onboardingGoal] || "get_leads") : "get_leads";
         setStatusLine("🧠 Picking your best angle…");
         try {
           const { data: recData } = await supabase.functions.invoke("recommend-strategy", {
-            body: { brand_id: brandId, offer_id: null, user_goal: "get_leads" },
+            body: { brand_id: brandId, offer_id: null, user_goal: userGoal },
           });
           if (!cancelled) {
             const s = (recData as any)?.strategy ?? recData ?? null;
@@ -265,7 +277,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           template,
           format: "single",
           styleHint: template === "bigtype" ? "bigtype" : "card",
-          goal: "get_leads",
+          goal: userGoal,
           concept: brand?.value_proposition || "",
           keyMessage: brand?.value_proposition || "",
           offer: "",
