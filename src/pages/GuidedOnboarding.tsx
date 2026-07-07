@@ -222,12 +222,14 @@ export default function GuidedOnboarding() {
         }
         user = anon.user;
       }
-      // Prefill from homepage capture bar (sessionStorage survives round-trips).
+      // Prefill from homepage capture bar. Router state is the primary source
+      // (survives without storage); sessionStorage is a fallback for reloads.
+      const navState: any = (location.state as any) || {};
       let prefillWebsite = "";
       let prefillInstagram = "";
       try {
-        prefillWebsite = sessionStorage.getItem("lumi_prefill_website") || "";
-        prefillInstagram = sessionStorage.getItem("lumi_prefill_instagram") || "";
+        prefillWebsite = navState.websiteUrl || sessionStorage.getItem("lumi_prefill_website") || "";
+        prefillInstagram = navState.instagramHandle || sessionStorage.getItem("lumi_prefill_instagram") || "";
       } catch { /* ignore */ }
       // When user explicitly asked to add a new brand, do NOT resume an in-progress one.
       let resumedExisting = false;
