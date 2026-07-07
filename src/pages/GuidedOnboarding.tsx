@@ -1216,8 +1216,8 @@ export default function GuidedOnboarding() {
           </Card>
         )}
 
-        {/* ============== STEP 8 — Strategy + first campaign ============== */}
-        {step === 5 && (() => {
+        {/* ============== STEP 6 — Strategy + first campaign ============== */}
+        {step === 6 && (() => {
           const primaryOffer = offers?.[0];
           const offerName = primaryOffer?.name || "your offer";
           const GOAL_OPTIONS: { value: string; label: string; hint: string }[] = [
