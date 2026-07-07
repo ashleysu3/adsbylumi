@@ -143,6 +143,7 @@ export default function GuidedOnboarding() {
   // generic copy with no real CTA/objections to grab onto. Goal-conditional so
   // the question is specific ("what's the call for?") instead of abstract.
   const [offerHint, setOfferHint] = useState("");
+  const [offerHintUrl, setOfferHintUrl] = useState("");
   const goalPersistedRef = useRef(false);
   const dreamPersistedRef = useRef(false);
   const offerHintPersistedRef = useRef(false);
@@ -1313,6 +1314,31 @@ export default function GuidedOnboarding() {
                         rows={2}
                         className="rounded-xl resize-y"
                       />
+                      <div className="space-y-1 pt-1">
+                        <label htmlFor="offer-url" className="text-xs font-medium text-muted-foreground">
+                          Got a link for it? <span className="font-normal">(sales page, webinar signup, opt-in — optional, but LUMI can read the real page instead of guessing)</span>
+                        </label>
+                        <Input
+                          id="offer-url"
+                          type="url"
+                          inputMode="url"
+                          value={offerHintUrl}
+                          onChange={(e) => setOfferHintUrl(e.target.value)}
+                          onBlur={async () => {
+                            const val = offerHintUrl.trim();
+                            if (!brandId || !val) return;
+                            try {
+                              localStorage.setItem(`lumi_onboarding_offer_url_${brandId}`, val);
+                              const currentAp = (brand?.audience_psychology as any) || {};
+                              const nextAp = { ...currentAp, onboarding_offer_url: val };
+                              await supabase.from("brands").update({ audience_psychology: nextAp }).eq("id", brandId);
+                              setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: nextAp }));
+                            } catch { /* non-blocking */ }
+                          }}
+                          placeholder="https://yoursite.com/free-training"
+                          className="rounded-xl"
+                        />
+                      </div>
                     </div>
                   )}
 

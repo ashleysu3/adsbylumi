@@ -12,9 +12,46 @@ const cors = {
 // is the lightweight, pre-signup equivalent: no offers row exists yet in the
 // ad-first flow, just a hand-typed offer hint, so this grounds compose-ad's
 // OFFER PSYCHOLOGY block from that instead of leaving it empty.
+// Best-effort page fetch, mirroring generate-audience-psychology's own site
+// scrape — same timeout/strip/truncate approach so a slow or bot-blocked page
+// degrades to "no real source" instead of hanging or crashing the request.
+async function fetchPageText(url: string): Promise<string> {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 9000);
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      redirect: "follow",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+    });
+    clearTimeout(t);
+    if (!res.ok) return "";
+    const html = await res.text();
+    return html
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(/<nav[\s\S]*?<\/nav>/gi, "")
+      .replace(/<footer[\s\S]*?<\/footer>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 8000);
+  } catch (e) {
+    console.warn("generate-offer-psychology: page fetch failed", (e as any)?.message || e);
+    return "";
+  }
+}
+
+// Same shape generate-product-psychology writes for a real `offers` row — this
+// is the lightweight, pre-signup equivalent: no offers row exists yet in the
+// ad-first flow, just a hand-typed offer hint, so this grounds compose-ad's
+// OFFER PSYCHOLOGY block from that instead of leaving it empty.
 const SYSTEM_PROMPT = `You are an expert in offer positioning and buyer psychology, writing for direct-response Meta ad copy.
 
-Given a brand's audience psychology and a short description of their offer, generate OFFER-AUDIENCE PSYCHOLOGY: how this specific audience relates to THIS specific offer (not generic advice).
+Given a brand's audience psychology and their offer, generate OFFER-AUDIENCE PSYCHOLOGY: how this specific audience relates to THIS specific offer (not generic advice). When real offer page copy is given, it's the highest-priority source — quote or closely paraphrase it over the brand owner's own short description.
 
 - why_they_need_this: Why someone with this audience's psychology needs THIS specific offer (not just any solution). One or two sentences.
 - moment_they_realize: The specific moment/scenario when they realize they need this. Paint a vivid, concrete picture — a real situation, not an abstraction.
@@ -45,14 +82,17 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const body = await req.json();
-    const { brand_id, offer_hint, user_goal } = body || {};
-    if (!brand_id || !offer_hint || !String(offer_hint).trim()) {
-      return new Response(JSON.stringify({ error: "brand_id and offer_hint are required" }), {
+    const { brand_id, offer_hint, offer_url, user_goal } = body || {};
+    const hint = typeof offer_hint === "string" ? offer_hint.trim() : "";
+    const url = typeof offer_url === "string" ? offer_url.trim() : "";
+    if (!brand_id || (!hint && !url)) {
+      return new Response(JSON.stringify({ error: "brand_id and at least one of offer_hint/offer_url are required" }), {
         status: 400,
         headers: { ...cors, "Content-Type": "application/json" },
       });
     }
-    const hint = String(offer_hint).trim();
+    // Cache key covers both inputs — either changing should invalidate the cache.
+    const cacheKey = `${hint}|${url}`;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -64,13 +104,15 @@ serve(async (req) => {
       .eq("id", brand_id)
       .maybeSingle();
 
-    // Cache hit: same hint we already generated for — skip the AI call entirely.
+    // Cache hit: same inputs we already generated for — skip the AI call entirely.
     const ap: any = brand?.audience_psychology || {};
-    if (ap.onboarding_offer_psychology && ap.onboarding_offer_psychology_source_hint === hint) {
+    if (ap.onboarding_offer_psychology && ap.onboarding_offer_psychology_source_hint === cacheKey) {
       return new Response(JSON.stringify({ offer_psychology: ap.onboarding_offer_psychology, cached: true }), {
         headers: { ...cors, "Content-Type": "application/json" },
       });
     }
+
+    const pageText = url && /^https?:\/\//i.test(url) ? await fetchPageText(url) : "";
 
     const audienceContext = JSON.stringify(
       {
@@ -91,7 +133,12 @@ GOAL FOR THIS AD: ${user_goal || "get_leads"}
 AUDIENCE PSYCHOLOGY:
 ${audienceContext}
 
-THE OFFER (in the brand owner's own words — what happens when someone takes them up on this): "${hint}"
+THE OFFER, in the brand owner's own words (what happens when someone takes them up on this): ${hint ? `"${hint}"` : "(not given — use the real page copy below instead)"}
+${pageText
+  ? `\nREAL OFFER PAGE COPY (highest-priority source — this is what the page actually says, quote/paraphrase from it):\n${pageText}`
+  : url
+    ? `\n(The offer page at ${url} could not be read — fall back to the brand owner's description above.)`
+    : ""}
 
 Generate the offer-audience psychology profile for this exact offer and audience.`;
 
@@ -151,7 +198,7 @@ Generate the offer-audience psychology profile for this exact offer and audience
           audience_psychology: {
             ...ap,
             onboarding_offer_psychology: offerPsychology,
-            onboarding_offer_psychology_source_hint: hint,
+            onboarding_offer_psychology_source_hint: cacheKey,
           },
         })
         .eq("id", brand_id);

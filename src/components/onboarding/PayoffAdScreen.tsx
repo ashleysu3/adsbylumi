@@ -340,6 +340,15 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           ((brand?.audience_psychology as any)?.onboarding_offer_hint ?? "");
         offerHintRef.current = offerHint;
 
+        // An optional link to the actual sales/webinar/opt-in page — when given,
+        // generate-offer-psychology reads the real page instead of just the
+        // hand-typed hint, the same lever generate-audience-psychology uses
+        // against the main site.
+        const offerUrl: string = (typeof window !== "undefined"
+          ? localStorage.getItem(`lumi_onboarding_offer_url_${brandId}`)
+          : null) ||
+          ((brand?.audience_psychology as any)?.onboarding_offer_url ?? "");
+
         // Pick the strongest template this specific brand can support, instead of
         // always defaulting to the same one:
         //   1) A real testimonial from their own site — social proof beats everything.
@@ -365,9 +374,9 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           supabase.functions.invoke("recommend-strategy", {
             body: { brand_id: brandId, offer_id: null, user_goal: userGoal, offer_hint: offerHint || undefined },
           }),
-          offerHint
+          offerHint || offerUrl
             ? supabase.functions.invoke("generate-offer-psychology", {
-                body: { brand_id: brandId, offer_hint: offerHint, user_goal: userGoal },
+                body: { brand_id: brandId, offer_hint: offerHint || undefined, offer_url: offerUrl || undefined, user_goal: userGoal },
               })
             : Promise.resolve(null),
         ]);
