@@ -2,6 +2,17 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // This is a public webhook endpoint — no JWT required.
 // Flodesk sends POST requests here when subscribers are created (form submissions).
+//
+// Scoped to ONE brand via a `brandId` query param on the callback URL
+// (flodesk-connect registers a unique URL per brand). Every brand gets its
+// own callback, so this only ever needs to look up and notify the one
+// brand whose Flodesk account actually fired the event — previously this
+// queried every brand with Flodesk + Meta connected and sent the Lead
+// event to all of them, which meant one brand's real lead polluted every
+// other connected brand's Meta pixel with a fake conversion.
+//
+// Sends via the shared send-conversion-event function instead of
+// reimplementing Meta CAPI hashing/payload-building here.
 
 Deno.serve(async (req) => {
   const jsonHeaders = {
@@ -22,6 +33,9 @@ Deno.serve(async (req) => {
     });
   }
 
+  const url = new URL(req.url);
+  const brandId = url.searchParams.get('brandId');
+
   try {
     const payload = await req.json();
     console.log('[FLODESK-WEBHOOK] Received event:', JSON.stringify(payload).slice(0, 500));
@@ -32,7 +46,7 @@ Deno.serve(async (req) => {
     if (!event || !subscriberData) {
       console.log('[FLODESK-WEBHOOK] No event or data in payload, acknowledging');
       return new Response(JSON.stringify({ received: true }), {
-          status: 200, headers: jsonHeaders
+        status: 200, headers: jsonHeaders
       });
     }
 
@@ -40,7 +54,7 @@ Deno.serve(async (req) => {
     if (event !== 'subscriber.created') {
       console.log(`[FLODESK-WEBHOOK] Ignoring event type: ${event}`);
       return new Response(JSON.stringify({ received: true, skipped: true }), {
-          status: 200, headers: jsonHeaders
+        status: 200, headers: jsonHeaders
       });
     }
 
@@ -48,100 +62,80 @@ Deno.serve(async (req) => {
     if (!email) {
       console.log('[FLODESK-WEBHOOK] No email in subscriber data');
       return new Response(JSON.stringify({ received: true, skipped: true }), {
-          status: 200, headers: jsonHeaders
+        status: 200, headers: jsonHeaders
       });
     }
 
-    console.log(`[FLODESK-WEBHOOK] Processing form submission for: ${email}`);
+    if (!brandId) {
+      // Webhooks registered before this fix shipped still point at the old,
+      // unscoped URL until that brand disconnects and reconnects Flodesk.
+      // Skip rather than fall back to broadcasting — that's the exact bug
+      // this fix removes.
+      console.error('[FLODESK-WEBHOOK] Missing brandId on callback URL — this Flodesk connection needs to be reconnected to pick up the per-brand fix. Skipping to avoid cross-brand contamination.');
+      return new Response(JSON.stringify({ received: true, skipped: true, reason: 'missing_brand_scope' }), {
+        status: 200, headers: jsonHeaders
+      });
+    }
+
+    console.log(`[FLODESK-WEBHOOK] Processing form submission for brand ${brandId}: ${email}`);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Find all brands that have Flodesk connected (have an API key)
-    // and also have Meta pixel + access token configured
-    const { data: brands, error: brandsError } = await supabase
+    const { data: brand, error: brandError } = await supabase
       .from('brands')
-      .select('id, meta_pixel_id, meta_access_token, name')
-      .not('flodesk_api_key', 'is', null)
-      .not('meta_pixel_id', 'is', null)
-      .not('meta_access_token', 'is', null);
+      .select('id, name, meta_pixel_id, meta_access_token')
+      .eq('id', brandId)
+      .maybeSingle();
 
-    if (brandsError) {
-      console.error('[FLODESK-WEBHOOK] Error fetching brands:', brandsError);
-      return new Response(JSON.stringify({ received: true, error: 'DB error' }), {
+    if (brandError || !brand) {
+      console.error('[FLODESK-WEBHOOK] Brand not found:', brandId, brandError);
+      return new Response(JSON.stringify({ received: true, skipped: true, reason: 'brand_not_found' }), {
         status: 200, headers: jsonHeaders
       });
     }
 
-    if (!brands || brands.length === 0) {
-      console.log('[FLODESK-WEBHOOK] No brands with Flodesk + Meta configured');
-      return new Response(JSON.stringify({ received: true, noBrands: true }), {
+    if (!brand.meta_pixel_id || !brand.meta_access_token) {
+      console.log(`[FLODESK-WEBHOOK] Brand ${brand.name} has no Meta pixel/token configured yet, skipping`);
+      return new Response(JSON.stringify({ received: true, skipped: true, reason: 'no_meta_configured' }), {
         status: 200, headers: jsonHeaders
       });
     }
 
-    console.log(`[FLODESK-WEBHOOK] Sending Lead event to ${brands.length} brand(s)`);
-
-    // Hash function for Meta CAPI
-    async function hashValue(value: string): Promise<string> {
-      if (!value) return '';
-      const encoder = new TextEncoder();
-      const data = encoder.encode(value.toLowerCase().trim());
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-
-    const results: Array<{ brandId: string; brandName: string; success: boolean; error?: string }> = [];
-
-    for (const brand of brands) {
-      try {
-        const hashedEmail = await hashValue(email);
-        const userData: Record<string, string> = { em: hashedEmail };
-
-        if (subscriberData.first_name) {
-          userData.fn = await hashValue(subscriberData.first_name);
-        }
-        if (subscriberData.last_name) {
-          userData.ln = await hashValue(subscriberData.last_name);
-        }
-
-        const eventPayload = {
-          event_name: 'Lead',
-          event_time: Math.floor(Date.now() / 1000),
-          event_source_url: subscriberData.source_url || 'https://flodesk.com',
-          action_source: 'website',
-          user_data: userData,
-          custom_data: {
-            content_name: 'Flodesk Form Submission',
-            content_category: 'lead_form',
+    const capiRes = await fetch(`${supabaseUrl}/functions/v1/send-conversion-event`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({
+        brandId: brand.id,
+        event: {
+          eventName: 'Lead',
+          eventSourceUrl: subscriberData.source_url || 'https://flodesk.com',
+          userData: {
+            email,
+            firstName: subscriberData.first_name,
+            lastName: subscriberData.last_name,
           },
-        };
+          customData: {
+            contentName: 'Flodesk Form Submission',
+            contentCategory: 'lead_form',
+          },
+          actionSource: 'website',
+        },
+      }),
+    });
+    const capiData = await capiRes.json();
 
-        const capiUrl = `https://graph.facebook.com/v25.0/${brand.meta_pixel_id}/events?access_token=${brand.meta_access_token}`;
-        const capiRes = await fetch(capiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: [eventPayload] }),
-        });
-
-        const capiData = await capiRes.json();
-
-        if (capiRes.ok) {
-          console.log(`[FLODESK-WEBHOOK] Lead event sent for brand ${brand.name}:`, capiData);
-          results.push({ brandId: brand.id, brandName: brand.name, success: true });
-        } else {
-          console.error(`[FLODESK-WEBHOOK] CAPI error for brand ${brand.name}:`, capiData);
-          results.push({ brandId: brand.id, brandName: brand.name, success: false, error: capiData.error?.message });
-        }
-      } catch (e) {
-        console.error(`[FLODESK-WEBHOOK] Error processing brand ${brand.name}:`, e);
-        results.push({ brandId: brand.id, brandName: brand.name, success: false, error: String(e) });
-      }
+    if (capiRes.ok && capiData?.success) {
+      console.log(`[FLODESK-WEBHOOK] Lead event sent for brand ${brand.name}:`, capiData);
+    } else {
+      console.error(`[FLODESK-WEBHOOK] CAPI error for brand ${brand.name}:`, capiData);
     }
 
-    return new Response(JSON.stringify({ received: true, results }), {
+    return new Response(JSON.stringify({ received: true, result: capiData }), {
       status: 200, headers: jsonHeaders
     });
 
