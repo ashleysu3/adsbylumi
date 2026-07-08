@@ -11,9 +11,12 @@ import { useBrand } from '@/contexts/BrandContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
   ArrowLeft, Activity, ShieldCheck, AlertTriangle, Sparkles,
-  MessageCircle, ExternalLink, HelpCircle, Loader2, Link2Off
+  MessageCircle, ExternalLink, HelpCircle, Loader2, Link2Off,
+  GraduationCap, Zap,
 } from 'lucide-react';
 import { useLumiAssistant } from '@/components/LumiAssistant';
+
+type Track = 'new' | 'expert';
 
 export default function TrackingSetup() {
   const navigate = useNavigate();
@@ -21,6 +24,7 @@ export default function TrackingSetup() {
   const { openChat } = useLumiAssistant();
   const [brand, setBrand] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [track, setTrack] = useState<Track | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -44,6 +48,11 @@ export default function TrackingSetup() {
   }, [activeBrand?.id, brandLoading]);
 
   const isConnected = !!brand?.meta_account_id;
+  const hasPixel = !!brand?.meta_pixel_id;
+  // Once a pixel exists, this is a maintenance visit regardless of which
+  // track got them here originally — skip straight to the no-nonsense view.
+  const effectiveTrack: Track | null = hasPixel ? 'expert' : track;
+  const showFork = !loading && isConnected && !hasPixel && !track;
 
   return (
     <DashboardLayout>
@@ -62,21 +71,57 @@ export default function TrackingSetup() {
           </div>
           <p className="text-muted-foreground max-w-2xl">
             This is where we make sure Meta knows when someone takes action on your site —
-            views your offer, signs up, or buys. Tracking is the #1 thing that trips creators up,
-            so we built this page to walk you through it without the jargon.
+            views your offer, signs up, or buys.
           </p>
         </div>
 
-        {/* Reassurance banner */}
-        <Alert className="border-primary/30 bg-primary/5">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <AlertTitle>Don't panic if you see a warning</AlertTitle>
-          <AlertDescription>
-            Tracking errors look scary but are almost always a 5-minute fix. Read the plain-English
-            explanations below, or tap <strong>Ask Lumi</strong> at the bottom and we'll walk you through
-            it step-by-step.
-          </AlertDescription>
-        </Alert>
+        {/* Reassurance banner — only while someone's actively setting up for the first time */}
+        {effectiveTrack === 'new' && (
+          <Alert className="border-primary/30 bg-primary/5">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <AlertTitle>Don't panic if you see a warning</AlertTitle>
+            <AlertDescription>
+              Tracking errors look scary but are almost always a 5-minute fix. Read the plain-English
+              explanations below, or tap <strong>Ask Lumi</strong> at the bottom and we'll walk you through
+              it step-by-step.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Track picker — only shown once, before a pixel exists. Once you're
+            set up, or on a return visit, we skip straight to the tool. */}
+        {showFork && (
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Card
+              className="cursor-pointer transition-colors hover:border-primary/50"
+              onClick={() => setTrack('new')}
+            >
+              <CardContent className="pt-6 text-center space-y-3">
+                <GraduationCap className="h-8 w-8 mx-auto text-primary" />
+                <div>
+                  <p className="font-semibold">I'm new to this</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Lumi creates your pixel and walks you through installing it — no jargon.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card
+              className="cursor-pointer transition-colors hover:border-primary/50"
+              onClick={() => setTrack('expert')}
+            >
+              <CardContent className="pt-6 text-center space-y-3">
+                <Zap className="h-8 w-8 mx-auto text-primary" />
+                <div>
+                  <p className="font-semibold">I already run ads</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Skip the explainer — verify or import your existing pixel.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Not connected state */}
         {!loading && !isConnected && (
@@ -105,7 +150,7 @@ export default function TrackingSetup() {
         )}
 
         {/* The actual pixel verification */}
-        {!loading && isConnected && brand?.id && (
+        {!loading && isConnected && brand?.id && !showFork && (
           <PixelVerificationCard
             brandId={brand.id}
             isMetaConnected={isConnected}
@@ -117,15 +162,20 @@ export default function TrackingSetup() {
           />
         )}
 
-        {/* Plain-English education */}
+        {/* Plain-English education — collapsed-first framing for the expert
+            track, since re-explaining what a pixel is to someone who
+            already runs ads is exactly the friction this split exists to avoid. */}
+        {!showFork && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <HelpCircle className="h-5 w-5 text-primary" />
-              Tracking, explained simply
+              {effectiveTrack === 'expert' ? 'Need a refresher?' : 'Tracking, explained simply'}
             </CardTitle>
             <CardDescription>
-              The basics every creator should know — no marketing degree required.
+              {effectiveTrack === 'expert'
+                ? 'Quick reference if something looks off.'
+                : 'The basics every creator should know — no marketing degree required.'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -232,8 +282,10 @@ export default function TrackingSetup() {
             </Accordion>
           </CardContent>
         </Card>
+        )}
 
         {/* Hands-on help */}
+        {!showFork && (
         <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -270,6 +322,18 @@ export default function TrackingSetup() {
             </p>
           </CardContent>
         </Card>
+        )}
+
+        {/* Let someone switch tracks if they picked wrong — only relevant
+            before a pixel exists; once connected there's nothing to switch. */}
+        {!showFork && track && !hasPixel && (
+          <button
+            onClick={() => setTrack(null)}
+            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+          >
+            ← Choose a different starting point
+          </button>
+        )}
       </div>
     </DashboardLayout>
   );
