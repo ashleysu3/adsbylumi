@@ -269,6 +269,11 @@ export function GenerateCreativeDialog() {
   const [textCase, setTextCase] = useState<"original" | "upper" | "lower" | "title">("original");
   const [headlineScale, setHeadlineScale] = useState<number>(1);
   const [bodyScale, setBodyScale] = useState<number>(1);
+  // Readability controls for templates that put text directly on a photo
+  // with no card behind it (currently just nativecaption) — the template's
+  // own white text + shadow isn't always enough contrast against every photo.
+  const [textColor, setTextColor] = useState<"auto" | "light" | "dark">("auto");
+  const [textBackdrop, setTextBackdrop] = useState(false);
 
   const [composing, setComposing] = useState(false);
   const [template, setTemplate] = useState<string>("bigtype");
@@ -967,6 +972,8 @@ export function GenerateCreativeDialog() {
         headlineScale,
         bodyScale,
         textCase: textCase === "original" ? undefined : textCase,
+        textColor: textColor === "auto" ? undefined : textColor,
+        textBackdrop: textBackdrop || undefined,
       };
 
       if (isCarousel) {
@@ -1706,6 +1713,37 @@ export function GenerateCreativeDialog() {
                           <ToggleGroupItem value="title" className="text-xs">Title</ToggleGroupItem>
                         </ToggleGroup>
                       </div>
+
+                      {template === "nativecaption" && (
+                        <div className="space-y-3 rounded border border-border bg-background p-3">
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                            Text readability
+                          </p>
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Text color</p>
+                            <ToggleGroup
+                              type="single"
+                              size="sm"
+                              value={textColor}
+                              onValueChange={(v) => v && setTextColor(v as typeof textColor)}
+                              className="justify-start"
+                            >
+                              <ToggleGroupItem value="auto" className="text-xs">Auto</ToggleGroupItem>
+                              <ToggleGroupItem value="light" className="text-xs">Light</ToggleGroupItem>
+                              <ToggleGroupItem value="dark" className="text-xs">Dark</ToggleGroupItem>
+                            </ToggleGroup>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs font-medium">Add a background behind the text</p>
+                              <p className="text-[11px] text-muted-foreground">
+                                Helps text stand out over a busy photo.
+                              </p>
+                            </div>
+                            <Switch checked={textBackdrop} onCheckedChange={setTextBackdrop} />
+                          </div>
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
