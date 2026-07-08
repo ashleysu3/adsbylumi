@@ -31,6 +31,22 @@ STRONG -> headline: "You don't need another app. You need clients." | sub: "The 
 
 SENTENCE CASE headlines (first word + proper nouns only). COMPLIANCE: never promise guaranteed income or results; imply, never guarantee.`;
 
+// notesapp/textthread/nativecaption mimic a real phone screenshot, not a
+// designed ad — the eyebrow/headline/CTA-button mindset above would break
+// the illusion, so these get a different voice on top of the same brand
+// grounding rules.
+const NATIVE_TEMPLATES = new Set(["notesapp", "textthread", "nativecaption"]);
+const NATIVE_VOICE_ADDENDUM = `
+
+NATIVE-FORMAT OVERRIDE — this template mimics a real phone screenshot (Notes app / text thread / photo caption), NOT a designed ad. For this one:
+- Write like a real person typing to themselves or texting a friend — plain, unpolished, first person where natural. No headline/eyebrow/CTA-button mindset.
+- BANNED here too: any CTA-button phrasing ("Save my seat", "Learn more", "Sign up"). If there's an ask, say it the way a person actually types it: "comment X and I'll send it", "link's in my bio", "DM me Y".
+- Still ground every line in the real offer/audience psychology below — just say it the way a person actually talks, not the way an ad talks.`;
+
+function voiceRulesFor(template: string): string {
+  return NATIVE_TEMPLATES.has(template) ? VOICE_RULES + NATIVE_VOICE_ADDENDUM : VOICE_RULES;
+}
+
 // exact slots per template (keys + length guidance)
 const CTA_RULE = `cta (<=4 words, MUST match the brief's offer/format — e.g. free class → "Save my seat", download → "Send me the guide", waitlist → "Join the waitlist"; NEVER "Learn more", "Sign up", "Get started")`;
 const SLOTS: Record<string,string> = {
@@ -49,11 +65,14 @@ const SLOTS: Record<string,string> = {
   offer: `eyebrow (<=4 words, e.g. "This week only"), offerBig (the discount/price hero — short: "40% off", "$200 off"; if the brief gives no real number use "[your offer]"), headline (<=7 words — what's on sale), sub (<=14 words — what's included), expiry (urgency line only if the brief gives a real deadline, else ""), tickerTop (optional short repeating phrase like "Flash sale · Flash sale" or ""), tickerBottom (optional like "Ends Sunday · Ends Sunday" or ""), cta (<=4 words)`,
   bigtype: `eyebrow (<=5 words), headlinePre (lead-in words, <=4 words), headlineHL (the punchy highlighted phrase, <=4 words), headlinePost (closing words, <=5 words), sub (optional <=12 words or ""), cta (<=4 words). Keep the full headline under ~10 words total — the type is huge`,
   collage: `eyebrow (<=5 words), headline (<=7 words), sub (optional <=12 words or ""), cta (<=4 words)`,
+  notesapp: `body (the note itself: 1-3 short paragraphs separated by a blank line, written in first person like a real personal note or confession — plain and unpolished, NOT structured like ad copy, <=55 words total), cta (optional ONE line asking them to comment/DM/save, styled as part of the note rather than a button, <=10 words, or "" to skip)`,
+  textthread: `contactName (a believable first name only), contactLoc (optional short context under the name like a city, or ""), msg1 (received message — a real question a friend would text, <=14 words), msg2 (sent message — a short reply, <=12 words), msg3 (received message — a reaction or follow-up question, <=8 words, or "" to keep it to 2 messages), msg4 (sent message — the payoff; can end like "link's in my bio" instead of a formal CTA, <=18 words)`,
+  nativecaption: `line1 (the setup line, plain and matter-of-fact, <=10 words), line2 (the punchline/reveal, a bolder statement, <=10 words), cta (optional tiny caption-style line, <=6 words, or "" to skip)`,
 };
 
 function mapStyle(styleHint?: string, format?: string): string {
   if (format === "carousel") return "carousel";
-  const m: Record<string,string> = { "photo-forward":"cutout","card":"spotlight","framed":"framed","type-led":"split","testimonial":"testimonial","highlighter":"highlighter","stats":"statgrid","data":"statgrid","checklist":"checklist","list":"checklist","steps":"checklist","chat":"chatproof","proof":"chatproof","testimonialchat":"chatproof","event":"event","webinar":"event","offer":"offer","sale":"offer","discount":"offer","bigtype":"bigtype","type-hero":"bigtype","collage":"collage","grid":"collage","overlay":"overlay","device":"devicemockup","devicemockup":"devicemockup","mockup":"devicemockup" };
+  const m: Record<string,string> = { "photo-forward":"cutout","card":"spotlight","framed":"framed","type-led":"split","testimonial":"testimonial","highlighter":"highlighter","stats":"statgrid","data":"statgrid","checklist":"checklist","list":"checklist","steps":"checklist","chat":"chatproof","proof":"chatproof","testimonialchat":"chatproof","event":"event","webinar":"event","offer":"offer","sale":"offer","discount":"offer","bigtype":"bigtype","type-hero":"bigtype","collage":"collage","grid":"collage","overlay":"overlay","device":"devicemockup","devicemockup":"devicemockup","mockup":"devicemockup","notesapp":"notesapp","notes":"notesapp","textthread":"textthread","texts":"textthread","imessage":"textthread","nativecaption":"nativecaption","caption":"nativecaption" };
   return (styleHint && m[styleHint]) || "cutout";
 }
 
@@ -276,7 +295,7 @@ serve(async (req) => {
       `Hard rule: every option must reference at least one SPECIFIC element from the OFFER PSYCHOLOGY or AUDIENCE PSYCHOLOGY above (a named moment, a real pain, a real hesitation, a concrete before/after). Generic copy that could belong to any brand is an instant fail.\n\n` +
       `Output ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
 
-    const first = await callModel(VOICE_RULES, user);
+    const first = await callModel(voiceRulesFor(template), user);
     if (!first.ok) {
       const msg = first.data?.error?.message || `OpenAI HTTP ${first.status}`;
       console.error("compose-ad openai error:", msg, JSON.stringify(first.data).slice(0, 500));
@@ -325,7 +344,7 @@ serve(async (req) => {
         `OVER-LENGTH SLOTS TO SHORTEN:\n${formatViolationsForRetry(violations)}\n\n` +
         `Previous JSON:\n${JSON.stringify(parsed)}\n\n` +
         `Output ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
-      const second = await callModel(VOICE_RULES, retryUser);
+      const second = await callModel(voiceRulesFor(template), retryUser);
       if (second.ok) {
         const retryContent = second.data?.choices?.[0]?.message?.content;
         if (retryContent) {
