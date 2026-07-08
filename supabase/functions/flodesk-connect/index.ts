@@ -147,8 +147,12 @@ Deno.serve(async (req) => {
 
     console.log('[FLODESK-CONNECT] Flodesk auth validated via mode:', authMode);
 
-    // Register webhook for subscriber.created events
-    const webhookUrl = `${supabaseUrl}/functions/v1/flodesk-webhook`;
+    // Register webhook for subscriber.created events. Scoped to this brand
+    // via a query param — Flodesk gives every customer's webhook the exact
+    // same callback URL, so without this the handler has no way to tell
+    // whose subscriber just signed up, and previously broadcast the Lead
+    // event to every brand with Flodesk + Meta connected.
+    const webhookUrl = `${supabaseUrl}/functions/v1/flodesk-webhook?brandId=${brandId}`;
     
     // Delete old webhook if one exists
     if (brand.flodesk_webhook_id) {
