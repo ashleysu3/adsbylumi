@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { HexColorPicker } from "react-colorful";
-import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff, Info, ImagePlus } from "lucide-react";
+import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff, Info, ImagePlus, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
@@ -71,7 +71,7 @@ const DEFAULT_COLORS: Colors = {
 type SingleOption = Record<string, string>;
 type Slide = Record<string, string>;
 type CarouselOption = { slides: Slide[] };
-type Photo = { id: string; path: string; url: string; source?: "upload" | "brand"; role?: string };
+type Photo = { id: string; path: string; url: string; source?: "upload" | "brand"; role?: string; isDefault?: boolean };
 type BrandAssetRow = { id: string; url: string; role: string };
 type LogoCorner = "tl" | "tr" | "bl" | "br";
 type RenderImage = { placement: string; width: number; height: number; base64: string; label?: string };
@@ -448,12 +448,12 @@ export function GenerateCreativeDialog() {
       try {
         const { data, error } = await supabase
           .from("user_assets" as any)
-          .select("id, original_url, cutout_url")
+          .select("id, original_url, cutout_url, is_default")
           .eq("kind", "photo")
           .eq("brand_id", activeBrand.id)
           .order("created_at", { ascending: false });
         if (error) throw error;
-        const rows = (data || []) as unknown as Array<{ id: string; original_url: string; cutout_url: string | null }>;
+        const rows = (data || []) as unknown as Array<{ id: string; original_url: string; cutout_url: string | null; is_default: boolean | null }>;
         // Prefer the background-removed cutout when available so headshots
         // composite cleanly inside the template's avatar/circle slot.
         const paths = rows.map((r) => r.cutout_url || r.original_url);
@@ -469,9 +469,12 @@ export function GenerateCreativeDialog() {
           id: r.id as string,
           path: r.cutout_url || r.original_url,
           url: signed[i]?.signedUrl || "",
+          isDefault: !!r.is_default,
         }));
         setPhotos(next);
-        if (next[0]) setSelectedPhotoId(next[0].id);
+        const defaultPhoto = next.find((p) => p.isDefault);
+        if (defaultPhoto) setSelectedPhotoId(defaultPhoto.id);
+        else if (next[0]) setSelectedPhotoId(next[0].id);
       } catch (err: any) {
         toast.error(err?.message || "Could not load photos");
       } finally {
@@ -1038,6 +1041,21 @@ export function GenerateCreativeDialog() {
     () => pickerImages.find((p) => p.id === selectedPhotoId),
     [pickerImages, selectedPhotoId],
   );
+
+  const setDefaultPhoto = async (photoId: string) => {
+    const brandId = activeBrand?.id;
+    if (!brandId) return;
+    try {
+      await supabase.from("user_assets" as any).update({ is_default: false }).eq("brand_id", brandId).eq("is_default", true);
+      const { error } = await supabase.from("user_assets" as any).update({ is_default: true }).eq("id", photoId);
+      if (error) throw error;
+      setPhotos((prev) => prev.map((p) => ({ ...p, isDefault: p.id === photoId })));
+      setSelectedPhotoId(photoId);
+      toast.success("Set as your default photo");
+    } catch (err: any) {
+      toast.error(err?.message || "Could not set default photo");
+    }
+  };
 
   const callRender = async (body: Record<string, any>) => {
     const { data, error } = await supabase.functions.invoke("generate-ad", { body });
@@ -1724,22 +1742,35 @@ export function GenerateCreativeDialog() {
                       ) : (
                         <div className="grid grid-cols-5 gap-2 pt-1">
                           {pickerImages.slice(0, 20).map((p) => (
-                            <button
-                              key={p.id}
-                              type="button"
-                              onClick={() => setSelectedPhotoId(p.id)}
-                              className={`relative aspect-square rounded border-2 overflow-hidden transition ${
-                                selectedPhotoId === p.id ? "border-primary" : "border-border hover:border-muted-foreground"
-                              }`}
-                              title={p.source === "brand" ? `Brand · ${p.role}` : "Upload"}
-                            >
-                              <img src={p.url} alt="" className="w-full h-full object-cover" />
-                              {p.source === "brand" && (
-                                <span className="absolute bottom-0 left-0 right-0 text-[9px] uppercase text-white bg-black/55 py-0.5 text-center leading-none">
-                                  {p.role}
-                                </span>
+                            <div key={p.id} className="relative aspect-square">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedPhotoId(p.id)}
+                                className={`w-full h-full rounded border-2 overflow-hidden transition ${
+                                  selectedPhotoId === p.id ? "border-primary" : "border-border hover:border-muted-foreground"
+                                }`}
+                                title={p.source === "brand" ? `Brand · ${p.role}` : "Upload"}
+                              >
+                                <img src={p.url} alt="" className="w-full h-full object-cover" />
+                                {p.source === "brand" && (
+                                  <span className="absolute bottom-0 left-0 right-0 text-[9px] uppercase text-white bg-black/55 py-0.5 text-center leading-none">
+                                    {p.role}
+                                  </span>
+                                )}
+                              </button>
+                              {p.source !== "brand" && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); setDefaultPhoto(p.id); }}
+                                  className={`absolute top-0.5 right-0.5 rounded-full p-0.5 transition ${
+                                    p.isDefault ? "bg-primary text-primary-foreground" : "bg-black/40 text-white/80 hover:bg-black/60"
+                                  }`}
+                                  title={p.isDefault ? "Your default photo" : "Set as default photo"}
+                                >
+                                  <Star className="h-3 w-3" fill={p.isDefault ? "currentColor" : "none"} />
+                                </button>
                               )}
-                            </button>
+                            </div>
                           ))}
                         </div>
                       )}
