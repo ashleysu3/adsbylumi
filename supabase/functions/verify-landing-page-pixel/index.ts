@@ -116,9 +116,9 @@ Deno.serve(async (req) => {
 
     if (!pageResponse.ok) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: `Failed to fetch page: ${pageResponse.status} ${pageResponse.statusText}` 
+        JSON.stringify({
+          success: false,
+          error: `Lumi couldn't load that page (HTTP ${pageResponse.status}). Double-check the URL is correct and publicly accessible.`,
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

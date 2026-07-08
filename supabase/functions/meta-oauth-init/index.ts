@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
 
     if (authError || !user) {
       console.error('[meta-oauth-init] auth failed:', authError?.message);
-      return new Response(JSON.stringify({ error: 'Invalid authentication' }), {
+      return new Response(JSON.stringify({ error: 'Your session expired. Refresh the page and sign in again before connecting Meta.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 401,
       });

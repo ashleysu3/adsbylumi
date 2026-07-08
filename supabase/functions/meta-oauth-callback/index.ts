@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.83.0';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { metaErrorMessage, metaPermissionLabels } from '../_shared/meta-errors.ts';
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -47,7 +48,7 @@ Deno.serve(async (req) => {
     const { code, brandId, redirectUri } = await req.json();
     
     if (!code || !brandId) {
-      throw new Error('Code and brandId are required');
+      throw new Error("Something interrupted the connection to Meta. Please try connecting again.");
     }
 
     // 2. VERIFY BRAND OWNERSHIP
@@ -99,7 +100,12 @@ Deno.serve(async (req) => {
 
     if (!tokenResponse.ok || !tokenData.access_token) {
       console.error('Token exchange failed:', tokenData);
-      throw new Error(tokenData.error?.message || 'Failed to obtain access token');
+      // Meta invalidates the code if it's reused (e.g. a double-click or a
+      // page refresh mid-flow) — that's the most common cause here, and the
+      // fix is always the same: start the connection over.
+      throw new Error(
+        metaErrorMessage(tokenData.error, "Meta couldn't complete the connection — this usually happens if the connect link was used twice or took too long. Please try connecting again.")
+      );
     }
 
     console.log('Short-lived access token obtained, exchanging for long-lived token...');
@@ -138,7 +144,9 @@ Deno.serve(async (req) => {
 
     if (!adAccountsResponse.ok) {
       console.error('Failed to fetch ad accounts:', adAccountsData);
-      throw new Error(adAccountsData.error?.message || 'Failed to fetch ad accounts');
+      throw new Error(
+        metaErrorMessage(adAccountsData.error, "Meta connected, but Lumi couldn't read your ad accounts. Reconnect and make sure you approve the ad-account permission.")
+      );
     }
 
     // Filter only active accounts
@@ -375,7 +383,7 @@ Deno.serve(async (req) => {
         const missing = REQUIRED_PERMISSIONS.filter((p) => !granted.includes(p));
         permissions = { granted, declined, missing };
         if (missing.length > 0) {
-          permissionWarning = `Meta didn't grant these required permissions: ${missing.join(', ')}. Click "Fix / re-pick assets" to re-authorize.`;
+          permissionWarning = `Meta didn't grant: ${metaPermissionLabels(missing)}. Click "Fix / re-pick assets" and approve everything on Meta's permission screen — some things won't work without it.`;
           console.warn('[meta-oauth-callback] missing required permissions:', missing);
         } else {
           console.log('[meta-oauth-callback] all required permissions granted');

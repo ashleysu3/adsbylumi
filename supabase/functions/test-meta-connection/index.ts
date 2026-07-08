@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { metaErrorMessage, metaPermissionLabels } from '../_shared/meta-errors.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -106,8 +107,8 @@ Deno.serve(async (req) => {
         JSON.stringify({
           success: false,
           message: 'Meta token is invalid or expired',
-          error: meData.error.message || 'Token validation failed',
-          details: { 
+          error: metaErrorMessage(meData.error, 'Your Meta connection needs to be refreshed.'),
+          details: {
             tokenValid: false,
             errorCode: meData.error.code,
             errorType: meData.error.type
@@ -148,7 +149,7 @@ Deno.serve(async (req) => {
         JSON.stringify({
           success: false,
           message: 'Cannot access Meta ad account',
-          error: accountData.error.message || 'Ad account access denied',
+          error: metaErrorMessage(accountData.error, "Lumi can't access this ad account anymore — it may have been deleted or you lost access to it."),
           details: {
             tokenValid: true,
             permissionsValid: missingPermissions.length === 0,
@@ -183,7 +184,7 @@ Deno.serve(async (req) => {
     };
 
     if (missingPermissions.length > 0) {
-      result.message = `Connection works but some permissions are missing: ${missingPermissions.join(', ')}. Please disconnect and reconnect your Meta account to grant updated permissions.`;
+      result.message = `Meta's connected, but it's missing: ${metaPermissionLabels(missingPermissions)}. Reconnect your Meta account and approve everything on the permissions screen.`;
     }
 
     return new Response(

@@ -2,6 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { Resend } from 'npm:resend@2.0.0';
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { isInternalOrAuthenticated } from "../_shared/internal-auth.ts";
+import { metaErrorMessage } from "../_shared/meta-errors.ts";
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -138,7 +139,7 @@ async function refreshBrandToken(
 
   if (brandError || !brand?.meta_access_token) {
     console.error(`No token found for brand ${brandId}:`, brandError);
-    return { success: false, error: 'No existing token found' };
+    return { success: false, error: "This brand isn't connected to Meta yet." };
   }
 
   const currentToken = brand.meta_access_token;
@@ -160,13 +161,13 @@ async function refreshBrandToken(
     
     // If the token is invalid/expired, we can't refresh it
     if (refreshData.error?.code === 190 || refreshData.error?.type === 'OAuthException') {
-      return { 
-        success: false, 
-        error: 'Token invalid or expired. User must reconnect Meta account.' 
+      return {
+        success: false,
+        error: 'Your Meta connection has expired or was revoked. Reconnect to get a fresh token.',
       };
     }
-    
-    return { success: false, error: refreshData.error?.message || 'Failed to refresh token' };
+
+    return { success: false, error: metaErrorMessage(refreshData.error, "Meta couldn't refresh your connection. Reconnect your account.") };
   }
 
   console.log('New token received, expires in:', refreshData.expires_in, 'seconds');
