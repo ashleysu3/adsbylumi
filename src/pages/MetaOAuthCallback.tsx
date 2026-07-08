@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatInvokeError } from "@/lib/formatInvokeError";
+import { formatMetaOAuthDenial } from "@/lib/formatMetaOAuthDenial";
 import { Button } from "@/components/ui/button";
 
 export default function MetaOAuthCallback() {
@@ -44,7 +45,7 @@ export default function MetaOAuthCallback() {
         try {
           if (error) {
             window.opener.postMessage(
-              { type: 'META_OAUTH_ERROR', error: errorDescription || error },
+              { type: 'META_OAUTH_ERROR', error: formatMetaOAuthDenial(error, errorDescription) },
               window.location.origin
             );
             window.close();
@@ -53,7 +54,7 @@ export default function MetaOAuthCallback() {
 
           if (!code) {
             window.opener.postMessage(
-              { type: 'META_OAUTH_ERROR', error: 'Missing authorization code.' },
+              { type: 'META_OAUTH_ERROR', error: "Meta didn't send back what Lumi needed to finish connecting. Please try again." },
               window.location.origin
             );
             window.close();
@@ -62,7 +63,7 @@ export default function MetaOAuthCallback() {
 
           if (!brandId) {
             window.opener.postMessage(
-              { type: 'META_OAUTH_ERROR', error: 'Missing brand context (state).' },
+              { type: 'META_OAUTH_ERROR', error: "Lost track of which brand you were connecting. Please close this and try again from Meta Settings." },
               window.location.origin
             );
             window.close();
@@ -129,23 +130,25 @@ export default function MetaOAuthCallback() {
     (async () => {
       try {
         if (error) {
-          const msg = errorDescription || error;
-          setMessage(msg || "Meta connection failed.");
-          toast.error(msg || "Meta connection failed");
+          const msg = formatMetaOAuthDenial(error, errorDescription);
+          setMessage(msg);
+          toast.error(msg);
           setMode("error");
           return;
         }
 
         if (!code) {
-          setMessage("Missing authorization code.");
-          toast.error("Missing authorization code");
+          const msg = "Meta didn't send back what Lumi needed to finish connecting. Please try again.";
+          setMessage(msg);
+          toast.error(msg);
           setMode("error");
           return;
         }
 
         if (!brandId) {
-          setMessage("Missing brand context (state).");
-          toast.error("Missing brand context");
+          const msg = "Lost track of which brand you were connecting. Please go back and try again.";
+          setMessage(msg);
+          toast.error(msg);
           setMode("error");
           return;
         }

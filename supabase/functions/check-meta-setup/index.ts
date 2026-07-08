@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { metaErrorMessage, metaAccountStatusLabel, metaPermissionLabels } from "../_shared/meta-errors.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -134,7 +135,7 @@ Deno.serve(async req => {
         tokenWorks = true;
         m.fbUserId = d.id; m.fbUserName = d.name;
       } else {
-        tokenError = d?.error?.message || `Meta returned ${r.status}`;
+        tokenError = metaErrorMessage(d?.error, "Meta rejected the connection.");
       }
     } catch (e: any) {
       tokenError = e?.message || 'Token validation failed';
@@ -181,7 +182,7 @@ Deno.serve(async req => {
           id: 'permissions',
           label: 'Required permissions',
           status: missingPerms.includes('ads_management') || missingPerms.includes('ads_read') ? 'fail' : 'warn',
-          detail: `Missing: ${missingPerms.join(', ')}. Re-pick assets and grant all permissions on Meta's consent screen.`,
+          detail: `Missing: ${metaPermissionLabels(missingPerms)}. Re-pick assets and grant all permissions on Meta's consent screen.`,
           fix: { kind: 'reconnect', label: 'Fix / re-pick assets' },
         });
       }
@@ -214,7 +215,7 @@ Deno.serve(async req => {
               id: 'ad_account',
               label: 'Ad account active',
               status: 'warn',
-              detail: `${d.name || d.id} is in status ${d.account_status} (1 = active). Check Meta Business for billing or compliance issues.`,
+              detail: `${d.name || d.id}: ${metaAccountStatusLabel(d.account_status)}`,
             });
           } else {
             checks.push({ id: 'ad_account', label: 'Ad account', status: 'pass', detail: `${d.name} (${d.id})` });
@@ -224,7 +225,7 @@ Deno.serve(async req => {
             id: 'ad_account',
             label: 'Ad account reachable',
             status: 'fail',
-            detail: d?.error?.message || `Couldn't load ${brand.meta_account_id}.`,
+            detail: metaErrorMessage(d?.error, `Lumi lost access to ${brand.meta_account_id} — it may have been deleted or you no longer have access.`),
             fix: { kind: 'reconnect', label: 'Reconnect Meta' },
           });
         }
@@ -251,7 +252,7 @@ Deno.serve(async req => {
             id: 'page',
             label: 'Facebook Page',
             status: 'warn',
-            detail: `Stored Page ${brand.page_name || brand.page_id} can't be reached.`,
+            detail: `${brand.page_name || "Your connected Page"} isn't reachable anymore — it may have been deleted, or you lost admin access to it. Re-link it to keep publishing ads.`,
             fix: { kind: 'page_link', label: 'Update Page link' },
           });
         }

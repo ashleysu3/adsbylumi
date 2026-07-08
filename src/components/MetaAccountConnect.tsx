@@ -342,7 +342,7 @@ export function MetaAccountConnect({
               setStep('select-account');
             } catch (err: any) {
               console.error('OAuth callback handling error:', err);
-              toast.error(err?.message || 'OAuth failed');
+              toast.error(err?.message || "Something went wrong finishing the Meta connection. Please try again.");
             } finally {
               setOauthLoading(false);
               window.removeEventListener('message', handleCallback);
@@ -381,7 +381,7 @@ export function MetaAccountConnect({
 
     } catch (error: any) {
       console.error('OAuth flow error:', error);
-      toast.error(error.message || "Failed to connect to Meta");
+      toast.error(error.message || "Couldn't start the Meta connection. Please try again.");
     } finally {
       setOauthLoading(false);
     }

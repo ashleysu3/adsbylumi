@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { metaErrorMessage } from '../_shared/meta-errors.ts';
 
 interface PixelEventStats {
   event: string;
@@ -85,9 +86,9 @@ Deno.serve(async (req) => {
     if (pixelsData.error) {
       console.error('Meta API error fetching pixels:', pixelsData.error);
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: pixelsData.error.message || 'Failed to fetch pixels' 
+        JSON.stringify({
+          success: false,
+          error: metaErrorMessage(pixelsData.error, "Lumi couldn't read pixels from this ad account."),
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
