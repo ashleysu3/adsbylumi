@@ -21,41 +21,49 @@ import type { CreativeBrief } from "./ProductionChecklistPanel";
 import { TemplatePreview } from "./TemplatePreview";
 import { CopyRegenerateDialog, type CopyFeedback } from "./CopyRegenerateDialog";
 import { AdPreview } from "@/components/AdPreview";
-import cutoutThumb from "@/assets/template-thumbs/cutout.png.asset.json";
-import spotlightThumb from "@/assets/template-thumbs/spotlight.png.asset.json";
-import framedThumb from "@/assets/template-thumbs/framed.png.asset.json";
-import splitThumb from "@/assets/template-thumbs/split.png.asset.json";
-import highlighterThumb from "@/assets/template-thumbs/highlighter.png.asset.json";
-import overlayThumb from "@/assets/template-thumbs/overlay.png.asset.json";
-
-import devicemockupThumb from "@/assets/template-thumbs/devicemockup.png.asset.json";
-import testimonialThumb from "@/assets/template-thumbs/testimonial.png.asset.json";
-import carouselThumb from "@/assets/template-thumbs/carousel.png.asset.json";
-import statgridThumb from "@/assets/template-thumbs/statgrid.png.asset.json";
-import checklistThumb from "@/assets/template-thumbs/checklist.png.asset.json";
-import chatproofThumb from "@/assets/template-thumbs/chatproof.png.asset.json";
-import eventThumb from "@/assets/template-thumbs/event.png.asset.json";
-import offerThumb from "@/assets/template-thumbs/offer.png.asset.json";
-import bigtypeThumb from "@/assets/template-thumbs/bigtype.png.asset.json";
-import collageThumb from "@/assets/template-thumbs/collage.png.asset.json";
+// Real engine renders with clean sample copy — replaced the old AI-generated
+// mockup images, which rendered garbled/unreadable placeholder text (a known
+// limitation of image models asked to draw text) instead of a real preview.
+import cutoutThumb from "@/assets/template-thumbs/cutout.jpg";
+import spotlightThumb from "@/assets/template-thumbs/spotlight.jpg";
+import framedThumb from "@/assets/template-thumbs/framed.jpg";
+import splitThumb from "@/assets/template-thumbs/split.jpg";
+import highlighterThumb from "@/assets/template-thumbs/highlighter.jpg";
+import overlayThumb from "@/assets/template-thumbs/overlay.jpg";
+import devicemockupThumb from "@/assets/template-thumbs/devicemockup.jpg";
+import testimonialThumb from "@/assets/template-thumbs/testimonial.jpg";
+import carouselThumb from "@/assets/template-thumbs/carousel.jpg";
+import statgridThumb from "@/assets/template-thumbs/statgrid.jpg";
+import checklistThumb from "@/assets/template-thumbs/checklist.jpg";
+import chatproofThumb from "@/assets/template-thumbs/chatproof.jpg";
+import eventThumb from "@/assets/template-thumbs/event.jpg";
+import offerThumb from "@/assets/template-thumbs/offer.jpg";
+import bigtypeThumb from "@/assets/template-thumbs/bigtype.jpg";
+import collageThumb from "@/assets/template-thumbs/collage.jpg";
+import notesappThumb from "@/assets/template-thumbs/notesapp.jpg";
+import textthreadThumb from "@/assets/template-thumbs/textthread.jpg";
+import nativecaptionThumb from "@/assets/template-thumbs/nativecaption.jpg";
 
 const BUILT_IN_THUMBS: Record<string, string> = {
-  cutout: cutoutThumb.url,
-  spotlight: spotlightThumb.url,
-  framed: framedThumb.url,
-  split: splitThumb.url,
-  highlighter: highlighterThumb.url,
-  overlay: overlayThumb.url,
-  devicemockup: devicemockupThumb.url,
-  testimonial: testimonialThumb.url,
-  carousel: carouselThumb.url,
-  statgrid: statgridThumb.url,
-  checklist: checklistThumb.url,
-  chatproof: chatproofThumb.url,
-  event: eventThumb.url,
-  offer: offerThumb.url,
-  bigtype: bigtypeThumb.url,
-  collage: collageThumb.url,
+  cutout: cutoutThumb,
+  spotlight: spotlightThumb,
+  framed: framedThumb,
+  split: splitThumb,
+  highlighter: highlighterThumb,
+  overlay: overlayThumb,
+  devicemockup: devicemockupThumb,
+  testimonial: testimonialThumb,
+  carousel: carouselThumb,
+  statgrid: statgridThumb,
+  checklist: checklistThumb,
+  chatproof: chatproofThumb,
+  event: eventThumb,
+  offer: offerThumb,
+  bigtype: bigtypeThumb,
+  collage: collageThumb,
+  notesapp: notesappThumb,
+  textthread: textthreadThumb,
+  nativecaption: nativecaptionThumb,
 };
 
 type Colors = { bg: string; ink: string; accent: string; pop: string; highlight: string; cream: string };
