@@ -1,0 +1,1 @@
+ALTER TABLE public.user_assets ADD COLUMN IF NOT EXISTS is_default boolean NOT NULL DEFAULT false;
