@@ -95,7 +95,7 @@ const PHOTO_ROLES = new Set(["photo", "lifestyle", "full_body", "headshot"]);
 // instead of always defaulting to "spotlight" — deterministic per brand
 // (stable across re-renders/hook swaps for one visitor) but varied across
 // different visitors.
-const PHOTO_TEMPLATES = ["spotlight", "cutout", "framed", "highlighter"] as const;
+const PHOTO_TEMPLATES = ["spotlight", "framed"] as const;
 type PhotoTemplate = typeof PHOTO_TEMPLATES[number];
 function pickPhotoTemplate(seed: string): PhotoTemplate {
   let hash = 0;
@@ -106,11 +106,8 @@ function pickPhotoTemplate(seed: string): PhotoTemplate {
 // Extract a headline preview string from a compose-ad option for a given template.
 function optionToHeadline(template: string, opt: any): string {
   if (!opt || typeof opt !== "object") return "";
-  if (template === "bigtype" || template === "cutout" || template === "framed") {
+  if (template === "bigtype" || template === "framed") {
     return [opt.headlinePre, opt.headlineHL, opt.headlinePost].filter(Boolean).join(" ").trim();
-  }
-  if (template === "highlighter") {
-    return [opt.headlinePre, opt.headlineAccent, opt.headlineHL].filter(Boolean).join(" ").trim();
   }
   return String(opt.headline || opt.quote || "").trim();
 }

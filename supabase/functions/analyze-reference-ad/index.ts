@@ -12,11 +12,9 @@ const cors = {
 // the reference ad's LOOK against, independent of what the reference is
 // actually about.
 const TEMPLATE_PERSONALITIES: Record<string, string> = {
-  cutout: "Photo cutout of a person over a bold color background, punchy short headline, badge accents. Energetic, editorial.",
   spotlight: "Full photo background behind a centered card (eyebrow/headline/sub/cta). Clean, premium, serif display headline.",
   framed: "Photo background, bold all-caps highlighted phrase, signature line at bottom. Magazine editorial feel.",
   split: "Photo background, short bold all-caps headline, minimal. Simple and direct.",
-  highlighter: "Photo cutout, big colorful highlighted headline, badge. Playful, punchy, youthful.",
   overlay: "Full-bleed photo, eyebrow/headline/sub/cta. Clean and versatile, no strong personality of its own.",
   devicemockup: "Photo shown on a phone/device mockup screen. Modern, tech/digital-product feel.",
   testimonial: "No photo — a quote and author name on a soft background. Warm, serif, editorial, social-proof-led.",

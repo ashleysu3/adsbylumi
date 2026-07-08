@@ -50,11 +50,9 @@ function voiceRulesFor(template: string): string {
 // exact slots per template (keys + length guidance)
 const CTA_RULE = `cta (<=4 words, MUST match the brief's offer/format — e.g. free class → "Save my seat", download → "Send me the guide", waitlist → "Join the waitlist"; NEVER "Learn more", "Sign up", "Get started")`;
 const SLOTS: Record<string,string> = {
-  cutout: `eyebrow (<=5 words), headlinePre (1-3 words), headlineHL (1-3 words, the highlighted phrase), headlinePost (2-6 words), accent (optional italic kicker <=6 words or ""), sub (one sentence <=15 words), ${CTA_RULE}, badgeTop (<=2 words), badgeBottom (<=3 words)`,
   spotlight: `eyebrow (<=6 words, a details line), headline (<=8 words), sub (one sentence <=18 words), ${CTA_RULE}`,
   framed: `headlinePre (1-4 words, lowercase lead-in), headlineHL (2-5 words, bold phrase in CAPS), headlinePost (2-6 words, lowercase tail), ${CTA_RULE}, sig (brand or person name)`,
   split: `eyebrow (<=3 words), headline (<=9 words, shown in CAPS), ${CTA_RULE}`,
-  highlighter: `headlinePre (1-3 words), headlineAccent (1-3 words, accent color), headlineHL (1-3 words, highlighted phrase), sub (one sentence <=14 words), badgeTop (<=2 words e.g. FREE), badgeBottom (<=2 words e.g. Download)`,
   overlay: `eyebrow (<=5 words), headline (<=8 words, bold), sub (one sentence <=16 words), ${CTA_RULE}`,
   devicemockup: `eyebrow (<=5 words), headline (<=8 words), sub (one sentence <=16 words), ${CTA_RULE}`,
   testimonial: `eyebrow (<=4 words, e.g. "Real result"), quote (a short testimonial in the customer's own voice, <=22 words), author (first name + last initial), role (title or business, 2-4 words)`,
@@ -72,15 +70,15 @@ const SLOTS: Record<string,string> = {
 
 function mapStyle(styleHint?: string, format?: string): string {
   if (format === "carousel") return "carousel";
-  const m: Record<string,string> = { "photo-forward":"cutout","card":"spotlight","framed":"framed","type-led":"split","testimonial":"testimonial","highlighter":"highlighter","stats":"statgrid","data":"statgrid","checklist":"checklist","list":"checklist","steps":"checklist","chat":"chatproof","proof":"chatproof","testimonialchat":"chatproof","event":"event","webinar":"event","offer":"offer","sale":"offer","discount":"offer","bigtype":"bigtype","type-hero":"bigtype","collage":"collage","grid":"collage","overlay":"overlay","device":"devicemockup","devicemockup":"devicemockup","mockup":"devicemockup","notesapp":"notesapp","notes":"notesapp","textthread":"textthread","texts":"textthread","imessage":"textthread","nativecaption":"nativecaption","caption":"nativecaption" };
-  return (styleHint && m[styleHint]) || "cutout";
+  const m: Record<string,string> = { "photo-forward":"spotlight","card":"spotlight","framed":"framed","type-led":"split","testimonial":"testimonial","stats":"statgrid","data":"statgrid","checklist":"checklist","list":"checklist","steps":"checklist","chat":"chatproof","proof":"chatproof","testimonialchat":"chatproof","event":"event","webinar":"event","offer":"offer","sale":"offer","discount":"offer","bigtype":"bigtype","type-hero":"bigtype","collage":"collage","grid":"collage","overlay":"overlay","device":"devicemockup","devicemockup":"devicemockup","mockup":"devicemockup","notesapp":"notesapp","notes":"notesapp","textthread":"textthread","texts":"textthread","imessage":"textthread","nativecaption":"nativecaption","caption":"nativecaption" };
+  return (styleHint && m[styleHint]) || "bigtype";
 }
 
 function instruction(template: string, count: number): string {
   if (template === "carousel") {
     return `Return ${count} option(s). Each option is {"slides":[...]} with one slide per slidePlan role (3-6 slides). Each slide = {"eyebrow":"<=4 words","headline":"<=8 words","sub":"one sentence <=15 words","cta":"ONLY on the last slide, <=4 words, MUST match the brief's offer/format — e.g. free class → \\"Save my seat\\", download → \\"Send me the guide\\", waitlist → \\"Join the waitlist\\"; NEVER \\"Learn more\\", \\"Sign up\\", \\"Get started\\"; omit on other slides"}. Slide 1 = the hook; last slide = the CTA.`;
   }
-  return `Return ${count} DISTINCT option(s) (different angles). For template "${template}", each option is a JSON object with EXACTLY these keys: ${SLOTS[template] || SLOTS.cutout}. Use "" for any optional field you skip. Full headline reads as one natural line, <=8 words.`;
+  return `Return ${count} DISTINCT option(s) (different angles). For template "${template}", each option is a JSON object with EXACTLY these keys: ${SLOTS[template] || SLOTS.bigtype}. Use "" for any optional field you skip. Full headline reads as one natural line, <=8 words.`;
 }
 
 function truncate(v: unknown, max = 1400): string {
@@ -155,7 +153,7 @@ function buildContextBlock(payload: any): string {
 // Parse the SLOTS description string into per-key word budgets.
 // Recognizes patterns like "key (<=N words ...)" and "key (1-3 words ...)" / "key (2-6 words ...)".
 function parseSlotLimits(template: string): Record<string, { maxWords: number }> {
-  const desc = SLOTS[template] || SLOTS.cutout;
+  const desc = SLOTS[template] || SLOTS.bigtype;
   const limits: Record<string, { maxWords: number }> = {};
   const re = /(\w+)\s*\(([^)]*)\)/g;
   let m: RegExpExecArray | null;
