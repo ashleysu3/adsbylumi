@@ -3575,6 +3575,7 @@ export type Database = {
           created_at: string
           cutout_url: string | null
           id: string
+          is_default: boolean | null
           kind: string | null
           original_url: string | null
           user_id: string
@@ -3584,6 +3585,7 @@ export type Database = {
           created_at?: string
           cutout_url?: string | null
           id?: string
+          is_default?: boolean | null
           kind?: string | null
           original_url?: string | null
           user_id?: string
@@ -3593,6 +3595,7 @@ export type Database = {
           created_at?: string
           cutout_url?: string | null
           id?: string
+          is_default?: boolean | null
           kind?: string | null
           original_url?: string | null
           user_id?: string
