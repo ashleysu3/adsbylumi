@@ -20,7 +20,6 @@ import { toast } from "sonner";
 import type { CreativeBrief } from "./ProductionChecklistPanel";
 import { TemplatePreview } from "./TemplatePreview";
 import { CopyRegenerateDialog, type CopyFeedback } from "./CopyRegenerateDialog";
-import { AdPreview } from "@/components/AdPreview";
 // Real engine renders with clean sample copy — replaced the old AI-generated
 // mockup images, which rendered garbled/unreadable placeholder text (a known
 // limitation of image models asked to draw text) instead of a real preview.
@@ -118,6 +117,14 @@ const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
   devicemockup: "with-background", testimonial: "with-background",
   nativecaption: "with-background",
 };
+
+// Templates that never render a photo — the copy carries the whole design.
+// Used to gate the "pick a photo" requirement per-template instead of forcing
+// every built-in template through a photo picker it doesn't actually use.
+const NO_PHOTO_TEMPLATES = new Set([
+  "testimonial", "statgrid", "checklist", "chatproof", "event", "offer", "bigtype",
+  "notesapp", "textthread",
+]);
 
 // The external rendering engine only ships with these built-in template names.
 // New copy-only templates must fall back to a supported layout at render time
@@ -270,8 +277,8 @@ export function GenerateCreativeDialog() {
   const [step, setStep] = useState<"style" | "image-copy">("style");
   const [imageSource, setImageSource] = useState<"uploads" | "brand">("uploads");
 
-  // Primary flow: board-inspiration via Recraft. Falls back to template flow.
-  const [mode, setMode] = useState<"board" | "template">("board");
+  // Primary flow: remix a single real ad. Falls back to the template flow.
+  const [mode, setMode] = useState<"remix" | "template">("remix");
   type BoardRow = { id: string; name: string };
   type BoardImg = { id: string; url: string; rawSrc: string };
   const [boards, setBoards] = useState<BoardRow[]>([]);
@@ -279,25 +286,17 @@ export function GenerateCreativeDialog() {
   const [selectedBoardId, setSelectedBoardId] = useState<string>("");
   const [boardImages, setBoardImages] = useState<BoardImg[]>([]);
   const [boardImagesLoading, setBoardImagesLoading] = useState(false);
-  const [selectedBoardImageIds, setSelectedBoardImageIds] = useState<Set<string>>(new Set());
-  const [boardCopy, setBoardCopy] = useState<{ headline: string; subhead: string; cta: string }>({
-    headline: "", subhead: "", cta: "Learn more",
-  });
-  const [boardGenerating, setBoardGenerating] = useState(false);
-  const [boardResults, setBoardResults] = useState<Array<{ aspect: string; url: string; path: string; base64: string; isVertical: boolean }>>([]);
-  const [boardApprovingIdx, setBoardApprovingIdx] = useState<number | null>(null);
-  const [boardApprovedIdxs, setBoardApprovedIdxs] = useState<Set<number>>(new Set());
-  const boardResultsRef = useRef<HTMLDivElement | null>(null);
-
-  // When new results arrive, scroll them into view inside the dialog so the
-  // user actually sees what was generated (previously they landed below the fold).
-  useEffect(() => {
-    if (boardResults.length > 0) {
-      requestAnimationFrame(() => {
-        boardResultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    }
-  }, [boardResults]);
+  const [selectedRemixImageId, setSelectedRemixImageId] = useState<string>("");
+  const [analyzingReference, setAnalyzingReference] = useState(false);
+  type ReferenceAnalysis = {
+    template: string;
+    needs_photo: boolean;
+    font_personality: string;
+    font_is_load_bearing: boolean;
+    template_reason: string;
+    structural_notes: string;
+  };
+  const [referenceAnalysis, setReferenceAnalysis] = useState<ReferenceAnalysis | null>(null);
 
   // single-template state
   const [singleOptions, setSingleOptions] = useState<SingleOption[]>([]);
@@ -327,7 +326,7 @@ export function GenerateCreativeDialog() {
   const isCarousel = activeCustom
     ? activeCustom.type === "carousel"
     : template === "carousel" || brief?.format === "carousel";
-  const needsPhoto = activeCustom ? activeCustom.needs_photo : true; // all built-ins need a photo
+  const needsPhoto = activeCustom ? activeCustom.needs_photo : !NO_PHOTO_TEMPLATES.has(template);
 
   const briefRef = useRef<CreativeBrief | null>(null);
   briefRef.current = brief;
@@ -345,16 +344,9 @@ export function GenerateCreativeDialog() {
       setTemplate(mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
       setCustomTemplateId("");
       setStep("style");
-      setMode("board");
-      setSelectedBoardImageIds(new Set());
-      setBoardResults([]);
-      setBoardApprovedIdxs(new Set());
-      setBoardApprovingIdx(null);
-      setBoardCopy({
-        headline: detail.brief.keyMessage || detail.brief.concept || "",
-        subhead: detail.brief.offer || "",
-        cta: detail.brief.cta || "Learn more",
-      });
+      setMode("remix");
+      setSelectedRemixImageId("");
+      setReferenceAnalysis(null);
       setOpen(true);
       setSingleOptions([]);
       setCarouselOptions([]);
@@ -603,7 +595,8 @@ export function GenerateCreativeDialog() {
         }
         if (cancelled) return;
         setBoardImages(resolved);
-        setSelectedBoardImageIds(new Set());
+        setSelectedRemixImageId("");
+        setReferenceAnalysis(null);
       } catch (e: any) {
         if (!cancelled) {
           console.warn("load board images failed", e);
@@ -616,217 +609,34 @@ export function GenerateCreativeDialog() {
     return () => { cancelled = true; };
   }, [open, selectedBoardId]);
 
-  const toggleBoardImage = (id: string) => {
-    setSelectedBoardImageIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else {
-        if (next.size >= 5) {
-          toast.error("Pick up to 5 images.");
-          return prev;
-        }
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const runBoardGenerate = async () => {
-    if (!selectedBoardId) {
-      toast.error("Choose a board first.");
+  // Analyze the one chosen reference ad, then hand off into the normal
+  // template flow with the matched template pre-selected. The existing
+  // auto-compose effect (keyed on step + template) picks up from there.
+  const runAnalyzeReference = async () => {
+    const img = boardImages.find((b) => b.id === selectedRemixImageId);
+    if (!img) {
+      toast.error("Pick an ad to remix first.");
       return;
     }
-    if (selectedBoardImageIds.size < 3) {
-      toast.error("Pick at least 3 images.");
-      return;
-    }
-    if (!boardCopy.headline.trim()) {
-      toast.error("Add a headline.");
-      return;
-    }
-    setBoardGenerating(true);
-    setBoardResults([]);
-    setBoardApprovedIdxs(new Set());
+    setAnalyzingReference(true);
     try {
-      const selectedImageUrls = boardImages
-        .filter((b) => selectedBoardImageIds.has(b.id))
-        .map((b) => b.url);
-      const { data, error } = await supabase.functions.invoke("generate-ad-from-style", {
-        body: {
-          boardId: selectedBoardId,
-          brandId: activeBrand?.id,
-          copy: boardCopy,
-          count: 2,
-          selectedImageUrls,
-        },
+      const { data, error } = await supabase.functions.invoke("analyze-reference-ad", {
+        body: { reference_image_url: img.url },
       });
       if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || "Generation failed");
-      const backgrounds = (data.images || []) as Array<{ aspect: string; url: string; path: string }>;
-      if (!backgrounds.length) {
-        toast.error("Recraft returned no images. Try again.");
-        return;
-      }
-
-      // Composite each background through the engine (overlay template) so
-      // headline / subhead / CTA / logo render as real text on the background.
-      const effectiveLogoUrl = (placeLogo && brandLogoAsset?.url) || logoUrl || undefined;
-      const colorsForEngine = {
-        ...colors,
-        primary: colors.accent,
-        secondary: colors.pop,
-        cta: colors.accent,
-        ctaBg: colors.accent,
-        ctaText: colors.bg,
-        button: colors.accent,
-        buttonBg: colors.accent,
-        buttonText: colors.bg,
-        badge: colors.accent,
-        badgeBg: colors.accent,
-        badgeText: colors.bg,
-      };
-      const brandKit = {
-        colors: colorsForEngine,
-        palette: colorsForEngine,
-        fonts: {
-          displayUrl: fontUrl || undefined,
-          displayItalicUrl: fontUrl || undefined,
-          displayFamily: displayFamily || undefined,
-          bodyFamily: bodyFamily || undefined,
-        },
-        logoUrl: effectiveLogoUrl,
-      };
-      const logoOverlay = placeLogo && brandLogoAsset?.url
-        ? { url: brandLogoAsset.url, corner: logoCorner }
-        : undefined;
-
-      const composited: Array<{ aspect: string; url: string; path: string; base64: string; isVertical: boolean }> = [];
-      const compositeErrors: string[] = [];
-      await Promise.all(
-        backgrounds.map(async (bg, bgIdx) => {
-          try {
-            const imgs = await callRender({
-              template: "overlay",
-              brandKit,
-              copy: {
-                headline: boardCopy.headline,
-                subhead: boardCopy.subhead,
-                cta: boardCopy.cta,
-              },
-              photo: { url: bg.url },
-              backgroundUrl: bg.url,
-              logoOverlay,
-              placements: ["feed", "story"],
-            });
-            if (!imgs.length) throw new Error("engine returned no images");
-            imgs.forEach((im, j) => {
-              const isVertical = (im.placement || "").toLowerCase().includes("story") || im.height > im.width;
-              composited.push({
-                aspect: isVertical ? "4x5" : "1x1",
-                url: `data:image/png;base64,${im.base64}`,
-                path: `${bg.path || `bg-${bgIdx}`}-${im.placement || j}`,
-                base64: im.base64,
-                isVertical,
-              });
-            });
-          } catch (err: any) {
-            console.error("composite failed for bg", bgIdx, err);
-            compositeErrors.push(err?.message || String(err));
-            // Fallback: keep the raw on-brand background so the user can still proceed.
-            try {
-              const res = await fetch(bg.url);
-              const blob = await res.arrayBuffer();
-              let b64 = "";
-              const bytes = new Uint8Array(blob);
-              for (let i = 0; i < bytes.byteLength; i++) b64 += String.fromCharCode(bytes[i]);
-              const base64 = btoa(b64);
-              composited.push({
-                aspect: "1x1",
-                url: bg.url,
-                path: bg.path || `bg-${bgIdx}-raw`,
-                base64,
-                isVertical: false,
-              });
-            } catch (e2) {
-              console.error("background fallback failed", e2);
-            }
-          }
-        }),
-      );
-
-      setBoardResults(composited);
-      if (!composited.length) {
-        toast.error(
-          compositeErrors[0]
-            ? `Engine could not composite: ${compositeErrors[0]}`
-            : "Engine could not composite the design. Try again.",
-        );
-      } else if (compositeErrors.length) {
-        toast.warning(`Showing ${composited.length} backgrounds — text overlay failed (${compositeErrors[0]}).`);
-      } else {
-        toast.success(`Generated ${composited.length} finished designs`);
-      }
+      const analysis = data?.analysis as ReferenceAnalysis | undefined;
+      if (!analysis?.template) throw new Error(data?.error || "Could not analyze this ad");
+      setReferenceAnalysis(analysis);
+      setTemplate(analysis.template);
+      setCustomTemplateId("");
+      setMode("template");
+      setStep("image-copy");
+      toast.success(`Matched to ${BUILT_IN_LABELS[analysis.template] || analysis.template} — writing copy…`);
     } catch (e: any) {
       console.error(e);
-      toast.error(e.message || "Failed to generate ads");
+      toast.error(e?.message || "Could not analyze this ad");
     } finally {
-      setBoardGenerating(false);
-    }
-  };
-
-  const approveBoardResult = async (
-    r: { aspect: string; url: string; path: string; base64: string; isVertical: boolean },
-    idx: number,
-  ) => {
-    if (!itemId) {
-      toast.error("Open this from a creative card to approve it.");
-      return;
-    }
-    setBoardApprovingIdx(idx);
-    try {
-      const base64 = r.base64;
-      const isVertical = r.isVertical;
-      await new Promise<void>((resolve, reject) => {
-        const reqId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        const onDone = (e: Event) => {
-          const d = (e as CustomEvent).detail as { reqId: string; ok: boolean; error?: string };
-          if (d?.reqId !== reqId) return;
-          window.removeEventListener("creative-render:approved", onDone as EventListener);
-          if (d.ok) resolve();
-          else reject(new Error(d.error || "Could not save"));
-        };
-        window.addEventListener("creative-render:approved", onDone as EventListener);
-        window.dispatchEvent(
-          new CustomEvent("creative-render:approve", {
-            detail: {
-              reqId,
-              itemId,
-              base64,
-              mime: "image/png",
-              fileName: `recraft-${r.aspect}-${idx + 1}.png`,
-              isVertical,
-            },
-          }),
-        );
-        setTimeout(() => {
-          window.removeEventListener("creative-render:approved", onDone as EventListener);
-          reject(new Error("Timed out saving the render"));
-        }, 30000);
-      });
-      setBoardApprovedIdxs((prev) => new Set(prev).add(idx));
-      window.dispatchEvent(
-        new CustomEvent("creative-render:focus-item", {
-          detail: { itemId, assetUrl: r.url },
-        }),
-      );
-      setOpen(false);
-      toast.success("Approved and saved to your Production Checklist ✅", {
-        description: "Opening the saved card now — look for “Generated design saved.”",
-      });
-    } catch (e: any) {
-      toast.error(e?.message || "Could not approve");
-    } finally {
-      setBoardApprovingIdx(null);
+      setAnalyzingReference(false);
     }
   };
 
@@ -963,6 +773,12 @@ export function GenerateCreativeDialog() {
           offerPsychology,
           audiencePsychology,
           brandContext,
+          referenceAdContext: referenceAnalysis
+            ? {
+                structuralNotes: referenceAnalysis.structural_notes,
+                fontPersonality: referenceAnalysis.font_personality,
+              }
+            : null,
         },
       });
       if (error) throw error;
@@ -998,7 +814,7 @@ export function GenerateCreativeDialog() {
     } finally {
       setComposing(false);
     }
-  }, [brandVoice, template, activeCustom]);
+  }, [brandVoice, template, activeCustom, referenceAnalysis]);
 
   // Auto-compose when we hit Screen 2, AND whenever the template selection changes.
   // Skip while still on the style picker.
@@ -1347,7 +1163,7 @@ export function GenerateCreativeDialog() {
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2">
             <span className="px-2 py-1 rounded bg-primary text-primary-foreground">
-              {mode === "board" ? "Inspiration board" : (step === "style" ? "1. Style" : "2. Image & copy")}
+              {mode === "remix" ? "Remix a real ad" : (step === "style" ? "1. Style" : "2. Image & copy")}
             </span>
             {mode === "template" && (
               <>
@@ -1364,15 +1180,16 @@ export function GenerateCreativeDialog() {
             type="button"
             className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
             onClick={() => {
-              if (mode === "board") {
+              if (mode === "remix") {
                 setMode("template");
                 setStep("style");
               } else {
-                setMode("board");
+                setMode("remix");
+                setReferenceAnalysis(null);
               }
             }}
           >
-            {mode === "board" ? "Use a template instead" : "Use an inspiration board instead"}
+            {mode === "remix" ? "Use a template instead" : "Remix a real ad instead"}
           </button>
         </div>
 
@@ -1392,16 +1209,16 @@ export function GenerateCreativeDialog() {
             </div>
           )}
 
-          {mode === "board" ? (
-            /* ---------- BOARD INSPIRATION FLOW (default) ---------- */
+          {mode === "remix" ? (
+            /* ---------- REMIX A REAL AD FLOW (default) ---------- */
             <div className="space-y-4 py-2">
               <div>
                 <Label className="text-sm font-medium flex items-center gap-2">
                   <ImagePlus className="h-4 w-4 text-primary" />
-                  Choose your inspiration
+                  Pick one ad to remix
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Pick a board, then choose 3–5 saved ads you want this creative to look like.
+                  Choose a real ad you like — LUMI matches its layout and typographic feel, then writes copy for your offer and renders it in your brand colors.
                 </p>
               </div>
 
@@ -1420,7 +1237,10 @@ export function GenerateCreativeDialog() {
                 <>
                   <div className="flex items-center gap-2">
                     <Label className="text-xs uppercase text-muted-foreground">Board</Label>
-                    <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
+                    <Select
+                      value={selectedBoardId}
+                      onValueChange={(v) => { setSelectedBoardId(v); setSelectedRemixImageId(""); setReferenceAnalysis(null); }}
+                    >
                       <SelectTrigger className="h-8 text-sm w-72">
                         <SelectValue placeholder="Choose a board" />
                       </SelectTrigger>
@@ -1430,9 +1250,6 @@ export function GenerateCreativeDialog() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <span className="text-[11px] text-muted-foreground">
-                      Pick 3–5 you like ({selectedBoardImageIds.size}/5)
-                    </span>
                   </div>
 
                   {boardImagesLoading ? (
@@ -1449,12 +1266,12 @@ export function GenerateCreativeDialog() {
                   ) : (
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
                       {boardImages.map((img) => {
-                        const active = selectedBoardImageIds.has(img.id);
+                        const active = selectedRemixImageId === img.id;
                         return (
                           <button
                             key={img.id}
                             type="button"
-                            onClick={() => toggleBoardImage(img.id)}
+                            onClick={() => { setSelectedRemixImageId(img.id); setReferenceAnalysis(null); }}
                             className={`relative aspect-square rounded border-2 overflow-hidden transition ${
                               active ? "border-primary ring-2 ring-primary/30" : "border-border hover:border-muted-foreground"
                             }`}
@@ -1471,115 +1288,19 @@ export function GenerateCreativeDialog() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs uppercase text-muted-foreground">Headline</Label>
-                      <Input
-                        value={boardCopy.headline}
-                        onChange={(e) => setBoardCopy({ ...boardCopy, headline: e.target.value })}
-                        placeholder="Your hook"
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs uppercase text-muted-foreground">CTA</Label>
-                      <Input
-                        value={boardCopy.cta}
-                        onChange={(e) => setBoardCopy({ ...boardCopy, cta: e.target.value })}
-                        placeholder="Learn more"
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1 sm:col-span-2">
-                      <Label className="text-xs uppercase text-muted-foreground">Subhead (optional)</Label>
-                      <Textarea
-                        value={boardCopy.subhead}
-                        onChange={(e) => setBoardCopy({ ...boardCopy, subhead: e.target.value })}
-                        rows={2}
-                      />
-                    </div>
-                  </div>
-
                   <div className="flex items-center justify-end pt-2">
                     <Button
                       size="lg"
-                      onClick={runBoardGenerate}
-                      disabled={
-                        boardGenerating ||
-                        selectedBoardImageIds.size < 3 ||
-                        !boardCopy.headline.trim()
-                      }
+                      onClick={runAnalyzeReference}
+                      disabled={analyzingReference || !selectedRemixImageId}
                     >
-                      {boardGenerating ? (
-                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating 4 visuals…</>
+                      {analyzingReference ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analyzing this ad…</>
                       ) : (
-                        <><Sparkles className="h-4 w-4 mr-2" /> Generate 4 on-brand visuals</>
+                        <><Wand2 className="h-4 w-4 mr-2" /> Remix this ad</>
                       )}
                     </Button>
                   </div>
-
-                  {(boardGenerating || boardResults.length > 0) && (
-                    <div ref={boardResultsRef} className="pt-3 border-t space-y-3 scroll-mt-4">
-                      <Label className="text-sm font-semibold text-foreground">
-                        {boardResults.length > 0
-                          ? `✨ ${boardResults.length} visuals ready — scroll to review & approve`
-                          : "Results"}
-                      </Label>
-                      {boardGenerating && boardResults.length === 0 && (
-                        <div className="rounded border border-dashed p-10 text-center text-sm text-muted-foreground">
-                          <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                          Painting in your inspiration style…
-                        </div>
-                      )}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {boardResults.map((r, i) => {
-                          const isApproved = boardApprovedIdxs.has(i);
-                          const isApproving = boardApprovingIdx === i;
-                          return (
-                            <div key={`${r.path}-${i}`} className="rounded border overflow-hidden bg-muted/20">
-                              <AdPreview
-                                concept={{
-                                  title: boardCopy.headline,
-                                  linkedAsset: { url: r.url, type: "image/png" },
-                                  final_copy: {
-                                    headline: boardCopy.headline,
-                                    primary_text: boardCopy.subhead,
-                                    cta: boardCopy.cta,
-                                  },
-                                }}
-                                brandName={activeBrand?.name || "Your Brand"}
-                              />
-                              <div className="flex items-center justify-between gap-2 p-2 text-xs border-t">
-                                <span className="text-muted-foreground">Recraft · {r.aspect}</span>
-                                <div className="flex items-center gap-2">
-                                  <a
-                                    href={r.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="text-muted-foreground hover:text-foreground inline-flex items-center"
-                                  >
-                                    <Download className="h-3 w-3 mr-1" /> Open
-                                  </a>
-                                  {itemId && (
-                                    <Button
-                                      size="sm"
-                                      variant={isApproved ? "secondary" : "default"}
-                                      disabled={isApproving || isApproved}
-                                      onClick={() => approveBoardResult(r, i)}
-                                    >
-                                      {isApproving ? (
-                                        <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Saving…</>
-                                      ) : isApproved ? "Approved ✓" : "Approve & save"}
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
                 </>
               )}
             </div>
@@ -1655,6 +1376,20 @@ export function GenerateCreativeDialog() {
               <Button variant="ghost" size="sm" onClick={() => setStep("style")} className="-ml-2">
                 ← Back to styles
               </Button>
+
+              {referenceAnalysis && (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs space-y-1">
+                  <p className="text-foreground">
+                    <b>Matched to {BUILT_IN_LABELS[referenceAnalysis.template] || referenceAnalysis.template}:</b>{" "}
+                    {referenceAnalysis.template_reason}
+                  </p>
+                  {referenceAnalysis.font_is_load_bearing && (
+                    <p className="text-muted-foreground">
+                      This ad's font is distinctive to its design — we matched the closest typographic personality instead of copying an exact font file.
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-1 lg:grid-cols-[1fr,1.1fr] gap-6">
                 <div className="space-y-5">

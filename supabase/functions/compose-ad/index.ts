@@ -88,8 +88,15 @@ function truncate(v: unknown, max = 1400): string {
 }
 
 function buildContextBlock(payload: any): string {
-  const { offerContext, offerPsychology, audiencePsychology, brandContext, socialProofContext } = payload || {};
+  const { offerContext, offerPsychology, audiencePsychology, brandContext, socialProofContext, referenceAdContext } = payload || {};
   const parts: string[] = [];
+  if (referenceAdContext && (referenceAdContext.structuralNotes || referenceAdContext.fontPersonality)) {
+    parts.push(
+      `=== REFERENCE AD YOU'RE ADAPTING (match this structure and rhythm — write NEW copy for THIS brand's offer, never reuse the reference's content) ===\n` +
+      (referenceAdContext.structuralNotes ? `Structure: ${truncate(referenceAdContext.structuralNotes, 500)}\n` : "") +
+      (referenceAdContext.fontPersonality ? `Typographic feel to match in tone/rhythm: ${truncate(referenceAdContext.fontPersonality, 200)}\n` : "")
+    );
+  }
   if (socialProofContext && socialProofContext.quote) {
     parts.push(
       `=== REAL TESTIMONIAL (from this brand's actual site — use it, do not invent a different one) ===\n` +
