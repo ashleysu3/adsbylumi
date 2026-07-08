@@ -881,7 +881,7 @@ export function GenerateCreativeDialog() {
   };
 
   const generate = async () => {
-    if (!selectedPhoto) {
+    if (needsPhoto && !selectedPhoto) {
       toast.error("Pick a photo first");
       return;
     }
@@ -921,7 +921,7 @@ export function GenerateCreativeDialog() {
       const logoOverlay = placeLogo && brandLogoAsset?.url
         ? { url: brandLogoAsset.url, corner: logoCorner }
         : undefined;
-      const photo = { url: selectedPhoto.url, removeBackground };
+      const photo = selectedPhoto ? { url: selectedPhoto.url, removeBackground } : undefined;
       // Collage uses 2–4 photos. Take the most recently uploaded/brand photos.
       const collagePool = [...photos, ...brandPhotoAssets].filter((p) => !!p.url);
       const collagePhotos = template === "collage"
