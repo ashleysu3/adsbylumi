@@ -85,6 +85,7 @@ type CustomTemplate = {
 
 const BUILT_IN_TEMPLATES = [
   "cutout", "spotlight", "framed", "split", "highlighter", "overlay", "devicemockup", "testimonial", "statgrid", "checklist", "chatproof", "event", "offer", "bigtype", "collage", "carousel",
+  "notesapp", "textthread", "nativecaption",
 ] as const;
 
 const BUILT_IN_LABELS: Record<string, string> = {
@@ -104,6 +105,9 @@ const BUILT_IN_LABELS: Record<string, string> = {
   bigtype: "Big type",
   collage: "Photo collage",
   carousel: "Carousel",
+  notesapp: "Notes app (native)",
+  textthread: "Text thread (native)",
+  nativecaption: "Photo caption (native)",
 };
 
 const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
@@ -111,6 +115,7 @@ const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
   spotlight: "with-background", framed: "with-background", split: "with-background",
   overlay: "with-background",
   devicemockup: "with-background", testimonial: "with-background",
+  nativecaption: "with-background",
 };
 
 // The external rendering engine only ships with these built-in template names.
@@ -124,6 +129,9 @@ const ENGINE_SUPPORTED_TEMPLATES = new Set([
   // and collapseCopyForFallback() both pass a template through untouched when it's
   // in this set, so the real layout + full copy slots go straight to the engine.
   "statgrid", "checklist", "chatproof", "event", "offer", "bigtype", "collage",
+  // Native phone-screenshot formats (require the lumi-engine native-templates
+  // build to be deployed).
+  "notesapp", "textthread", "nativecaption",
 ]);
 const RENDER_FALLBACK: Record<string, string> = {
   statgrid: "spotlight",
@@ -191,8 +199,10 @@ const SLOT_LABELS: Record<string, string> = {
   msg1: "Message 1", msg2: "Message 2", msg3: "Message 3", msg4: "Message 4",
   meta: "Date / time", host: "Host", offerBig: "Big offer", expiry: "Deadline",
   tickerTop: "Ticker (top)", tickerBottom: "Ticker (bottom)",
+  body: "Note text", contactName: "Contact name", contactLoc: "Contact location",
+  line1: "Line 1", line2: "Line 2",
 };
-const MULTILINE_KEYS = new Set(["sub", "accent", "msg1", "msg2", "msg3", "msg4", "meta"]);
+const MULTILINE_KEYS = new Set(["sub", "accent", "msg1", "msg2", "msg3", "msg4", "meta", "body", "line1", "line2"]);
 
 // Local fallback: mirror the compose-ad mapping so the UI can guess a template
 function mapStyleToTemplate(styleHint?: string, format?: string): string {
@@ -209,6 +219,9 @@ function mapStyleToTemplate(styleHint?: string, format?: string): string {
     collage: "collage", grid: "collage",
     overlay: "overlay",
     device: "devicemockup", devicemockup: "devicemockup", mockup: "devicemockup",
+    notesapp: "notesapp", notes: "notesapp",
+    textthread: "textthread", texts: "textthread", imessage: "textthread",
+    nativecaption: "nativecaption", caption: "nativecaption",
   };
   return (styleHint && m[styleHint]) || "cutout";
 }
