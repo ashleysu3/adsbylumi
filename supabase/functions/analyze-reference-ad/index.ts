@@ -16,7 +16,11 @@ const TEMPLATE_PERSONALITIES: Record<string, string> = {
   framed: "Photo background, bold all-caps highlighted phrase, signature line at bottom. Magazine editorial feel.",
   split: "Photo background, short bold all-caps headline, minimal. Simple and direct.",
   overlay: "Full-bleed photo, eyebrow/headline/sub/cta. Clean and versatile, no strong personality of its own.",
-  devicemockup: "Photo shown on a phone/device mockup screen. Modern, tech/digital-product feel.",
+  // devicemockup deliberately excluded: its photo slot renders as the literal
+  // phone/laptop SCREEN content (a product/website screenshot), not a person
+  // photo. The remix flow only has personal-photo sourcing today, so matching
+  // to this template produces an unusable "personal photo squished onto a
+  // device screen" result. Re-add once there's a real screenshot source.
   testimonial: "No photo — a quote and author name on a soft background. Warm, serif, editorial, social-proof-led.",
   statgrid: "No photo — 2-4 bold stat callouts in a grid. Data-driven, numeric, results-led.",
   checklist: "No photo — headline plus a checklist of items. Clear, benefit-listing, informational.",
