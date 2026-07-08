@@ -232,11 +232,45 @@ export function PixelVerificationCard({
   onPixelVerified 
 }: PixelVerificationCardProps) {
   const [loading, setLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [verifyingUrl, setVerifyingUrl] = useState(false);
   const [pixelData, setPixelData] = useState<PixelData | null>(initialPixelData || null);
   const [allPixels, setAllPixels] = useState<PixelData[]>([]);
   const [landingPageUrl, setLandingPageUrl] = useState('');
   const [landingPageResult, setLandingPageResult] = useState<LandingPageResult | null>(null);
+  // Distinguishes "haven't checked yet" from "checked, confirmed zero
+  // pixels exist" — the latter is when we can offer to create one.
+  const [noPixelsFound, setNoPixelsFound] = useState(false);
+  // Which Setup Guide platform is expanded — opened automatically to
+  // "custom" right after creating a pixel, since a brand-new pixel has no
+  // code on the site yet and the next step should be obvious, not another
+  // thing to go find.
+  const [openGuide, setOpenGuide] = useState<string | undefined>(undefined);
+
+  const createPixel = async () => {
+    if (!brandId) return;
+    setCreating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-meta-pixel', {
+        body: { brandId }
+      });
+      if (error) throw error;
+      if (!data.success || !data.pixel) {
+        toast.error(data.error || 'Could not create a pixel');
+        return;
+      }
+      setPixelData(data.pixel);
+      setNoPixelsFound(false);
+      setOpenGuide('custom');
+      onPixelVerified?.(data.pixel);
+      toast.success('Created your Meta Pixel — now add the code below to your site.');
+    } catch (error) {
+      console.error('Error creating pixel:', error);
+      toast.error('Failed to create pixel');
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const checkPixelStatus = async () => {
     if (!brandId) return;
@@ -251,6 +285,7 @@ export function PixelVerificationCard({
 
       if (data.success && data.pixels?.length > 0) {
         setAllPixels(data.pixels);
+        setNoPixelsFound(false);
         // Use existing selection or default to first
         const currentPixelId = pixelData?.id;
         const matchingPixel = currentPixelId ? data.pixels.find((p: PixelData) => p.id === currentPixelId) : null;
@@ -260,6 +295,9 @@ export function PixelVerificationCard({
         toast.success(`Found ${data.pixels.length} pixel${data.pixels.length !== 1 ? 's' : ''}`);
       } else if (data.needsConnection) {
         toast.error('Please connect your Meta account first');
+      } else if (data.success) {
+        // Checked successfully, genuinely zero pixels on this ad account.
+        setNoPixelsFound(true);
       } else {
         toast.error(data.error || 'No pixels found');
       }
@@ -545,6 +583,26 @@ export function PixelVerificationCard({
               </Alert>
             )}
           </div>
+        ) : noPixelsFound ? (
+          <div className="text-center py-6 space-y-3">
+            <Activity className="h-10 w-10 text-muted-foreground mx-auto mb-1" />
+            <div>
+              <p className="text-sm font-medium">You don't have a pixel yet</p>
+              <p className="text-xs text-muted-foreground">
+                Lumi can create one on your ad account right now — no need to go into Meta Business Manager.
+              </p>
+            </div>
+            <Button onClick={createPixel} disabled={creating} variant="lumi">
+              {creating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Creating your pixel...
+                </>
+              ) : (
+                'Create my pixel'
+              )}
+            </Button>
+          </div>
         ) : (
           <div className="text-center py-6">
             <Activity className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
@@ -630,7 +688,7 @@ export function PixelVerificationCard({
             Follow these guides to install your pixel and set up event tracking
           </p>
           
-          <Accordion type="single" collapsible className="w-full">
+          <Accordion type="single" collapsible className="w-full" value={openGuide} onValueChange={setOpenGuide}>
             {platformGuides.map((platform) => (
               <AccordionItem key={platform.id} value={platform.id}>
                 <AccordionTrigger className="hover:no-underline">
