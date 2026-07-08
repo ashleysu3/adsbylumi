@@ -24,11 +24,9 @@ import { AdPreview } from "@/components/AdPreview";
 // Real engine renders with clean sample copy — replaced the old AI-generated
 // mockup images, which rendered garbled/unreadable placeholder text (a known
 // limitation of image models asked to draw text) instead of a real preview.
-import cutoutThumb from "@/assets/template-thumbs/cutout.jpg";
 import spotlightThumb from "@/assets/template-thumbs/spotlight.jpg";
 import framedThumb from "@/assets/template-thumbs/framed.jpg";
 import splitThumb from "@/assets/template-thumbs/split.jpg";
-import highlighterThumb from "@/assets/template-thumbs/highlighter.jpg";
 import overlayThumb from "@/assets/template-thumbs/overlay.jpg";
 import devicemockupThumb from "@/assets/template-thumbs/devicemockup.jpg";
 import testimonialThumb from "@/assets/template-thumbs/testimonial.jpg";
@@ -45,11 +43,9 @@ import textthreadThumb from "@/assets/template-thumbs/textthread.jpg";
 import nativecaptionThumb from "@/assets/template-thumbs/nativecaption.jpg";
 
 const BUILT_IN_THUMBS: Record<string, string> = {
-  cutout: cutoutThumb,
   spotlight: spotlightThumb,
   framed: framedThumb,
   split: splitThumb,
-  highlighter: highlighterThumb,
   overlay: overlayThumb,
   devicemockup: devicemockupThumb,
   testimonial: testimonialThumb,
@@ -92,16 +88,14 @@ type CustomTemplate = {
 };
 
 const BUILT_IN_TEMPLATES = [
-  "cutout", "spotlight", "framed", "split", "highlighter", "overlay", "devicemockup", "testimonial", "statgrid", "checklist", "chatproof", "event", "offer", "bigtype", "collage", "carousel",
+  "spotlight", "framed", "split", "overlay", "devicemockup", "testimonial", "statgrid", "checklist", "chatproof", "event", "offer", "bigtype", "collage", "carousel",
   "notesapp", "textthread", "nativecaption",
 ] as const;
 
 const BUILT_IN_LABELS: Record<string, string> = {
-  cutout: "Photo cut-out",
   spotlight: "Spotlight card",
   framed: "Framed editorial",
   split: "Photo + headline",
-  highlighter: "Bold highlighter",
   overlay: "Image + text",
   devicemockup: "Device mockup",
   testimonial: "Testimonial card",
@@ -119,7 +113,6 @@ const BUILT_IN_LABELS: Record<string, string> = {
 };
 
 const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
-  cutout: "cutout", highlighter: "cutout",
   spotlight: "with-background", framed: "with-background", split: "with-background",
   overlay: "with-background",
   devicemockup: "with-background", testimonial: "with-background",
@@ -130,7 +123,7 @@ const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
 // New copy-only templates must fall back to a supported layout at render time
 // (their richer slots collapse to eyebrow + headline + sub) so they don't error.
 const ENGINE_SUPPORTED_TEMPLATES = new Set([
-  "cutout", "spotlight", "framed", "split", "highlighter", "overlay",
+  "spotlight", "framed", "split", "overlay",
   "devicemockup", "testimonial", "carousel",
   // Rich text-led formats — now render natively (require the 16-template engine
   // build to be deployed). Adding them here stops the collapse: toEngineTemplate()
@@ -216,8 +209,8 @@ const MULTILINE_KEYS = new Set(["sub", "accent", "msg1", "msg2", "msg3", "msg4",
 function mapStyleToTemplate(styleHint?: string, format?: string): string {
   if (format === "carousel") return "carousel";
   const m: Record<string, string> = {
-    "photo-forward": "cutout", card: "spotlight", framed: "framed",
-    "type-led": "split", testimonial: "testimonial", highlighter: "highlighter",
+    "photo-forward": "spotlight", card: "spotlight", framed: "framed",
+    "type-led": "split", testimonial: "testimonial",
     stats: "statgrid", data: "statgrid",
     checklist: "checklist", list: "checklist", steps: "checklist",
     chat: "chatproof", proof: "chatproof", testimonialchat: "chatproof",
@@ -231,7 +224,7 @@ function mapStyleToTemplate(styleHint?: string, format?: string): string {
     textthread: "textthread", texts: "textthread", imessage: "textthread",
     nativecaption: "nativecaption", caption: "nativecaption",
   };
-  return (styleHint && m[styleHint]) || "cutout";
+  return (styleHint && m[styleHint]) || "bigtype";
 }
 
 export function GenerateCreativeDialog() {
@@ -271,7 +264,7 @@ export function GenerateCreativeDialog() {
   const [bodyScale, setBodyScale] = useState<number>(1);
 
   const [composing, setComposing] = useState(false);
-  const [template, setTemplate] = useState<string>("cutout");
+  const [template, setTemplate] = useState<string>("bigtype");
 
   // Two-step UX: pick a style, then provide image + copy.
   const [step, setStep] = useState<"style" | "image-copy">("style");
@@ -378,7 +371,11 @@ export function GenerateCreativeDialog() {
 
 
 
-  // Tie background removal to chosen template (cutout/highlighter only).
+  // Tie background removal to the chosen template's declared treatment.
+  // No remaining built-in template uses "cutout" treatment (the two that
+  // did — Photo cut-out and Bold highlighter — were removed for reliability),
+  // so this now always resolves to false, which is correct: every remaining
+  // photo template wants the full photo, not a background-removed cutout.
   useEffect(() => {
     const t = PHOTO_TREATMENT[template];
     setRemoveBackground(t === "cutout");
@@ -1273,9 +1270,16 @@ export function GenerateCreativeDialog() {
     }
   };
 
+  // Template-agnostic: checks whether ANY slot has real content, rather than
+  // hardcoding "headline"/"headlineHL" — those don't exist on every template
+  // (e.g. notesapp uses "body", textthread uses "msg1", nativecaption uses
+  // "line1"/"line2"), so the old hardcoded check silently kept the render
+  // button disabled for any template without those exact two field names.
+  const hasAnyText = (o: Record<string, unknown> | undefined | null) =>
+    !!o && Object.values(o).some((v) => typeof v === "string" && v.trim().length > 0);
   const copyReady = isCarousel
-    ? editedSlides.some((s) => (s?.headline || "").trim().length > 0)
-    : !!((editedSingle.headline || "").trim() || (editedSingle.headlineHL || "").trim());
+    ? editedSlides.some((s) => hasAnyText(s))
+    : hasAnyText(editedSingle);
 
   const canRender =
     !generating && !composing &&

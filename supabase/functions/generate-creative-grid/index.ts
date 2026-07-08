@@ -595,8 +595,8 @@ ADDITIONAL FIELDS FOR graphic AND carousel FORMATS (REQUIRED — this is the str
   - cta: the action (e.g. "Save your seat", "Watch free training", "Book a call")
   - audience: who this is for, in a phrase
   - proofPoint: optional result/testimonial/stat string, or null
-  - styleHint: one of "photo-forward" | "type-led" | "highlighter" | "testimonial" | "card" | "framed" | "stats" | "checklist" | "overlay" | "device" | "chat" | "event" | "offer" | "bigtype" | "collage"
-  - photoTreatment: one of "cutout" | "with-background" | "none"
+  - styleHint: one of "photo-forward" | "type-led" | "testimonial" | "card" | "framed" | "stats" | "checklist" | "overlay" | "device" | "chat" | "event" | "offer" | "bigtype" | "collage"
+  - photoTreatment: one of "with-background" | "none"
   - slideCount: 1 for single_graphic; 3 to 6 for carousel
   - slidePlan: for carousel ONLY, an array of slideCount objects each with a "role" — choose from "hook" | "problem" | "framework" | "proof" | "cta" — in narrative order. Omit for single_graphic.
   - imageSource: one of "user-photo" | "none".
@@ -606,7 +606,7 @@ ADDITIONAL FIELDS FOR graphic AND carousel FORMATS (REQUIRED — this is the str
   - PHOTO-FORWARD STYLE PICKS (use a real photo, imageSource "user-photo", photoTreatment "with-background"):
     • "overlay" — full-bleed photo with the headline laid over it. Best when the photo carries the emotion and the line is short and punchy.
     • "device" — the lead magnet / freebie / training shown ON a phone or laptop screen. Best for "free PDF", "free training", app/website screenshots, course previews, anything that lives on a screen.
-    • "photo-forward" — classic photo + cut-out treatment (the existing default for real photos).
+    • "photo-forward" — full photo background behind a centered headline card (the existing default for real photos).
   - Use styleHint "stats" for results/proof concepts built around 2–4 numeric metrics, and "checklist" for "what's included" / "how it works" concepts built around 3–6 short list items. For BOTH, set imageSource to "none" and photoTreatment to "none" — the template is pure type + data.
   - "chat" — a DM / text-message proof concept. Present a client quote or conversation as chat bubbles. Set imageSource to "none" and photoTreatment to "none". Works best in the trust or action row.
   - "event" — a webinar / live-class / event concept. Lead with the event title + date/time block. Set imageSource to "none" and photoTreatment to "none" unless a real event photo is available.
