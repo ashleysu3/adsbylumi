@@ -502,7 +502,7 @@ export function ProductionManager({
       if (workspace?.id) {
         supabase
           .from("campaign_workspaces")
-          .update({ top_five_state: nextState, updated_at: new Date().toISOString() })
+          .update({ top_five_state: nextState as any, updated_at: new Date().toISOString() })
           .eq("id", workspace.id)
           .then(({ error: upErr }) => {
             if (upErr) console.error("Failed to persist top 5:", upErr);
