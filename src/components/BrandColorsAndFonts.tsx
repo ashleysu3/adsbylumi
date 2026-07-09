@@ -10,7 +10,6 @@ import { Loader2, Paintbrush } from "lucide-react";
 import { toast } from "sonner";
 import { useAutosave } from "@/hooks/useAutosave";
 import { AutoSaveIndicator } from "@/components/AutoSaveIndicator";
-import { MiniTourTrigger } from "@/components/MiniTourTrigger";
 
 // Curated Google Fonts the renderer can actually load.
 // Keep in sync with renderer/ALLOWED_FONTS.
@@ -360,15 +359,8 @@ export default function BrandColorsAndFonts({ brandId, websiteUrl }: Props) {
               </div>
             </div>
 
-            <div className="pt-2 flex items-center justify-end gap-2">
+            <div className="pt-2 flex justify-end">
               <AutoSaveIndicator status={status} />
-              <MiniTourTrigger
-                steps={[{
-                  targetSelector: '[data-help-target="pull-colors-fonts"]',
-                  title: "Colors & fonts",
-                  description: "Pull colors and fonts straight from your website, or set them manually above — this is what Lumi uses in every creative it generates for you.",
-                }]}
-              />
             </div>
           </>
         )}

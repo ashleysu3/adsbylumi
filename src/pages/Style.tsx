@@ -19,6 +19,7 @@ import BrandColorsAndFonts from "@/components/BrandColorsAndFonts";
 import BrandGuideUpload from "@/components/BrandGuideUpload";
 import { BRollLibrariesManager } from "@/components/BRollLibrariesManager";
 import { OverlayStylePicker } from "@/components/OverlayStylePicker";
+import { TourFab } from "@/components/TourFab";
 import type { OverlayStyle } from "@/components/VideoTextPreview";
 import { DEFAULT_OVERLAY_STYLE } from "@/components/VideoTextPreview";
 import { Building2, Smile, X, Loader2, Palette } from "lucide-react";
@@ -300,6 +301,21 @@ export default function Style() {
         onOpenChange={setEditDialogOpen}
         brand={brand}
         onUpdate={fetchBrand}
+      />
+
+      <TourFab
+        steps={[
+          {
+            targetSelector: '[data-help-target="pull-colors-fonts"]',
+            title: "Colors & fonts",
+            description: "Pull colors and fonts straight from your website, or set them manually below — this is what Lumi uses in every creative it generates for you.",
+          },
+          {
+            targetSelector: '[data-help-target="overlay-style-panel"]',
+            title: "Text overlay style",
+            description: "Font, color, position, and size for the captions on your b-roll videos — changes save automatically as you adjust them.",
+          },
+        ]}
       />
     </DashboardLayout>
   );

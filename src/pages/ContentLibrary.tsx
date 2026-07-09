@@ -18,7 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { cn } from "@/lib/utils";
 import { CreativeFlowModal } from "@/components/creative/CreativeFlowModal";
 import { AutoSaveIndicator } from "@/components/AutoSaveIndicator";
-import { MiniTourTrigger } from "@/components/MiniTourTrigger";
+import { TourFab } from "@/components/TourFab";
 import { useAutosave } from "@/hooks/useAutosave";
 type ContentIdea = {
   id: string;
@@ -725,16 +725,7 @@ export default function ContentLibrary({ embedded = false }: { embedded?: boolea
           <DialogHeader>
             <div className="flex items-center justify-between gap-3">
               <DialogTitle>{editingIdea ? "Edit Idea" : "Add New Idea"}</DialogTitle>
-              <div className="flex items-center gap-2">
-                {editingIdea ? <AutoSaveIndicator status={autosave.status} /> : null}
-                <MiniTourTrigger
-                  steps={[{
-                    targetSelector: '[data-help-target="save-idea"]',
-                    title: editingIdea ? "Edit idea" : "Add idea",
-                    description: `Fill in the details, then use the ${editingIdea ? "Save Changes" : "Add Idea"} button below to store it in your content library.`,
-                  }]}
-                />
-              </div>
+              {editingIdea ? <AutoSaveIndicator status={autosave.status} /> : null}
             </div>
           </DialogHeader>
           
@@ -813,6 +804,16 @@ export default function ContentLibrary({ embedded = false }: { embedded?: boolea
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {dialogOpen && (
+        <TourFab
+          steps={[{
+            targetSelector: '[data-help-target="save-idea"]',
+            title: editingIdea ? "Edit idea" : "Add idea",
+            description: `Fill in the details, then use the ${editingIdea ? "Save Changes" : "Add Idea"} button below to store it in your content library.`,
+          }]}
+        />
+      )}
 
       {/* AI Generation Dialog */}
       <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>

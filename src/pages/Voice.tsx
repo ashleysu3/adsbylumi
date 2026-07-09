@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { PageShimmer } from "@/components/GradientShimmer";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { BrandVoiceCard } from "@/components/BrandVoiceCard";
+import { TourFab } from "@/components/TourFab";
 import { ContentAssetsEditor } from "@/components/ContentAssetsEditor";
 import { Building2, Smile, X, Loader2, Mic } from "lucide-react";
 import { toast } from "sonner";
@@ -354,6 +355,14 @@ export default function Voice() {
           <ContentAssetsEditor brandId={brand.id} offers={offers.map((o) => ({ id: o.id, name: o.name }))} />
         </div>
       </div>
+
+      <TourFab
+        steps={[{
+          targetSelector: '[data-help-target="analyze-voice"]',
+          title: "Brand voice",
+          description: "Add your Instagram handle (optional) and hit analyze — Lumi reads your site and posts to learn how you actually sound, then uses it to write ads that feel like you.",
+        }]}
+      />
     </DashboardLayout>
   );
 }

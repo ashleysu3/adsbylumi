@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Upload, X, FileVideo, FileImage, File, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
-import { MiniTourTrigger } from "@/components/MiniTourTrigger";
 
 interface AssetUploaderProps {
   workspace: any;
@@ -111,16 +110,7 @@ export function AssetUploader({ workspace, onUpdate }: AssetUploaderProps) {
                 Upload your finished videos, images, and other creative assets
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <AutoSaveIndicator status={saveStatus} />
-              <MiniTourTrigger
-                steps={[{
-                  targetSelector: '[data-help-target="upload-asset"]',
-                  title: "Upload your creative",
-                  description: "Click or drag your finished video, image, or PDF here — it saves automatically once uploaded.",
-                }]}
-              />
-            </div>
+            <AutoSaveIndicator status={saveStatus} />
           </div>
         </CardHeader>
         <CardContent>
