@@ -90,10 +90,23 @@ Deno.serve(async (req) => {
     oauthUrl.searchParams.set('client_id', META_APP_ID);
     oauthUrl.searchParams.set('redirect_uri', redirectUri);
     oauthUrl.searchParams.set('state', brandId);
-    oauthUrl.searchParams.set(
-      'scope',
-      'ads_management,ads_read,business_management,pages_read_engagement,pages_show_list,instagram_basic'
-    );
+
+    // META_LOGIN_CONFIG_ID (Facebook Login for Business "Configuration ID") is
+    // opt-in via secret — until it's set, behavior is byte-for-byte identical
+    // to today's scope-based flow. Once set, the asset picker (which ad
+    // account / Page / Instagram account to share) moves into Meta's OWN
+    // consent screen instead of LUMI building its own follow-up picker
+    // screens — that's the actual "log in, confirm, done" flow. See
+    // [[project_lumi_meta_business_login_migration]] for the full plan.
+    const loginConfigId = Deno.env.get('META_LOGIN_CONFIG_ID');
+    if (loginConfigId) {
+      oauthUrl.searchParams.set('config_id', loginConfigId);
+    } else {
+      oauthUrl.searchParams.set(
+        'scope',
+        'ads_management,ads_read,business_management,pages_read_engagement,pages_show_list,instagram_basic'
+      );
+    }
     // Force Meta's asset-selection / permission re-grant flow on every connect.
     // `rerequest` re-prompts previously-declined scopes (e.g. instagram_basic).
     // `reauthorize` forces Meta to show the asset-selection panel again instead
