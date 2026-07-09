@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const gate = await requirePaidUser(req, corsHeaders);
+    const gate = await requireAuthedUser(req, corsHeaders);
     if (gate.blocked) return gate.blocked;
 
     const { 
