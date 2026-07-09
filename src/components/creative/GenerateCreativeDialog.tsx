@@ -1270,7 +1270,7 @@ export function GenerateCreativeDialog() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+              className="relative overflow-hidden flex items-center gap-1 text-[11px] font-medium text-white bg-gradient-lumi rounded-full px-2.5 py-1 shadow-lumi hover:shadow-glow transition-shadow disabled:opacity-50 disabled:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent before:animate-shimmer"
               onClick={() => setTourOpen(true)}
               disabled={dialogTourSteps.length === 0}
             >

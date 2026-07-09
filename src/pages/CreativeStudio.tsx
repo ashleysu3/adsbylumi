@@ -1458,11 +1458,11 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
             </div>
             <div className="flex items-center gap-2">
               <Button
-                variant="outline"
+                variant="lumi"
                 size="sm"
                 onClick={() => setTourOpen(true)}
                 disabled={tourSteps.length === 0}
-                className="gap-2 hidden sm:flex"
+                className="gap-2 hidden sm:flex relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent before:animate-shimmer disabled:before:hidden"
                 title={tourSteps.length === 0 ? "No tips for this view yet" : undefined}
               >
                 <Compass className="h-4 w-4" />

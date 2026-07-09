@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Cloud, CloudOff, Loader2 } from "lucide-react";
+import { Check, CloudOff, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -13,11 +13,6 @@ interface AutoSaveIndicatorProps {
 }
 
 const STATUS_CONFIG = {
-  idle: {
-    icon: Cloud,
-    label: "Auto-save on",
-    color: "text-muted-foreground",
-  },
   saving: {
     icon: Loader2,
     label: "Saving...",
@@ -35,12 +30,17 @@ const STATUS_CONFIG = {
   },
 };
 
-export function AutoSaveIndicator({ 
-  status, 
-  className, 
+export function AutoSaveIndicator({
+  status,
+  className,
   showLabel = true,
-  size = "sm" 
+  size = "sm"
 }: AutoSaveIndicatorProps) {
+  // Auto-save is the baseline everywhere now, not a feature worth announcing
+  // when nothing's happening — only the transient states (actively saving,
+  // just saved, or failed) are actually informative.
+  if (status === "idle") return null;
+
   const config = STATUS_CONFIG[status];
   const Icon = config.icon;
   const iconSize = size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4";
