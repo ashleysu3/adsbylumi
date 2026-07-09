@@ -359,11 +359,8 @@ export default function BrandColorsAndFonts({ brandId, websiteUrl }: Props) {
               </div>
             </div>
 
-            <div className="pt-2">
-              <Button onClick={handleSave} disabled={saving} variant="lumi">
-                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Save colors & fonts
-              </Button>
+            <div className="pt-2 flex justify-end">
+              <AutoSaveIndicator status={status} />
             </div>
           </>
         )}
