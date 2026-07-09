@@ -9,6 +9,7 @@ import { Loader2, Type, Upload, X, ImageIcon, Sparkles, Move } from "lucide-reac
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { OverlayStyle, EmphasisStyle, OverlayXY } from "./VideoTextPreview";
+import { AutoSaveIndicator, type SaveStatus } from "@/components/AutoSaveIndicator";
 
 // ============================================================================
 // OverlayStylePicker (patch #15)
@@ -52,8 +53,9 @@ const EMPHASIS_STYLE_OPTIONS: { value: EmphasisStyle; label: string }[] = [
 interface OverlayStylePickerProps {
   style: OverlayStyle;
   onChange: (style: OverlayStyle) => void;
-  onSave: () => void;
+  onSave?: () => void;
   saving?: boolean;
+  saveStatus?: SaveStatus;
   brandId: string;
 }
 
@@ -64,7 +66,7 @@ function hexToRgba(hex: string, opacity: number): string {
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
-export function OverlayStylePicker({ style, onChange, onSave, saving, brandId }: OverlayStylePickerProps) {
+export function OverlayStylePicker({ style, onChange, onSave, saving, saveStatus, brandId }: OverlayStylePickerProps) {
   const update = (partial: Partial<OverlayStyle>) => onChange({ ...style, ...partial });
   const [uploadingCta, setUploadingCta] = useState(false);
 
@@ -308,10 +310,16 @@ export function OverlayStylePicker({ style, onChange, onSave, saving, brandId }:
           </span>
         </div>
 
-        <Button onClick={onSave} disabled={saving} variant="lumi" className="w-full">
-          {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-          Save Overlay Style
-        </Button>
+        {saveStatus ? (
+          <div className="flex justify-end">
+            <AutoSaveIndicator status={saveStatus} />
+          </div>
+        ) : onSave ? (
+          <Button onClick={onSave} disabled={saving} variant="lumi" className="w-full">
+            {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            Save Overlay Style
+          </Button>
+        ) : null}
       </CardContent>
     </Card>
   );

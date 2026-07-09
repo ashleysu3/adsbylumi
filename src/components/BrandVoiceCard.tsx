@@ -5,9 +5,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Loader2, Mic, Save, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, Loader2, Mic, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAutosave } from "@/hooks/useAutosave";
+import { AutoSaveIndicator } from "@/components/AutoSaveIndicator";
 
 interface VoiceProfile {
   summary?: string;
@@ -43,17 +45,37 @@ export function BrandVoiceCard({
   onUpdate,
 }: Props) {
   const [analyzing, setAnalyzing] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [instagramHandle, setInstagramHandle] = useState("");
 
   const [summary, setSummary] = useState(brandVoice || "");
   const [profile, setProfile] = useState<VoiceProfile>(voiceProfile || {});
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     setSummary(brandVoice || "");
     setProfile(voiceProfile || {});
+    // Mark hydrated on next tick so the initial hydration doesn't trigger a save.
+    const t = setTimeout(() => setHydrated(true), 0);
+    return () => clearTimeout(t);
   }, [brandVoice, voiceProfile]);
+
+  const { status, schedule } = useAutosave<{ summary: string; profile: VoiceProfile }>(
+    async ({ summary: s, profile: p }) => {
+      const { error } = await supabase
+        .from("brands")
+        .update({ brand_voice: s, voice_profile: p as any })
+        .eq("id", brandId)
+        .select()
+        .single();
+      if (error) throw error;
+    },
+  );
+
+  const scheduleSave = (nextSummary = summary, nextProfile = profile) => {
+    if (!hydrated) return;
+    schedule({ summary: nextSummary, profile: nextProfile });
+  };
 
   const handleAnalyze = async () => {
     setAnalyzing(true);
@@ -73,30 +95,13 @@ export function BrandVoiceCard({
     }
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from("brands")
-        .update({
-          brand_voice: summary,
-          voice_profile: profile as any,
-        })
-        .eq("id", brandId)
-        .select()
-        .single();
-      if (error) throw error;
-      toast.success("Brand voice saved");
-      onUpdate();
-    } catch (e: any) {
-      toast.error(e?.message || "Couldn't save");
-    } finally {
-      setSaving(false);
-    }
+  const updateProfile = <K extends keyof VoiceProfile>(key: K, val: VoiceProfile[K]) => {
+    setProfile((p) => {
+      const next = { ...p, [key]: val };
+      scheduleSave(summary, next);
+      return next;
+    });
   };
-
-  const updateProfile = <K extends keyof VoiceProfile>(key: K, val: VoiceProfile[K]) =>
-    setProfile((p) => ({ ...p, [key]: val }));
 
   const hasProfile = !!voiceProfile && Object.keys(voiceProfile || {}).length > 0;
 
@@ -109,6 +114,7 @@ export function BrandVoiceCard({
             <CardTitle>Brand Voice</CardTitle>
           </div>
           <div className="flex items-center gap-2">
+            <AutoSaveIndicator status={status} />
             {voiceGeneratedAt && (
               <Badge variant="outline" className="text-[10px]">
                 Last analyzed {new Date(voiceGeneratedAt).toLocaleDateString()}
@@ -154,7 +160,7 @@ export function BrandVoiceCard({
             id="voice-summary"
             rows={3}
             value={summary}
-            onChange={(e) => setSummary(e.target.value)}
+            onChange={(e) => { setSummary(e.target.value); scheduleSave(e.target.value, profile); }}
             placeholder='e.g. "Warm, no-nonsense best-friend energy. Short sentences. Drops the occasional all-lowercase aside. Never uses corporate jargon."'
           />
           <p className="text-[11px] text-muted-foreground mt-1">
@@ -275,13 +281,6 @@ export function BrandVoiceCard({
             </div>
           </div>
         )}
-
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={saving} className="gap-1">
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-            Save brand voice
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );

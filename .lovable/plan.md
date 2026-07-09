@@ -1,87 +1,77 @@
-# The Lab + My Creatives — Plan
+# Autosave everywhere
 
-Two new surfaces inside Creative, plus a persisted draft store. Nothing auto-publishes.
+## Goal
+No user should ever click "Save" or lose changes. Every editable field writes itself back to the database on change (debounced), flushes on navigation / tab close, and shows a small "Saving… / Saved" indicator instead of a button.
 
-## 1. New `creatives` table (drafts library)
+We already have the primitive: `useAutosave` (debounce + flush-on-unmount + flush-on-hide + beforeunload guard) and the `AutoSaveIndicator` component. This work is about applying them everywhere and deleting the manual Save UI.
 
-Migration creates `public.creatives`:
+## Scope
 
-- `id uuid pk`
-- `brand_id uuid` (FK brands, indexed)
-- `user_id uuid` (owner, for RLS)
-- `type text` — one of: `hook`, `primary_copy`, `headline`, `description`, `caption`, `cta`, `angle`, `concept`, `broll_idea`, `broll_clip`, `graphic`, `trend`
-- `title text`
-- `content jsonb` — flexible payload (text, asset urls, structured concept, etc.)
-- `asset_url text` (nullable — for graphics / b-roll clips)
-- `thumb_url text` (nullable)
-- `source text` — `lab` | `guided_flow` | `lead_fit_feedback` | `trend_translator`
-- `source_ref jsonb` — pointers back to workspace/tool params for "Edit/iterate"
-- `status text` — `unused` (default) | `used`
-- `used_in jsonb` — `{ campaign_id, ad_id, used_at }` when promoted
-- `tags text[]`
-- `created_at`, `updated_at`
+### In scope — user-facing editors that currently require a manual save
+Grouped by area. Each becomes "type → autosaves → indicator in the corner":
 
-GRANTs to `authenticated` + `service_role`. RLS: owner via `user_id = auth.uid()` OR admin. Updated_at trigger.
+- **Brand / Style**
+  - `src/pages/Style.tsx` (brand details, emoji settings, overlay style)
+  - `src/components/BrandColorsAndFonts.tsx`
+  - `src/components/BrandEditDialog.tsx`
+  - `src/components/BrandVoiceCard.tsx`
+  - `src/components/OverlayStylePicker.tsx`
+  - `src/pages/BrandSetup.tsx`
+- **Offers / Audience**
+  - `src/components/OfferEditDialog.tsx`, `OfferMessagingEditor.tsx`
+  - `src/components/AudiencePsychology.tsx`
+- **Campaigns / Creative**
+  - `src/pages/CreativeStudio.tsx`
+  - `src/components/creative/AngleCopyEditor.tsx`
+  - `src/components/MobileCampaignReview.tsx`
+  - `src/components/insights/CampaignGoalRow.tsx`
+- **Content / Ads Manager**
+  - `src/pages/ContentLibrary.tsx`
+  - `src/pages/AdsManager.tsx`
+  - `src/components/ads-manager/ReviewForm.tsx`, `ReportDraftPreview.tsx`
+- **Settings**
+  - `src/pages/AgencySettings.tsx`
+  - `src/components/PixelVerificationCard.tsx`
 
-## 2. Creative Studio — add "The Lab" mode
+### Explicitly out of scope
+- **Destructive / transactional actions**: publish, launch campaign, send email, checkout, delete, "Apply brand guide" — these stay as explicit buttons. Autosave is for edits to your own data, not for firing side-effects.
+- **Admin console pages** (`src/pages/admin/*`): different UX (bulk edits, moderator intent). Keep manual save.
+- **Onboarding wizards** (`GuidedOnboarding.tsx`, `Onboarding.tsx`): step-based flows where "Next" is the save. Untouched.
+- **Auth / password change**: security-sensitive, must stay explicit.
 
-`src/pages/CreativeStudio.tsx` gets a top-level mode toggle:
-- **Guided flow** (current 4-step Angles → Concepts → Copy → Produce)
-- **The Lab** (new — free-play tools grid)
+## How it works
 
-The Lab is a tools dashboard. Each tile opens a standalone tool that:
-- Reads brand brain via existing `BrandContext` / knowledge base loaders
-- Does NOT require prior steps
-- Has a "Save to My Creatives" action on every output (auto-saves on generate too)
+1. **One shared hook per editor.** Each editor component gets a `useAutosave` instance with a saver that upserts the current form state to the right table (`brands`, `brand_kits`, `offers`, `campaign_workspaces`, etc.). Debounce stays at 1500ms; existing behavior (flush on unmount, hide, beforeunload) is already correct.
 
-Tools (each = a small component under `src/components/lab/`):
+2. **One shared status pill.** Replace every "Save" button with `<AutoSaveIndicator status={status} />` in the card header or dialog footer. Users see "Saving…" while typing, "Saved" after, "Retrying…" on error.
 
-- `LabAngles.tsx` — generate angles for current brand/offer
-- `LabConcepts.tsx` — generate ad concepts (graphic / carousel / b-roll / talking head)
-- `LabCopy.tsx` — tabbed: Hooks · Primary text · Captions · CTAs · Headlines · Descriptions
-- `LabBRoll.tsx` — ideas + generation (reuse existing b-roll generator)
-- `LabGraphics.tsx` — graphic/image generation (reuse existing image gen + templates)
-- `LabTrendTranslator.tsx` — move existing `TrendTranslator` page contents here as a tool
+3. **Dialogs never block on save.** `BrandEditDialog`, `OfferEditDialog`, etc. call `await flush()` in their close handler so the row is guaranteed persisted before the dialog unmounts — but the user just clicks the X or outside, no "Save & close".
 
-Add `TheLab.tsx` container with a tool picker. Keep `/trends` route working but render a "moved to The Lab" redirect card linking to `/creative?mode=lab&tool=trends`.
+4. **Optimistic UI.** Local state updates immediately. Errors re-queue via the hook's existing retry, and we surface a toast only if the same save fails twice in a row (to avoid noise on flaky networks).
 
-## 3. My Creatives library page
+5. **Cleanup.** Delete now-unused `handleSave*` functions, `saving` state, and Save button JSX from each file in scope.
 
-Repurpose `src/components/creative/MyCreativeLibrary.tsx` to read from the new `creatives` table (primary source), and keep current workspace-derived items as a secondary "From campaigns" tab for back-compat. Add filters: type, status (unused/used), source, search.
+## Rollout order (small, verifiable batches)
 
-Each card gets an actions menu:
-- **Edit / iterate** — reopens the matching Lab tool with `source_ref` payload prefilled
-- **Add to an existing campaign** — opens existing `PromoteExistingPostDialog` / reuses `add-creative-to-campaign` flow. Ad created PAUSED, requires user confirm before going live. On success, mark creative `status='used'` + populate `used_in`.
-- **Use in a new ad** — hands the creative into the guided 4-step flow (`/creative?mode=guided&seed=<creative_id>`)
-- Copy / Delete
+Instead of one giant PR, ship in four passes so each is testable:
 
-## 4. Save-on-generate everywhere
+1. Style page cluster — brand details, colors/fonts, emoji, overlay style, voice card. (Highest visible payoff, all edits are simple field-updates.)
+2. Offers + Audience editors.
+3. Creative Studio + AngleCopyEditor + CampaignGoalRow.
+4. Ads Manager review/report + Agency settings + Pixel card.
 
-All Lab tools and guided-flow generators write to `creatives` immediately on generate (status `unused`). Add a small `saveCreative()` helper in `src/lib/creatives.ts`.
+After each batch: build passes, visit the page in the preview, confirm the indicator shows Saving → Saved and reload shows the value persisted.
 
-## 5. Lead-fit feedback fix
+## What the user will notice
 
-`LeadQualityCheck.tsx` (and the ad-fit-review function path): re-aimed copy/concepts are saved to `creatives` with `source='lead_fit_feedback'`. Replace any "we updated your ad" / auto-publish wording with:
-
-> Saved in My Creatives — review and add to your campaign when ready. Nothing changes in your live ad until you do.
-
-Remove buttons that imply auto-push to live; replace with "Open in My Creatives".
-
-## 6. Routing / nav
-
-- `/creative` keeps current behavior; query `?mode=lab` opens The Lab
-- Add "My Creatives" nav link (already exists as Library — confirm and surface)
-- Sidebar: add "The Lab" sub-item under Creative
-
-## 7. Out of scope
-
-- No billing changes
-- No Meta API execution changes (reuses existing paused-first promote flow)
-- No deletion of guided flow
+- No more "Save" buttons on brand, style, offers, audience, creative, and content editors.
+- A subtle "Saving… / Saved just now" indicator in the top-right of each card / dialog.
+- Closing a dialog or navigating away never loses input, even mid-keystroke.
+- Publish, launch, send, delete, and checkout still require an explicit click — those are actions, not edits.
 
 ## Technical notes
 
-- Edge functions stay the same; only client writes drafts to `creatives`
-- `BrandContext` already provides `activeBrand` — all tools scope by `brand_id`
-- Existing components reused: `PromoteExistingPostDialog`, `ImportCampaignsModal`, `add-creative-to-campaign`, b-roll generator, image gen, `TrendTranslator`
-- Library card actions wired through a single `CreativeActionsMenu` component
+- No schema changes. All target tables already exist and are being written to today.
+- No new dependencies; `useAutosave` + `AutoSaveIndicator` are already in the repo.
+- Each saver is scoped to the row currently loaded (brand id, offer id, workspace id) so there is no risk of cross-record writes.
+- The hook already handles: debounce, flush on unmount, flush on tab hide, `beforeunload` warning when a write is pending, and automatic retry on failure.

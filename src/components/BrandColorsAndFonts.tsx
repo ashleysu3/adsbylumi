@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Paintbrush } from "lucide-react";
 import { toast } from "sonner";
+import { useAutosave } from "@/hooks/useAutosave";
+import { AutoSaveIndicator } from "@/components/AutoSaveIndicator";
 
 // Curated Google Fonts the renderer can actually load.
 // Keep in sync with renderer/ALLOWED_FONTS.
@@ -83,14 +85,15 @@ interface Props {
 
 export default function BrandColorsAndFonts({ brandId, websiteUrl }: Props) {
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [pulling, setPulling] = useState(false);
   const [url, setUrl] = useState(websiteUrl || "");
   const [colors, setColors] = useState<BrandColors>({});
   const [fonts, setFonts] = useState<BrandFonts>({});
   const [sourceUrl, setSourceUrl] = useState<string>("");
+  const hydratedRef = useRef(false);
 
   useEffect(() => {
+    hydratedRef.current = false;
     void load();
   }, [brandId, websiteUrl]);
 
@@ -175,41 +178,57 @@ export default function BrandColorsAndFonts({ brandId, websiteUrl }: Props) {
     }
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      if (!brandId) throw new Error("Choose a brand before saving colors and fonts");
-      const { data: userRes } = await supabase.auth.getUser();
-      const userId = userRes.user?.id;
-      if (!userId) throw new Error("You must be signed in");
-      // Derive a real, fetchable Google Fonts CSS URL for the chosen display
-      // font so the renderer can actually load it (replaces any old typed value).
-      const families = [fonts.displayFamily, fonts.bodyFamily].filter(Boolean) as string[];
-      const fontsToSave = {
-        ...fonts,
-        displayItalicUrl: families.length ? googleFontHref(families) : fonts.displayItalicUrl || "",
-      };
-      const { error } = await supabase
-        .from("brand_kits")
-        .upsert(
-          {
-            user_id: userId,
-            brand_id: brandId,
-            source_url: url.trim() || sourceUrl || null,
-            colors,
-            fonts: fontsToSave,
-            status: "confirmed",
-          },
-          { onConflict: "user_id,brand_id" }
-        );
-      if (error) throw error;
-      toast.success("Brand colors & fonts saved");
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to save");
-    } finally {
-      setSaving(false);
-    }
+  const { status, schedule } = useAutosave<{
+    colors: BrandColors;
+    fonts: BrandFonts;
+    url: string;
+    sourceUrl: string;
+  }>(async ({ colors: c, fonts: f, url: u, sourceUrl: src }) => {
+    if (!brandId) return;
+    const { data: userRes } = await supabase.auth.getUser();
+    const userId = userRes.user?.id;
+    if (!userId) return;
+    const families = [f.displayFamily, f.bodyFamily].filter(Boolean) as string[];
+    const fontsToSave = {
+      ...f,
+      displayItalicUrl: families.length ? googleFontHref(families) : f.displayItalicUrl || "",
+    };
+    const { error } = await supabase
+      .from("brand_kits")
+      .upsert(
+        {
+          user_id: userId,
+          brand_id: brandId,
+          source_url: u.trim() || src || null,
+          colors: c,
+          fonts: fontsToSave,
+          status: "confirmed",
+        },
+        { onConflict: "user_id,brand_id" }
+      );
+    if (error) throw error;
+  });
+
+  const scheduleSave = (
+    nextColors = colors,
+    nextFonts = fonts,
+    nextUrl = url,
+    nextSourceUrl = sourceUrl,
+  ) => {
+    if (!hydratedRef.current || !brandId) return;
+    schedule({ colors: nextColors, fonts: nextFonts, url: nextUrl, sourceUrl: nextSourceUrl });
   };
+
+  // Autosave once after any pull-from-site fills in fresh values.
+  useEffect(() => {
+    if (loading) return;
+    if (!hydratedRef.current) {
+      hydratedRef.current = true;
+      return;
+    }
+    scheduleSave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [colors, fonts, url, loading]);
 
   return (
     <Card variant="glow">
@@ -340,11 +359,8 @@ export default function BrandColorsAndFonts({ brandId, websiteUrl }: Props) {
               </div>
             </div>
 
-            <div className="pt-2">
-              <Button onClick={handleSave} disabled={saving} variant="lumi">
-                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Save colors & fonts
-              </Button>
+            <div className="pt-2 flex justify-end">
+              <AutoSaveIndicator status={status} />
             </div>
           </>
         )}

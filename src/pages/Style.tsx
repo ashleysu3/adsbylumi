@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useBrand } from "@/contexts/BrandContext";
@@ -24,6 +24,7 @@ import { DEFAULT_OVERLAY_STYLE } from "@/components/VideoTextPreview";
 import { Building2, Smile, X, Loader2, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAutosave } from "@/hooks/useAutosave";
 
 interface EmojiSettings {
   use_emojis: boolean;
@@ -49,6 +50,26 @@ export default function Style() {
   const [overlayStyle, setOverlayStyle] = useState<OverlayStyle>(DEFAULT_OVERLAY_STYLE);
   const [brollClips, setBrollClips] = useState<any[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const overlayHydratedRef = useRef(false);
+
+  const overlayAutosave = useAutosave<OverlayStyle>(async (style) => {
+    if (!brand?.id) return;
+    const { error } = await supabase
+      .from("brands")
+      .update({ overlay_style: style as any })
+      .eq("id", brand.id);
+    if (error) throw error;
+  });
+
+  useEffect(() => {
+    if (loading || !brand?.id) return;
+    if (!overlayHydratedRef.current) {
+      overlayHydratedRef.current = true;
+      return;
+    }
+    overlayAutosave.schedule(overlayStyle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overlayStyle, brand?.id, loading]);
 
   useEffect(() => {
     fetchBrand();
@@ -268,22 +289,9 @@ export default function Style() {
             style={overlayStyle}
             onChange={setOverlayStyle}
             brandId={brand.id}
-            onSave={async () => {
-              setSaving(true);
-              try {
-                const { error } = await supabase
-                  .from("brands")
-                  .update({ overlay_style: overlayStyle as any })
-                  .eq("id", brand.id);
-                if (error) throw error;
-                toast.success("Overlay style saved");
-              } catch {
-                toast.error("Failed to save overlay style");
-              }
-              setSaving(false);
-            }}
-            saving={saving}
+            saveStatus={overlayAutosave.status}
           />
+
         </div>
       </div>
 
