@@ -16,6 +16,7 @@ import { BrandEditDialog } from "@/components/BrandEditDialog";
 import { Globe, Target, Edit } from "lucide-react";
 import BrandImageLibrary from "@/components/BrandImageLibrary";
 import BrandColorsAndFonts from "@/components/BrandColorsAndFonts";
+import BrandGuideUpload from "@/components/BrandGuideUpload";
 import { BRollLibrariesManager } from "@/components/BRollLibrariesManager";
 import { OverlayStylePicker } from "@/components/OverlayStylePicker";
 import type { OverlayStyle } from "@/components/VideoTextPreview";
@@ -244,6 +245,9 @@ export default function Style() {
               )}
             </CardContent>
           </Card>
+
+          {/* Brand Guide Upload */}
+          <BrandGuideUpload brandId={brand.id} onApplied={fetchBrand} />
 
           {/* Brand Colors & Fonts */}
           <BrandColorsAndFonts brandId={brand.id} websiteUrl={brand?.website_url || brand?.website} />
