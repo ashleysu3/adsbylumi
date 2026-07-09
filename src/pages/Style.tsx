@@ -50,6 +50,26 @@ export default function Style() {
   const [overlayStyle, setOverlayStyle] = useState<OverlayStyle>(DEFAULT_OVERLAY_STYLE);
   const [brollClips, setBrollClips] = useState<any[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const overlayHydratedRef = useRef(false);
+
+  const overlayAutosave = useAutosave<OverlayStyle>(async (style) => {
+    if (!brand?.id) return;
+    const { error } = await supabase
+      .from("brands")
+      .update({ overlay_style: style as any })
+      .eq("id", brand.id);
+    if (error) throw error;
+  });
+
+  useEffect(() => {
+    if (loading || !brand?.id) return;
+    if (!overlayHydratedRef.current) {
+      overlayHydratedRef.current = true;
+      return;
+    }
+    overlayAutosave.schedule(overlayStyle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overlayStyle, brand?.id, loading]);
 
   useEffect(() => {
     fetchBrand();
