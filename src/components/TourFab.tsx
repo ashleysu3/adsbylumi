@@ -24,7 +24,7 @@ export function TourFab({ steps, className }: TourFabProps) {
         type="button"
         onClick={() => setOpen(true)}
         className={cn(
-          "fixed bottom-4 right-4 z-[60] flex items-center gap-1.5 rounded-full bg-gradient-lumi px-4 py-2.5 text-sm font-medium text-white shadow-lumi hover:shadow-glow transition-shadow relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent before:animate-shimmer",
+          "fixed bottom-4 right-4 z-[60] flex items-center gap-1.5 rounded-full bg-gradient-lumi px-4 py-2.5 text-sm font-medium text-white shadow-lumi hover:shadow-glow transition-shadow overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent before:animate-shimmer",
           className,
         )}
       >

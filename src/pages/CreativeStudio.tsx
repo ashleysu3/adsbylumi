@@ -337,6 +337,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
       return [];
     }
     if (activeTab === "concepts") {
+      if (gridData.length === 0) return [];
       return [{
         targetSelector: '[data-help-target="concepts-add"]',
         title: "Concepts",
@@ -344,6 +345,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
       }];
     }
     if (activeTab === "copy") {
+      if (productionItems.length === 0) return [];
       return [{
         targetSelector: '[data-help-target="copy-continue"]',
         title: "Ad Copy",
@@ -351,6 +353,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
       }];
     }
     if (activeTab === "build") {
+      if (productionItems.length === 0) return [];
       return [{
         targetSelector: '[data-help-target="production-continue"]',
         title: "Production checklist",
