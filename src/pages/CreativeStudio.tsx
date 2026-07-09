@@ -41,6 +41,7 @@ import { CadenceNudge } from "@/components/creative/CadenceNudge";
 import { CreativeStudioExplainer, useCreativeStudioExplainer } from "@/components/creative/CreativeStudioExplainer";
 import { Json } from "@/integrations/supabase/types";
 import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
+import { MiniTourTrigger } from "@/components/MiniTourTrigger";
 import { useBrand } from "@/contexts/BrandContext";
 import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
 import {
@@ -1814,9 +1815,12 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
                       Write headlines, descriptions, and primary copy for your ads
                     </p>
                   </div>
-                  <AutoSaveIndicator status={copySaveStatus} />
+                  <div className="flex items-center gap-2">
+                    <AutoSaveIndicator status={copySaveStatus} />
+                    <MiniTourTrigger steps={tourSteps} />
+                  </div>
                 </div>
-                
+
                 <AngleCopyEditor
                   angles={availableAngles}
                   selectedAngleIds={selectedAngleIds.length > 0 ? selectedAngleIds : [...new Set(productionItems.map(p => availableAngles.find(a => a.name === p.angleName)?.id).filter(Boolean))] as string[]}
@@ -2211,16 +2215,19 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
           isGenerating={generating}
         />
         {/* Auto-save status indicator - unified across all tabs */}
-        {workspace && (
-          <div className="fixed bottom-4 right-4 z-30 bg-background/80 backdrop-blur-sm rounded-full px-3 py-1.5 border shadow-sm">
-            <AutoSaveIndicator status={
-              saveStatus === "saving" || copySaveStatus === "saving" ? "saving" :
-              saveStatus === "error" || copySaveStatus === "error" ? "error" :
-              saveStatus === "saved" || copySaveStatus === "saved" ? "saved" :
-              "idle"
-            } size="sm" />
-          </div>
-        )}
+        {workspace && (() => {
+          const aggregatedSaveStatus: SaveStatus =
+            saveStatus === "saving" || copySaveStatus === "saving" ? "saving" :
+            saveStatus === "error" || copySaveStatus === "error" ? "error" :
+            saveStatus === "saved" || copySaveStatus === "saved" ? "saved" :
+            "idle";
+          if (aggregatedSaveStatus === "idle") return null;
+          return (
+            <div className="fixed bottom-4 right-4 z-30 bg-background/80 backdrop-blur-sm rounded-full px-3 py-1.5 border shadow-sm">
+              <AutoSaveIndicator status={aggregatedSaveStatus} size="sm" />
+            </div>
+          );
+        })()}
         <GenerateCreativeDialog />
       </motion.div>
     </Layout>

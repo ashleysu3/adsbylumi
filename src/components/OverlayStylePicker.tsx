@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { OverlayStyle, EmphasisStyle, OverlayXY } from "./VideoTextPreview";
 import { AutoSaveIndicator, type SaveStatus } from "@/components/AutoSaveIndicator";
+import { MiniTourTrigger } from "@/components/MiniTourTrigger";
 
 // ============================================================================
 // OverlayStylePicker (patch #15)
@@ -77,7 +78,7 @@ export function OverlayStylePicker({ style, onChange, onSave, saving, saveStatus
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader data-help-target="overlay-style-panel">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Type className="h-5 w-5" />
           Text Overlay Style
@@ -311,8 +312,15 @@ export function OverlayStylePicker({ style, onChange, onSave, saving, saveStatus
         </div>
 
         {saveStatus ? (
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-2">
             <AutoSaveIndicator status={saveStatus} />
+            <MiniTourTrigger
+              steps={[{
+                targetSelector: '[data-help-target="overlay-style-panel"]',
+                title: "Text overlay style",
+                description: "Font, color, position, and size for the captions on your b-roll videos — changes save automatically as you adjust them.",
+              }]}
+            />
           </div>
         ) : onSave ? (
           <Button onClick={onSave} disabled={saving} variant="lumi" className="w-full">

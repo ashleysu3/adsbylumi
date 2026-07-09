@@ -18,6 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { cn } from "@/lib/utils";
 import { CreativeFlowModal } from "@/components/creative/CreativeFlowModal";
 import { AutoSaveIndicator } from "@/components/AutoSaveIndicator";
+import { MiniTourTrigger } from "@/components/MiniTourTrigger";
 import { useAutosave } from "@/hooks/useAutosave";
 type ContentIdea = {
   id: string;
@@ -724,7 +725,16 @@ export default function ContentLibrary({ embedded = false }: { embedded?: boolea
           <DialogHeader>
             <div className="flex items-center justify-between gap-3">
               <DialogTitle>{editingIdea ? "Edit Idea" : "Add New Idea"}</DialogTitle>
-              {editingIdea ? <AutoSaveIndicator status={autosave.status} /> : null}
+              <div className="flex items-center gap-2">
+                {editingIdea ? <AutoSaveIndicator status={autosave.status} /> : null}
+                <MiniTourTrigger
+                  steps={[{
+                    targetSelector: '[data-help-target="save-idea"]',
+                    title: editingIdea ? "Edit idea" : "Add idea",
+                    description: `Fill in the details, then use the ${editingIdea ? "Save Changes" : "Add Idea"} button below to store it in your content library.`,
+                  }]}
+                />
+              </div>
             </div>
           </DialogHeader>
           
@@ -799,7 +809,7 @@ export default function ContentLibrary({ embedded = false }: { embedded?: boolea
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>{editingIdea ? "Save Changes" : "Add Idea"}</Button>
+            <Button data-help-target="save-idea" onClick={handleSave}>{editingIdea ? "Save Changes" : "Add Idea"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
