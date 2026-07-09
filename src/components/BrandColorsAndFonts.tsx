@@ -178,41 +178,57 @@ export default function BrandColorsAndFonts({ brandId, websiteUrl }: Props) {
     }
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      if (!brandId) throw new Error("Choose a brand before saving colors and fonts");
-      const { data: userRes } = await supabase.auth.getUser();
-      const userId = userRes.user?.id;
-      if (!userId) throw new Error("You must be signed in");
-      // Derive a real, fetchable Google Fonts CSS URL for the chosen display
-      // font so the renderer can actually load it (replaces any old typed value).
-      const families = [fonts.displayFamily, fonts.bodyFamily].filter(Boolean) as string[];
-      const fontsToSave = {
-        ...fonts,
-        displayItalicUrl: families.length ? googleFontHref(families) : fonts.displayItalicUrl || "",
-      };
-      const { error } = await supabase
-        .from("brand_kits")
-        .upsert(
-          {
-            user_id: userId,
-            brand_id: brandId,
-            source_url: url.trim() || sourceUrl || null,
-            colors,
-            fonts: fontsToSave,
-            status: "confirmed",
-          },
-          { onConflict: "user_id,brand_id" }
-        );
-      if (error) throw error;
-      toast.success("Brand colors & fonts saved");
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to save");
-    } finally {
-      setSaving(false);
-    }
+  const { status, schedule } = useAutosave<{
+    colors: BrandColors;
+    fonts: BrandFonts;
+    url: string;
+    sourceUrl: string;
+  }>(async ({ colors: c, fonts: f, url: u, sourceUrl: src }) => {
+    if (!brandId) return;
+    const { data: userRes } = await supabase.auth.getUser();
+    const userId = userRes.user?.id;
+    if (!userId) return;
+    const families = [f.displayFamily, f.bodyFamily].filter(Boolean) as string[];
+    const fontsToSave = {
+      ...f,
+      displayItalicUrl: families.length ? googleFontHref(families) : f.displayItalicUrl || "",
+    };
+    const { error } = await supabase
+      .from("brand_kits")
+      .upsert(
+        {
+          user_id: userId,
+          brand_id: brandId,
+          source_url: u.trim() || src || null,
+          colors: c,
+          fonts: fontsToSave,
+          status: "confirmed",
+        },
+        { onConflict: "user_id,brand_id" }
+      );
+    if (error) throw error;
+  });
+
+  const scheduleSave = (
+    nextColors = colors,
+    nextFonts = fonts,
+    nextUrl = url,
+    nextSourceUrl = sourceUrl,
+  ) => {
+    if (!hydratedRef.current || !brandId) return;
+    schedule({ colors: nextColors, fonts: nextFonts, url: nextUrl, sourceUrl: nextSourceUrl });
   };
+
+  // Autosave once after any pull-from-site fills in fresh values.
+  useEffect(() => {
+    if (loading) return;
+    if (!hydratedRef.current) {
+      hydratedRef.current = true;
+      return;
+    }
+    scheduleSave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [colors, fonts, loading]);
 
   return (
     <Card variant="glow">
