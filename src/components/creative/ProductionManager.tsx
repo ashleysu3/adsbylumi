@@ -1366,7 +1366,7 @@ export function ProductionManager({
                             const nextState = { rankedItems, overallStrategy, showTopOnly: next };
                             supabase
                               .from("campaign_workspaces")
-                              .update({ top_five_state: nextState, updated_at: new Date().toISOString() })
+                              .update({ top_five_state: nextState as any, updated_at: new Date().toISOString() })
                               .eq("id", workspace.id)
                               .then(({ error }) => { if (error) console.error(error); });
                             onUpdateWorkspace?.({ top_five_state: nextState });
