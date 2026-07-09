@@ -11,8 +11,25 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // event to all of them, which meant one brand's real lead polluted every
 // other connected brand's Meta pixel with a fake conversion.
 //
+// Flodesk has no signing secret / HMAC header on outgoing webhooks (unlike
+// Stripe/GitHub) — its webhook API only accepts name/post_url/events, so
+// there's nothing to verify the request against. Instead the callback URL
+// also carries a random per-brand `token` (set by flodesk-connect and
+// stored as flodesk_webhook_token), checked with a constant-time compare
+// below. Without it, brandId alone — a UUID, not secret — would let anyone
+// who obtained or guessed a brand's webhook URL inject a fake Lead event
+// into that brand's Meta pixel. Same class of risk that got kit-webhook
+// disabled outright; see that file's comment.
+//
 // Sends via the shared send-conversion-event function instead of
 // reimplementing Meta CAPI hashing/payload-building here.
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
 
 Deno.serve(async (req) => {
   const jsonHeaders = {
@@ -35,6 +52,7 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
   const brandId = url.searchParams.get('brandId');
+  const token = url.searchParams.get('token');
 
   try {
     const payload = await req.json();
@@ -66,12 +84,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!brandId) {
+    if (!brandId || !token) {
       // Webhooks registered before this fix shipped still point at the old,
-      // unscoped URL until that brand disconnects and reconnects Flodesk.
-      // Skip rather than fall back to broadcasting — that's the exact bug
-      // this fix removes.
-      console.error('[FLODESK-WEBHOOK] Missing brandId on callback URL — this Flodesk connection needs to be reconnected to pick up the per-brand fix. Skipping to avoid cross-brand contamination.');
+      // unscoped (or unscoped+untokened) URL until that brand disconnects
+      // and reconnects Flodesk. Skip rather than fall back to broadcasting
+      // or accepting an unverified request — that's the exact bug this fix
+      // removes.
+      console.error('[FLODESK-WEBHOOK] Missing brandId or token on callback URL — this Flodesk connection needs to be reconnected to pick up the per-brand fix. Skipping to avoid cross-brand contamination.');
       return new Response(JSON.stringify({ received: true, skipped: true, reason: 'missing_brand_scope' }), {
         status: 200, headers: jsonHeaders
       });
@@ -85,13 +104,24 @@ Deno.serve(async (req) => {
 
     const { data: brand, error: brandError } = await supabase
       .from('brands')
-      .select('id, name, meta_pixel_id, meta_access_token')
+      .select('id, name, meta_pixel_id, meta_access_token, flodesk_webhook_token')
       .eq('id', brandId)
       .maybeSingle();
 
     if (brandError || !brand) {
       console.error('[FLODESK-WEBHOOK] Brand not found:', brandId, brandError);
       return new Response(JSON.stringify({ received: true, skipped: true, reason: 'brand_not_found' }), {
+        status: 200, headers: jsonHeaders
+      });
+    }
+
+    // Flodesk has no request-signing mechanism, so this token — minted by
+    // flodesk-connect and known only to us and the URL registered on
+    // Flodesk's side — is the only thing standing between "anyone with this
+    // brand's webhook URL" and "anyone at all" injecting a fake Lead event.
+    if (!brand.flodesk_webhook_token || !timingSafeEqual(token, brand.flodesk_webhook_token)) {
+      console.error(`[FLODESK-WEBHOOK] Invalid or missing webhook token for brand ${brandId}. Rejecting.`);
+      return new Response(JSON.stringify({ received: true, skipped: true, reason: 'invalid_token' }), {
         status: 200, headers: jsonHeaders
       });
     }
