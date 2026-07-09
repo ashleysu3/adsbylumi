@@ -850,7 +850,7 @@ export function CampaignBuilderForm({
       </Collapsible>
 
       {/* Continue Button */}
-      <Button onClick={onComplete} className="w-full gap-2" size="lg">
+      <Button data-help-target="campaign-review" onClick={onComplete} className="w-full gap-2" size="lg">
         <Sparkles className="h-4 w-4" />
         Continue
       </Button>

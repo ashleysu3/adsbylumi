@@ -3,6 +3,7 @@ import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AutoSaveIndicator, SaveStatus } from "./AutoSaveIndicator";
+import { MiniTourTrigger } from "@/components/MiniTourTrigger";
 
 interface MobileStepWizardProps {
   currentStep: number;
@@ -127,6 +128,13 @@ export function MobileStepWizard({
                 <AutoSaveIndicator status={saveStatus} size="sm" />
               </>
             )}
+            <MiniTourTrigger
+              steps={[{
+                targetSelector: '[data-help-target="wizard-continue"]',
+                title,
+                description: `Fill in what's needed on this step, then use the button below to ${isLastStep ? "finish up" : "continue"}.`,
+              }]}
+            />
           </div>
           <h2 className="text-xl font-display font-bold">{title}</h2>
           {subtitle && (
@@ -162,6 +170,7 @@ export function MobileStepWizard({
           )}
           
           <Button
+            data-help-target="wizard-continue"
             onClick={isLastStep ? onComplete : onNext}
             disabled={!canProceed || isLoading}
             className={cn(
