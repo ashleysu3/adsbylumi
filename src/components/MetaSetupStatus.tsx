@@ -95,6 +95,23 @@ export function MetaSetupStatus({ brandId, onReconnectRequested, onPixelSetupReq
 
   useEffect(() => { runCheck(); }, [brandId]);
 
+  // Re-run when the tab regains focus. Fixing a Meta-side problem (e.g.
+  // linking Instagram in Business Manager) happens outside LUMI entirely —
+  // without this, coming back to this tab kept showing whatever the check
+  // last returned before the user left to go fix it, looking exactly like
+  // the fix hadn't worked even though it had.
+  useEffect(() => {
+    const onFocus = () => runCheck();
+    const onVisibility = () => { if (document.visibilityState === "visible") runCheck(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandId]);
+
   const runIgFix = async () => {
     setIgFixing(true);
     try {

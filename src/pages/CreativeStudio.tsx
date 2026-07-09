@@ -1041,12 +1041,12 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
           brandName: workspace.brands?.name, 
           strategyData: workspace.strategy_json, 
           audiencePsychology: workspace.brands?.audience_psychology, 
-          offerData: { 
-            name: workspace.offer_name, 
-            description: workspace.offer_description, 
+          offerData: workspace.offer_name ? {
+            name: workspace.offer_name,
+            description: workspace.offer_description,
             price: workspace.offer_price,
             url: workspace.offer_url
-          },
+          } : null,
           brandVoice: workspace.brands?.brand_voice,
           messagingGuidelines,
           productPsychology,

@@ -369,6 +369,18 @@ function detectPrimaryObjective(
     /\bfree\b|\$0\b|^0$|no cost|complimentary/.test(priceStr) ||
     /\bfree\b/.test(nameStr);
 
+  // Check the offer's own formal page_goal enum ('purchase' | 'discovery_call'
+  // | 'free_resource' | 'other', set directly in the Offer creation UI)
+  // before falling back to fuzzy keyword matching in free-text fields below.
+  // The keyword lists don't contain these exact enum strings (e.g.
+  // "discovery call" with a space never matches the stored "discovery_call"
+  // with an underscore), so a free lead-magnet offer whose name/description
+  // didn't happen to also contain a matching keyword was silently falling
+  // through to the OUTCOME_SALES default.
+  const pageGoal = String(offer?.page_goal || "").toLowerCase().trim();
+  if (pageGoal === "free_resource" || pageGoal === "discovery_call") return "OUTCOME_LEADS";
+  if (pageGoal === "purchase") return "OUTCOME_SALES";
+
   const hasLead = leadSignals.some((s) => fields.includes(s));
   const hasAwareness = awarenessSignals.some((s) => fields.includes(s));
   const hasSale = salesSignals.some((s) => fields.includes(s));

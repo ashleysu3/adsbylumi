@@ -201,6 +201,8 @@ snippets are shown in quick succession (carousel or montage style).
 
     const systemPrompt = `You are an elite Meta Ads creative strategist who creates scroll-stopping, psychology-driven ad concepts. Your creative MUST be specific, emotionally resonant, and impossible to ignore.
 
+HARD RULE — you are writing marketing copy FOR a brand's own product or service. The brand is Lumi's customer, running these ads to sell or promote THEIR OWN offer. Never write copy about Meta Ads, advertising, AI tools, or Lumi itself as if that were the product being sold — even if the Offer below is unspecified. If no offer is given, ground every concept in the brand's own value proposition and audience psychology instead of inventing a product to talk about.
+
 === CRITICAL PERSPECTIVE RULE ===
 ${perspectiveRole === 'buyer' 
   ? 'The person recording/posting these ads personally experienced the transformation. Frame hooks and scripts in first person: "I went from..." or "When I discovered..." — this is their own story and journey.'
@@ -650,7 +652,7 @@ ${brandVoice ? `Brand Voice: ${brandVoice}` : ''}
 ${nicheContext ? `Industry/Niche: ${nicheContext}` : ''}
 
 === OFFER CONTEXT ===
-Offer: ${offerData?.name || "Not specified"}
+Offer: ${offerData?.name || `Not specified — do NOT invent a product or offer name; ground every concept in ${brandName || "the brand"}'s own value proposition instead`}
 ${offerData?.description ? `Description: ${offerData.description.slice(0, 500)}` : ""}
 ${offerData?.price ? `Price: ${offerData.price}` : ""}
 ${offerData?.url ? `URL: ${offerData.url}` : ""}
@@ -844,7 +846,7 @@ ${brandVoice ? `Brand Voice: ${brandVoice}` : ''}
 ${nicheContext ? `Industry/Niche: ${nicheContext}` : ''}
 
 === OFFER CONTEXT ===
-Offer: ${offerData?.name || "Not specified"}
+Offer: ${offerData?.name || `Not specified — do NOT invent a product or offer name; ground every concept in ${brandName || "the brand"}'s own value proposition instead`}
 ${offerData?.description ? `Description: ${offerData.description.slice(0, 500)}` : ""}
 ${offerData?.price ? `Price: ${offerData.price}` : ""}
 
@@ -961,6 +963,11 @@ Generate exactly ${batchAngles.length * 9} creative cells (${batchAngles.length}
           cell.brief.photoTreatment = "none";
         }
         delete cell.brief.imagePrompt;
+        // Stamp the real offer id server-side rather than relying on the
+        // AI to carry it through — this is the one offer every cell in this
+        // grid was generated for, and downstream copy generation needs an
+        // exact id, not a fuzzy match against the free-text `offer` field.
+        cell.brief.offerId = offerId || null;
       }
       if (cell.imageSource === "generated") {
         cell.imageSource = "none";

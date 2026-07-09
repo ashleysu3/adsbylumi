@@ -241,6 +241,12 @@ export default function StrategyPlan() {
           brandName: (brandData as any).name,
           strategyData: strategyJson,
           audiencePsychology: (brandData as any).audience_psychology,
+          // No fake fallback here — a campaign name like "Video Views
+          // Campaign" is not an offer, and passing it as offerData.name
+          // told the AI that WAS the product, with nothing to correct the
+          // impression. Better to send no offer at all than a wrong one;
+          // generate-creative-angles is hardened to ground in the brand
+          // instead of guessing when this is null.
           offerData: selectedOffer
             ? {
                 name: (selectedOffer as any).name,
@@ -248,10 +254,8 @@ export default function StrategyPlan() {
                 price: (selectedOffer as any).price_point,
                 product_psychology: (selectedOffer as any).product_psychology,
               }
-            : {
-                name: campaignName || plan.name,
-                description: c?.description,
-              },
+            : null,
+          offerId: (selectedOffer as any)?.id || plan.offer_id || null,
           campaignObjective: objective,
           creativeBrief: c?.creative_brief || null,
           campaignName,
