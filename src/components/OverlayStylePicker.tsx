@@ -66,7 +66,7 @@ function hexToRgba(hex: string, opacity: number): string {
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
-export function OverlayStylePicker({ style, onChange, onSave, saving, brandId }: OverlayStylePickerProps) {
+export function OverlayStylePicker({ style, onChange, onSave, saving, saveStatus, brandId }: OverlayStylePickerProps) {
   const update = (partial: Partial<OverlayStyle>) => onChange({ ...style, ...partial });
   const [uploadingCta, setUploadingCta] = useState(false);
 
