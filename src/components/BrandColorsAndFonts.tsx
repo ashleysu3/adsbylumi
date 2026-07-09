@@ -85,14 +85,15 @@ interface Props {
 
 export default function BrandColorsAndFonts({ brandId, websiteUrl }: Props) {
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [pulling, setPulling] = useState(false);
   const [url, setUrl] = useState(websiteUrl || "");
   const [colors, setColors] = useState<BrandColors>({});
   const [fonts, setFonts] = useState<BrandFonts>({});
   const [sourceUrl, setSourceUrl] = useState<string>("");
+  const hydratedRef = useRef(false);
 
   useEffect(() => {
+    hydratedRef.current = false;
     void load();
   }, [brandId, websiteUrl]);
 
