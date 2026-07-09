@@ -72,6 +72,7 @@ import { BYOCreativeUploader } from "@/components/creative/BYOCreativeUploader";
 import { CopyRegenerateDialog, CopyFeedback } from "@/components/creative/CopyRegenerateDialog";
 import { GenerateCreativeDialog } from "@/components/creative/GenerateCreativeDialog";
 import { TheLab as LazyTheLab } from "@/components/lab/TheLab";
+import { ScreenHelp } from "@/components/ScreenHelp";
 
 type WorkflowTab = "angles" | "concepts" | "copy" | "build" | "saved";
 
@@ -1559,7 +1560,14 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
                 onCancel={() => setShowBYOUploader(false)}
               />
             ) : availableAngles.length === 0 ? (
-               <Card className="rounded-2xl">
+               <Card className="rounded-2xl relative">
+                 {!generating && (
+                   <ScreenHelp
+                     title="Angles"
+                     description="An angle is a distinct way to pitch your offer — Lumi suggests a few based on your brand and strategy. Generate them here, then pick 2-4 to build creative around."
+                     targetSelector='[data-help-target="angles-generate"]'
+                   />
+                 )}
                  <CardContent className="pt-6 text-center py-16">
                    <Sparkles className="h-12 w-12 mx-auto text-primary/50 mb-4 animate-pulse" />
                    <h3 className="text-lg font-semibold mb-2">
@@ -1572,7 +1580,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
                    </p>
                     {!generating && (
                       <div className="flex flex-col items-center gap-3">
-                        <Button onClick={() => {
+                        <Button data-help-target="angles-generate" onClick={() => {
                           // Gate on psychology approval
                           if (workspace?.brands?.psychology_status && workspace.brands.psychology_status !== 'approved') {
                             toast.error("Please approve your Audience Psychology on the Dashboard before generating angles.");
@@ -1624,7 +1632,12 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
             {gridData.length === 0 ? (
               <Card className="rounded-2xl"><CardContent className="pt-6 text-center py-16"><Lightbulb className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="text-lg font-semibold mb-2">Generate Creative First</h3><p className="text-muted-foreground text-sm mb-4">Head to the Angles tab to generate your creative concepts.</p><Button onClick={() => setActiveTab("angles")} variant="outline">Go to Angles</Button></CardContent></Card>
             ) : (
-              <div className="space-y-8">
+              <div className="space-y-8 relative">
+                <ScreenHelp
+                  title="Concepts"
+                  description="Each card is a concept for one of your angles. Add the ones you like to your production checklist — that's what turns into real ads."
+                  targetSelector='[data-help-target="concepts-add"]'
+                />
                 {selectedAngleIds.length > 1 && (
                   <div className="space-y-3">
                     <div className="flex gap-2 overflow-x-auto pb-2">
@@ -1700,7 +1713,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
                             <p className="text-xs text-primary/80 italic">💡 {cell.why_this_works}</p>
                           )}
                           {!isAdded && (
-                            <Button size="sm" variant="outline" className="w-full" onClick={() => addToChecklist(cell)}>
+                            <Button data-help-target="concepts-add" size="sm" variant="outline" className="w-full" onClick={() => addToChecklist(cell)}>
                               Add to Checklist
                             </Button>
                           )}
@@ -1752,7 +1765,12 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-6 relative">
+                <ScreenHelp
+                  title="Ad Copy"
+                  description="Write (or let Lumi write) the headlines, descriptions, and primary text for each angle — this copy is shared across every creative in that angle. When it's ready, continue to Build."
+                  targetSelector='[data-help-target="copy-continue"]'
+                />
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-lg font-semibold">Ad Copy</h2>
@@ -1817,7 +1835,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
                 </Card>
 
                 <div className="flex justify-end">
-                  <Button onClick={() => setActiveTab("build")} className="gap-2">
+                  <Button data-help-target="copy-continue" onClick={() => setActiveTab("build")} className="gap-2">
                     Continue to Build
                     <ArrowRight className="h-4 w-4" />
                   </Button>
