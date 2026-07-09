@@ -98,10 +98,18 @@ export function ProductionManager({
   const [adPreviewItem, setAdPreviewItem] = useState<ProductionItem | null>(null);
   const [savingToLibrary, setSavingToLibrary] = useState<string | null>(null);
   const [isRanking, setIsRanking] = useState(false);
-  const [rankedItems, setRankedItems] = useState<RankedItem[]>([]);
+  const [rankedItems, setRankedItems] = useState<RankedItem[]>(
+    Array.isArray((workspace as any)?.top_five_state?.rankedItems)
+      ? (workspace as any).top_five_state.rankedItems
+      : []
+  );
   const [showSaveOthersPrompt, setShowSaveOthersPrompt] = useState(false);
-  const [overallStrategy, setOverallStrategy] = useState<string>("");
-  const [showTopOnly, setShowTopOnly] = useState(false);
+  const [overallStrategy, setOverallStrategy] = useState<string>(
+    (workspace as any)?.top_five_state?.overallStrategy || ""
+  );
+  const [showTopOnly, setShowTopOnly] = useState<boolean>(
+    (workspace as any)?.top_five_state?.showTopOnly ?? false
+  );
   const [movingToLibrary, setMovingToLibrary] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [namedLibraries, setNamedLibraries] = useState<Array<{ id: string; name: string; clips: any[] }>>([]);
