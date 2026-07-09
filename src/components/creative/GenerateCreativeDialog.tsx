@@ -17,6 +17,7 @@ import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff, Info, 
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import type { CreativeBrief } from "./ProductionChecklistPanel";
 import { TemplatePreview } from "./TemplatePreview";
 import { CopyRegenerateDialog, type CopyFeedback } from "./CopyRegenerateDialog";
@@ -1044,10 +1045,10 @@ export function GenerateCreativeDialog() {
     a.click();
   };
 
-  const approveRender = async (img: RenderImage, idx: number) => {
+  const approveRender = async (img: RenderImage, idx: number): Promise<boolean> => {
     if (!itemId) {
       toast.error("Open this from a creative card to approve it.");
-      return;
+      return false;
     }
     setApprovingIdx(idx);
     try {
@@ -1081,10 +1082,28 @@ export function GenerateCreativeDialog() {
       });
       setApprovedIdxs((prev) => new Set(prev).add(idx));
       toast.success("Approved and saved to your creative ✅");
+      return true;
     } catch (err: any) {
       toast.error(err?.message || "Could not approve");
+      return false;
     } finally {
       setApprovingIdx(null);
+    }
+  };
+
+  // Single combined approval for the whole feed+story set — replaces the old
+  // pairing of a per-image "Approve & save" button plus a separate batch
+  // button stranded above the results grid. Auto-closes the dialog only on
+  // full success so a partial failure stays visible for the user to retry.
+  const approveAllAndClose = async () => {
+    const targets = images.map((_, i) => i).filter((i) => !approvedIdxs.has(i));
+    let allSucceeded = true;
+    for (const i of targets) {
+      const ok = await approveRender(images[i], i);
+      if (!ok) allSucceeded = false;
+    }
+    if (allSucceeded) {
+      setTimeout(() => setOpen(false), 600);
     }
   };
 
@@ -1658,25 +1677,6 @@ export function GenerateCreativeDialog() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <Label className="text-xs uppercase text-muted-foreground">Results</Label>
-                    {itemId && images.length > 0 && approvedIdxs.size < images.length && (
-                      <Button
-                        size="sm"
-                        variant="default"
-                        disabled={approvingIdx !== null}
-                        onClick={async () => {
-                          for (let i = 0; i < images.length; i++) {
-                            if (approvedIdxs.has(i)) continue;
-                            await approveRender(images[i], i);
-                          }
-                        }}
-                      >
-                        {approvingIdx !== null ? (
-                          <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Approving all…</>
-                        ) : (
-                          <>Approve all ({images.length - approvedIdxs.size})</>
-                        )}
-                      </Button>
-                    )}
                   </div>
                   {images.length > 0 && !generating && (
                     <div className="rounded border bg-muted/20 p-3 space-y-3">
@@ -1845,40 +1845,43 @@ export function GenerateCreativeDialog() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {images.map((img, i) => {
                       const isApproved = approvedIdxs.has(i);
-                      const isApproving = approvingIdx === i;
                       return (
                         <div key={i} className="rounded border overflow-hidden bg-muted/20">
                           <img src={`data:image/png;base64,${img.base64}`} alt="" className="w-full h-auto block" />
                           <div className="flex items-center justify-between gap-2 p-2 text-xs">
                             <span className="text-muted-foreground truncate">
                               {img.label ? `${img.label} · ` : ""}{img.placement} {img.width}×{img.height}
+                              {isApproved && <span className="text-primary"> · Approved ✓</span>}
                             </span>
-                            <div className="flex items-center gap-1 shrink-0">
-                              <Button size="sm" variant="ghost" onClick={() => download(img, i)}>
-                                <Download className="h-3 w-3 mr-1" /> PNG
-                              </Button>
-                              {itemId && (
-                                <Button
-                                  size="sm"
-                                  variant={isApproved ? "secondary" : "default"}
-                                  onClick={() => approveRender(img, i)}
-                                  disabled={isApproving || isApproved}
-                                >
-                                  {isApproving ? (
-                                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Saving…</>
-                                  ) : isApproved ? (
-                                    "Approved ✓"
-                                  ) : (
-                                    "Approve & save"
-                                  )}
-                                </Button>
-                              )}
-                            </div>
+                            <Button size="sm" variant="ghost" onClick={() => download(img, i)}>
+                              <Download className="h-3 w-3 mr-1" /> PNG
+                            </Button>
                           </div>
                         </div>
                       );
                     })}
                   </div>
+
+                  {itemId && images.length > 0 && !generating && (
+                    <Button
+                      size="lg"
+                      className={cn(
+                        "w-full",
+                        approvedIdxs.size < images.length && "animate-pulse",
+                      )}
+                      variant={approvedIdxs.size >= images.length ? "secondary" : "default"}
+                      disabled={approvingIdx !== null || approvedIdxs.size >= images.length}
+                      onClick={approveAllAndClose}
+                    >
+                      {approvingIdx !== null ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Approving…</>
+                      ) : approvedIdxs.size >= images.length ? (
+                        "Approved ✓"
+                      ) : (
+                        `Approve ${images.length > 1 ? `all ${images.length}` : ""}`.trim()
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
