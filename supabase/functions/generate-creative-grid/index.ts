@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { requirePaidUser } from "../_shared/check-subscription.ts";
+import { requireAuthedUser } from "../_shared/check-subscription.ts";
 import { getCorsHeaders } from '../_shared/cors.ts';
 
 Deno.serve(async (req) => {
@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const gate = await requirePaidUser(req, corsHeaders);
+    const gate = await requireAuthedUser(req, corsHeaders);
     if (gate.blocked) return gate.blocked;
 
     const { 
