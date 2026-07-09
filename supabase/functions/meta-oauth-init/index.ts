@@ -91,13 +91,15 @@ Deno.serve(async (req) => {
     oauthUrl.searchParams.set('redirect_uri', redirectUri);
     oauthUrl.searchParams.set('state', brandId);
 
-    // META_LOGIN_CONFIG_ID (Facebook Login for Business "Configuration ID") is
-    // opt-in via secret — until it's set, behavior is byte-for-byte identical
-    // to today's scope-based flow. Once set, the asset picker (which ad
-    // account / Page / Instagram account to share) moves into Meta's OWN
+    // META_LOGIN_CONFIG_ID (Facebook Login for Business "Configuration ID") —
+    // live and verified 2026-07-09. With it set, the asset picker (which ad
+    // account / Page / Instagram account to share) lives in Meta's OWN
     // consent screen instead of LUMI building its own follow-up picker
-    // screens — that's the actual "log in, confirm, done" flow. See
-    // [[project_lumi_meta_business_login_migration]] for the full plan.
+    // screens afterward — Graph API calls in meta-oauth-callback naturally
+    // return only the granted assets once the token itself is scoped, no
+    // rewrite needed there. Falls back to the old scope-based dialog only if
+    // this secret is ever unset (e.g. an emergency rollback). See
+    // [[project_lumi_meta_business_login_migration]] for the full history.
     const loginConfigId = Deno.env.get('META_LOGIN_CONFIG_ID');
     if (loginConfigId) {
       oauthUrl.searchParams.set('config_id', loginConfigId);

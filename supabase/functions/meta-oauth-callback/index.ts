@@ -109,12 +109,6 @@ Deno.serve(async (req) => {
     }
 
     console.log('Short-lived access token obtained, exchanging for long-lived token...');
-    // Diagnostic only (no token values logged) — helps confirm what shape
-    // Meta actually returns once META_LOGIN_CONFIG_ID is in use, since
-    // Meta's own docs are vague on whether a config_id-based exchange
-    // discloses granted assets directly. Remove once the config_id flow is
-    // verified and stable.
-    console.log('[meta-oauth-callback] token exchange response keys:', Object.keys(tokenData).filter((k) => k !== 'access_token'));
 
     // Exchange short-lived token for long-lived token (~60 days)
     const longLivedUrl = new URL('https://graph.facebook.com/v25.0/oauth/access_token');
@@ -147,12 +141,6 @@ Deno.serve(async (req) => {
     console.log('Fetching ad accounts...');
     const adAccountsResponse = await fetch(adAccountsUrl);
     const adAccountsData = await adAccountsResponse.json();
-    // Diagnostic only — with a scope-based token this list is "everything
-    // the user has any access to" (often many). With a config_id-scoped
-    // token it should already be filtered to just what they picked on
-    // Meta's consent screen. Confirms whether the app-side picker in
-    // MetaAccountConnect.tsx can be simplified once we're on config_id.
-    console.log('[meta-oauth-callback] ad accounts returned:', adAccountsData?.data?.length ?? 0, 'accounts');
 
     if (!adAccountsResponse.ok) {
       console.error('Failed to fetch ad accounts:', adAccountsData);

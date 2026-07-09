@@ -739,10 +739,10 @@ export function MetaAccountConnect({
             <div className="space-y-4">
               <div>
                 <Label className="text-base font-medium">
-                  Step 1: Select Ad Account
+                  Confirm your ad account
                 </Label>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Choose which ad account to use for this brand
+                  This is what you just shared with Meta — confirm it's the right one for this brand.
                 </p>
               </div>
 
@@ -785,10 +785,10 @@ export function MetaAccountConnect({
             <div className="space-y-4">
               <div>
                 <Label className="text-base font-medium">
-                  Step 2: Select Facebook Page
+                  Confirm your Facebook Page
                 </Label>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Your ads will be published from this Page
+                  Your ads will be published from this Page — confirm the one you shared with Meta.
                 </p>
               </div>
 
@@ -862,7 +862,7 @@ export function MetaAccountConnect({
             <div className="space-y-4">
               <div>
                 <Label className="text-base font-medium">
-                  Step 3: Select Instagram Account
+                  Confirm your Instagram account
                 </Label>
                 <p className="text-sm text-muted-foreground mb-3">
                   Your ads will also appear on Instagram from this account
@@ -873,7 +873,9 @@ export function MetaAccountConnect({
                 <Card className="p-4 border-amber-500/50 bg-amber-500/5">
                   <p className="text-sm text-amber-600 font-medium mb-2">No Instagram Accounts Found</p>
                   <p className="text-xs text-muted-foreground mb-3">
-                    No Instagram Business or Creator account is linked to the selected Facebook Page.
+                    If you granted an Instagram account on Meta's screen but don't see it here, it's most likely
+                    not actually linked to this Facebook Page or ad account yet — Meta lets you share an Instagram
+                    account that isn't connected to anything, but it won't be usable for ads until it is.
                   </p>
                   <p className="text-xs text-muted-foreground mb-2">
                     <strong>To fix this:</strong>
