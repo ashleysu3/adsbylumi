@@ -9,6 +9,7 @@ import { Loader2, Type, Upload, X, ImageIcon, Sparkles, Move } from "lucide-reac
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { OverlayStyle, EmphasisStyle, OverlayXY } from "./VideoTextPreview";
+import { AutoSaveIndicator, type SaveStatus } from "@/components/AutoSaveIndicator";
 
 // ============================================================================
 // OverlayStylePicker (patch #15)
