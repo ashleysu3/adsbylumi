@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Paintbrush } from "lucide-react";
 import { toast } from "sonner";
+import { useAutosave } from "@/hooks/useAutosave";
+import { AutoSaveIndicator } from "@/components/AutoSaveIndicator";
 
 // Curated Google Fonts the renderer can actually load.
 // Keep in sync with renderer/ALLOWED_FONTS.
