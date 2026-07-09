@@ -19,7 +19,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { ProductionItem } from "./ProductionChecklistPanel";
 import { CreativeChecklistCard } from "./CreativeChecklistCard";
-import { ScreenHelp } from "@/components/ScreenHelp";
 import { CreativeAngle } from "./AngleSelector";
 import { AdPreviewModal } from "./AdPreviewModal";
 import { ExportChecklistModal } from "./ExportChecklistModal";
@@ -1761,15 +1760,6 @@ export function ProductionManager({
             "border-2 transition-all relative",
             isReadyToBuild ? "border-green-500" : "border-dashed"
           )}>
-            <ScreenHelp
-              title="Production checklist"
-              description={
-                hasLiveCampaign
-                  ? "Upload and approve your creative above, then push it straight into your live campaign as new ads — no new campaign needed."
-                  : "Upload creative for each concept above, then build your campaign once everything's ready. The buttons up top (share, export, archive) are optional extras — this is the one that matters."
-              }
-              targetSelector='[data-help-target="production-continue"]'
-            />
             <CardContent className="pt-6">
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-3">

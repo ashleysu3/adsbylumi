@@ -153,6 +153,10 @@ export default {
           "0%": { opacity: "0", transform: "translateY(10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        "scale-in": {
+          "0%": { opacity: "0", transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
         "sparkle": {
           "0%, 100%": { 
             opacity: "1", 
@@ -191,6 +195,7 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         "glow-pulse": "glow-pulse 2s ease-in-out infinite",
         "fade-in": "fade-in 0.3s ease-out",
+        "scale-in": "scale-in 0.2s ease-out",
         "sparkle": "sparkle 2s ease-in-out infinite",
         "sparkle-pulse": "sparkle-pulse 1.5s ease-in-out infinite",
         "shimmer": "shimmer 1.5s ease-in-out infinite",

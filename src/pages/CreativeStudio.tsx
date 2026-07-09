@@ -8,11 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  Target, Lightbulb, FileText, Rocket, 
+  Target, Lightbulb, FileText, Rocket,
   ChevronRight, CheckCircle2, Circle, Loader2,
   Sparkles, ArrowRight, Video, Film, Image, Trash2,
   X, Check, FileDown, Printer, BarChart3, RefreshCw, Upload, MessageSquare,
-  Bookmark, Wrench, Palette
+  Bookmark, Wrench, Palette, Compass
 } from "lucide-react";
 import AdGenerator from "@/pages/AdGenerator";
 import CreativeToolkit from "@/pages/CreativeToolkit";
@@ -72,7 +72,7 @@ import { BYOCreativeUploader } from "@/components/creative/BYOCreativeUploader";
 import { CopyRegenerateDialog, CopyFeedback } from "@/components/creative/CopyRegenerateDialog";
 import { GenerateCreativeDialog } from "@/components/creative/GenerateCreativeDialog";
 import { TheLab as LazyTheLab } from "@/components/lab/TheLab";
-import { ScreenHelp } from "@/components/ScreenHelp";
+import { GuidedTour, type TourStep } from "@/components/GuidedTour";
 
 type WorkflowTab = "angles" | "concepts" | "copy" | "build" | "saved";
 
@@ -317,6 +317,48 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
   const [showBYOUploader, setShowBYOUploader] = useState(false);
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [feedbackTab, setFeedbackTab] = useState<WorkflowTab>("angles");
+  const [tourOpen, setTourOpen] = useState(false);
+
+  // "Show me what to do" — one consistently-placed trigger whose steps adapt
+  // to whichever tab is active, instead of a per-corner "?" icon a user has
+  // to happen to notice. Empty array means this view doesn't have a scoped
+  // tip yet — the trigger stays visible but disabled rather than moving
+  // around, so its position stays predictable.
+  const tourSteps: TourStep[] = (() => {
+    if (showBYOUploader) return [];
+    if (activeTab === "angles") {
+      if (availableAngles.length === 0) {
+        return [{
+          targetSelector: '[data-help-target="angles-generate"]',
+          title: "Angles",
+          description: "An angle is a distinct way to pitch your offer — Lumi suggests a few based on your brand and strategy. Generate them here, then pick 2-4 to build creative around.",
+        }];
+      }
+      return [];
+    }
+    if (activeTab === "concepts") {
+      return [{
+        targetSelector: '[data-help-target="concepts-add"]',
+        title: "Concepts",
+        description: "Each card is a concept for one of your angles. Add the ones you like to your production checklist — that's what turns into real ads.",
+      }];
+    }
+    if (activeTab === "copy") {
+      return [{
+        targetSelector: '[data-help-target="copy-continue"]',
+        title: "Ad Copy",
+        description: "Write (or let Lumi write) the headlines, descriptions, and primary text for each angle — this copy is shared across every creative in that angle. When it's ready, continue to Build.",
+      }];
+    }
+    if (activeTab === "build") {
+      return [{
+        targetSelector: '[data-help-target="production-continue"]',
+        title: "Production checklist",
+        description: "Upload creative for each concept, approve it, then use this button to build your campaign or push new creative into one that's already live.",
+      }];
+    }
+    return [];
+  })();
 
   useEffect(() => { 
     if (!brandLoading && activeBrand) {
@@ -1415,6 +1457,17 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
               </Select>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setTourOpen(true)}
+                disabled={tourSteps.length === 0}
+                className="gap-2 hidden sm:flex"
+                title={tourSteps.length === 0 ? "No tips for this view yet" : undefined}
+              >
+                <Compass className="h-4 w-4" />
+                Show me what to do
+              </Button>
               {(gridData.length > 0 || productionItems.length > 0) && (
                 <Button variant="outline" size="sm" onClick={() => setShowBrief(true)} className="gap-2 hidden sm:flex">
                   <FileDown className="h-4 w-4" />
@@ -1561,13 +1614,6 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
               />
             ) : availableAngles.length === 0 ? (
                <Card className="rounded-2xl relative">
-                 {!generating && (
-                   <ScreenHelp
-                     title="Angles"
-                     description="An angle is a distinct way to pitch your offer — Lumi suggests a few based on your brand and strategy. Generate them here, then pick 2-4 to build creative around."
-                     targetSelector='[data-help-target="angles-generate"]'
-                   />
-                 )}
                  <CardContent className="pt-6 text-center py-16">
                    <Sparkles className="h-12 w-12 mx-auto text-primary/50 mb-4 animate-pulse" />
                    <h3 className="text-lg font-semibold mb-2">
@@ -1633,11 +1679,6 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
               <Card className="rounded-2xl"><CardContent className="pt-6 text-center py-16"><Lightbulb className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="text-lg font-semibold mb-2">Generate Creative First</h3><p className="text-muted-foreground text-sm mb-4">Head to the Angles tab to generate your creative concepts.</p><Button onClick={() => setActiveTab("angles")} variant="outline">Go to Angles</Button></CardContent></Card>
             ) : (
               <div className="space-y-8 relative">
-                <ScreenHelp
-                  title="Concepts"
-                  description="Each card is a concept for one of your angles. Add the ones you like to your production checklist — that's what turns into real ads."
-                  targetSelector='[data-help-target="concepts-add"]'
-                />
                 {selectedAngleIds.length > 1 && (
                   <div className="space-y-3">
                     <div className="flex gap-2 overflow-x-auto pb-2">
@@ -1766,11 +1807,6 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
               </Card>
             ) : (
               <div className="space-y-6 relative">
-                <ScreenHelp
-                  title="Ad Copy"
-                  description="Write (or let Lumi write) the headlines, descriptions, and primary text for each angle — this copy is shared across every creative in that angle. When it's ready, continue to Build."
-                  targetSelector='[data-help-target="copy-continue"]'
-                />
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-lg font-semibold">Ad Copy</h2>
@@ -2102,6 +2138,10 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
            />
          </DialogContent>
         </Dialog>
+
+        {tourOpen && tourSteps.length > 0 && (
+          <GuidedTour steps={tourSteps} onClose={() => setTourOpen(false)} />
+        )}
 
         {/* Creative Refresh Dialog */}
         <CreativeRefreshDialog

@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { HexColorPicker } from "react-colorful";
-import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff, Info, ImagePlus, Star } from "lucide-react";
+import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff, Info, ImagePlus, Star, Compass } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import type { CreativeBrief } from "./ProductionChecklistPanel";
 import { TemplatePreview } from "./TemplatePreview";
 import { CopyRegenerateDialog, type CopyFeedback } from "./CopyRegenerateDialog";
-import { ScreenHelp } from "@/components/ScreenHelp";
+import { GuidedTour, type TourStep } from "@/components/GuidedTour";
 // Real engine renders with clean sample copy — replaced the old AI-generated
 // mockup images, which rendered garbled/unreadable placeholder text (a known
 // limitation of image models asked to draw text) instead of a real preview.
@@ -291,6 +291,42 @@ export function GenerateCreativeDialog() {
 
   // Primary flow: remix a single real ad. Falls back to the template flow.
   const [mode, setMode] = useState<"remix" | "template">("remix");
+  const [tourOpen, setTourOpen] = useState(false);
+
+  // "Show me what to do" tour steps for whichever internal screen is
+  // currently showing — one consistently-placed trigger in the dialog
+  // header instead of a per-corner "?" that could overlap real content
+  // (that was the actual bug: the icon sat right on top of "Back to
+  // styles" / heading text depending on the step).
+  const dialogTourSteps: TourStep[] = (() => {
+    if (mode === "remix") {
+      return [{
+        targetSelector: '[data-help-target="remix-this-ad"]',
+        title: "Remix a real ad",
+        description: "Pick a board, then click an image to select it — the button at the bottom lights up once you have. Lumi matches the layout and rewrites the copy for your offer.",
+      }];
+    }
+    if (step === "style") {
+      return [{
+        targetSelector: '[data-help-target="style-next"]',
+        title: "Choose a style",
+        description: "Click any template to select it — you can change it later. Once you've picked one, hit Next to move on to the photo and copy.",
+      }];
+    }
+    // step === "image-copy"
+    if (images.length === 0) {
+      return [{
+        targetSelector: '[data-help-target="render-creative"]',
+        title: "Image & copy",
+        description: "Pick a photo, tweak the copy if you want, then render — that's the button at the bottom.",
+      }];
+    }
+    return [{
+      targetSelector: '[data-help-target="approve-creative"]',
+      title: "Image & copy",
+      description: "Renders are ready. Approve them below to save this creative — that closes this dialog for you.",
+    }];
+  })();
   type BoardRow = { id: string; name: string };
   type BoardImg = { id: string; url: string; rawSrc: string };
   const [boards, setBoards] = useState<BoardRow[]>([]);
@@ -1231,22 +1267,37 @@ export function GenerateCreativeDialog() {
               </>
             )}
           </div>
-          <button
-            type="button"
-            className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
-            onClick={() => {
-              if (mode === "remix") {
-                setMode("template");
-                setStep("style");
-              } else {
-                setMode("remix");
-                setReferenceAnalysis(null);
-              }
-            }}
-          >
-            {mode === "remix" ? "Use a template instead" : "Remix a real ad instead"}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+              onClick={() => setTourOpen(true)}
+              disabled={dialogTourSteps.length === 0}
+            >
+              <Compass className="h-3 w-3" />
+              Show me what to do
+            </button>
+            <button
+              type="button"
+              className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
+              onClick={() => {
+                if (mode === "remix") {
+                  setMode("template");
+                  setStep("style");
+                } else {
+                  setMode("remix");
+                  setReferenceAnalysis(null);
+                }
+              }}
+            >
+              {mode === "remix" ? "Use a template instead" : "Remix a real ad instead"}
+            </button>
+          </div>
         </div>
+
+        {tourOpen && dialogTourSteps.length > 0 && (
+          <GuidedTour steps={dialogTourSteps} onClose={() => setTourOpen(false)} />
+        )}
 
         <div className="flex-1 overflow-y-auto -mx-6 px-6">
           {brief && (
@@ -1267,12 +1318,6 @@ export function GenerateCreativeDialog() {
           {mode === "remix" ? (
             /* ---------- REMIX A REAL AD FLOW (default) ---------- */
             <div className="space-y-4 py-2 relative">
-              <ScreenHelp
-                position="top-left"
-                title="Remix a real ad"
-                description="Pick a board, then click an image to select it — the button at the bottom lights up once you have. Lumi matches the layout and rewrites the copy for your offer."
-                targetSelector='[data-help-target="remix-this-ad"]'
-              />
               <div>
                 <Label className="text-sm font-medium flex items-center gap-2">
                   <ImagePlus className="h-4 w-4 text-primary" />
@@ -1369,12 +1414,6 @@ export function GenerateCreativeDialog() {
           ) : step === "style" ? (
             /* ---------- SCREEN 1: Choose a style ---------- */
             <div className="space-y-4 py-2 relative">
-              <ScreenHelp
-                position="top-left"
-                title="Choose a style"
-                description="Click any template to select it — you can change it later. Once you've picked one, hit Next to move on to the photo and copy."
-                targetSelector='[data-help-target="style-next"]'
-              />
               <div>
                 <Label className="text-sm font-medium">Choose a style</Label>
                 <p className="text-xs text-muted-foreground">
@@ -1442,20 +1481,6 @@ export function GenerateCreativeDialog() {
           ) : (
             /* ---------- SCREEN 2: Image & copy ---------- */
             <div className="space-y-4 py-2 relative">
-              <ScreenHelp
-                position="top-left"
-                title="Image & copy"
-                description={
-                  images.length === 0
-                    ? "Pick a photo, tweak the copy if you want, then render — that's the button at the bottom."
-                    : "Renders are ready. Approve them below to save this creative — that closes this out for you."
-                }
-                targetSelector={
-                  images.length === 0
-                    ? '[data-help-target="render-creative"]'
-                    : '[data-help-target="approve-creative"]'
-                }
-              />
               <Button variant="ghost" size="sm" onClick={() => setStep("style")} className="-ml-2">
                 ← Back to styles
               </Button>
