@@ -172,9 +172,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         )}
         {tourActive && tourConfig && (
           <GuidedTour
-            targetSelector={tourConfig.targetSelector}
-            title={tourConfig.title}
-            description={tourConfig.description}
+            steps={[{ targetSelector: tourConfig.targetSelector, title: tourConfig.title, description: tourConfig.description }]}
             onClose={() => { setTourActive(false); setTourConfig(null); }}
           />
         )}
