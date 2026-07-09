@@ -32,6 +32,8 @@ const TEMPLATE_PERSONALITIES: Record<string, string> = {
   notesapp: "No photo — mimics a real iOS Notes app screenshot. Native, unpolished, personal, NOT ad-looking.",
   textthread: "No photo — mimics a real iMessage conversation. Native, conversational, NOT ad-looking.",
   nativecaption: "Full photo with plain bold caption text directly on it, no card or badge. Native, minimal, authentic.",
+  nativestroke: "Full photo with bold white text with a black stroke outline directly on it, no card. Native, punchy, works on any photo since the stroke itself carries contrast.",
+  nativebubbles: "Full photo with 2-3 short phrases stacked as separate white caption bubbles over it, no single shared card. Native, conversational, like a real creator's caption overlay.",
 };
 
 const SYSTEM_PROMPT = `You are a senior art director. You're shown ONE reference ad image. Your job is to figure out which of LUMI's existing ad templates would best recreate its STRUCTURE and FEEL — not its content, since the content will be replaced with a different brand's own offer and copy.

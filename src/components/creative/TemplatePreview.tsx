@@ -111,6 +111,28 @@ export function TemplatePreview({ kind }: { kind: string }) {
           <circle cx="56" cy="88" r="1.5" fill={soft} />
         </svg>
       );
+    case "nativestroke":
+      return (
+        <svg {...common}>
+          <rect width="100" height="100" fill={photo} />
+          {/* bold centered lines with a stroke/outline hint — dark silhouette
+              behind a slightly inset white bar, no card */}
+          <rect x="19" y="43" width="62" height="9" rx="2" fill="black" opacity="0.55" />
+          <rect x="21" y="44.5" width="58" height="6" rx="1.5" fill="white" />
+          <rect x="27" y="56" width="46" height="7" rx="2" fill="black" opacity="0.55" />
+          <rect x="29" y="57.2" width="42" height="4.6" rx="1.2" fill="white" />
+        </svg>
+      );
+    case "nativebubbles":
+      return (
+        <svg {...common}>
+          <rect width="100" height="100" fill={photo} />
+          {/* stacked white caption bubbles, each its own width */}
+          <rect x="18" y="30" width="64" height="12" rx="6" fill="white" />
+          <rect x="26" y="46" width="48" height="12" rx="6" fill="white" />
+          <rect x="22" y="62" width="56" height="12" rx="6" fill="white" />
+        </svg>
+      );
     default:
       return (
         <svg {...common}>
