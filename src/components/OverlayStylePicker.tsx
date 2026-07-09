@@ -310,10 +310,16 @@ export function OverlayStylePicker({ style, onChange, onSave, saving, saveStatus
           </span>
         </div>
 
-        <Button onClick={onSave} disabled={saving} variant="lumi" className="w-full">
-          {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-          Save Overlay Style
-        </Button>
+        {saveStatus ? (
+          <div className="flex justify-end">
+            <AutoSaveIndicator status={saveStatus} />
+          </div>
+        ) : onSave ? (
+          <Button onClick={onSave} disabled={saving} variant="lumi" className="w-full">
+            {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            Save Overlay Style
+          </Button>
+        ) : null}
       </CardContent>
     </Card>
   );
