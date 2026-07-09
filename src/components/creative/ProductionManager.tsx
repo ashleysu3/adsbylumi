@@ -5,14 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { 
-  Rocket, Upload, CheckCircle2, AlertCircle, 
+import {
+  Rocket, Upload, CheckCircle2, AlertCircle,
   Video, Film, Image, Eye, FolderOpen, Maximize2,
   Sparkles, Loader2, Filter, Library, Info, Download,
   Archive, Trash2, ChevronDown, Star, Printer, CheckSquare, Square, XCircle,
-  Share2, Repeat, FastForward
+  Share2, Repeat, FastForward, MoreHorizontal
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -1305,37 +1306,65 @@ export function ProductionManager({
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <CardTitle className="text-lg">Production Checklist</CardTitle>
                 <div className="flex items-center gap-2 flex-wrap">
-                  {/* Share with Client */}
-                  {productionItems.length > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShareDialogOpen(true)}
-                      className="gap-1"
-                    >
-                      <Share2 className="h-3 w-3" />
-                      Share with Client
-                    </Button>
-                  )}
-                  {/* Export Button */}
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setExportModalOpen(true)}
-                          className="gap-1"
-                        >
-                          <Download className="h-3 w-3" />
-                          Export Production Checklist
+                  {/* Occasional/utility actions — share, export, archive, clear — live in
+                      one overflow menu instead of competing at equal visual weight with
+                      the actions someone actually needs on every visit (rank, filter,
+                      push to ad). Previously 4-5 same-weight outline buttons cluttered
+                      this header with no hierarchy. */}
+                  {(productionItems.length > 0 || previousRoundItems.length > 0 || onClearAll) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-1">
+                          <MoreHorizontal className="h-3.5 w-3.5" />
+                          More
                         </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Download CSV to share with your client or creative team</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {productionItems.length > 0 && (
+                          <DropdownMenuItem onClick={() => setShareDialogOpen(true)} className="gap-2">
+                            <Share2 className="h-3.5 w-3.5" />
+                            Share with Client
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => setExportModalOpen(true)} className="gap-2">
+                          <Download className="h-3.5 w-3.5" />
+                          Export Production Checklist
+                        </DropdownMenuItem>
+                        {previousRoundItems.length > 0 && (
+                          <DropdownMenuItem
+                            onClick={async () => {
+                              if (!onArchivePrevious) return;
+                              setArchiving(true);
+                              await onArchivePrevious();
+                              setArchiving(false);
+                            }}
+                            disabled={archiving}
+                            className="gap-2"
+                          >
+                            {archiving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+                            Archive Previous ({previousRoundItems.length})
+                          </DropdownMenuItem>
+                        )}
+                        {productionItems.length > 0 && onClearAll && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={async () => {
+                                setClearing(true);
+                                await onClearAll();
+                                setClearing(false);
+                              }}
+                              disabled={clearing}
+                              className="gap-2 text-destructive focus:text-destructive"
+                            >
+                              {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                              Clear All
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                   {/* Move to Concept Library */}
                   {onSaveToLibrary && (
                     <Button
@@ -1399,11 +1428,11 @@ export function ProductionManager({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
-                            variant="outline"
+                            variant="lumi"
                             size="sm"
                             onClick={handleRankConcepts}
                             disabled={isRanking}
-                            className="gap-1 bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-950/30 dark:to-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 hover:from-amber-100 hover:to-amber-200"
+                            className="gap-1"
                           >
                             {isRanking ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
@@ -1418,42 +1447,6 @@ export function ProductionManager({
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                  )}
-                  {/* Archive / Clear Actions */}
-                  {previousRoundItems.length > 0 && (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          if (!onArchivePrevious) return;
-                          setArchiving(true);
-                          await onArchivePrevious();
-                          setArchiving(false);
-                        }}
-                        disabled={archiving}
-                        className="gap-1"
-                      >
-                        {archiving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Archive className="h-3 w-3" />}
-                        Archive Previous ({previousRoundItems.length})
-                      </Button>
-                    </div>
-                  )}
-                  {productionItems.length > 0 && onClearAll && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={async () => {
-                        setClearing(true);
-                        await onClearAll();
-                        setClearing(false);
-                      }}
-                      disabled={clearing}
-                      className="gap-1 text-muted-foreground"
-                    >
-                      {clearing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-                      Clear All
-                    </Button>
                   )}
                   <Badge variant={itemsWithAssets === productionItems.length ? "default" : "secondary"}>
                     {itemsWithAssets}/{productionItems.length} uploaded

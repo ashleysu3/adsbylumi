@@ -1266,7 +1266,13 @@ export function GenerateCreativeDialog() {
 
           {mode === "remix" ? (
             /* ---------- REMIX A REAL AD FLOW (default) ---------- */
-            <div className="space-y-4 py-2">
+            <div className="space-y-4 py-2 relative">
+              <ScreenHelp
+                position="top-left"
+                title="Remix a real ad"
+                description="Pick a board, then click an image to select it — the button at the bottom lights up once you have. Lumi matches the layout and rewrites the copy for your offer."
+                targetSelector='[data-help-target="remix-this-ad"]'
+              />
               <div>
                 <Label className="text-sm font-medium flex items-center gap-2">
                   <ImagePlus className="h-4 w-4 text-primary" />
@@ -1345,6 +1351,7 @@ export function GenerateCreativeDialog() {
 
                   <div className="flex items-center justify-end pt-2">
                     <Button
+                      data-help-target="remix-this-ad"
                       size="lg"
                       onClick={runAnalyzeReference}
                       disabled={analyzingReference || !selectedRemixImageId}
@@ -1361,7 +1368,13 @@ export function GenerateCreativeDialog() {
             </div>
           ) : step === "style" ? (
             /* ---------- SCREEN 1: Choose a style ---------- */
-            <div className="space-y-4 py-2">
+            <div className="space-y-4 py-2 relative">
+              <ScreenHelp
+                position="top-left"
+                title="Choose a style"
+                description="Click any template to select it — you can change it later. Once you've picked one, hit Next to move on to the photo and copy."
+                targetSelector='[data-help-target="style-next"]'
+              />
               <div>
                 <Label className="text-sm font-medium">Choose a style</Label>
                 <p className="text-xs text-muted-foreground">
@@ -1417,6 +1430,7 @@ export function GenerateCreativeDialog() {
 
               <div className="flex items-center justify-end pt-2">
                 <Button
+                  data-help-target="style-next"
                   size="lg"
                   onClick={() => setStep("image-copy")}
                   disabled={!activeStyleKey}
