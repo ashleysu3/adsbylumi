@@ -714,7 +714,6 @@ export type Database = {
           flodesk_api_key: string | null
           flodesk_connected: boolean | null
           flodesk_webhook_id: string | null
-          flodesk_webhook_token: string | null
           id: string
           industry: string | null
           instagram_account_id: string | null
@@ -771,7 +770,6 @@ export type Database = {
           flodesk_api_key?: string | null
           flodesk_connected?: boolean | null
           flodesk_webhook_id?: string | null
-          flodesk_webhook_token?: string | null
           id?: string
           industry?: string | null
           instagram_account_id?: string | null
@@ -828,7 +826,6 @@ export type Database = {
           flodesk_api_key?: string | null
           flodesk_connected?: boolean | null
           flodesk_webhook_id?: string | null
-          flodesk_webhook_token?: string | null
           id?: string
           industry?: string | null
           instagram_account_id?: string | null
