@@ -98,10 +98,18 @@ export function ProductionManager({
   const [adPreviewItem, setAdPreviewItem] = useState<ProductionItem | null>(null);
   const [savingToLibrary, setSavingToLibrary] = useState<string | null>(null);
   const [isRanking, setIsRanking] = useState(false);
-  const [rankedItems, setRankedItems] = useState<RankedItem[]>([]);
+  const [rankedItems, setRankedItems] = useState<RankedItem[]>(
+    Array.isArray((workspace as any)?.top_five_state?.rankedItems)
+      ? (workspace as any).top_five_state.rankedItems
+      : []
+  );
   const [showSaveOthersPrompt, setShowSaveOthersPrompt] = useState(false);
-  const [overallStrategy, setOverallStrategy] = useState<string>("");
-  const [showTopOnly, setShowTopOnly] = useState(false);
+  const [overallStrategy, setOverallStrategy] = useState<string>(
+    (workspace as any)?.top_five_state?.overallStrategy || ""
+  );
+  const [showTopOnly, setShowTopOnly] = useState<boolean>(
+    (workspace as any)?.top_five_state?.showTopOnly ?? false
+  );
   const [movingToLibrary, setMovingToLibrary] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [namedLibraries, setNamedLibraries] = useState<Array<{ id: string; name: string; clips: any[] }>>([]);
@@ -486,6 +494,21 @@ export function ProductionManager({
       setRankedItems(data.rankedItems || []);
       setOverallStrategy(data.overallStrategy || "");
       setShowTopOnly(true);
+      const nextState = {
+        rankedItems: data.rankedItems || [],
+        overallStrategy: data.overallStrategy || "",
+        showTopOnly: true,
+      };
+      if (workspace?.id) {
+        supabase
+          .from("campaign_workspaces")
+          .update({ top_five_state: nextState as any, updated_at: new Date().toISOString() })
+          .eq("id", workspace.id)
+          .then(({ error: upErr }) => {
+            if (upErr) console.error("Failed to persist top 5:", upErr);
+          });
+        onUpdateWorkspace?.({ top_five_state: nextState });
+      }
       toast.success("Lumi's Top 5 ready!");
       // Prompt user to save the others
       const rankedIds = (data.rankedItems || []).map((r: any) => r.id);
@@ -1336,7 +1359,19 @@ export function ProductionManager({
                       <Button
                         variant={showTopOnly ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setShowTopOnly(!showTopOnly)}
+                        onClick={() => {
+                          const next = !showTopOnly;
+                          setShowTopOnly(next);
+                          if (workspace?.id) {
+                            const nextState = { rankedItems, overallStrategy, showTopOnly: next };
+                            supabase
+                              .from("campaign_workspaces")
+                              .update({ top_five_state: nextState as any, updated_at: new Date().toISOString() })
+                              .eq("id", workspace.id)
+                              .then(({ error }) => { if (error) console.error(error); });
+                            onUpdateWorkspace?.({ top_five_state: nextState });
+                          }
+                        }}
                         className="gap-1"
                       >
                         <Filter className="h-3 w-3" />
