@@ -52,6 +52,11 @@ export interface CreativeBrief {
   concept: string;
   keyMessage: string;
   offer: string;
+  // The real offers.id this concept was generated for, when known. Lets
+  // downstream copy generation look up the exact offer instead of fuzzy-
+  // matching this free-text `offer` field against every saved offer's name
+  // (which silently picked the wrong offer whenever that match failed).
+  offerId?: string | null;
   cta: string;
   audience: string;
   proofPoint?: string | null;

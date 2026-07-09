@@ -66,6 +66,22 @@ export default function MetaSettings() {
     }
   }, [activeBrand?.id, brandContextLoading]);
 
+  // Re-fetch on tab refocus — fixing something in Meta Business Manager
+  // happens outside LUMI, so coming back to this tab should reflect it
+  // instead of showing whatever was cached before the user left to fix it.
+  useEffect(() => {
+    if (!activeBrand?.id) return;
+    const onFocus = () => fetchBrand(activeBrand.id);
+    const onVisibility = () => { if (document.visibilityState === "visible") fetchBrand(activeBrand.id); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBrand?.id]);
+
   // Auto-test connection when brand is loaded and connected
   useEffect(() => {
     if (brand?.id && brand?.meta_account_id && hasValidToken && !testResult) {

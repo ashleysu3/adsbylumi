@@ -745,23 +745,37 @@ export function GenerateCreativeDialog() {
           }
           const offers = (offerRows || []) as any[];
           if (offers.length) {
+            // Prefer an exact id match (stamped server-side by
+            // generate-creative-grid) over fuzzy name matching, which
+            // silently picked the wrong offer whenever the brief's
+            // free-text `offer` field didn't happen to overlap with a
+            // saved offer's name.
+            const byId = (b as any).offerId
+              ? offers.find((o) => o.id === (b as any).offerId)
+              : null;
             const briefOffer = String(b.offer || "").toLowerCase().trim();
-            const match = briefOffer
+            const byName = !byId && briefOffer
               ? offers.find((o) =>
                   briefOffer.includes(String(o.name || "").toLowerCase()) ||
                   String(o.name || "").toLowerCase().includes(briefOffer),
                 )
               : null;
-            const chosen = match || offers[0];
-            offerContext = {
-              name: chosen.name,
-              type: chosen.page_goal || chosen.target_outcome,
-              price: chosen.price_point,
-              url: chosen.url,
-              description: chosen.description,
-              messagingGuidelines: chosen.messaging_guidelines,
-            };
-            offerPsychology = chosen.offer_audience_psychology || chosen.product_psychology || null;
+            // Only fall back to "the one offer" when it's genuinely
+            // unambiguous (exactly one saved offer) — guessing among
+            // several is how the wrong offer's price/description/messaging
+            // ended up in someone else's ad copy.
+            const chosen = byId || byName || (offers.length === 1 ? offers[0] : null);
+            if (chosen) {
+              offerContext = {
+                name: chosen.name,
+                type: chosen.page_goal || chosen.target_outcome,
+                price: chosen.price_point,
+                url: chosen.url,
+                description: chosen.description,
+                messagingGuidelines: chosen.messaging_guidelines,
+              };
+              offerPsychology = chosen.offer_audience_psychology || chosen.product_psychology || null;
+            }
           }
         }
       } catch (ctxErr) {

@@ -342,6 +342,8 @@ Deno.serve(async (req) => {
 
     const systemPrompt = `You are an expert creative strategist for Meta Ads. You generate compelling, psychology-driven creative angles for paid social campaigns.
 
+HARD RULE — you are writing marketing copy FOR a brand's own product or service. The brand is Lumi's customer, running these ads to sell or promote THEIR OWN offer. Never write copy about Meta Ads, advertising, AI tools, or Lumi itself as if that were the product being sold — even if the OFFER below is unspecified. If no offer is given, ground every angle in the BRAND's own value proposition and audience psychology instead of inventing a product to talk about.
+
 KNOWLEDGE BASE:
 ${kbContext}
 ${contentAssetsContext}
@@ -433,9 +435,9 @@ Generate creative angles for this campaign:
 
 BRAND: ${brandName}
 
-OFFER: ${offerData?.name || "Not specified"}
-${offerData?.description ? `Description: ${offerData.description}` : ""}
-${offerData?.price ? `Price: ${offerData.price}` : ""}
+${offerData?.name
+  ? `OFFER: ${offerData.name}\n${offerData.description ? `Description: ${offerData.description}` : ""}\n${offerData.price ? `Price: ${offerData.price}` : ""}`
+  : `OFFER: Not specified for this campaign. Do NOT invent a product or offer name — write every angle around ${brandName}'s general value proposition and audience psychology below instead.`}
 
 STRATEGY CONTEXT:
 ${JSON.stringify(strategyData, null, 2)}
