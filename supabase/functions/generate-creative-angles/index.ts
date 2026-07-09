@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { requirePaidUser } from "../_shared/check-subscription.ts";
+import { requireAuthedUser } from "../_shared/check-subscription.ts";
 import { buildPositioningBriefBlock } from "../_shared/positioning-brief.ts";
 
 const corsHeaders = {
@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const gate = await requirePaidUser(req, corsHeaders);
+    const gate = await requireAuthedUser(req, corsHeaders);
     if (gate.blocked) return gate.blocked;
 
     const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext, creativeIntelligence, previouslyUsedAngles, neverUseWords, singleAngleReplacement, maxAngles, campaignObjective, creativeBrief, campaignName, positioningBrief } = await req.json();
