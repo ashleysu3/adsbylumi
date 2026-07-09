@@ -246,6 +246,9 @@ export default function Style() {
             </CardContent>
           </Card>
 
+          {/* Brand Guide Upload */}
+          <BrandGuideUpload brandId={brand.id} onApplied={fetchBrand} />
+
           {/* Brand Colors & Fonts */}
           <BrandColorsAndFonts brandId={brand.id} websiteUrl={brand?.website_url || brand?.website} />
 
