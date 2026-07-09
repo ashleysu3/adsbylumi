@@ -293,40 +293,6 @@ export function GenerateCreativeDialog() {
   const [mode, setMode] = useState<"remix" | "template">("remix");
   const [tourOpen, setTourOpen] = useState(false);
 
-  // "Show me what to do" tour steps for whichever internal screen is
-  // currently showing — one consistently-placed trigger in the dialog
-  // header instead of a per-corner "?" that could overlap real content
-  // (that was the actual bug: the icon sat right on top of "Back to
-  // styles" / heading text depending on the step).
-  const dialogTourSteps: TourStep[] = (() => {
-    if (mode === "remix") {
-      return [{
-        targetSelector: '[data-help-target="remix-this-ad"]',
-        title: "Remix a real ad",
-        description: "Pick a board, then click an image to select it — the button at the bottom lights up once you have. Lumi matches the layout and rewrites the copy for your offer.",
-      }];
-    }
-    if (step === "style") {
-      return [{
-        targetSelector: '[data-help-target="style-next"]',
-        title: "Choose a style",
-        description: "Click any template to select it — you can change it later. Once you've picked one, hit Next to move on to the photo and copy.",
-      }];
-    }
-    // step === "image-copy"
-    if (images.length === 0) {
-      return [{
-        targetSelector: '[data-help-target="render-creative"]',
-        title: "Image & copy",
-        description: "Pick a photo, tweak the copy if you want, then render — that's the button at the bottom.",
-      }];
-    }
-    return [{
-      targetSelector: '[data-help-target="approve-creative"]',
-      title: "Image & copy",
-      description: "Renders are ready. Approve them below to save this creative — that closes this dialog for you.",
-    }];
-  })();
   type BoardRow = { id: string; name: string };
   type BoardImg = { id: string; url: string; rawSrc: string };
   const [boards, setBoards] = useState<BoardRow[]>([]);
