@@ -289,22 +289,9 @@ export default function Style() {
             style={overlayStyle}
             onChange={setOverlayStyle}
             brandId={brand.id}
-            onSave={async () => {
-              setSaving(true);
-              try {
-                const { error } = await supabase
-                  .from("brands")
-                  .update({ overlay_style: overlayStyle as any })
-                  .eq("id", brand.id);
-                if (error) throw error;
-                toast.success("Overlay style saved");
-              } catch {
-                toast.error("Failed to save overlay style");
-              }
-              setSaving(false);
-            }}
-            saving={saving}
+            saveStatus={overlayAutosave.status}
           />
+
         </div>
       </div>
 
