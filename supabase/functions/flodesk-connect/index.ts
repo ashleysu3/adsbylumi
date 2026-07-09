@@ -17,6 +17,11 @@ function buildFlodeskHeaders(token: string, mode: FlodeskAuthMode): HeadersInit 
   };
 }
 
+function generateWebhookToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 async function deleteFlodeskWebhook(webhookId: string, token: string): Promise<void> {
   for (const mode of ['basic', 'bearer'] as const) {
     try {
@@ -101,6 +106,7 @@ Deno.serve(async (req) => {
       await serviceClient.from('brands').update({
         flodesk_api_key: null,
         flodesk_webhook_id: null,
+        flodesk_webhook_token: null,
       }).eq('id', brandId);
 
       return new Response(JSON.stringify({ success: true, message: 'Flodesk disconnected' }), {
@@ -152,8 +158,17 @@ Deno.serve(async (req) => {
     // same callback URL, so without this the handler has no way to tell
     // whose subscriber just signed up, and previously broadcast the Lead
     // event to every brand with Flodesk + Meta connected.
-    const webhookUrl = `${supabaseUrl}/functions/v1/flodesk-webhook?brandId=${brandId}`;
-    
+    //
+    // Flodesk has no signing secret / HMAC header on outgoing webhooks (its
+    // webhook creation API only takes name/post_url/events — no `secret`
+    // field, unlike Stripe/GitHub-style webhooks), so brandId alone isn't
+    // enough: it's a UUID, and while not easily guessable, anyone who
+    // obtains it could POST a fake subscriber.created payload straight to
+    // Meta. A random per-brand token generated here and required on every
+    // callback makes the URL itself the shared secret.
+    const webhookToken = generateWebhookToken();
+    const webhookUrl = `${supabaseUrl}/functions/v1/flodesk-webhook?brandId=${brandId}&token=${webhookToken}`;
+
     // Delete old webhook if one exists
     if (brand.flodesk_webhook_id) {
       try {
@@ -243,6 +258,7 @@ Deno.serve(async (req) => {
     const { error: updateError } = await serviceClient.from('brands').update({
       flodesk_api_key: apiKey,
       flodesk_webhook_id: webhookId,
+      flodesk_webhook_token: webhookToken,
     }).eq('id', brandId);
 
     if (updateError) {
