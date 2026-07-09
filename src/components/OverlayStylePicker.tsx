@@ -53,8 +53,9 @@ const EMPHASIS_STYLE_OPTIONS: { value: EmphasisStyle; label: string }[] = [
 interface OverlayStylePickerProps {
   style: OverlayStyle;
   onChange: (style: OverlayStyle) => void;
-  onSave: () => void;
+  onSave?: () => void;
   saving?: boolean;
+  saveStatus?: SaveStatus;
   brandId: string;
 }
 
