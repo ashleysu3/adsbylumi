@@ -10,7 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAutosave } from "@/hooks/useAutosave";
 import { AutoSaveIndicator } from "@/components/AutoSaveIndicator";
-import { MiniTourTrigger } from "@/components/MiniTourTrigger";
 
 interface VoiceProfile {
   summary?: string;
@@ -136,13 +135,6 @@ export function BrandVoiceCard({
               )}
               {hasProfile ? "Re-analyze" : "Analyze my voice"}
             </Button>
-            <MiniTourTrigger
-              steps={[{
-                targetSelector: '[data-help-target="analyze-voice"]',
-                title: "Brand voice",
-                description: "Add your Instagram handle (optional) and hit analyze — Lumi reads your site and posts to learn how you actually sound, then uses it to write ads that feel like you.",
-              }]}
-            />
           </div>
         </div>
         <p className="text-xs text-muted-foreground">

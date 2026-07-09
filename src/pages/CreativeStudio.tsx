@@ -12,7 +12,7 @@ import {
   ChevronRight, CheckCircle2, Circle, Loader2,
   Sparkles, ArrowRight, Video, Film, Image, Trash2,
   X, Check, FileDown, Printer, BarChart3, RefreshCw, Upload, MessageSquare,
-  Bookmark, Wrench, Palette, Compass
+  Bookmark, Wrench, Palette
 } from "lucide-react";
 import AdGenerator from "@/pages/AdGenerator";
 import CreativeToolkit from "@/pages/CreativeToolkit";
@@ -41,7 +41,7 @@ import { CadenceNudge } from "@/components/creative/CadenceNudge";
 import { CreativeStudioExplainer, useCreativeStudioExplainer } from "@/components/creative/CreativeStudioExplainer";
 import { Json } from "@/integrations/supabase/types";
 import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
-import { MiniTourTrigger } from "@/components/MiniTourTrigger";
+import { TourFab } from "@/components/TourFab";
 import { useBrand } from "@/contexts/BrandContext";
 import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
 import {
@@ -73,7 +73,7 @@ import { BYOCreativeUploader } from "@/components/creative/BYOCreativeUploader";
 import { CopyRegenerateDialog, CopyFeedback } from "@/components/creative/CopyRegenerateDialog";
 import { GenerateCreativeDialog } from "@/components/creative/GenerateCreativeDialog";
 import { TheLab as LazyTheLab } from "@/components/lab/TheLab";
-import { GuidedTour, type TourStep } from "@/components/GuidedTour";
+import type { TourStep } from "@/components/GuidedTour";
 
 type WorkflowTab = "angles" | "concepts" | "copy" | "build" | "saved";
 
@@ -318,7 +318,6 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
   const [showBYOUploader, setShowBYOUploader] = useState(false);
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [feedbackTab, setFeedbackTab] = useState<WorkflowTab>("angles");
-  const [tourOpen, setTourOpen] = useState(false);
 
   // "Show me what to do" — one consistently-placed trigger whose steps adapt
   // to whichever tab is active, instead of a per-corner "?" icon a user has
@@ -1458,17 +1457,6 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
               </Select>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="lumi"
-                size="sm"
-                onClick={() => setTourOpen(true)}
-                disabled={tourSteps.length === 0}
-                className="gap-2 hidden sm:flex relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent before:animate-shimmer disabled:before:hidden"
-                title={tourSteps.length === 0 ? "No tips for this view yet" : undefined}
-              >
-                <Compass className="h-4 w-4" />
-                Show me what to do
-              </Button>
               {(gridData.length > 0 || productionItems.length > 0) && (
                 <Button variant="outline" size="sm" onClick={() => setShowBrief(true)} className="gap-2 hidden sm:flex">
                   <FileDown className="h-4 w-4" />
@@ -1815,10 +1803,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
                       Write headlines, descriptions, and primary copy for your ads
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <AutoSaveIndicator status={copySaveStatus} />
-                    <MiniTourTrigger steps={tourSteps} />
-                  </div>
+                  <AutoSaveIndicator status={copySaveStatus} />
                 </div>
 
                 <AngleCopyEditor
@@ -2143,9 +2128,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
          </DialogContent>
         </Dialog>
 
-        {tourOpen && tourSteps.length > 0 && (
-          <GuidedTour steps={tourSteps} onClose={() => setTourOpen(false)} />
-        )}
+        <TourFab steps={tourSteps} />
 
         {/* Creative Refresh Dialog */}
         <CreativeRefreshDialog
@@ -2223,7 +2206,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
             "idle";
           if (aggregatedSaveStatus === "idle") return null;
           return (
-            <div className="fixed bottom-4 right-4 z-30 bg-background/80 backdrop-blur-sm rounded-full px-3 py-1.5 border shadow-sm">
+            <div className="fixed bottom-20 right-4 z-30 bg-background/80 backdrop-blur-sm rounded-full px-3 py-1.5 border shadow-sm">
               <AutoSaveIndicator status={aggregatedSaveStatus} size="sm" />
             </div>
           );

@@ -3,7 +3,7 @@ import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AutoSaveIndicator, SaveStatus } from "./AutoSaveIndicator";
-import { MiniTourTrigger } from "@/components/MiniTourTrigger";
+import { TourFab } from "@/components/TourFab";
 
 interface MobileStepWizardProps {
   currentStep: number;
@@ -128,13 +128,6 @@ export function MobileStepWizard({
                 <AutoSaveIndicator status={saveStatus} size="sm" />
               </>
             )}
-            <MiniTourTrigger
-              steps={[{
-                targetSelector: '[data-help-target="wizard-continue"]',
-                title,
-                description: `Fill in what's needed on this step, then use the button below to ${isLastStep ? "finish up" : "continue"}.`,
-              }]}
-            />
           </div>
           <h2 className="text-xl font-display font-bold">{title}</h2>
           {subtitle && (
@@ -190,6 +183,15 @@ export function MobileStepWizard({
         </div>
       </div>
       )}
+
+      <TourFab
+        steps={[{
+          targetSelector: '[data-help-target="wizard-continue"]',
+          title,
+          description: `Fill in what's needed on this step, then use the button below to ${isLastStep ? "finish up" : "continue"}.`,
+        }]}
+        className={hideFooter ? undefined : "bottom-24"}
+      />
     </div>
   );
 }

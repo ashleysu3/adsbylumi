@@ -10,7 +10,6 @@ import { toast } from 'sonner';
 import { Plus, X, MessageSquare, Sparkles } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AutoSaveIndicator, SaveStatus } from '@/components/AutoSaveIndicator';
-import { MiniTourTrigger } from '@/components/MiniTourTrigger';
 
 interface MessagingGuidelines {
   core_message?: string;
@@ -154,36 +153,23 @@ export function OfferMessagingEditor({
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className="relative">
-        <CollapsibleTrigger asChild>
-          <Button data-help-target="messaging-guidelines-trigger" variant="ghost" className="w-full justify-between p-2 h-auto">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm">Messaging Guidelines</span>
-              {hasContent && (
-                <Badge variant="secondary" className="text-xs">
-                  Configured
-                </Badge>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {isOpen && <AutoSaveIndicator status={saveStatus} size="sm" />}
-              <Sparkles className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </Button>
-        </CollapsibleTrigger>
-        {/* Sits on top of the trigger button rather than inside it — can't
-            nest a clickable element inside another <button>. */}
-        <div className="absolute right-9 top-1/2 -translate-y-1/2 z-10">
-          <MiniTourTrigger
-            steps={[{
-              targetSelector: '[data-help-target="messaging-guidelines-trigger"]',
-              title: "Messaging guidelines",
-              description: "Expand this to set your core message, key benefits, and tone notes — Lumi uses these whenever it writes copy for you.",
-            }]}
-          />
-        </div>
-      </div>
+      <CollapsibleTrigger asChild>
+        <Button data-help-target="messaging-guidelines-trigger" variant="ghost" className="w-full justify-between p-2 h-auto">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm">Messaging Guidelines</span>
+            {hasContent && (
+              <Badge variant="secondary" className="text-xs">
+                Configured
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {isOpen && <AutoSaveIndicator status={saveStatus} size="sm" />}
+            <Sparkles className="h-4 w-4 text-muted-foreground" />
+          </div>
+        </Button>
+      </CollapsibleTrigger>
 
       <CollapsibleContent className="space-y-4 pt-4">
         {/* Core Message */}

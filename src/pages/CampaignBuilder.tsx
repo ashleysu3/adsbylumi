@@ -12,7 +12,7 @@ import { QACheckScreen } from "@/components/QACheckScreen";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
-import { MiniTourTrigger } from "@/components/MiniTourTrigger";
+import { TourFab } from "@/components/TourFab";
 import { ArrowLeft, Loader2, CheckCircle2, AlertTriangle, X } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
@@ -371,15 +371,6 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
                     <AutoSaveIndicator status={saveStatus} size="sm" />
                   </>
                 )}
-                {stage === 'configure' && (
-                  <MiniTourTrigger
-                    steps={[{
-                      targetSelector: '[data-help-target="wizard-continue"]',
-                      title: "Campaign setup",
-                      description: "Fill in your campaign details on each step, then use the button below to continue.",
-                    }]}
-                  />
-                )}
               </div>
             </div>
           </div>
@@ -459,15 +450,6 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
                     <span className="text-muted-foreground/50">•</span>
                     <AutoSaveIndicator status={saveStatus} />
                   </>
-                )}
-                {stage === 'configure' && (
-                  <MiniTourTrigger
-                    steps={[{
-                      targetSelector: '[data-help-target="campaign-review"]',
-                      title: "Campaign setup",
-                      description: "Review your campaign settings, then hit Continue below to move to the QA check before publishing.",
-                    }]}
-                  />
                 )}
               </div>
             </div>
@@ -562,6 +544,15 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
           )}
         </div>
       </div>
+      {stage === 'configure' && (
+        <TourFab
+          steps={[{
+            targetSelector: '[data-help-target="campaign-review"]',
+            title: "Campaign setup",
+            description: "Review your campaign settings, then hit Continue below to move to the QA check before publishing.",
+          }]}
+        />
+      )}
     </Layout>
   );
 }
