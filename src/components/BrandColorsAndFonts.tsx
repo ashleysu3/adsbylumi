@@ -228,7 +228,7 @@ export default function BrandColorsAndFonts({ brandId, websiteUrl }: Props) {
     }
     scheduleSave();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [colors, fonts, loading]);
+  }, [colors, fonts, url, loading]);
 
   return (
     <Card variant="glow">
