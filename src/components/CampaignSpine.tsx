@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 interface CampaignSpineProps {
   currentStep: 1 | 2 | 3 | 4;
   className?: string;
+  compact?: boolean;
 }
 
 const STEPS = [
@@ -14,8 +15,41 @@ const STEPS = [
   { num: 4, label: "Optimize", path: "/performance" },
 ] as const;
 
-export function CampaignSpine({ currentStep, className }: CampaignSpineProps) {
+export function CampaignSpine({ currentStep, className, compact }: CampaignSpineProps) {
   const navigate = useNavigate();
+
+  if (compact) {
+    return (
+      <nav
+        aria-label="Campaign workflow"
+        className={cn(
+          "flex items-center gap-1.5 mb-4 text-xs text-muted-foreground",
+          className,
+        )}
+      >
+        <span className="font-medium text-foreground/70">
+          Step {currentStep} of {STEPS.length}
+        </span>
+        <span aria-hidden="true">·</span>
+        {STEPS.map((step, idx) => (
+          <span key={step.num} className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => navigate(step.path)}
+              aria-current={step.num === currentStep ? "step" : undefined}
+              className={cn(
+                "hover:text-foreground transition-colors",
+                step.num === currentStep && "font-semibold text-foreground",
+              )}
+            >
+              {step.label}
+            </button>
+            {idx < STEPS.length - 1 && <span aria-hidden="true">→</span>}
+          </span>
+        ))}
+      </nav>
+    );
+  }
 
   return (
     <nav
