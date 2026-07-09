@@ -1174,6 +1174,7 @@ export type Database = {
           strategy_id: string | null
           strategy_json: Json | null
           template_id: string | null
+          top_five_state: Json | null
           tracking_verified: boolean | null
           updated_at: string | null
           user_uploaded_assets: Json | null
@@ -1219,6 +1220,7 @@ export type Database = {
           strategy_id?: string | null
           strategy_json?: Json | null
           template_id?: string | null
+          top_five_state?: Json | null
           tracking_verified?: boolean | null
           updated_at?: string | null
           user_uploaded_assets?: Json | null
@@ -1264,6 +1266,7 @@ export type Database = {
           strategy_id?: string | null
           strategy_json?: Json | null
           template_id?: string | null
+          top_five_state?: Json | null
           tracking_verified?: boolean | null
           updated_at?: string | null
           user_uploaded_assets?: Json | null
