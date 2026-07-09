@@ -459,29 +459,26 @@ Your job is to translate this data directly into hooks, scripts, and concepts �
 
 DIRECT TRANSLATION RULES:
 
+CRITICAL: The rules below describe PATTERNS only. Do NOT invent ads-industry framing (words like "ads", "Meta ads", "campaign", "clicks", "leads", "CPA", "ROAS") unless the offer above is literally about advertising. Every hook, script, and overlay MUST use the language of THIS brand's offer, audience, and industry — grounded in the pain points, desires, and offer data provided.
+
 1. THE MOMENT THEY REALIZE → Use as a talking head mid-sentence hook
-   If moment_they_realize is: "When they've spent hours on a campaign and gotten 3 clicks"
-   Hook becomes: "—I remember staring at $200 spent and 3 clicks. That was the last time I did it alone."
-   
+   PATTERN: Open mid-sentence with the specific sensory moment from moment_they_realize, then name the emotional turning point in the audience's own words.
+
 2. ALTERNATIVE THEY TRIED → Use as the conflict in the hook
-   If alternative_they_tried is: "YouTube tutorials and ChatGPT"
-   Hook becomes: "I spent 14 hours on YouTube learning Meta ads. ChatGPT wrote my copy. I spent $400. Zero leads."
-   
+   PATTERN: Name the specific thing they tried (from alternative_they_tried), the effort they put in, and the concrete disappointing result — in the vocabulary of THIS offer's world.
+
 3. EMOTIONAL BEFORE STATE → Open scripts here, without mentioning the solution
-   If before state is: "Feels like a fraud promoting herself when the ads don't work"
-   Script opens: "You know that feeling when you've worked so hard on your offer and you genuinely believe in it — but the ads just stare back at you with zero results? And then the thought creeps in: maybe it's me."
-   
+   PATTERN: Voice the exact private thought from the before state (e.g. "maybe it's me…") using the audience's real context. Never substitute in generic ads/marketing framing.
+
 4. EMOTIONAL AFTER STATE → Use only in the final 5 seconds of convert-stage scripts
    Never reveal in grow-stage content — save it as the earned reward
-   
+
 5. WHAT FINALLY CONVINCES → Use as the logic bridge in nurture content
    This is what makes them say yes — build the middle of trust-stage scripts around this
-   
+
 6. SPECIFIC HESITATIONS → Each major hesitation gets its own cell
-   Don't bury objections. Address them head-on as the hook:
-   If hesitation is: "I've tried ads before and wasted money"
-   Hook: "Every person who tells me ads don't work — I ask them the same thing."
-   
+   PATTERN: Address the exact hesitation head-on in the hook, using the audience's own words for what they've tried and why they're skeptical — grounded in this offer's category.
+
 7. BUYING TRIGGERS → Use as the action-stage CTA logic
    If buying trigger is: "Seeing someone exactly like them get results"
    Action cell should: Lead with a proof story from someone in their exact situation
