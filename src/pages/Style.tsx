@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useBrand } from "@/contexts/BrandContext";
@@ -24,6 +24,7 @@ import { DEFAULT_OVERLAY_STYLE } from "@/components/VideoTextPreview";
 import { Building2, Smile, X, Loader2, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAutosave } from "@/hooks/useAutosave";
 
 interface EmojiSettings {
   use_emojis: boolean;
