@@ -494,6 +494,21 @@ export function ProductionManager({
       setRankedItems(data.rankedItems || []);
       setOverallStrategy(data.overallStrategy || "");
       setShowTopOnly(true);
+      const nextState = {
+        rankedItems: data.rankedItems || [],
+        overallStrategy: data.overallStrategy || "",
+        showTopOnly: true,
+      };
+      if (workspace?.id) {
+        supabase
+          .from("campaign_workspaces")
+          .update({ top_five_state: nextState, updated_at: new Date().toISOString() })
+          .eq("id", workspace.id)
+          .then(({ error: upErr }) => {
+            if (upErr) console.error("Failed to persist top 5:", upErr);
+          });
+        onUpdateWorkspace?.({ top_five_state: nextState });
+      }
       toast.success("Lumi's Top 5 ready!");
       // Prompt user to save the others
       const rankedIds = (data.rankedItems || []).map((r: any) => r.id);
