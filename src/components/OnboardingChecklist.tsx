@@ -46,8 +46,8 @@ export function OnboardingChecklist({ brand, offers, onEditBrand }: OnboardingCh
     {
       id: "brand-basics",
       title: "Complete Brand Basics",
-      description: "Add your brand name, website, and industry",
-      completed: !!(brand?.name && brand?.website_url && brand?.industry),
+      description: "Add your brand name and website",
+      completed: !!(brand?.name && brand?.website_url),
       action: onEditBrand,
       actionLabel: "Edit Details"
     },

@@ -23,7 +23,7 @@ export function InlineProgressChecklist({ brand, offers, onScrollToSection }: In
   const getTooltip = (id: string, completed: boolean) => {
     if (completed) {
       const map: Record<string, string> = {
-        "brand-basics": "Brand name, website & industry ✓",
+        "brand-basics": "Brand name & website ✓",
         "positioning": "Value proposition & audience ✓",
         "brand-brain": "Psychology & preferences ✓",
         "offers": `${offers.length} offer${offers.length !== 1 ? 's' : ''} added ✓`,
@@ -35,7 +35,6 @@ export function InlineProgressChecklist({ brand, offers, onScrollToSection }: In
       "brand-basics": [
         !brand?.name && "brand name",
         !brand?.website_url && "website URL",
-        !brand?.industry && "industry",
       ].filter(Boolean).join(", ") || "Complete your brand basics",
       "positioning": [
         !brand?.value_proposition && "value proposition",
@@ -57,7 +56,7 @@ export function InlineProgressChecklist({ brand, offers, onScrollToSection }: In
     {
       id: "brand-basics",
       label: "Brand Basics",
-      completed: !!(brand?.name && brand?.website_url && brand?.industry),
+      completed: !!(brand?.name && brand?.website_url),
       section: "brand-details",
       icon: Building2,
     },
