@@ -1829,20 +1829,39 @@ export function ProductionManager({
                           { duration: 4000 }
                         );
                       }
-                      
+
+                      // This workspace already has a live Meta campaign — new
+                      // creative belongs there, not in a brand-new campaign
+                      // build. onBuildCampaign() always routes to the fresh
+                      // "Configure your budget" wizard, which was resetting
+                      // an already-launched campaign back to step 1. Route
+                      // to the existing push-to-live-campaign flow instead
+                      // (same one the smaller "Push N approved to ad" button
+                      // above uses).
+                      if (hasLiveCampaign) {
+                        if (approvedItems.length === 0) {
+                          toast.error("Approve at least one creative above before pushing it to your live campaign.");
+                          return;
+                        }
+                        setPushConfirmOpen(true);
+                        return;
+                      }
+
                       onBuildCampaign();
-                    }} 
+                    }}
                     disabled={!isReadyToBuild}
                     size="lg"
                     className="gap-2"
                     title={!isReadyToBuild ? "Upload at least one creative asset to build" : undefined}
                   >
                     <Rocket className="h-5 w-5" />
-                    Continue
+                    {hasLiveCampaign ? "Push to live campaign" : "Continue"}
                   </Button>
                   <p className="text-xs text-muted-foreground text-right max-w-[260px]">
                     {!isReadyToBuild
                       ? "Upload at least one creative asset above to continue"
+                      : hasLiveCampaign
+                      ? "This campaign is already live — approved creatives get added as new ads. Nothing publishes until you confirm."
                       : "Next: Lumi organizes your creative and copy into each angle and makes sure everything looks cohesive. You'll review before anything is published to Meta."}
                   </p>
 

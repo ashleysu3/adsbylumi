@@ -114,7 +114,19 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
       if (data.campaign_builder_answers) {
         setAnswers(data.campaign_builder_answers as any);
       }
-      if (data.meta_campaign_status === 'published') {
+      // A workspace is only "really" live on Meta if it has a real campaign
+      // ID — checking meta_campaign_status alone only matched 'published',
+      // missing 'live' (what an actively-running campaign is stored as
+      // elsewhere in the app), so re-opening an already-launched campaign
+      // reset straight back to the fresh "Configure your budget" step
+      // instead of recognizing it was already built. Same check ProductionManager
+      // uses for hasLiveCampaign.
+      const hasLiveMetaCampaign = !!(data.meta_campaign_ids && (
+        Array.isArray(data.meta_campaign_ids)
+          ? data.meta_campaign_ids.length > 0
+          : Object.keys(data.meta_campaign_ids).length > 0
+      ));
+      if (hasLiveMetaCampaign) {
         setStage('success');
         setCampaignIds(data.meta_campaign_ids);
       }
