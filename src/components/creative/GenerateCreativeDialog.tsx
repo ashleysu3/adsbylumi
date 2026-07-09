@@ -88,7 +88,7 @@ type CustomTemplate = {
 
 const BUILT_IN_TEMPLATES = [
   "spotlight", "framed", "split", "overlay", "devicemockup", "testimonial", "statgrid", "checklist", "chatproof", "event", "offer", "bigtype", "collage", "carousel",
-  "notesapp", "textthread", "nativecaption",
+  "notesapp", "textthread", "nativecaption", "nativestroke", "nativebubbles",
 ] as const;
 
 const BUILT_IN_LABELS: Record<string, string> = {
@@ -109,13 +109,15 @@ const BUILT_IN_LABELS: Record<string, string> = {
   notesapp: "Notes app (native)",
   textthread: "Text thread (native)",
   nativecaption: "Photo caption (native)",
+  nativestroke: "Bold caption (native)",
+  nativebubbles: "Caption bubbles (native)",
 };
 
 const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
   spotlight: "with-background", framed: "with-background", split: "with-background",
   overlay: "with-background",
   devicemockup: "with-background", testimonial: "with-background",
-  nativecaption: "with-background",
+  nativecaption: "with-background", nativestroke: "with-background", nativebubbles: "with-background",
 };
 
 // Templates that never render a photo — the copy carries the whole design.
@@ -139,7 +141,7 @@ const ENGINE_SUPPORTED_TEMPLATES = new Set([
   "statgrid", "checklist", "chatproof", "event", "offer", "bigtype", "collage",
   // Native phone-screenshot formats (require the lumi-engine native-templates
   // build to be deployed).
-  "notesapp", "textthread", "nativecaption",
+  "notesapp", "textthread", "nativecaption", "nativestroke", "nativebubbles",
 ]);
 const RENDER_FALLBACK: Record<string, string> = {
   statgrid: "spotlight",
@@ -209,8 +211,9 @@ const SLOT_LABELS: Record<string, string> = {
   tickerTop: "Ticker (top)", tickerBottom: "Ticker (bottom)",
   body: "Note text", contactName: "Contact name", contactLoc: "Contact location",
   line1: "Line 1", line2: "Line 2",
+  bubble1: "Bubble 1", bubble2: "Bubble 2", bubble3: "Bubble 3",
 };
-const MULTILINE_KEYS = new Set(["sub", "accent", "msg1", "msg2", "msg3", "msg4", "meta", "body", "line1", "line2"]);
+const MULTILINE_KEYS = new Set(["sub", "accent", "msg1", "msg2", "msg3", "msg4", "meta", "body", "line1", "line2", "bubble1", "bubble2", "bubble3"]);
 
 // Local fallback: mirror the compose-ad mapping so the UI can guess a template
 function mapStyleToTemplate(styleHint?: string, format?: string): string {
@@ -230,6 +233,8 @@ function mapStyleToTemplate(styleHint?: string, format?: string): string {
     notesapp: "notesapp", notes: "notesapp",
     textthread: "textthread", texts: "textthread", imessage: "textthread",
     nativecaption: "nativecaption", caption: "nativecaption",
+    nativestroke: "nativestroke", stroke: "nativestroke", strokecaption: "nativestroke",
+    nativebubbles: "nativebubbles", bubbles: "nativebubbles", captionbubbles: "nativebubbles",
   };
   return (styleHint && m[styleHint]) || "bigtype";
 }
@@ -1117,6 +1122,15 @@ export function GenerateCreativeDialog() {
     } else if (card.builtIn) {
       setCustomTemplateId("");
       setTemplate(card.builtIn);
+      // textColor/textBackdrop only have a UI control on nativecaption (its
+      // card can go light/dark or backdrop-on/off). Reset them when leaving
+      // it so a stale "dark" choice doesn't silently follow onto a template
+      // with a fixed design — e.g. nativestroke's black stroke outline would
+      // read as near-invisible if it inherited dark-text on top of it.
+      if (card.builtIn !== "nativecaption") {
+        setTextColor("auto");
+        setTextBackdrop(false);
+      }
       if (card.builtIn === "carousel") {
         setBrief((b) => (b ? { ...b, format: "carousel" } : b));
       } else if (brief?.format === "carousel") {

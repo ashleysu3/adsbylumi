@@ -35,7 +35,7 @@ SENTENCE CASE headlines (first word + proper nouns only). COMPLIANCE: never prom
 // designed ad — the eyebrow/headline/CTA-button mindset above would break
 // the illusion, so these get a different voice on top of the same brand
 // grounding rules.
-const NATIVE_TEMPLATES = new Set(["notesapp", "textthread", "nativecaption"]);
+const NATIVE_TEMPLATES = new Set(["notesapp", "textthread", "nativecaption", "nativestroke", "nativebubbles"]);
 const NATIVE_VOICE_ADDENDUM = `
 
 NATIVE-FORMAT OVERRIDE — this template mimics a real phone screenshot (Notes app / text thread / photo caption), NOT a designed ad. For this one:
@@ -66,11 +66,13 @@ const SLOTS: Record<string,string> = {
   notesapp: `body (the note itself: 1-3 short paragraphs separated by a blank line, written in first person like a real personal note or confession — plain and unpolished, NOT structured like ad copy, <=55 words total), cta (optional ONE line asking them to comment/DM/save, styled as part of the note rather than a button, <=10 words, or "" to skip)`,
   textthread: `contactName (a believable first name only), contactLoc (optional short context under the name like a city, or ""), msg1 (received message — a real question a friend would text, <=14 words), msg2 (sent message — a short reply, <=12 words), msg3 (received message — a reaction or follow-up question, <=8 words, or "" to keep it to 2 messages), msg4 (sent message — the payoff; can end like "link's in my bio" instead of a formal CTA, <=18 words)`,
   nativecaption: `line1 (the setup line, plain and matter-of-fact, <=10 words), line2 (the punchline/reveal, a bolder statement, <=10 words), cta (optional tiny caption-style line, <=6 words, or "" to skip)`,
+  nativestroke: `line1 (the setup line, plain and matter-of-fact, <=10 words), line2 (the punchline/reveal, a bolder statement, <=10 words), cta (optional tiny caption-style line, <=6 words, or "" to skip)`,
+  nativebubbles: `bubble1 (a short standalone phrase or reaction, <=8 words — like a real caption bubble, not a headline), bubble2 (the next beat — the specific result or proof, <=10 words), bubble3 (optional closing bubble — a soft ask like "comment X" or a punchy final line, <=8 words, or "" to use just 2 bubbles)`,
 };
 
 function mapStyle(styleHint?: string, format?: string): string {
   if (format === "carousel") return "carousel";
-  const m: Record<string,string> = { "photo-forward":"spotlight","card":"spotlight","framed":"framed","type-led":"split","testimonial":"testimonial","stats":"statgrid","data":"statgrid","checklist":"checklist","list":"checklist","steps":"checklist","chat":"chatproof","proof":"chatproof","testimonialchat":"chatproof","event":"event","webinar":"event","offer":"offer","sale":"offer","discount":"offer","bigtype":"bigtype","type-hero":"bigtype","collage":"collage","grid":"collage","overlay":"overlay","device":"devicemockup","devicemockup":"devicemockup","mockup":"devicemockup","notesapp":"notesapp","notes":"notesapp","textthread":"textthread","texts":"textthread","imessage":"textthread","nativecaption":"nativecaption","caption":"nativecaption" };
+  const m: Record<string,string> = { "photo-forward":"spotlight","card":"spotlight","framed":"framed","type-led":"split","testimonial":"testimonial","stats":"statgrid","data":"statgrid","checklist":"checklist","list":"checklist","steps":"checklist","chat":"chatproof","proof":"chatproof","testimonialchat":"chatproof","event":"event","webinar":"event","offer":"offer","sale":"offer","discount":"offer","bigtype":"bigtype","type-hero":"bigtype","collage":"collage","grid":"collage","overlay":"overlay","device":"devicemockup","devicemockup":"devicemockup","mockup":"devicemockup","notesapp":"notesapp","notes":"notesapp","textthread":"textthread","texts":"textthread","imessage":"textthread","nativecaption":"nativecaption","caption":"nativecaption","nativestroke":"nativestroke","stroke":"nativestroke","strokecaption":"nativestroke","nativebubbles":"nativebubbles","bubbles":"nativebubbles","captionbubbles":"nativebubbles" };
   return (styleHint && m[styleHint]) || "bigtype";
 }
 
