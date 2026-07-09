@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import type { CreativeBrief } from "./ProductionChecklistPanel";
 import { TemplatePreview } from "./TemplatePreview";
 import { CopyRegenerateDialog, type CopyFeedback } from "./CopyRegenerateDialog";
+import { ScreenHelp } from "@/components/ScreenHelp";
 // Real engine renders with clean sample copy — replaced the old AI-generated
 // mockup images, which rendered garbled/unreadable placeholder text (a known
 // limitation of image models asked to draw text) instead of a real preview.
@@ -1426,7 +1427,21 @@ export function GenerateCreativeDialog() {
             </div>
           ) : (
             /* ---------- SCREEN 2: Image & copy ---------- */
-            <div className="space-y-4 py-2">
+            <div className="space-y-4 py-2 relative">
+              <ScreenHelp
+                position="top-left"
+                title="Image & copy"
+                description={
+                  images.length === 0
+                    ? "Pick a photo, tweak the copy if you want, then render — that's the button at the bottom."
+                    : "Renders are ready. Approve them below to save this creative — that closes this out for you."
+                }
+                targetSelector={
+                  images.length === 0
+                    ? '[data-help-target="render-creative"]'
+                    : '[data-help-target="approve-creative"]'
+                }
+              />
               <Button variant="ghost" size="sm" onClick={() => setStep("style")} className="-ml-2">
                 ← Back to styles
               </Button>
@@ -1659,6 +1674,7 @@ export function GenerateCreativeDialog() {
                   )}
 
                   <Button
+                    data-help-target="render-creative"
                     size="lg"
                     className="w-full"
                     onClick={generate}
@@ -1864,6 +1880,7 @@ export function GenerateCreativeDialog() {
 
                   {itemId && images.length > 0 && !generating && (
                     <Button
+                      data-help-target="approve-creative"
                       size="lg"
                       className={cn(
                         "w-full",

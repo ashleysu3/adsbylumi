@@ -247,6 +247,27 @@ p, li, span, blockquote {
     transform: translateY(-2px);
   }
   
+  /* Screen-help spotlight — while a screen's "what do I do here?" tooltip
+     is open, its primary action button(s) scale up and pulse-glow so the
+     help genuinely draws the eye to the next step instead of just
+     explaining in the abstract. */
+  @keyframes screen-help-spotlight-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 3px hsl(var(--lumi-purple-1) / 0.35), 0 0 20px 4px hsl(var(--lumi-purple-1) / 0.3);
+    }
+    50% {
+      box-shadow: 0 0 0 5px hsl(var(--lumi-purple-1) / 0.5), 0 0 28px 8px hsl(var(--lumi-purple-1) / 0.45);
+    }
+  }
+
+  .screen-help-spotlight {
+    position: relative;
+    z-index: 30;
+    transform: scale(1.05);
+    animation: screen-help-spotlight-pulse 1.4s ease-in-out infinite;
+    transition: transform 200ms ease;
+  }
+
   /* Success state glow animation */
   @keyframes success-glow {
     0%, 100% {
