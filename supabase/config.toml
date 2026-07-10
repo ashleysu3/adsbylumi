@@ -139,6 +139,8 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = true
   [functions.send-critical-alerts]
     verify_jwt = false
+  [functions.send-ad-pack-email]
+    verify_jwt = false
   [functions.send-optimization-digest]
     verify_jwt = false
   [functions.send-weekly-reports]

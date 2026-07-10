@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowRight, RefreshCw, Sparkles, ChevronLeft, Target, Download, Mic, Film } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2, ArrowRight, RefreshCw, Sparkles, ChevronLeft, Target, Download, Mic, Film, Mail, Check } from "lucide-react";
 import { toast } from "sonner";
 import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 import type { RenderOverlay } from "@/lib/ffmpeg-renderer";
@@ -126,6 +127,70 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const [renderErr, setRenderErr] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  // Lead-magnet path: email this ad pack instead of (or before) paying.
+  const [packFormOpen, setPackFormOpen] = useState(false);
+  const [leadName, setLeadName] = useState("");
+  const [leadEmail, setLeadEmail] = useState("");
+  const [packState, setPackState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  const sendAdPack = useCallback(async () => {
+    if (packState === "sending" || packState === "sent") return;
+    const heroImage = images[0];
+    if (!heroImage?.base64) {
+      toast.error("No ad ready to send yet — try again in a moment.");
+      return;
+    }
+    if (!leadEmail.trim() || !leadEmail.includes("@")) {
+      toast.error("Enter a valid email");
+      return;
+    }
+    setPackState("sending");
+    try {
+      // base64 -> Blob, same pattern used for approved-render uploads elsewhere.
+      const bin = atob(heroImage.base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: "image/png" });
+
+      // lead-magnet-assets (not brand-assets, which isn't a public bucket —
+      // an email client has no Supabase session, so a private-bucket URL
+      // would never load). RLS requires the uploader's own uid as the
+      // first path segment (see BrandImageLibrary.tsx's identical
+      // convention for brand-assets) — brandId alone isn't enough.
+      const { data: userRes } = await supabase.auth.getUser();
+      const userId = userRes?.user?.id;
+      if (!userId) throw new Error("Not signed in");
+      const path = `${userId}/${brandId}/ad-pack-${Date.now()}.png`;
+      const { error: upErr } = await supabase.storage
+        .from("lead-magnet-assets")
+        .upload(path, blob, { cacheControl: "3600", upsert: true, contentType: "image/png" });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("lead-magnet-assets").getPublicUrl(path);
+
+      const { error: updateErr } = await supabase
+        .from("brands")
+        .update({
+          lead_email: leadEmail.trim(),
+          lead_name: leadName.trim() || null,
+          ad_pack_image_url: pub.publicUrl,
+        })
+        .eq("id", brandId);
+      if (updateErr) throw updateErr;
+
+      const { error: sendErr } = await supabase.functions.invoke("send-ad-pack-email", {
+        body: { brand_id: brandId },
+      });
+      if (sendErr) throw sendErr;
+
+      setPackState("sent");
+      toast.success("Check your inbox — your ad pack is on its way!");
+    } catch (err: any) {
+      console.error("[payoff] send ad pack error", err);
+      toast.error(err?.message || "Couldn't send your ad pack. Please try again.");
+      setPackState("error");
+    }
+  }, [brandId, images, leadEmail, leadName, packState]);
 
   const startTrialCheckout = useCallback(async () => {
     if (checkoutLoading) return;
@@ -826,6 +891,55 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             </Button>
           </div>
         </div>
+
+        {/* Lead magnet: email this pack instead of paying right now */}
+        {phase === "ready" && images[0] && (
+          <div className="text-center pt-1">
+            {!packFormOpen && packState !== "sent" && (
+              <button
+                type="button"
+                onClick={() => setPackFormOpen(true)}
+                className="text-xs text-muted-foreground hover:text-foreground transition underline underline-offset-2"
+              >
+                Not ready to start? Get this ad pack emailed to you instead
+              </button>
+            )}
+            {packFormOpen && packState !== "sent" && (
+              <div className="mt-3 max-w-sm mx-auto flex flex-col gap-2">
+                <Input
+                  placeholder="Your name"
+                  value={leadName}
+                  onChange={(e) => setLeadName(e.target.value)}
+                  className="h-10 text-sm"
+                />
+                <Input
+                  type="email"
+                  placeholder="you@email.com"
+                  value={leadEmail}
+                  onChange={(e) => setLeadEmail(e.target.value)}
+                  className="h-10 text-sm"
+                />
+                <Button
+                  onClick={sendAdPack}
+                  disabled={packState === "sending"}
+                  variant="outline"
+                  className="h-10 rounded-xl"
+                >
+                  {packState === "sending" ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending…</>
+                  ) : (
+                    <><Mail className="h-4 w-4 mr-2" /> Email me this ad pack</>
+                  )}
+                </Button>
+              </div>
+            )}
+            {packState === "sent" && (
+              <p className="text-xs text-primary inline-flex items-center gap-1.5">
+                <Check className="h-3.5 w-3.5" /> Sent to {leadEmail} — check your inbox
+              </p>
+            )}
+          </div>
+        )}
 
         {phase === "error" && (
           <div className="text-center">
