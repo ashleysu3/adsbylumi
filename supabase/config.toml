@@ -93,6 +93,8 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = true
   [functions.generate-product-psychology]
     verify_jwt = true
+  [functions.funnel-strategy-chat]
+    verify_jwt = true
   [functions.generate-trend-insights]
     verify_jwt = true
   [functions.generate-weekly-report]
