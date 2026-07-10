@@ -26,12 +26,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { computeStrategyBudget } from "@/lib/strategy-budget";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { FunnelMapChat, type FunnelMap, type FunnelGap } from "@/components/FunnelMapChat";
 
 type OfferRow = {
   id: string;
   name: string;
   price_point: string | null;
   target_outcome: string | null;
+  funnel_map: FunnelMap | null;
+  funnel_gaps: FunnelGap[] | null;
 };
 
 type WorkspaceRow = {
@@ -147,7 +150,7 @@ export default function AdStrategy() {
         const [offersRes, wsRes, goalsRes] = await Promise.all([
           supabase
             .from("offers")
-            .select("id, name, price_point, target_outcome")
+            .select("id, name, price_point, target_outcome, funnel_map, funnel_gaps")
             .eq("brand_id", activeBrand.id)
             .eq("archived", false)
             .order("created_at", { ascending: false }),
@@ -167,7 +170,7 @@ export default function AdStrategy() {
         ]);
 
         if (cancelled) return;
-        const offersList = (offersRes.data || []) as OfferRow[];
+        const offersList = (offersRes.data || []) as unknown as OfferRow[];
         // Only surface campaigns that are actually LIVE on Meta. Drafts (no
         // meta_campaign_ids), paused, archived, or deleted campaigns shouldn't
         // appear on the 30,000-ft strategy map — they're not part of the
@@ -237,6 +240,9 @@ export default function AdStrategy() {
       offerId: string | null;
       offerName: string;
       pricePoint: string | null;
+      targetOutcome: string | null;
+      funnelMap: FunnelMap | null;
+      funnelGaps: FunnelGap[] | null;
       campaigns: (WorkspaceRow & { stage: Stage })[];
     };
     const map = new Map<string, Funnel>();
@@ -247,6 +253,9 @@ export default function AdStrategy() {
         offerId: o.id,
         offerName: o.name,
         pricePoint: o.price_point,
+        targetOutcome: o.target_outcome,
+        funnelMap: o.funnel_map,
+        funnelGaps: o.funnel_gaps,
         campaigns: [],
       }),
     );
@@ -260,6 +269,9 @@ export default function AdStrategy() {
           offerId: w.offer_id,
           offerName: w.offer_name || "Unlinked campaigns",
           pricePoint: w.offer_price || null,
+          targetOutcome: null,
+          funnelMap: null,
+          funnelGaps: null,
           campaigns: [],
         });
       }
@@ -267,6 +279,12 @@ export default function AdStrategy() {
     });
     return Array.from(map.values());
   }, [offers, workspaces]);
+
+  const handleFunnelMapSaved = (offerId: string, funnelMap: FunnelMap, gaps: FunnelGap[]) => {
+    setOffers((prev) =>
+      prev.map((o) => (o.id === offerId ? { ...o, funnel_map: funnelMap, funnel_gaps: gaps } : o)),
+    );
+  };
 
   const goalForWs = (wsId: string) =>
     goals.find((g) => g.workspace_id === wsId) || null;
@@ -466,6 +484,17 @@ export default function AdStrategy() {
                             </Button>
                           )}
                         </div>
+
+                        {f.offerId && (
+                          <FunnelMapChat
+                            offerId={f.offerId}
+                            offerName={f.offerName}
+                            targetOutcome={f.targetOutcome}
+                            funnelMap={f.funnelMap}
+                            gaps={f.funnelGaps}
+                            onSaved={handleFunnelMapSaved}
+                          />
+                        )}
 
                         {f.campaigns.length === 0 ? (
                           <p className="text-xs text-muted-foreground">
