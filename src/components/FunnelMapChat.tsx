@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -15,6 +16,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -25,6 +27,15 @@ export type FunnelGap = { stage: "grow" | "nurture" | "convert"; suggestion: str
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 type Slot = "goal" | "grow" | "nurture" | "convert";
+export type FunnelChatDraft = { messages: ChatMsg[]; slot: Slot };
+
+type DescriptionSuggestion = { suggestedText: string; why: string };
+type Proposed = {
+  funnelMap: FunnelMap;
+  gaps: FunnelGap[];
+  descriptionSuggestion: DescriptionSuggestion | null;
+  psychologyMayBeStale: boolean;
+};
 
 const STAGE_LABEL: Record<Slot, string> = {
   goal: "Goal",
@@ -53,6 +64,7 @@ interface FunnelMapChatProps {
   targetOutcome: string | null;
   funnelMap: FunnelMap | null;
   gaps: FunnelGap[] | null;
+  draft: FunnelChatDraft | null;
   onSaved: (offerId: string, funnelMap: FunnelMap, gaps: FunnelGap[]) => void;
 }
 
@@ -62,14 +74,17 @@ export function FunnelMapChat({
   targetOutcome,
   funnelMap,
   gaps,
+  draft,
   onSaved,
 }: FunnelMapChatProps) {
+  const navigate = useNavigate();
   const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [slot, setSlot] = useState<Slot>("goal");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [proposed, setProposed] = useState<{ funnelMap: FunnelMap; gaps: FunnelGap[] } | null>(null);
+  const [proposed, setProposed] = useState<Proposed | null>(null);
+  const [applyDescriptionSuggestion, setApplyDescriptionSuggestion] = useState(true);
   const [saving, setSaving] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -81,11 +96,39 @@ export function FunnelMapChat({
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, proposed, loading]);
 
+  const persistDraft = async (msgs: ChatMsg[], currentSlot: Slot) => {
+    try {
+      await supabase
+        .from("offers")
+        .update({ funnel_chat_draft: { messages: msgs, slot: currentSlot } as any })
+        .eq("id", offerId);
+    } catch (err) {
+      // Best-effort — losing the autosave shouldn't interrupt the chat itself.
+      console.error("Couldn't save chat draft", err);
+    }
+  };
+
   const startChat = () => {
+    if (draft && Array.isArray(draft.messages) && draft.messages.length > 0) {
+      setMessages(draft.messages);
+      setSlot(draft.slot);
+    } else {
+      setMessages([{ role: "assistant", content: opener(offerName, targetOutcome) }]);
+      setSlot("goal");
+    }
+    setProposed(null);
+    setChatOpen(true);
+  };
+
+  const startOver = async () => {
     setMessages([{ role: "assistant", content: opener(offerName, targetOutcome) }]);
     setSlot("goal");
     setProposed(null);
-    setChatOpen(true);
+    try {
+      await supabase.from("offers").update({ funnel_chat_draft: null }).eq("id", offerId);
+    } catch (err) {
+      console.error("Couldn't clear chat draft", err);
+    }
   };
 
   const send = async (text?: string) => {
@@ -102,15 +145,25 @@ export function FunnelMapChat({
       });
       if (error) throw error;
       const reply: string = data?.reply ?? "…";
-      setMessages([...next, { role: "assistant", content: reply }]);
-      if (data?.slot) setSlot(data.slot as Slot);
+      const updated: ChatMsg[] = [...next, { role: "assistant", content: reply }];
+      setMessages(updated);
+      const newSlot = (data?.slot as Slot) ?? slot;
+      if (data?.slot) setSlot(newSlot);
       if (data?.phase === "proposed" && data?.funnelMap) {
-        setProposed({ funnelMap: data.funnelMap, gaps: data.gaps ?? [] });
+        setProposed({
+          funnelMap: data.funnelMap,
+          gaps: data.gaps ?? [],
+          descriptionSuggestion: data.descriptionSuggestion ?? null,
+          psychologyMayBeStale: !!data.psychologyMayBeStale,
+        });
+        setApplyDescriptionSuggestion(true);
       }
+      persistDraft(updated, newSlot);
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message ?? "LUMI couldn't respond");
       setMessages(next);
+      persistDraft(next, slot);
     } finally {
       setLoading(false);
     }
@@ -120,18 +173,21 @@ export function FunnelMapChat({
     if (!proposed) return;
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("offers")
-        .update({
-          funnel_map: proposed.funnelMap,
-          funnel_gaps: proposed.gaps,
-          funnel_map_updated_at: new Date().toISOString(),
-        })
-        .eq("id", offerId);
+      const update: Record<string, unknown> = {
+        funnel_map: proposed.funnelMap,
+        funnel_gaps: proposed.gaps,
+        funnel_map_updated_at: new Date().toISOString(),
+        funnel_chat_draft: null,
+      };
+      const applyingDescription = !!(proposed.descriptionSuggestion && applyDescriptionSuggestion);
+      if (applyingDescription) {
+        update.description = proposed.descriptionSuggestion!.suggestedText;
+      }
+      const { error } = await supabase.from("offers").update(update).eq("id", offerId);
       if (error) throw error;
       onSaved(offerId, proposed.funnelMap, proposed.gaps);
       setChatOpen(false);
-      toast.success("Funnel map saved");
+      toast.success(applyingDescription ? "Funnel map saved — offer description updated too" : "Funnel map saved");
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message ?? "Couldn't save the funnel map");
@@ -181,6 +237,7 @@ export function FunnelMapChat({
 
   // Closed prompt — no funnel map yet
   if (!chatOpen) {
+    const hasDraft = !!(draft && Array.isArray(draft.messages) && draft.messages.length > 0);
     return (
       <Card
         role="button"
@@ -193,10 +250,12 @@ export function FunnelMapChat({
           <MessageCircle className="h-4 w-4 text-lumi-purple-1 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <h4 className="text-sm font-semibold mb-0.5">
-              Map how {offerName} actually sells
+              {hasDraft ? `Continue mapping how ${offerName} actually sells` : `Map how ${offerName} actually sells`}
             </h4>
             <p className="text-xs text-muted-foreground">
-              A few quick questions about what you already have — LUMI figures out where ads can help.
+              {hasDraft
+                ? "Pick up right where you left off."
+                : "A few quick questions about what you already have — LUMI figures out where ads can help."}
             </p>
           </div>
           <ArrowRight className="h-3.5 w-3.5 text-lumi-purple-1 flex-shrink-0 mt-1 transition-transform group-hover:translate-x-0.5" />
@@ -213,9 +272,14 @@ export function FunnelMapChat({
           <Compass className="h-4 w-4 text-lumi-purple-1" />
           <span className="text-sm font-medium">Mapping {offerName}</span>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => setChatOpen(false)}>
-          Close
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={startOver} className="text-xs text-muted-foreground">
+            Start over
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setChatOpen(false)}>
+            Close
+          </Button>
+        </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[440px] min-h-[220px]">
@@ -281,6 +345,39 @@ export function FunnelMapChat({
                   ))}
                 </div>
               )}
+
+              {proposed.descriptionSuggestion && (
+                <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <Checkbox
+                      checked={applyDescriptionSuggestion}
+                      onCheckedChange={(v) => setApplyDescriptionSuggestion(v === true)}
+                      className="mt-0.5"
+                    />
+                    <span className="text-xs flex-1">
+                      <span className="font-medium">LUMI noticed your offer description may be outdated.</span>{" "}
+                      <span className="text-muted-foreground">{proposed.descriptionSuggestion.why}</span>
+                      <p className="mt-1.5 rounded bg-background/70 border border-border/50 p-2 text-foreground">
+                        {proposed.descriptionSuggestion.suggestedText}
+                      </p>
+                    </span>
+                  </label>
+                </div>
+              )}
+              {proposed.psychologyMayBeStale && (
+                <p className="text-xs text-muted-foreground mb-3">
+                  This might also make your{" "}
+                  <button
+                    type="button"
+                    onClick={() => navigate("/audience")}
+                    className="underline underline-offset-2 hover:text-foreground"
+                  >
+                    Audience Psychology
+                  </button>{" "}
+                  out of date — worth a quick look.
+                </p>
+              )}
+
               <div className="flex gap-2 flex-wrap">
                 <Button variant="outline" size="sm" onClick={() => setProposed(null)} className="flex-1">
                   Keep chatting
