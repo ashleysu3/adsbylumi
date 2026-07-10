@@ -67,6 +67,24 @@ function formatSnoozeUntil(iso: string | null): string {
   });
 }
 
+// LUMI's evaluate-campaign-status engine already scores every recommendation
+// 0-100 (estimateImpact) to rank which one to surface — previously computed
+// and then discarded once it became a task. Surfacing it here mirrors how
+// Meta/Google's own ad tools show an impact score on their recommendations,
+// so it's a pattern these users already know from the platforms themselves.
+function impactBadge(task: { source: string; action_payload: any }): { label: string; className: string } | null {
+  if (task.source !== "recommendation") return null;
+  const impact = task.action_payload?.impact;
+  if (typeof impact !== "number") return null;
+  if (impact >= 70) {
+    return { label: "High impact", className: "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30" };
+  }
+  if (impact >= 35) {
+    return { label: "Medium impact", className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30" };
+  }
+  return { label: "Low impact", className: "bg-muted text-muted-foreground border-border" };
+}
+
 export default function Tasks() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<TaskFilter>("open");
@@ -186,7 +204,17 @@ export default function Tasks() {
                 <div className="w-4 h-4 mt-1" />
               )}
               <div className="flex-1 min-w-0">
-                <p className="font-medium">{t.title}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-medium">{t.title}</p>
+                  {(() => {
+                    const badge = impactBadge(t);
+                    return badge ? (
+                      <span className={`text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded-full border shrink-0 ${badge.className}`}>
+                        {badge.label}
+                      </span>
+                    ) : null;
+                  })()}
+                </div>
                 {t.description && (
                   <p className="text-sm text-muted-foreground mt-1">{t.description}</p>
                 )}
