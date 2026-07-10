@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -33,6 +33,7 @@ export default function AdPackReveal() {
   const [brandName, setBrandName] = useState<string | null>(null);
   const [packImageUrl, setPackImageUrl] = useState<string | null>(null);
   const [vslVideoUrl, setVslVideoUrl] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   useEffect(() => {
@@ -139,10 +140,17 @@ export default function AdPackReveal() {
         >
           {vslVideoUrl ? (
             <video
+              ref={videoRef}
               src={vslVideoUrl}
               controls
               playsInline
+              muted
+              autoPlay
               className="mx-auto max-w-full sm:max-w-xl w-full rounded-2xl shadow-card border border-border"
+              onLoadedMetadata={(e) => {
+                const v = e.currentTarget;
+                if (v.muted) v.play().catch(() => {});
+              }}
             />
           ) : packImageUrl ? (
             <img

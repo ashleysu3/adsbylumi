@@ -16,6 +16,7 @@ import { GlobalAnnouncementBanner } from "@/components/GlobalAnnouncementBanner"
 import { PartnerWelcomeModal } from "@/components/PartnerWelcomeModal";
 import { WhatsNewModal } from "@/components/WhatsNewModal";
 import SplashScreen from "@/components/SplashScreen";
+import ScrollToTop from "@/components/ScrollToTop";
 
 import Index from "./pages/Index";
 import Sales from "./pages/Sales";
@@ -157,6 +158,7 @@ const App = () => {
               <Toaster />
               <Sonner />
               <BrowserRouter>
+                <ScrollToTop />
                 <LumiAssistantProvider>
                   <ReferralCaptureMount />
                   <GlobalAnnouncementBanner />
