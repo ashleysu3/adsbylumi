@@ -207,7 +207,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const fontsRef = useRef<{ displayFamily?: string; bodyFamily?: string }>({});
   const logoUrlRef = useRef<string | undefined>(undefined);
   const photoUrlRef = useRef<string | undefined>(undefined);
-  const templateRef = useRef<"testimonial" | PhotoTemplate | "checklist" | "bigtype">("bigtype");
+  const templateRef = useRef<PhotoTemplate | "checklist" | "bigtype">("bigtype");
   const socialProofRef = useRef<TestimonialQuote | null>(null);
   const offerPsychologyRef = useRef<Record<string, any> | null>(null);
 
@@ -396,19 +396,22 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
 
         // Pick the strongest template this specific brand can support, instead of
         // always defaulting to the same one:
-        //   1) A real testimonial from their own site — social proof beats everything.
-        //   2) A strong photo of them/their work — faces convert better than text alone.
-        //   3) A real offer to list out — checklist beats a bare headline.
-        //   4) Otherwise, bold text-only copy — no invented props or stock-feeling photos.
+        //   1) A strong photo of them/their work — faces convert better than text
+        //      alone, and read more premium than a text-on-color testimonial card.
+        //   2) A real offer to list out — checklist beats a bare headline.
+        //   3) Otherwise, bold text-only copy — no invented props or stock-feeling photos.
+        // Deliberately NOT auto-selecting the testimonial template here even when a
+        // real quote exists — Ashley's call, it doesn't read premium enough for the
+        // first ad someone sees. The quote itself is still pulled below and fed into
+        // the copywriting step (socialProofContext), so it can still ground the
+        // headline/body — it just isn't the visual layout anymore.
         const testimonials = getTestimonialQuotes(brand?.social_proof);
         socialProofRef.current = testimonials[0] || null;
-        templateRef.current = socialProofRef.current
-          ? "testimonial"
-          : photoUrl
-            ? pickPhotoTemplate(brandId)
-            : offerHint
-              ? "checklist"
-              : "bigtype";
+        templateRef.current = photoUrl
+          ? pickPhotoTemplate(brandId)
+          : offerHint
+            ? "checklist"
+            : "bigtype";
 
         // 4) Ground the copy in this specific offer, not just an abstract goal —
         // run alongside strategy recommendation since neither depends on the other.
@@ -653,11 +656,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             ) : phase === "ready" ? (
               <>
                 Rendered in {brand?.name || "your"} brand colors
-                {templateRef.current === "testimonial"
-                  ? ", built around a real testimonial from your site"
-                  : photoUrlRef.current
-                    ? ", with your photo"
-                    : ""}
+                {photoUrlRef.current ? ", with your photo" : ""}
                 .
               </>
             ) : (
