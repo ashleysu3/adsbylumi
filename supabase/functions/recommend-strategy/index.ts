@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
                 "- A podcast / show / clip-based growth play → podcast-grow funnel.\n" +
                 "- A standard paid product or course with a sales page (no webinar, no challenge) → the matching sales funnel (e.g. coach-course-creator-3step).\n" +
                 "- A local in-person service → local-service funnel.\n" +
-                "Use the offer name, description, price, page_goal, and the user_goal to decide. If there is no offer yet, brandSnapshot.offer_hint is the user's own words on what they're actually offering (e.g. 'a free discovery call', 'a free guide on X', 'my $997 program') — treat it as equally authoritative as a real offer's description/page_goal for picking the funnel type. A 'get_leads' goal with a call-shaped offer_hint should match a call/DM funnel, not a generic lead-magnet template, and vice versa. Only return no_match if literally none of the templates fit the offer type.\n\n" +
+                "Use the offer name, description, price, page_goal, and the user_goal to decide. If there is no offer yet, brandSnapshot.offer_hint is the user's own words on what they're actually offering (e.g. 'a free discovery call', 'a free guide on X', 'my $997 program') — treat it as equally authoritative as a real offer's description/page_goal for picking the funnel type. A 'get_leads' goal with a call-shaped offer_hint should match a call/DM funnel, not a generic lead-magnet template, and vice versa. If user_goal is EXACTLY 'dm_leads', the user explicitly chose \"more DMs\" in onboarding — match a DM/conversation funnel, full stop, regardless of offer details. If user_goal is EXACTLY 'grow_social', the user explicitly chose \"more followers/engagement\" — match a growth/awareness funnel, never a lead or DM funnel. Only return no_match if literally none of the templates fit the offer type.\n\n" +
                 "IMPORTANT — the template you match was AUTHORED once as a generic funnel shape, often using an illustrative example industry in its stored name/description (e.g. a template literally named 'Wedding Pros — Grow + Leads' really just means \"2-campaign lead-gen funnel\" and has nothing to do with weddings). NEVER let that stored name/description reach the user as-is. Always write a personalized_title and personalized_intro grounded in THIS brand's actual name, industry, and offer_hint/offer (e.g. 'Free Guide → Booked Calls for Acme Coaching', not a generic label) — never mention the template's original example industry unless it's genuinely this brand's industry too. Respond ONLY with JSON.",
             },
             {
@@ -227,10 +227,20 @@ Deno.serve(async (req) => {
     // Guardrail: if the AI picked a template whose primary_goals clearly
     // conflict with the detected objective for this offer, prefer a template
     // whose goals align with the detected objective.
+    const explicitGoal = String(user_goal || "").toLowerCase();
     const goalsAlignWithObjective = (goals: string[] | null | undefined, obj: string) => {
       const g = (goals ?? []).map((x) => String(x).toLowerCase());
+      // "dm_leads" and "grow_social" are only ever set from an explicit binary
+      // choice in onboarding ("more DMs" vs "more followers/engagement"), never
+      // inferred — so they require an exact tag match on the template, not just
+      // any template sharing the broader OUTCOME_LEADS/AWARENESS bucket. Without
+      // this, dm_leads was reachable as the silent .find()-first fallback for
+      // ANY free/lead-shaped offer (see detectPrimaryObjective), not just real
+      // DM funnels — that's the bug this guards against.
+      if (explicitGoal === "dm_leads") return g.includes("dm_leads");
+      if (explicitGoal === "grow_social") return g.includes("grow_social");
       if (obj === "OUTCOME_LEADS") {
-        return g.some((x) => ["get_leads", "book_calls", "dm_leads"].includes(x));
+        return g.some((x) => ["get_leads", "book_calls"].includes(x));
       }
       if (obj === "OUTCOME_AWARENESS") {
         return g.some((x) => ["grow_social", "awareness"].includes(x));
@@ -248,6 +258,16 @@ Deno.serve(async (req) => {
           `Guardrail: AI picked ${matched.slug} but detected ${detectedObjective}; switching to ${better.slug}`,
         );
         matched = better;
+      } else if (explicitGoal === "dm_leads" || explicitGoal === "grow_social") {
+        // These two come from an explicit binary choice, not a guess — serving
+        // a misaligned template (e.g. a DM funnel for someone who explicitly
+        // asked for followers/engagement) is worse than a manual request.
+        // No exactly-tagged template exists yet — queue for review below
+        // instead of silently keeping the AI's mismatched pick.
+        console.log(
+          `Guardrail: no template tagged "${explicitGoal}" exists; queuing for manual review instead of serving ${matched.slug}`,
+        );
+        matched = null;
       }
     }
 
@@ -328,6 +348,13 @@ function detectPrimaryObjective(
   const offer =
     snapshot?.selected_offer || (snapshot?.offers && snapshot.offers[0]) || {};
   const goal = String(snapshot?.user_goal || "").toLowerCase();
+
+  // Explicit intent from a binary onboarding choice ("more DMs" vs "more
+  // followers/engagement") always wins over guessing from offer text — there
+  // is no offer page for a followers goal to read in the first place.
+  if (goal === "dm_leads") return "OUTCOME_LEADS";
+  if (goal === "grow_social") return "OUTCOME_AWARENESS";
+
   const fields = [
     offer?.name,
     offer?.description,

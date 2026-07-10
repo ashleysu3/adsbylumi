@@ -360,32 +360,38 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         }
         photoUrlRef.current = photoUrl;
 
-        // 3) Goal + offer hint — read before the template decision below, since
-        // a real offer hint unlocks the checklist template as a text-only option.
+        // 3) Goal + offer — read before the template decision below, since a
+        // real offer unlocks the checklist template as a text-only option.
         const goalMap: Record<string, string> = {
           booked_calls: "book_calls",
           leads: "get_leads",
           sales: "get_sales",
-          followers: "grow_audience",
         };
         const onboardingGoal = (typeof window !== "undefined"
           ? localStorage.getItem(`lumi_onboarding_goal_${brandId}`)
           : null) ||
           ((brand?.audience_psychology as any)?.onboarding_goal ?? null);
-        const userGoal = onboardingGoal ? (goalMap[onboardingGoal] || "get_leads") : "get_leads";
+        // "followers" isn't one objective — onboarding asks a binary follow-up
+        // (more DMs vs. more followers/engagement) so recommend-strategy gets
+        // an explicit signal instead of guessing from free text, which is what
+        // was silently over-picking a DM strategy for plain free/lead offers.
+        const followersIntent = (typeof window !== "undefined"
+          ? localStorage.getItem(`lumi_onboarding_followers_intent_${brandId}`)
+          : null) ||
+          ((brand?.audience_psychology as any)?.onboarding_followers_intent ?? null);
+        const userGoal = onboardingGoal === "followers"
+          ? (followersIntent === "dms" ? "dm_leads" : "grow_social")
+          : (onboardingGoal ? (goalMap[onboardingGoal] || "get_leads") : "get_leads");
         userGoalRef.current = userGoal;
 
-        // The user's own words on what actually happens when someone clicks —
-        // collected on the reveal step (see OFFER_HINT_COPY in
-        // GuidedOnboarding.tsx). Without this, there's no `offers` row yet
-        // (that step comes AFTER the ad in the old flow) and both
-        // recommend-strategy and compose-ad had nothing but an abstract goal
-        // to work with, which is what produced generic, CTA-less copy.
-        const offerHint: string = (typeof window !== "undefined"
-          ? localStorage.getItem(`lumi_onboarding_offer_hint_${brandId}`)
-          : null) ||
-          ((brand?.audience_psychology as any)?.onboarding_offer_hint ?? "");
-        offerHintRef.current = offerHint;
+        // A real `offers` row created from onboarding's "give us a link"
+        // question (booked_calls/leads/sales goals) — extract-offer-info
+        // already read the real page into it (name/description/price_point/
+        // page_goal). Passing its id lets recommend-strategy detect the
+        // objective from that real data instead of guessing from free text.
+        const offerId: string | null = (typeof window !== "undefined"
+          ? localStorage.getItem(`lumi_onboarding_offer_id_${brandId}`)
+          : null) || null;
 
         // An optional link to the actual sales/webinar/opt-in page — when given,
         // generate-offer-psychology reads the real page instead of just the
@@ -395,6 +401,25 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           ? localStorage.getItem(`lumi_onboarding_offer_url_${brandId}`)
           : null) ||
           ((brand?.audience_psychology as any)?.onboarding_offer_url ?? "");
+
+        // The real offer's description grounds the copy — the modern
+        // replacement for the old free-text "what do they get" hint, which no
+        // longer exists as an onboarding question now that a link is required
+        // instead. Falls back to the legacy hint for any session already in
+        // flight when this shipped.
+        let offerDescription = "";
+        if (offerId) {
+          try {
+            const { data: offerRow } = await supabase
+              .from("offers").select("description").eq("id", offerId).maybeSingle();
+            offerDescription = offerRow?.description || "";
+          } catch { /* best-effort */ }
+        }
+        const offerHint: string = offerDescription || ((typeof window !== "undefined"
+          ? localStorage.getItem(`lumi_onboarding_offer_hint_${brandId}`)
+          : null) ||
+          ((brand?.audience_psychology as any)?.onboarding_offer_hint ?? ""));
+        offerHintRef.current = offerHint;
 
         // Pick the strongest template this specific brand can support, instead of
         // always defaulting to the same one:
@@ -411,7 +436,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         socialProofRef.current = testimonials[0] || null;
         templateRef.current = photoUrl
           ? pickPhotoTemplate(brandId)
-          : offerHint
+          : (offerHint || offerUrl)
             ? "checklist"
             : "bigtype";
 
@@ -422,7 +447,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         setStatusLine("🧠 Picking your best angle…");
         const [strategyResult, offerPsychologyResult] = await Promise.allSettled([
           supabase.functions.invoke("recommend-strategy", {
-            body: { brand_id: brandId, offer_id: null, user_goal: userGoal, offer_hint: offerHint || undefined },
+            body: { brand_id: brandId, offer_id: offerId, user_goal: userGoal, offer_hint: offerHint || undefined },
           }),
           offerHint || offerUrl
             ? supabase.functions.invoke("generate-offer-psychology", {
@@ -450,7 +475,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           booked_calls: "Book your call",
           leads: "Send it to me",
           sales: "Learn more",
-          followers: "DM me",
+          followers: followersIntent === "dms" ? "DM me" : "Follow me",
         };
         const brief = {
           template,

@@ -42,25 +42,24 @@ type AssetRow = { id: string; url: string; role: string | null; kept: boolean; s
 // user means by "example images."
 const PHOTO_PREVIEW_ROLES = ["headshot", "lifestyle", "full_body", "product"];
 
-// Goal-specific copy for the "what happens when they click" follow-up —
-// concrete and specific per goal beats one generic "what's your offer?" box,
-// and only appears once a goal is picked so it's never a non-sequitur.
-const OFFER_HINT_COPY: Record<string, { label: string; placeholder: string }> = {
+// Goal-specific copy for the "give us a link" follow-up — a real URL beats a
+// hand-typed description: LUMI reads the actual page (extract-offer-info) for
+// a real price/page_goal, which is what lets recommend-strategy pick a lead
+// vs. sales campaign correctly instead of guessing from free text. Only shown
+// for goals tied to a real page (booked_calls/leads/sales) — "followers" has
+// no page to send people to, so it gets a different follow-up question below.
+const AD_LINK_COPY: Record<"booked_calls" | "leads" | "sales", { label: string; placeholder: string }> = {
   booked_calls: {
-    label: "What's the call for?",
-    placeholder: "A free 20-minute strategy call to see if we're a fit",
+    label: "Link to your booking page",
+    placeholder: "https://yourbrand.com/book-a-call",
   },
   leads: {
-    label: "What do they get for handing over their email?",
-    placeholder: "A free guide — “5 Ways to Scale Your Ad Spend Without Burning Out”",
+    label: "Link to the page where they get it",
+    placeholder: "https://yourbrand.com/free-guide",
   },
   sales: {
-    label: "What's the offer, and what's the price?",
-    placeholder: "The Client Engine — $997, our flagship 8-week program",
-  },
-  followers: {
-    label: "What's the hook, or what should they DM you?",
-    placeholder: "DM “SCALE” and I'll send you my free training",
+    label: "Link to your sales page",
+    placeholder: "https://yourbrand.com/the-program",
   },
 };
 
@@ -137,16 +136,18 @@ export default function GuidedOnboarding() {
   // first ad ≈ slowest extractor. Answers flow into recommend-strategy + copy gen.
   type GoalChoice = "booked_calls" | "leads" | "sales" | "followers";
   const [goalChoice, setGoalChoice] = useState<GoalChoice | null>(null);
-  const [dreamClient, setDreamClient] = useState("");
-  // What they're actually offering — the one concrete thing the ad-first flow
-  // was missing. Without it, compose-ad gets an empty "offer" and writes
-  // generic copy with no real CTA/objections to grab onto. Goal-conditional so
-  // the question is specific ("what's the call for?") instead of abstract.
-  const [offerHint, setOfferHint] = useState("");
+  // For booked_calls/leads/sales, a real link to the offer page — read via
+  // extract-offer-info into a real `offers` row (name/description/price_point/
+  // page_goal), which is what lets recommend-strategy pick lead vs. sales
+  // deterministically instead of guessing from hand-typed text.
   const [offerHintUrl, setOfferHintUrl] = useState("");
+  const [offerLinkBusy, setOfferLinkBusy] = useState(false);
+  // For the "followers" bucket, which has no offer page to read — a binary
+  // split so recommend-strategy gets an explicit signal instead of guessing
+  // DM vs. general growth from free text (the actual bug being fixed here).
+  type FollowersIntent = "engagement" | "dms";
+  const [followersIntent, setFollowersIntent] = useState<FollowersIntent | null>(null);
   const goalPersistedRef = useRef(false);
-  const dreamPersistedRef = useRef(false);
-  const offerHintPersistedRef = useRef(false);
 
   // Step 2 — review (uses brand state)
   const [proofExtracting, setProofExtracting] = useState(false);
@@ -260,20 +261,6 @@ export default function GuidedOnboarding() {
     ((brand?._kit?.colors as string[] | undefined)?.length ?? 0) > 0 ||
     !!(brand?.name && brand.name !== placeholderNameRef.current);
   const canContinue = allRevealed || phaseTimedOut || (hasCoreBrandData && !loadingBrandBasics);
-  // When the site couldn't be read (bot-blocked / thin), we surface the "who do
-  // you serve?" input prominently — the user's answer is what saves the ad from a
-  // wrong guess (many coach/creator sites block scrapers).
-  //
-  // IMPORTANT: only show this once we actually KNOW the read is thin — either an
-  // explicit failure signal (failed.basics/failed.audience, set by a confirmed
-  // "blocked" response or the 40s per-extractor cap) or the WHOLE phase finishing
-  // /timing out with nothing to show. `!hasCoreBrandData` alone is true at the very
-  // start of every run (before anything has loaded), so gating on it unconditionally
-  // flashed a "couldn't read your site" warning on every load, correct or not.
-  const readWasThin =
-    failed.basics ||
-    failed.audience ||
-    ((extractionPhase === "done" || phaseTimedOut) && !hasCoreBrandData);
   // Fallback state: extraction finished but produced nothing useful (no colors
   // AND no real brand name AND no audience picture). We show a friendly nudge
   // instead of a spinning card.
@@ -653,6 +640,55 @@ export default function GuidedOnboarding() {
     })();
   }, [step, brandId]);
 
+  // Shared by the Step 3 "pull my offer" flow and the onboarding ad-link
+  // question — reads the real page via extract-offer-info and patches an
+  // existing `offers` row with name/description/price_point/page_goal, the
+  // exact signals recommend-strategy needs to pick lead vs. sales correctly.
+  const applyExtractedOfferInfo = async (offerId: string, normalizedUrl: string) => {
+    const { data: ex } = await supabase.functions.invoke("extract-offer-info", {
+      body: { offerUrl: normalizedUrl, offerName: "" },
+    });
+    if (!ex) return;
+    const e: any = ex;
+    const patch: any = {};
+    if (e.name) patch.name = e.name;
+    if (e.description) patch.description = e.description;
+    if (e.price_point) patch.price_point = e.price_point;
+    if (e.target_outcome) patch.target_outcome = e.target_outcome;
+    if (e.suggested_page_goal) patch.page_goal = e.suggested_page_goal;
+    // Offer-specific audience psychology — layers on top of brand-level psychology.
+    const oap: any = {};
+    if (Array.isArray(e.pain_points_addressed)) oap.pain_points = e.pain_points_addressed;
+    if (Array.isArray(e.key_benefits)) oap.desires = e.key_benefits;
+    if (Array.isArray(e.objections_addressed)) oap.objections = e.objections_addressed;
+    if (Array.isArray(e.emotional_hooks)) oap.emotional_hooks = e.emotional_hooks;
+    if (e.target_audience_indicators) oap.target_audience = e.target_audience_indicators;
+    if (Object.keys(oap).length) patch.offer_audience_psychology = oap;
+    // Messaging guidelines + product psychology for downstream creative.
+    const mg: any = {};
+    if (Array.isArray(e.unique_selling_points)) mg.unique_selling_points = e.unique_selling_points;
+    if (Array.isArray(e.cta_language)) mg.cta_language = e.cta_language;
+    if (e.tone_and_voice) mg.tone_and_voice = e.tone_and_voice;
+    if (Array.isArray(e.raw_copy_highlights)) mg.raw_copy_highlights = e.raw_copy_highlights;
+    if (Object.keys(mg).length) patch.messaging_guidelines = mg;
+    if (e.social_proof) patch.product_psychology = { social_proof: e.social_proof };
+    if (Object.keys(patch).length) {
+      const { error: upErr } = await supabase.from("offers").update(patch).eq("id", offerId);
+      if (upErr) console.warn("offer update failed", upErr);
+    }
+  };
+
+  const findOrCreateOffer = async (normalizedUrl: string): Promise<string> => {
+    const { data: existing } = await supabase
+      .from("offers").select("id").eq("brand_id", brandId).eq("url", normalizedUrl).maybeSingle();
+    if ((existing as any)?.id) return (existing as any).id;
+    const { data, error } = await supabase.from("offers").insert({
+      brand_id: brandId, url: normalizedUrl, name: "New offer",
+    }).select().single();
+    if (error) throw error;
+    return data.id;
+  };
+
   const submitOfferUrl = async () => {
     if (!brandId) return;
     const normalized = normalizeWebsiteUrl(offerUrl);
@@ -660,48 +696,8 @@ export default function GuidedOnboarding() {
     setOfferBusy(true);
     setOfferStatusMsg("LUMI is reading your offer page…");
     try {
-      const { data: existing } = await supabase
-        .from("offers").select("id").eq("brand_id", brandId).eq("url", normalized).maybeSingle();
-      let offerId = (existing as any)?.id;
-      if (!offerId) {
-        const { data, error } = await supabase.from("offers").insert({
-          brand_id: brandId, url: normalized, name: "New offer",
-        }).select().single();
-        if (error) throw error;
-        offerId = data.id;
-      }
-      const { data: ex } = await supabase.functions.invoke("extract-offer-info", {
-        body: { offerUrl: normalized, offerName: "" },
-      });
-      if (ex) {
-        const e: any = ex;
-        const patch: any = {};
-        if (e.name) patch.name = e.name;
-        if (e.description) patch.description = e.description;
-        if (e.price_point) patch.price_point = e.price_point;
-        if (e.target_outcome) patch.target_outcome = e.target_outcome;
-        if (e.suggested_page_goal) patch.page_goal = e.suggested_page_goal;
-        // Offer-specific audience psychology — layers on top of brand-level psychology.
-        const oap: any = {};
-        if (Array.isArray(e.pain_points_addressed)) oap.pain_points = e.pain_points_addressed;
-        if (Array.isArray(e.key_benefits)) oap.desires = e.key_benefits;
-        if (Array.isArray(e.objections_addressed)) oap.objections = e.objections_addressed;
-        if (Array.isArray(e.emotional_hooks)) oap.emotional_hooks = e.emotional_hooks;
-        if (e.target_audience_indicators) oap.target_audience = e.target_audience_indicators;
-        if (Object.keys(oap).length) patch.offer_audience_psychology = oap;
-        // Messaging guidelines + product psychology for downstream creative.
-        const mg: any = {};
-        if (Array.isArray(e.unique_selling_points)) mg.unique_selling_points = e.unique_selling_points;
-        if (Array.isArray(e.cta_language)) mg.cta_language = e.cta_language;
-        if (e.tone_and_voice) mg.tone_and_voice = e.tone_and_voice;
-        if (Array.isArray(e.raw_copy_highlights)) mg.raw_copy_highlights = e.raw_copy_highlights;
-        if (Object.keys(mg).length) patch.messaging_guidelines = mg;
-        if (e.social_proof) patch.product_psychology = { social_proof: e.social_proof };
-        if (Object.keys(patch).length) {
-          const { error: upErr } = await supabase.from("offers").update(patch).eq("id", offerId);
-          if (upErr) console.warn("offer update failed", upErr);
-        }
-      }
+      const offerId = await findOrCreateOffer(normalized);
+      await applyExtractedOfferInfo(offerId, normalized);
       const { data: refreshed } = await supabase.from("offers").select("*").eq("brand_id", brandId);
       setOffers(refreshed || []);
       setOfferUrl("");
@@ -711,6 +707,36 @@ export default function GuidedOnboarding() {
     } finally {
       setOfferBusy(false);
       setOfferStatusMsg(null);
+    }
+  };
+
+  // The onboarding ad-link question (booked_calls/leads/sales goals) — same
+  // read-the-real-page mechanism as submitOfferUrl above, but fired on blur
+  // during Step 2 instead of a dedicated Step 3 screen, and non-blocking:
+  // the "Continue to my ad" CTA only requires the URL itself, not this
+  // extraction finishing (see answeredRequirement below).
+  const submitAdLink = async () => {
+    const raw = offerHintUrl.trim();
+    if (!brandId || !raw) return;
+    const normalized = normalizeWebsiteUrl(raw);
+    if (!normalized) return;
+    try {
+      localStorage.setItem(`lumi_onboarding_offer_url_${brandId}`, normalized);
+      const currentAp = (brand?.audience_psychology as any) || {};
+      const nextAp = { ...currentAp, onboarding_offer_url: normalized };
+      await supabase.from("brands").update({ audience_psychology: nextAp }).eq("id", brandId);
+      setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: nextAp }));
+    } catch { /* non-blocking */ }
+
+    setOfferLinkBusy(true);
+    try {
+      const offerId = await findOrCreateOffer(normalized);
+      await applyExtractedOfferInfo(offerId, normalized);
+      localStorage.setItem(`lumi_onboarding_offer_id_${brandId}`, offerId);
+    } catch (e) {
+      console.warn("[onboarding] ad-link offer extraction failed", e);
+    } finally {
+      setOfferLinkBusy(false);
     }
   };
 
@@ -1282,97 +1308,79 @@ export default function GuidedOnboarding() {
                     })}
                   </div>
 
-                  {/* The one field that turns "generic AI slop" into a real ad:
-                      what actually happens when someone clicks. Goal-conditional
-                      so the question is concrete, not abstract — persists into
-                      audience_psychology.onboarding_offer_hint (mirroring the
-                      goalChoice pattern) and flows into recommend-strategy
-                      (funnel matching) + compose-ad (offerContext) so the copy
-                      has a real CTA/objections to write toward instead of "". */}
-                  {goalChoice && (
+                  {/* booked_calls/leads/sales: a real link, not a freeform "who's
+                      your ideal client" essay — LUMI reads the actual page
+                      (extract-offer-info) for a real price/page_goal, which is
+                      what lets recommend-strategy pick lead vs. sales campaign
+                      correctly instead of guessing. Required once a goal in
+                      this group is picked — see answeredRequirement below. */}
+                  {goalChoice && goalChoice !== "followers" && (
                     <div className="space-y-2 pt-1 animate-fade-in">
-                      <label htmlFor="offer-hint" className="text-sm font-semibold text-foreground">
-                        {OFFER_HINT_COPY[goalChoice].label}
+                      <label htmlFor="offer-url" className="text-sm font-semibold text-foreground">
+                        {AD_LINK_COPY[goalChoice].label}
                       </label>
-                      <Textarea
-                        id="offer-hint"
-                        value={offerHint}
-                        onChange={(e) => setOfferHint(e.target.value)}
-                        onBlur={async () => {
-                          const val = offerHint.trim();
-                          if (!brandId || !val) return;
-                          try {
-                            localStorage.setItem(`lumi_onboarding_offer_hint_${brandId}`, val);
-                            const currentAp = (brand?.audience_psychology as any) || {};
-                            const nextAp = { ...currentAp, onboarding_offer_hint: val };
-                            await supabase.from("brands").update({ audience_psychology: nextAp }).eq("id", brandId);
-                            setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: nextAp }));
-                          } catch { /* non-blocking */ }
-                        }}
-                        placeholder={OFFER_HINT_COPY[goalChoice].placeholder}
-                        maxLength={280}
-                        rows={2}
-                        className="rounded-xl resize-y"
+                      <Input
+                        id="offer-url"
+                        type="url"
+                        inputMode="url"
+                        value={offerHintUrl}
+                        onChange={(e) => setOfferHintUrl(e.target.value)}
+                        onBlur={submitAdLink}
+                        placeholder={AD_LINK_COPY[goalChoice].placeholder}
+                        className="rounded-xl"
                       />
-                      <div className="space-y-1 pt-1">
-                        <label htmlFor="offer-url" className="text-xs font-medium text-muted-foreground">
-                          Got a link for it? <span className="font-normal">(sales page, webinar signup, opt-in — optional, but LUMI can read the real page instead of guessing)</span>
-                        </label>
-                        <Input
-                          id="offer-url"
-                          type="url"
-                          inputMode="url"
-                          value={offerHintUrl}
-                          onChange={(e) => setOfferHintUrl(e.target.value)}
-                          onBlur={async () => {
-                            const val = offerHintUrl.trim();
-                            if (!brandId || !val) return;
-                            try {
-                              localStorage.setItem(`lumi_onboarding_offer_url_${brandId}`, val);
-                              const currentAp = (brand?.audience_psychology as any) || {};
-                              const nextAp = { ...currentAp, onboarding_offer_url: val };
-                              await supabase.from("brands").update({ audience_psychology: nextAp }).eq("id", brandId);
-                              setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: nextAp }));
-                            } catch { /* non-blocking */ }
-                          }}
-                          placeholder="https://yoursite.com/free-training"
-                          className="rounded-xl"
-                        />
-                      </div>
+                      {offerLinkBusy && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Reading your page…
+                        </p>
+                      )}
                     </div>
                   )}
 
-                  <div className="space-y-2 pt-1">
-                    {readWasThin && (
-                      <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-900 leading-relaxed">
-                        We couldn't fully read your site — a lot of sites block automated access. Tell us who you serve, in your own words, and we'll make your ad (and the psychology behind it) spot-on.
+                  {/* "followers" is the one goal with no page to send someone to —
+                      a binary split so recommend-strategy gets an explicit signal
+                      (DM funnel vs. growth/awareness funnel) instead of guessing
+                      from free text, which is what was silently over-recommending
+                      the DM strategy for plain lead-magnet offers before. */}
+                  {goalChoice === "followers" && (
+                    <div className="space-y-2 pt-1 animate-fade-in">
+                      <label className="text-sm font-semibold text-foreground">
+                        Want more followers &amp; engagement, or more DMs?
+                      </label>
+                      <div className="grid sm:grid-cols-2 gap-2">
+                        {([
+                          { id: "engagement", label: "Followers & engagement" },
+                          { id: "dms", label: "DMs" },
+                        ] as { id: FollowersIntent; label: string }[]).map((opt) => {
+                          const selected = followersIntent === opt.id;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => {
+                                setFollowersIntent(opt.id);
+                                if (!brandId) return;
+                                localStorage.setItem(`lumi_onboarding_followers_intent_${brandId}`, opt.id);
+                                const currentAp = (brand?.audience_psychology as any) || {};
+                                const nextAp = { ...currentAp, onboarding_followers_intent: opt.id };
+                                supabase.from("brands").update({ audience_psychology: nextAp }).eq("id", brandId);
+                                setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: nextAp }));
+                              }}
+                              className={
+                                "text-left px-4 py-3 rounded-2xl border text-sm font-medium transition-all " +
+                                (selected
+                                  ? "border-pink-500 bg-white shadow-md text-foreground"
+                                  : "border-border bg-white/60 hover:border-pink-500/40 hover:bg-white text-foreground")
+                              }
+                              aria-pressed={selected}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
                       </div>
-                    )}
-                    <label htmlFor="dream-client" className="text-sm font-semibold text-foreground">
-                      {readWasThin ? (
-                        "Who do you serve, and what do they struggle with?"
-                      ) : (
-                        <>Your dream client <span className="text-muted-foreground font-normal">(optional — the more you share, the sharper your ad)</span></>
-                      )}
-                    </label>
-                    <Textarea
-                      id="dream-client"
-                      value={dreamClient}
-                      onChange={(e) => setDreamClient(e.target.value)}
-                      onBlur={async () => {
-                        const val = dreamClient.trim();
-                        if (!brandId || !val) return;
-                        try {
-                          await supabase.from("brands").update({ target_audience: val }).eq("id", brandId);
-                          setBrand((prev: any) => ({ ...(prev || {}), target_audience: val }));
-                        } catch { /* non-blocking */ }
-                      }}
-                      placeholder="e.g. Course creators who hit $10k months and want to scale to $50k but keep getting stuck on inconsistent leads. The more detail here, the juicier your ad copy."
-                      maxLength={800}
-                      rows={4}
-                      className="rounded-xl resize-y"
-                    />
-                  </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* One rounded card wrapping all reveals */}
@@ -1557,11 +1565,19 @@ export default function GuidedOnboarding() {
                   )}
                 </div>
 
-                {/* Primary CTA */}
+                {/* Primary CTA — once a goal is picked, its follow-up (link or
+                    followers sub-choice) is required before continuing. Skipping
+                    the goal picker entirely still falls back to "leads" with no
+                    requirement, same as before, so the user is never trapped. */}
                 <div className="flex flex-col items-center gap-2 pt-2">
                   {canContinue && !goalChoice && (
                     <p className="text-xs text-muted-foreground animate-fade-in">
                       No goal picked? We'll aim for leads &amp; booked calls — you can change it anytime.
+                    </p>
+                  )}
+                  {canContinue && goalChoice && !(goalChoice === "followers" ? !!followersIntent : !!offerHintUrl.trim()) && (
+                    <p className="text-xs text-muted-foreground animate-fade-in">
+                      {goalChoice === "followers" ? "Pick one above to continue" : "Add a link above to continue"}
                     </p>
                   )}
                   <Button
@@ -1582,7 +1598,7 @@ export default function GuidedOnboarding() {
                       }
                       advance();
                     }}
-                    disabled={!canContinue}
+                    disabled={!canContinue || (!!goalChoice && !(goalChoice === "followers" ? !!followersIntent : !!offerHintUrl.trim()))}
                     className="h-14 px-8 text-base font-semibold rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity shadow-lg shadow-pink-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {canContinue ? (
