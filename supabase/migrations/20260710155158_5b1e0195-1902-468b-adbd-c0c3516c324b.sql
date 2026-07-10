@@ -1,0 +1,1 @@
+ALTER TABLE public.offers ADD COLUMN IF NOT EXISTS funnel_chat_draft JSONB;
