@@ -115,9 +115,34 @@ export function OnboardingChecklist({ brand, offers, onEditBrand }: OnboardingCh
   const progressPercentage = (completedCount / totalCount) * 100;
   const isComplete = completedCount === totalCount;
 
-  // Hide checklist when all steps are complete
+  // At 100%, don't just vanish — this page has nothing else on it, so
+  // disappearing entirely reads as a blank/broken page rather than "you're
+  // done." Show a compact, collapsible confirmation instead, so it's still
+  // there if a user checks back in, without permanently taking up space.
   if (isComplete) {
-    return null;
+    return (
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <Card className="border-green-500/20 bg-green-500/5">
+          <CollapsibleTrigger asChild>
+            <button className="flex items-center gap-3 w-full text-left p-4 hover:opacity-80 transition-opacity">
+              <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+              <span className="font-medium text-sm flex-1">Brand setup complete</span>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0 space-y-2">
+              {checklistItems.map((item) => (
+                <div key={item.id} className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                  {item.title}
+                </div>
+              ))}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+    );
   }
 
   return (
