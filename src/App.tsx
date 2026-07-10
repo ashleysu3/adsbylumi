@@ -158,6 +158,7 @@ const App = () => {
               <Toaster />
               <Sonner />
               <BrowserRouter>
+                <ScrollToTop />
                 <LumiAssistantProvider>
                   <ReferralCaptureMount />
                   <GlobalAnnouncementBanner />
