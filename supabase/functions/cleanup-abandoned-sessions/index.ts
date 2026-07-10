@@ -1,87 +1,85 @@
-// deno-lint-ignore-file no-explicit-any
-// Daily sweep: deletes anonymous auth.users older than the grace window
-// who never captured an email (via the ad-pack lead magnet). Email
-// capture is the "keep this session" signal — see brands.lead_email,
-// added in the lead-magnet-funnel migrations. brands.user_id has
-// ON DELETE CASCADE to auth.users, so deleting the user also cleans up
-// their brand row and anything that cascades from it.
-import { createClient } from "npm:@supabase/supabase-js@2";
-import { isServiceRoleRequest } from "../_shared/internal-auth.ts";
-import { getCorsHeaders } from "../_shared/cors.ts";
+// Deletes abandoned anonymous auth users:
+// - anonymous (is_anonymous = true / no email)
+// - created more than 7 days ago
+// - no brand rows linked
+// Runs via a daily cron using the service-role key from vault.
 
-const GRACE_DAYS = 7;
-const MAX_USERS_PER_RUN = 2000; // safety cap; catches up over subsequent daily runs if ever exceeded
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { getCorsHeaders } from "../_shared/cors.ts";
+import { isServiceRoleRequest } from "../_shared/internal-auth.ts";
+
+const ABANDONED_AFTER_DAYS = 7;
+const BATCH_SIZE = 200;
 
 Deno.serve(async (req) => {
   const cors = getCorsHeaders(req.headers.get("origin"));
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
-  // Cron-only — this deletes accounts, never expose it to end users.
   if (!isServiceRoleRequest(req)) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), {
-      status: 403,
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
       headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 
-  const supabaseAdmin = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+  const admin = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  const cutoff = new Date(Date.now() - ABANDONED_AFTER_DAYS * 24 * 60 * 60 * 1000);
+  let deleted = 0;
+  let scanned = 0;
+  let page = 1;
+  const errors: string[] = [];
+
   try {
-    const cutoff = new Date(Date.now() - GRACE_DAYS * 24 * 60 * 60 * 1000).toISOString();
-
-    // Protected set: anyone who captured a lead email keeps their session,
-    // regardless of age.
-    const { data: protectedBrands, error: brandsErr } = await supabaseAdmin
-      .from("brands")
-      .select("user_id")
-      .not("lead_email", "is", null);
-    if (brandsErr) throw brandsErr;
-    const protectedIds = new Set((protectedBrands || []).map((b: any) => b.user_id));
-
-    let checked = 0;
-    let deleted = 0;
-    const errors: string[] = [];
-    let page = 1;
-    const perPage = 200;
-
-    while (checked < MAX_USERS_PER_RUN) {
-      const { data: listRes, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
-      if (listErr) throw listErr;
-      const users = listRes?.users || [];
-      if (!users.length) break;
+    while (true) {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: BATCH_SIZE });
+      if (error) throw error;
+      const users = data?.users ?? [];
+      if (users.length === 0) break;
 
       for (const u of users) {
-        checked++;
-        const isAnon = !!(u as any).is_anonymous;
+        scanned++;
+        const isAnon = (u as any).is_anonymous === true || (!u.email && !u.phone);
         if (!isAnon) continue;
-        if (protectedIds.has(u.id)) continue;
-        if (!u.created_at || u.created_at > cutoff) continue;
+        if (new Date(u.created_at) > cutoff) continue;
 
-        const { error: delErr } = await supabaseAdmin.auth.admin.deleteUser(u.id);
-        if (delErr) {
-          errors.push(`${u.id}: ${delErr.message}`);
-        } else {
-          deleted++;
+        // Skip if the user owns any brand
+        const { count: brandCount, error: brandErr } = await admin
+          .from("brands")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", u.id);
+        if (brandErr) {
+          errors.push(`brand check ${u.id}: ${brandErr.message}`);
+          continue;
         }
+        if ((brandCount ?? 0) > 0) continue;
+
+        const { error: delErr } = await admin.auth.admin.deleteUser(u.id);
+        if (delErr) {
+          errors.push(`delete ${u.id}: ${delErr.message}`);
+          continue;
+        }
+        deleted++;
       }
 
-      if (users.length < perPage) break; // last page
+      if (users.length < BATCH_SIZE) break;
       page++;
+      if (page > 100) break; // safety
     }
 
-    console.log(`[cleanup-abandoned-sessions] checked=${checked} deleted=${deleted} errors=${errors.length}`);
-
-    return new Response(JSON.stringify({ checked, deleted, errors }), {
-      headers: { ...cors, "Content-Type": "application/json" },
-    });
-  } catch (err) {
-    console.error("[cleanup-abandoned-sessions] error", err);
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
-      status: 500,
-      headers: { ...cors, "Content-Type": "application/json" },
-    });
+    console.log(`cleanup-abandoned-sessions: scanned=${scanned} deleted=${deleted} errors=${errors.length}`);
+    return new Response(
+      JSON.stringify({ success: true, scanned, deleted, errors }),
+      { headers: { ...cors, "Content-Type": "application/json" } },
+    );
+  } catch (e: any) {
+    console.error("cleanup-abandoned-sessions error:", e);
+    return new Response(
+      JSON.stringify({ error: e?.message ?? String(e), scanned, deleted, errors }),
+      { status: 200, headers: { ...cors, "Content-Type": "application/json" } },
+    );
   }
 });

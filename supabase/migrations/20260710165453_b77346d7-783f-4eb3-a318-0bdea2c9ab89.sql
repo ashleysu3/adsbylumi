@@ -1,4 +1,0 @@
-ALTER TABLE public.brands
-  ADD COLUMN IF NOT EXISTS lead_email TEXT,
-  ADD COLUMN IF NOT EXISTS lead_name TEXT,
-  ADD COLUMN IF NOT EXISTS ad_pack_image_url TEXT;
