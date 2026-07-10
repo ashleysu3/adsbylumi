@@ -130,6 +130,7 @@ export default function AdStrategy() {
   const [loading, setLoading] = useState(true);
   const [offers, setOffers] = useState<OfferRow[]>([]);
   const [workspaces, setWorkspaces] = useState<WorkspaceRow[]>([]);
+  const [hasDraftCampaigns, setHasDraftCampaigns] = useState(false);
   const [goals, setGoals] = useState<GoalRow[]>([]);
   const [evals, setEvals] = useState<Record<string, EvalResult>>({});
 
@@ -185,6 +186,7 @@ export default function AdStrategy() {
         });
         setOffers(offersList);
         setWorkspaces(wsList);
+        setHasDraftCampaigns((wsRes.data || []).length > wsList.length);
         setGoals((goalsRes.data || []) as GoalRow[]);
 
         // Health pings
@@ -549,10 +551,14 @@ export default function AdStrategy() {
 
               {workspaces.length === 0 ? (
                 <SetupPrompt
-                  title="No campaigns to set goals on yet"
-                  description="Once you launch a campaign, set a business goal here and LUMI will reality-check it against your budget."
-                  ctaLabel="Create campaign"
-                  onCta={() => navigate("/create?from=strategy")}
+                  title={hasDraftCampaigns ? "No live campaigns to set goals on yet" : "No campaigns to set goals on yet"}
+                  description={
+                    hasDraftCampaigns
+                      ? "You've got a campaign in progress — once it's live on Meta, set a business goal here and LUMI will reality-check it against your budget."
+                      : "Once you launch a campaign, set a business goal here and LUMI will reality-check it against your budget."
+                  }
+                  ctaLabel={hasDraftCampaigns ? "Continue building" : "Create campaign"}
+                  onCta={() => navigate(hasDraftCampaigns ? "/campaigns" : "/create?from=strategy")}
                 />
               ) : (
                 <div className="space-y-2">
