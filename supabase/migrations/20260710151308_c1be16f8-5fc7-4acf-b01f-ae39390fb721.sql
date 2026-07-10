@@ -1,0 +1,4 @@
+ALTER TABLE public.offers
+  ADD COLUMN IF NOT EXISTS funnel_map JSONB,
+  ADD COLUMN IF NOT EXISTS funnel_gaps JSONB,
+  ADD COLUMN IF NOT EXISTS funnel_map_updated_at TIMESTAMP WITH TIME ZONE;
