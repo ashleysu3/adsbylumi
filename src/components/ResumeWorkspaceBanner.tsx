@@ -11,6 +11,8 @@ import lumiLogo from "@/assets/lumi-logo.png";
 
 interface ResumeWorkspaceBannerProps {
   brandId: string;
+  /** Reports which workspace is being highlighted (or null once none/dismissed), so a sibling list can avoid showing it twice. */
+  onWorkspaceResolved?: (workspaceId: string | null) => void;
 }
 
 interface InProgressWorkspace {
@@ -28,7 +30,7 @@ const STATUS_LABELS: Record<string, string> = {
   waiting_for_assets: "Needs uploads",
 };
 
-export function ResumeWorkspaceBanner({ brandId }: ResumeWorkspaceBannerProps) {
+export function ResumeWorkspaceBanner({ brandId, onWorkspaceResolved }: ResumeWorkspaceBannerProps) {
   const navigate = useNavigate();
   const [workspace, setWorkspace] = useState<InProgressWorkspace | null>(null);
   const [dismissed, setDismissed] = useState(false);
@@ -89,6 +91,12 @@ export function ResumeWorkspaceBanner({ brandId }: ResumeWorkspaceBannerProps) {
       }
     }
   }, [workspace]);
+
+  // Let a sibling list know which workspace is being featured here, so it
+  // can skip rendering the same campaign a second time right below.
+  useEffect(() => {
+    onWorkspaceResolved?.(workspace && !dismissed ? workspace.id : null);
+  }, [workspace, dismissed, onWorkspaceResolved]);
 
   if (loading || !workspace || dismissed) {
     return null;

@@ -44,12 +44,14 @@ const hasRealMetaCampaign = (metaCampaignIds: any): boolean => {
 interface CampaignsListProps {
   brandId: string;
   addCreativeMode?: boolean;
+  /** Skip this workspace — it's already featured in the "Continue your ad?" banner above. */
+  excludeWorkspaceId?: string | null;
   onCampaignSelectForCreative?: (campaignId: string) => void;
 }
 
 type ViewFilter = "all" | "draft" | "live";
 
-export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSelectForCreative }: CampaignsListProps) {
+export function CampaignsList({ brandId, addCreativeMode = false, excludeWorkspaceId, onCampaignSelectForCreative }: CampaignsListProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -318,6 +320,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
   // them. This keeps parity with Ad Performance so users can always open a
   // campaign here to manage its creative.
   const filteredCampaigns = campaigns.filter(c => {
+    if (c.id === excludeWorkspaceId) return false;
     if (viewFilter === "live") return isLive(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids);
     if (viewFilter === "draft") return isDraft(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids);
     return true;

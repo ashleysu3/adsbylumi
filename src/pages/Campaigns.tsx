@@ -21,6 +21,7 @@ export default function Campaigns() {
   
 
   const isAddCreativeMode = searchParams.get("addCreative") === "true";
+  const [resumeWorkspaceId, setResumeWorkspaceId] = useState<string | null>(null);
 
   const { data: hasRecentlyLaunchedCampaign } = useQuery({
     queryKey: ["recently-launched-campaign", activeBrand?.id],
@@ -119,7 +120,7 @@ export default function Campaigns() {
 
         {/* Resume incomplete workspace banner */}
         {!isAddCreativeMode && (
-          <ResumeWorkspaceBanner brandId={activeBrand.id} />
+          <ResumeWorkspaceBanner brandId={activeBrand.id} onWorkspaceResolved={setResumeWorkspaceId} />
         )}
 
         {/* First live campaign education card — only show when a campaign is actually live */}
@@ -131,9 +132,10 @@ export default function Campaigns() {
           />
         )}
 
-        <CampaignsList 
-          brandId={activeBrand.id} 
+        <CampaignsList
+          brandId={activeBrand.id}
           addCreativeMode={isAddCreativeMode}
+          excludeWorkspaceId={isAddCreativeMode ? null : resumeWorkspaceId}
           onCampaignSelectForCreative={(campaignId) => {
             // Navigate to creative page for this campaign
             navigate(`/creative-studio?workspace=${campaignId}&addCreative=true`);
