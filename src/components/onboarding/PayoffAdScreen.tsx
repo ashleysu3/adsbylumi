@@ -7,6 +7,7 @@ import { Loader2, ArrowRight, RefreshCw, Sparkles, ChevronLeft, Target, Download
 import { toast } from "sonner";
 import type { RenderOverlay } from "@/lib/ffmpeg-renderer";
 import { getTestimonialQuotes, type TestimonialQuote } from "@/lib/social-proof";
+import { trackLumiEvent, trackLumiEventOnce } from "@/lib/lumi-pixel";
 import lumiLogo from "@/assets/lumi-logo.png";
 
 type ScriptBeat = { line: string; category: string; seconds: number };
@@ -184,6 +185,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       if (sendErr) throw sendErr;
 
       setPackState("sent");
+      trackLumiEvent("Lead");
       toast.success("Check your inbox — your ad pack is on its way!");
       // Brief pause so the "sent" confirmation is actually seen before
       // handing off to the VSL page, per the funnel spec (lead capture
@@ -494,6 +496,9 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         if (cancelled) return;
         setImages(imgs);
         setPhase("ready");
+        // Once per brand per browser session — the payoff moment is the
+        // key retargeting signal (people who saw their ad and left).
+        trackLumiEventOnce(`adgen_${brandId}`, "AdGenerated");
       } catch (e: any) {
         if (cancelled) return;
         console.error("[payoff-ad] boot failed", e);

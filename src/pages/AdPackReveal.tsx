@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
+import { trackLumiEvent } from "@/lib/lumi-pixel";
 import { toast } from "sonner";
 import lumiLogo from "@/assets/lumi-logo.png";
 
@@ -70,6 +71,7 @@ export default function AdPackReveal() {
       }
 
       const returnTo = brandId ? `/launch?brand=${brandId}` : undefined;
+      trackLumiEvent("InitiateCheckout");
       const { data, error } = await supabase.functions.invoke("create-guest-checkout", {
         body: {
           priceId: SUBSCRIPTION_TIERS.solo.monthlyPriceId,
