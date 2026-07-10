@@ -172,8 +172,6 @@ const App = () => {
                   <Route path="/reactivate/:token" element={<Reactivate />} />
                   <Route path="/welcome-back" element={<WelcomeBack />} />
                   <Route path="/pricing" element={<Pricing />} />
-                  <Route path="/freetrial" element={<FreeTrial />} />
-                  <Route path="/free-trial" element={<Navigate to="/freetrial" replace />} />
                   <Route path="/your-ad-pack" element={<AdPackReveal />} />
                   <Route path="/join" element={<FreeTrial />} />
                   <Route path="/freetrial" element={<Navigate to="/join" replace />} />
