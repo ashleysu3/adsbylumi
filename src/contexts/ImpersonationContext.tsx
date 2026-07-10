@@ -84,7 +84,7 @@ export const ImpersonationProvider = ({ children }: ImpersonationProviderProps) 
     sessionStorage.removeItem("impersonatedUser");
   };
 
-  const getEffectiveUserId = async (): Promise<string | null> => {
+  const getEffectiveUserId = useCallback(async (): Promise<string | null> => {
     if (impersonatedUser && (isAdmin || !adminChecked)) {
       if (!isAdmin && !(await checkCurrentUserIsAdmin())) {
         const { data: { user } } = await supabase.auth.getUser();
@@ -94,7 +94,7 @@ export const ImpersonationProvider = ({ children }: ImpersonationProviderProps) 
     }
     const { data: { user } } = await supabase.auth.getUser();
     return user?.id || null;
-  };
+  }, [impersonatedUser, isAdmin, adminChecked, checkCurrentUserIsAdmin]);
 
   const isImpersonating = !!impersonatedUser && (isAdmin || !adminChecked);
 
