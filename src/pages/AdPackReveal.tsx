@@ -33,6 +33,7 @@ export default function AdPackReveal() {
   const [brandName, setBrandName] = useState<string | null>(null);
   const [packImageUrl, setPackImageUrl] = useState<string | null>(null);
   const [vslVideoUrl, setVslVideoUrl] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   useEffect(() => {
