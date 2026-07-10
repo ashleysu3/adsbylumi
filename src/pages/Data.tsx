@@ -290,7 +290,12 @@ export default function AdPerformance() {
         });
       }
     }
-  }, [loading, metaConnected, metaTokenExpired, campaigns, setRecommendation, navigate]);
+    // setRecommendation is recreated on every LumiAssistantProvider render (it's
+    // not memoized there), so including it here retriggers this effect forever:
+    // it calls setRecommendation -> provider re-renders -> new setRecommendation
+    // reference -> effect fires again -> "Maximum update depth exceeded".
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, metaConnected, metaTokenExpired, campaigns, navigate]);
 
   // Convert date range string to actual dates
   const getDateRange = (rangeValue: string, custom?: {from: Date;to: Date;} | null): {from: Date;to: Date;} => {
