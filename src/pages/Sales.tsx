@@ -302,7 +302,7 @@ const Sales = () => {
             transition={{ duration: 0.6, delay: 0.6 }}
             className="mt-6 text-sm text-muted-foreground"
           >
-            No card to begin · 60-second setup · 4,000+ coaches &amp; creators
+            No card to begin · 60-second setup · 4,000+ ads generated
           </motion.p>
         </div>
 
@@ -731,7 +731,7 @@ const Sales = () => {
 
           <ScrollReveal className="mt-10 text-center">
             <p className="text-muted-foreground">
-              Join 4,000+ coaches, creators, and service providers running smarter ads with LUMI.
+              Join the coaches, creators, and service providers behind 4,000+ ads generated with LUMI.
             </p>
           </ScrollReveal>
         </div>
