@@ -3,6 +3,7 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { getPublicAppUrl } from "../_shared/site-url.ts";
+import { resolveDiscountCouponId } from "../_shared/pricing-config.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -27,17 +28,18 @@ serve(async (req) => {
       apiVersion: "2025-08-27.basil",
     });
 
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
     // Check for partner trial code
     let isPartnerTrial = false;
     let partnerEmail = '';
     let partnerTrialDays = 0;
     let partnerReferralId = '';
     if (partnerCode) {
-      const supabase = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-      );
-      const { data: tokenData } = await supabase
+      const { data: tokenData } = await supabaseAdmin
         .from("partner_access_tokens")
         .select("email, rewardful_affiliate_id, trial_days, referral_link, is_active")
         .eq("partner_trial_code", partnerCode.toUpperCase().trim())
@@ -85,13 +87,12 @@ serve(async (req) => {
         return `${returnOrigin}/auth?signup=true&paid=true&session_id={CHECKOUT_SESSION_ID}${rt}`;
       })(),
       cancel_url: `${returnOrigin}/`,
-      allow_promotion_codes: true,
-      subscription_data: {
-        trial_period_days: 7,
-      },
     };
 
     if (isPartnerTrial) {
+      // Partners may have real negotiated trial terms — unaffected by the
+      // default discount-instead-of-trial change below.
+      sessionOptions.allow_promotion_codes = true;
       sessionOptions.subscription_data = {
         trial_period_days: partnerTrialDays,
         metadata: {
@@ -100,6 +101,12 @@ serve(async (req) => {
           partner_referral_id: partnerReferralId || '',
         },
       };
+    } else {
+      // First-month discount replaces the old trial for everyone else —
+      // Stripe doesn't allow `discounts` and `allow_promotion_codes` together.
+      const { couponId, discountPercent } = await resolveDiscountCouponId(supabaseAdmin, stripe);
+      logStep("Resolved discount coupon", { couponId, discountPercent });
+      sessionOptions.discounts = [{ coupon: couponId }];
     }
 
     const session = await stripe.checkout.sessions.create(sessionOptions);
