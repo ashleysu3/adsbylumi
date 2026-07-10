@@ -109,8 +109,8 @@ const groups: NavGroup[] = [
     icon: Tag,
     emoji: "🏷️",
     items: [
-      
-      { label: "Design Guide", to: "/style", icon: Paintbrush },
+      { label: "Initial Setup", to: "/initial-setup", icon: PenLine },
+      { label: "Style", to: "/style", icon: Paintbrush },
       // TODO: dedicated voice page — currently routes to placeholder.
       { label: "Voice + Examples", to: "/voice", icon: Mic },
       // TODO: dedicated audience page.
@@ -152,7 +152,6 @@ const supportGroup: NavGroup = {
     // TODO: dedicated troubleshooting page.
     { label: "Troubleshooting", to: "/troubleshooting", icon: HelpCircle },
     { label: "Human Help", to: "/office-hours", icon: Users },
-    { label: "Initial Setup", to: "/initial-setup", icon: PenLine },
   ],
 };
 
