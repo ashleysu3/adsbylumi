@@ -701,6 +701,7 @@ export type Database = {
       }
       brands: {
         Row: {
+          ad_pack_image_url: string | null
           alert_thresholds: Json | null
           audience_psychology: Json | null
           brand_emojis: string[] | null
@@ -723,6 +724,8 @@ export type Database = {
           kit_refresh_token: string | null
           kit_webhook_id: string | null
           last_review_date: string | null
+          lead_email: string | null
+          lead_name: string | null
           meta_access_token: string | null
           meta_account_id: string | null
           meta_connected: boolean | null
@@ -757,6 +760,7 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
+          ad_pack_image_url?: string | null
           alert_thresholds?: Json | null
           audience_psychology?: Json | null
           brand_emojis?: string[] | null
@@ -779,6 +783,8 @@ export type Database = {
           kit_refresh_token?: string | null
           kit_webhook_id?: string | null
           last_review_date?: string | null
+          lead_email?: string | null
+          lead_name?: string | null
           meta_access_token?: string | null
           meta_account_id?: string | null
           meta_connected?: boolean | null
@@ -813,6 +819,7 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
+          ad_pack_image_url?: string | null
           alert_thresholds?: Json | null
           audience_psychology?: Json | null
           brand_emojis?: string[] | null
@@ -835,6 +842,8 @@ export type Database = {
           kit_refresh_token?: string | null
           kit_webhook_id?: string | null
           last_review_date?: string | null
+          lead_email?: string | null
+          lead_name?: string | null
           meta_access_token?: string | null
           meta_account_id?: string | null
           meta_connected?: boolean | null
