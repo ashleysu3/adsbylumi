@@ -175,6 +175,9 @@ const App = () => {
                   <Route path="/freetrial" element={<FreeTrial />} />
                   <Route path="/free-trial" element={<Navigate to="/freetrial" replace />} />
                   <Route path="/your-ad-pack" element={<AdPackReveal />} />
+                  <Route path="/join" element={<FreeTrial />} />
+                  <Route path="/freetrial" element={<Navigate to="/join" replace />} />
+                  <Route path="/free-trial" element={<Navigate to="/join" replace />} />
                   <Route path="/welcome" element={<Welcome />} />
                   <Route path="/onboarding" element={<GuidedOnboarding />} />
                   <Route path="/onboarding-legacy" element={<Onboarding />} />

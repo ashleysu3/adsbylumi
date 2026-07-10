@@ -290,7 +290,7 @@ export default function GuidedOnboarding() {
       if (!user) {
         // Ad-first flow: mint an anonymous session so onboarding + first-ad
         // render before any sign-up. Account creation happens later at the
-        // "Start free trial to launch this" step (anonymous → permanent upgrade).
+        // "Get 50% off to launch this" step (anonymous → permanent upgrade).
         const { data: anon, error: anonErr } = await supabase.auth.signInAnonymously();
         if (anonErr || !anon?.user) {
           const status = (anonErr as any)?.status ?? "unknown";
@@ -1550,7 +1550,7 @@ export default function GuidedOnboarding() {
 
                       {(photoTeaser || testimonialTeaser) && (
                         <p className="text-[11px] text-muted-foreground text-center pt-1">
-                          Unlock everything we found when you start your free trial.
+                          Unlock everything we found when you sign up — 50% off your first month.
                         </p>
                       )}
                     </div>
