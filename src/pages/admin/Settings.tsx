@@ -49,13 +49,12 @@ import { Megaphone, Save, Eye, Video, Upload, Loader2 } from "lucide-react";
    }, []);
 
    const fetchVslVideo = async () => {
-     const { data } = await supabase
-       .from("site_settings")
-       .select("value")
-       .eq("key", "vsl_video_url")
-       .maybeSingle();
-     const url = (data?.value as any)?.url;
-     if (typeof url === "string" && url) setVslVideoUrl(url);
+     try {
+       const { data } = await supabase.functions.invoke("get-vsl-video");
+       if (data?.url) setVslVideoUrl(data.url);
+     } catch (err) {
+       console.error("Failed to fetch VSL video:", err);
+     }
    };
 
    const handleVslUpload = async (file: File) => {
@@ -72,10 +71,9 @@ import { Megaphone, Save, Eye, Video, Upload, Loader2 } from "lucide-react";
          .upload(path, file, { cacheControl: "3600", upsert: true, contentType: file.type || "video/mp4" });
        if (upErr) throw upErr;
 
-       const { data: pub } = supabase.storage.from("lead-magnet-assets").getPublicUrl(path);
-       // Cache-bust so a re-upload to the same path shows immediately instead
-       // of whatever the browser/CDN cached for the old file at that URL.
-       const bustedUrl = `${pub.publicUrl}?v=${Date.now()}`;
+       // Store the storage path (not a URL) — the bucket is private, so
+       // get-vsl-video mints a fresh signed URL on every read.
+       const value = { path, bucket: "lead-magnet-assets", updated_at: new Date().toISOString() };
 
        const { data: existing } = await supabase
          .from("site_settings")
@@ -85,17 +83,19 @@ import { Megaphone, Save, Eye, Video, Upload, Loader2 } from "lucide-react";
        if (existing) {
          const { error } = await supabase
            .from("site_settings")
-           .update({ value: { url: bustedUrl } as unknown as Json, updated_at: new Date().toISOString() })
+           .update({ value: value as unknown as Json, updated_at: new Date().toISOString() })
            .eq("key", "vsl_video_url");
          if (error) throw error;
        } else {
          const { error } = await supabase
            .from("site_settings")
-           .insert([{ key: "vsl_video_url", value: { url: bustedUrl } as unknown as Json }]);
+           .insert([{ key: "vsl_video_url", value: value as unknown as Json }]);
          if (error) throw error;
        }
 
-       setVslVideoUrl(bustedUrl);
+       // Refresh via the signing edge function so the admin sees the same
+       // URL end-users will get.
+       await fetchVslVideo();
        toast.success("VSL video uploaded — it's live on /your-ad-pack now");
      } catch (error: any) {
        console.error("Failed to upload VSL video:", error);
@@ -104,6 +104,7 @@ import { Megaphone, Save, Eye, Video, Upload, Loader2 } from "lucide-react";
        setVslUploading(false);
      }
    };
+
 
    const fetchBanner = async () => {
      try {

@@ -1,11 +1,12 @@
-// Public, read-only: returns just the VSL video URL for /your-ad-pack.
-// A dedicated function rather than a direct client read of site_settings,
-// since that table's "anyone can read" RLS policy is scoped to
-// `authenticated` — a genuinely cold visitor (clicked the ad-pack email on
-// a different device, zero Supabase session at all) has the `anon`
-// Postgres role and would silently get nothing back. This function uses
-// service-role access to expose only this one value, not the whole table
-// (which also holds partner/pricing config not meant to be fully public).
+// Public, read-only: returns a fresh signed URL for the Ad Pack VSL video.
+// The `lead-magnet-assets` bucket is private (workspace policy blocks
+// public buckets), so we can't just hand out a static public URL — we
+// mint a short-lived signed URL server-side on every read.
+//
+// site_settings.vsl_video_url.value shape (new):
+//   { path: "<userId>/vsl-main.mp4", bucket: "lead-magnet-assets" }
+// Legacy shape (still supported for old rows):
+//   { url: "https://.../object/public/..." }
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
@@ -25,9 +26,31 @@ Deno.serve(async (req) => {
       .eq("key", "vsl_video_url")
       .maybeSingle();
 
-    const url = (data?.value as any)?.url;
+    const value = (data?.value ?? {}) as {
+      path?: string;
+      bucket?: string;
+      url?: string;
+    };
 
-    return new Response(JSON.stringify({ url: typeof url === "string" ? url : null }), {
+    let url: string | null = null;
+
+    if (value.path) {
+      const bucket = value.bucket || "lead-magnet-assets";
+      // 24h signed URL — long enough to comfortably watch, short enough
+      // that a rotated/removed video stops leaking quickly.
+      const { data: signed, error } = await supabaseAdmin.storage
+        .from(bucket)
+        .createSignedUrl(value.path, 60 * 60 * 24);
+      if (error) {
+        console.error("[get-vsl-video] sign error", error);
+      } else {
+        url = signed?.signedUrl ?? null;
+      }
+    } else if (typeof value.url === "string") {
+      url = value.url;
+    }
+
+    return new Response(JSON.stringify({ url }), {
       headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (err) {
