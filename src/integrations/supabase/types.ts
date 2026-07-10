@@ -2412,7 +2412,6 @@ export type Database = {
           brand_id: string
           created_at: string | null
           description: string | null
-          funnel_chat_draft: Json | null
           funnel_gaps: Json | null
           funnel_map: Json | null
           funnel_map_updated_at: string | null
@@ -2440,7 +2439,6 @@ export type Database = {
           brand_id: string
           created_at?: string | null
           description?: string | null
-          funnel_chat_draft?: Json | null
           funnel_gaps?: Json | null
           funnel_map?: Json | null
           funnel_map_updated_at?: string | null
@@ -2468,7 +2466,6 @@ export type Database = {
           brand_id?: string
           created_at?: string | null
           description?: string | null
-          funnel_chat_draft?: Json | null
           funnel_gaps?: Json | null
           funnel_map?: Json | null
           funnel_map_updated_at?: string | null
