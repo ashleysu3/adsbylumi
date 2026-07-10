@@ -31,6 +31,7 @@ export default function AdPackReveal() {
 
   const [brandName, setBrandName] = useState<string | null>(null);
   const [packImageUrl, setPackImageUrl] = useState<string | null>(null);
+  const [vslVideoUrl, setVslVideoUrl] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   useEffect(() => {
@@ -48,6 +49,21 @@ export default function AdPackReveal() {
       }
     })();
   }, [brandId]);
+
+  useEffect(() => {
+    // Via an edge function, not a direct table read — a genuinely cold
+    // visitor (clicked the ad-pack email on a different device, zero
+    // session at all) has no way to satisfy site_settings' authenticated-
+    // only read policy, and the video is core content here, not a nicety.
+    (async () => {
+      try {
+        const { data } = await supabase.functions.invoke("get-vsl-video");
+        if (data?.url) setVslVideoUrl(data.url);
+      } catch (err) {
+        console.error("[ad-pack-reveal] couldn't load VSL video", err);
+      }
+    })();
+  }, []);
 
   const goCheckout = async () => {
     if (checkoutLoading) return;
@@ -111,14 +127,22 @@ export default function AdPackReveal() {
           </p>
         </motion.div>
 
-        {/* Payoff visual — the real generated ad if we have it, a video slot once recorded */}
+        {/* Payoff visual — the real VSL once recorded, falling back to the
+            generated ad, falling back to a placeholder */}
         <motion.div
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.1 }}
           className="mb-10"
         >
-          {packImageUrl ? (
+          {vslVideoUrl ? (
+            <video
+              src={vslVideoUrl}
+              controls
+              playsInline
+              className="mx-auto max-w-full sm:max-w-xl w-full rounded-2xl shadow-card border border-border"
+            />
+          ) : packImageUrl ? (
             <img
               src={packImageUrl}
               alt="Your ad, built by LUMI"
