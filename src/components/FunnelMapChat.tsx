@@ -71,10 +71,14 @@ export function FunnelMapChat({
   const [loading, setLoading] = useState(false);
   const [proposed, setProposed] = useState<{ funnelMap: FunnelMap; gaps: FunnelGap[] } | null>(null);
   const [saving, setSaving] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Scroll only this container, not scrollIntoView — that walks up
+    // through every scrollable ancestor and jumps the whole page since
+    // this chat sits inside a long Strategy page.
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages, proposed, loading]);
 
   const startChat = () => {
@@ -214,7 +218,7 @@ export function FunnelMapChat({
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[440px] min-h-[220px]">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[440px] min-h-[220px]">
         {messages.map((m, i) => (
           <div key={i} className={cn("flex gap-3", m.role === "user" && "flex-row-reverse")}>
             <Avatar className="h-7 w-7">
@@ -289,8 +293,6 @@ export function FunnelMapChat({
             </Card>
           </motion.div>
         )}
-
-        <div ref={endRef} />
       </div>
 
       {!proposed && !loading && (
