@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { resolveDiscountCouponId } from "../_shared/pricing-config.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -40,6 +41,13 @@ serve(async (req) => {
       apiVersion: "2025-08-27.basil",
     });
 
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+    const { couponId, discountPercent } = await resolveDiscountCouponId(supabaseAdmin, stripe);
+    logStep("Resolved discount coupon", { couponId, discountPercent });
+
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     let customerId;
     if (customers.data.length > 0) {
@@ -67,10 +75,9 @@ serve(async (req) => {
       metadata: {
         user_id: user.id,
       },
-      allow_promotion_codes: true,
-      subscription_data: {
-        trial_period_days: 7,
-      },
+      // First-month discount replaces the old trial — Stripe doesn't allow
+      // `discounts` and `allow_promotion_codes` on the same session.
+      discounts: [{ coupon: couponId }],
     };
 
     const session = await stripe.checkout.sessions.create(sessionOptions);
