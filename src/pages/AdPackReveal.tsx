@@ -139,10 +139,17 @@ export default function AdPackReveal() {
         >
           {vslVideoUrl ? (
             <video
+              ref={videoRef}
               src={vslVideoUrl}
               controls
               playsInline
+              muted
+              autoPlay
               className="mx-auto max-w-full sm:max-w-xl w-full rounded-2xl shadow-card border border-border"
+              onLoadedMetadata={(e) => {
+                const v = e.currentTarget;
+                if (v.muted) v.play().catch(() => {});
+              }}
             />
           ) : packImageUrl ? (
             <img
