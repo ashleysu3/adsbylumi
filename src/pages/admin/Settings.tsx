@@ -9,7 +9,7 @@ import type { Json } from "@/integrations/supabase/types";
  import { Label } from "@/components/ui/label";
  import { Switch } from "@/components/ui/switch";
  import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Megaphone, Save, Eye } from "lucide-react";
+import { Megaphone, Save, Eye, Video, Upload, Loader2 } from "lucide-react";
 
  import { toast } from "sonner";
  import { cn } from "@/lib/utils";
@@ -40,11 +40,71 @@ import { Megaphone, Save, Eye } from "lucide-react";
    const [banner, setBanner] = useState<AnnouncementBanner>(defaultBanner);
    const [loading, setLoading] = useState(true);
    const [saving, setSaving] = useState(false);
- 
+   const [vslVideoUrl, setVslVideoUrl] = useState<string | null>(null);
+   const [vslUploading, setVslUploading] = useState(false);
+
    useEffect(() => {
      fetchBanner();
+     fetchVslVideo();
    }, []);
- 
+
+   const fetchVslVideo = async () => {
+     const { data } = await supabase
+       .from("site_settings")
+       .select("value")
+       .eq("key", "vsl_video_url")
+       .maybeSingle();
+     const url = (data?.value as any)?.url;
+     if (typeof url === "string" && url) setVslVideoUrl(url);
+   };
+
+   const handleVslUpload = async (file: File) => {
+     setVslUploading(true);
+     try {
+       const { data: userRes } = await supabase.auth.getUser();
+       const userId = userRes?.user?.id;
+       if (!userId) throw new Error("Not signed in");
+
+       const ext = file.name.split(".").pop() || "mp4";
+       const path = `${userId}/vsl-main.${ext}`;
+       const { error: upErr } = await supabase.storage
+         .from("lead-magnet-assets")
+         .upload(path, file, { cacheControl: "3600", upsert: true, contentType: file.type || "video/mp4" });
+       if (upErr) throw upErr;
+
+       const { data: pub } = supabase.storage.from("lead-magnet-assets").getPublicUrl(path);
+       // Cache-bust so a re-upload to the same path shows immediately instead
+       // of whatever the browser/CDN cached for the old file at that URL.
+       const bustedUrl = `${pub.publicUrl}?v=${Date.now()}`;
+
+       const { data: existing } = await supabase
+         .from("site_settings")
+         .select("id")
+         .eq("key", "vsl_video_url")
+         .maybeSingle();
+       if (existing) {
+         const { error } = await supabase
+           .from("site_settings")
+           .update({ value: { url: bustedUrl } as unknown as Json, updated_at: new Date().toISOString() })
+           .eq("key", "vsl_video_url");
+         if (error) throw error;
+       } else {
+         const { error } = await supabase
+           .from("site_settings")
+           .insert([{ key: "vsl_video_url", value: { url: bustedUrl } as unknown as Json }]);
+         if (error) throw error;
+       }
+
+       setVslVideoUrl(bustedUrl);
+       toast.success("VSL video uploaded — it's live on /your-ad-pack now");
+     } catch (error: any) {
+       console.error("Failed to upload VSL video:", error);
+       toast.error(error?.message || "Failed to upload video");
+     } finally {
+       setVslUploading(false);
+     }
+   };
+
    const fetchBanner = async () => {
      try {
        const { data, error } = await supabase
@@ -375,6 +435,58 @@ import { Megaphone, Save, Eye } from "lucide-react";
                </Button>
              </div>
            </CardContent>
+          </Card>
+
+          {/* VSL Video Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Video className="h-5 w-5 text-primary" />
+                Ad Pack VSL Video
+              </CardTitle>
+              <CardDescription>
+                The talking-head video shown on /your-ad-pack, right after someone sees their generated ad.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {vslVideoUrl ? (
+                <div className="space-y-3">
+                  <video src={vslVideoUrl} controls className="w-full max-w-sm rounded-lg border" />
+                  <p className="text-xs text-muted-foreground">Live now on /your-ad-pack. Upload a new file below to replace it.</p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No video uploaded yet — /your-ad-pack currently shows a placeholder.
+                </p>
+              )}
+
+              <div className="flex items-center gap-3">
+                <Label htmlFor="vsl-upload" className="cursor-pointer">
+                  <div className={cn(
+                    "inline-flex items-center gap-2 px-4 py-2 rounded-md border text-sm font-medium transition-colors",
+                    vslUploading ? "opacity-60 pointer-events-none" : "hover:bg-muted"
+                  )}>
+                    {vslUploading ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Uploading…</>
+                    ) : (
+                      <><Upload className="h-4 w-4" /> {vslVideoUrl ? "Replace video" : "Upload video"}</>
+                    )}
+                  </div>
+                </Label>
+                <input
+                  id="vsl-upload"
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  disabled={vslUploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleVslUpload(file);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
+            </CardContent>
           </Card>
 
         </div>
