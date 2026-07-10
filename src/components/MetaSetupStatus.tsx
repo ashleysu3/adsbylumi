@@ -214,7 +214,13 @@ export function MetaSetupStatus({ brandId, onReconnectRequested, onPixelSetupReq
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {primaryAction && (
+            {/* When fully disconnected, the "Connect your Meta account" card
+                above already has the real CTA — this button's action just
+                scrolls to it (see handleAction's 'reconnect' case), which is
+                invisible when that card is already on screen. Showing a
+                second "Connect Meta account" button that doesn't actually
+                connect anything reads as broken, not helpful. */}
+            {primaryAction && overallStatus !== 'disconnected' && (
               <Button variant="lumi" size="sm" onClick={() => handleAction(primaryAction)} className="gap-1.5">
                 {primaryAction.label}
               </Button>
