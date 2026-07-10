@@ -23,8 +23,8 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 
 export default function AdsManager() {
-  const { activeBrand, brands, isAgencyUser } = useBrand();
-  const { tier } = useSubscription();
+  const { activeBrand, brands, isAgencyUser, loading: brandLoading } = useBrand();
+  const { tier, isLoading: tierLoading } = useSubscription();
   const navigate = useNavigate();
   const [clients, setClients] = useState<any[]>([]);
   const [reviewLogs, setReviewLogs] = useState<any[]>([]);
@@ -59,13 +59,17 @@ export default function AdsManager() {
   const [isSaving, setIsSaving] = useState(false);
   const [actionPlan, setActionPlan] = useState('');
 
-  // Gate: redirect non-agency users
+  // Gate: redirect non-agency users. Waits for both the brand and
+  // subscription contexts to finish their initial async fetch first —
+  // isAgencyUser/tier both default to falsy values before that, which
+  // would otherwise bounce real agency users on a fresh page load.
   useEffect(() => {
+    if (brandLoading || tierLoading) return;
     if (!isAgencyUser && tier !== 'agency') {
       navigate('/dashboard');
       toast.error('Manage All Accounts is available for agency accounts only.');
     }
-  }, [isAgencyUser, tier, navigate]);
+  }, [isAgencyUser, tier, brandLoading, tierLoading, navigate]);
 
   useEffect(() => {
     if (isAgencyUser || tier === 'agency') {
@@ -347,7 +351,17 @@ export default function AdsManager() {
     loadData();
   };
 
-  // Gate check
+  // Gate check — wait for both contexts to finish loading before deciding,
+  // same reasoning as the redirect effect above.
+  if (brandLoading || tierLoading) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-2xl mx-auto py-20 text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
+        </div>
+      </DashboardLayout>
+    );
+  }
   if (!isAgencyUser && tier !== 'agency') {
     return (
       <DashboardLayout>
