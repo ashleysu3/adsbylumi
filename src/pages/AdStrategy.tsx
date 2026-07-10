@@ -26,7 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { computeStrategyBudget } from "@/lib/strategy-budget";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { FunnelMapChat, type FunnelMap, type FunnelGap } from "@/components/FunnelMapChat";
+import { FunnelMapChat, type FunnelMap, type FunnelGap, type FunnelChatDraft } from "@/components/FunnelMapChat";
 
 type OfferRow = {
   id: string;
@@ -35,6 +35,7 @@ type OfferRow = {
   target_outcome: string | null;
   funnel_map: FunnelMap | null;
   funnel_gaps: FunnelGap[] | null;
+  funnel_chat_draft: FunnelChatDraft | null;
 };
 
 type WorkspaceRow = {
@@ -150,7 +151,7 @@ export default function AdStrategy() {
         const [offersRes, wsRes, goalsRes] = await Promise.all([
           supabase
             .from("offers")
-            .select("id, name, price_point, target_outcome, funnel_map, funnel_gaps")
+            .select("id, name, price_point, target_outcome, funnel_map, funnel_gaps, funnel_chat_draft")
             .eq("brand_id", activeBrand.id)
             .eq("archived", false)
             .order("created_at", { ascending: false }),
@@ -243,6 +244,7 @@ export default function AdStrategy() {
       targetOutcome: string | null;
       funnelMap: FunnelMap | null;
       funnelGaps: FunnelGap[] | null;
+      funnelChatDraft: FunnelChatDraft | null;
       campaigns: (WorkspaceRow & { stage: Stage })[];
     };
     const map = new Map<string, Funnel>();
@@ -256,6 +258,7 @@ export default function AdStrategy() {
         targetOutcome: o.target_outcome,
         funnelMap: o.funnel_map,
         funnelGaps: o.funnel_gaps,
+        funnelChatDraft: o.funnel_chat_draft,
         campaigns: [],
       }),
     );
@@ -272,6 +275,7 @@ export default function AdStrategy() {
           targetOutcome: null,
           funnelMap: null,
           funnelGaps: null,
+          funnelChatDraft: null,
           campaigns: [],
         });
       }
@@ -282,7 +286,9 @@ export default function AdStrategy() {
 
   const handleFunnelMapSaved = (offerId: string, funnelMap: FunnelMap, gaps: FunnelGap[]) => {
     setOffers((prev) =>
-      prev.map((o) => (o.id === offerId ? { ...o, funnel_map: funnelMap, funnel_gaps: gaps } : o)),
+      prev.map((o) =>
+        o.id === offerId ? { ...o, funnel_map: funnelMap, funnel_gaps: gaps, funnel_chat_draft: null } : o,
+      ),
     );
   };
 
@@ -492,6 +498,7 @@ export default function AdStrategy() {
                             targetOutcome={f.targetOutcome}
                             funnelMap={f.funnelMap}
                             gaps={f.funnelGaps}
+                            draft={f.funnelChatDraft}
                             onSaved={handleFunnelMapSaved}
                           />
                         )}

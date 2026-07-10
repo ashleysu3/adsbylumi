@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
 
     const { data: brand } = await userClient
       .from("brands")
-      .select("id,name,industry,target_audience,value_proposition")
+      .select("id,name,industry,target_audience,value_proposition,psychology_status")
       .eq("id", offer.brand_id)
       .maybeSingle();
 
@@ -67,6 +67,7 @@ Rules:
 - Offer 3-5 short example answers inline in your reply text so the user can just say one back (the UI also shows them as tappable chips, but your reply should read naturally either way).
 - Never suggest LUMI can build, design, host, or set up ANY of these pieces (no landing pages, no booking calendars, no email sequences, no lead magnets). LUMI can only describe what's missing and roughly what kind of thing would fill it, in one plain sentence. If asked directly whether LUMI can build it, say honestly that it can't yet — that's a separate tool the user would set up themselves (their own site, Calendly, an email platform, etc.).
 - Once all 4 slots are filled, move to phase "proposed": write a warm 2-3 sentence summary, fill "funnelMap", and list any real gaps in "gaps".
+- ALSO at that point, compare what was just said against the offer's current "description" (given in context below). If it contains something now factually wrong because of what the user told you (e.g. it mentions a free trial they said they no longer offer, references an old price or mechanism that's changed), set "descriptionSuggestion" to a corrected version — keep the rest of the description's own voice and content intact, fix ONLY the outdated part, don't rewrite it wholesale. If nothing in the description actually conflicts with what was discussed, set "descriptionSuggestion" to null. Never invent a conflict that isn't really there — this gets shown to the user as a suggested edit they approve or reject, so a false positive is annoying, not harmless.
 
 Gap logic when a slot came back "nothing yet" — apply these EXACTLY, don't invent your own tone for it:
 - convert = nothing yet → this is a hard stop, not a strategy choice. Say plainly there's nowhere for an ad to send someone right now, name what kind of destination would fix it (a booking link, an application form, a simple checkout page), and do NOT propose running ads for this offer yet. Still fill "funnelMap.convert" with "Not set up yet" and add ONE gap for stage "convert" explaining this clearly.
@@ -80,7 +81,8 @@ Always respond with ONLY a JSON object matching this shape:
   "phase": "asking" | "proposed",
   "slot": "goal" | "grow" | "nurture" | "convert" | null,   // the slot you are asking about this turn; null once phase is "proposed"
   "funnelMap": { "goal": string, "grow": string, "nurture": string, "convert": string } | null,  // null while still asking
-  "gaps": [ { "stage": "grow" | "nurture" | "convert", "suggestion": string, "why": string } ] | null  // null while still asking; empty array if genuinely no gaps
+  "gaps": [ { "stage": "grow" | "nurture" | "convert", "suggestion": string, "why": string } ] | null,  // null while still asking; empty array if genuinely no gaps
+  "descriptionSuggestion": { "suggestedText": string, "why": string } | null  // only set (non-null) when phase is "proposed" AND a real conflict was found; null otherwise
 }
 
 Offer + brand context:
@@ -141,8 +143,17 @@ ${JSON.stringify({ offer, brand }, null, 2)}`;
                       required: ["stage", "suggestion", "why"],
                     },
                   },
+                  descriptionSuggestion: {
+                    type: ["object", "null"],
+                    additionalProperties: false,
+                    properties: {
+                      suggestedText: { type: "string" },
+                      why: { type: "string" },
+                    },
+                    required: ["suggestedText", "why"],
+                  },
                 },
-                required: ["reply", "phase", "slot", "funnelMap", "gaps"],
+                required: ["reply", "phase", "slot", "funnelMap", "gaps", "descriptionSuggestion"],
               },
             },
           },
@@ -159,6 +170,7 @@ ${JSON.stringify({ offer, brand }, null, 2)}`;
         slot: null,
         funnelMap: null,
         gaps: null,
+        descriptionSuggestion: null,
       });
     }
 
@@ -174,6 +186,7 @@ ${JSON.stringify({ offer, brand }, null, 2)}`;
         slot: null,
         funnelMap: null,
         gaps: null,
+        descriptionSuggestion: null,
       };
     }
 
@@ -186,8 +199,14 @@ ${JSON.stringify({ offer, brand }, null, 2)}`;
         parsed.phase = "asking";
         parsed.funnelMap = null;
         parsed.gaps = null;
+        parsed.descriptionSuggestion = null;
       }
     }
+
+    // Deterministic, not the model's call: only worth nudging toward a
+    // psychology review when there's a real description conflict AND
+    // psychology content actually exists to go stale.
+    parsed.psychologyMayBeStale = !!(parsed.descriptionSuggestion && brand?.psychology_status === "approved");
 
     return json(parsed);
   } catch (err) {
@@ -198,6 +217,7 @@ ${JSON.stringify({ offer, brand }, null, 2)}`;
       slot: null,
       funnelMap: null,
       gaps: null,
+      descriptionSuggestion: null,
       error: (err as Error).message,
     });
   }
