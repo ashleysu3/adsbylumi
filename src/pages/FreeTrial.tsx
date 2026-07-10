@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 import { toast } from "sonner";
+import { trackLumiEvent } from "@/lib/lumi-pixel";
 import TestimonialCarousel from "@/components/TestimonialCarousel";
 import lumiLogo from "@/assets/lumi-logo.png";
 
@@ -154,6 +155,7 @@ const FreeTrial = () => {
         /* ignore */
       }
 
+      trackLumiEvent("InitiateCheckout");
       const { data, error } = await supabase.functions.invoke("create-guest-checkout", {
         body: {
           priceId,

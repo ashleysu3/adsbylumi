@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { SparkleIcon } from "@/components/SparkleIcon";
 import { mapAuthError } from "@/lib/mapAuthError";
 import { seedDeferredTask } from "@/lib/onboarding-tasks";
+import { trackLumiEventOnce } from "@/lib/lumi-pixel";
 import lumiLogo from "@/assets/lumi-logo.png";
 
 const REMEMBERED_EMAIL_KEY = "lumi_remembered_email";
@@ -51,6 +52,9 @@ export default function Auth() {
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
     if (!hasPaid || !sessionId) return;
+    // Keyed on the Stripe session id so a refresh of this page (which the
+    // user lands on mid-signup and may reload) doesn't double-count.
+    trackLumiEventOnce(`subscribe_${sessionId}`, 'Subscribe');
     (async () => {
       try {
         const { data, error } = await supabase.functions.invoke('resolve-checkout-partner', {
