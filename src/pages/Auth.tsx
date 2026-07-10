@@ -130,7 +130,7 @@ export default function Auth() {
       } else {
         if (!canShowSignup) {
           toast.error("Please choose a plan to create your account.");
-          navigate('/freetrial');
+          navigate('/join');
           return;
         }
           localStorage.removeItem(REMEMBERED_EMAIL_KEY);
@@ -403,7 +403,7 @@ export default function Auth() {
                   if (canShowSignup) {
                     setIsLogin(false);
                   } else {
-                    navigate('/freetrial');
+                    navigate('/join');
                   }
                 }}
                 className="text-muted-foreground hover:text-foreground transition-colors"
