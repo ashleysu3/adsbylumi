@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CampaignSpineProps {
@@ -61,7 +60,12 @@ export function CampaignSpine({ currentStep, className, compact }: CampaignSpine
     >
       <ol className="flex items-center justify-between gap-2">
         {STEPS.map((step, idx) => {
-          const isDone = step.num < currentStep;
+          // "Earlier" just means earlier in the fixed sequence for this page
+          // — currentStep is a hardcoded prop per page, not derived from
+          // whether the user actually finished anything in that phase. Don't
+          // style it like a completed task (checkmark, success green); that
+          // implies progress this component doesn't actually track.
+          const isPast = step.num < currentStep;
           const isCurrent = step.num === currentStep;
           const isFuture = step.num > currentStep;
           const isLast = idx === STEPS.length - 1;
@@ -83,25 +87,21 @@ export function CampaignSpine({ currentStep, className, compact }: CampaignSpine
                 <span
                   className={cn(
                     "relative flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-all",
-                    isDone &&
-                      "bg-emerald-500 text-white ring-2 ring-emerald-500/20",
+                    isPast &&
+                      "bg-foreground/10 text-foreground border border-border",
                     isCurrent &&
                       "bg-gradient-to-br from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-md shadow-lumi-pink-1/30 ring-2 ring-lumi-pink-1/30",
                     isFuture &&
                       "bg-muted text-muted-foreground border border-border",
                   )}
                 >
-                  {isDone ? (
-                    <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                  ) : (
-                    step.num
-                  )}
+                  {step.num}
                 </span>
                 <span
                   className={cn(
                     "text-sm truncate hidden sm:inline",
                     isCurrent && "font-semibold text-foreground",
-                    isDone && "text-foreground",
+                    isPast && "text-foreground",
                     isFuture && "text-muted-foreground",
                   )}
                 >
@@ -112,10 +112,7 @@ export function CampaignSpine({ currentStep, className, compact }: CampaignSpine
               {!isLast && (
                 <span
                   aria-hidden="true"
-                  className={cn(
-                    "mx-2 h-px flex-1 transition-colors",
-                    isDone ? "bg-emerald-500/60" : "bg-border",
-                  )}
+                  className="mx-2 h-px flex-1 bg-border transition-colors"
                 />
               )}
             </li>
