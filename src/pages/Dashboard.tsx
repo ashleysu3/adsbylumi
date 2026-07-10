@@ -16,7 +16,6 @@ import { Separator } from "@/components/ui/separator";
 import { BrandEditDialog } from "@/components/BrandEditDialog";
 import { AudiencePsychology } from "@/components/AudiencePsychology";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
-import { InlineProgressChecklist } from "@/components/InlineProgressChecklist";
 import { PageShimmer } from "@/components/GradientShimmer";
 import { AlertsBanner } from "@/components/AlertsBanner";
 import { useLumiRecommend } from "@/components/LumiAssistant";

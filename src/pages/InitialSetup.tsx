@@ -7,7 +7,6 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageShimmer } from "@/components/GradientShimmer";
-import { InlineProgressChecklist } from "@/components/InlineProgressChecklist";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { BrandEditDialog } from "@/components/BrandEditDialog";
 import { PenLine, ArrowRight } from "lucide-react";
@@ -62,26 +61,6 @@ export default function InitialSetup() {
     }
   };
 
-  const scrollToSection = (sectionId: string) => {
-    if (sectionId === "offers") return navigate("/offers");
-    if (sectionId === "meta-account") return navigate("/meta-settings");
-    if (sectionId === "audience-psychology") return navigate("/audience");
-    // "brand-brain" comes from the inline checklist's Brain step — it lives on
-    // the Audience page (AudiencePsychology card), not on /initial-setup, so
-    // route there instead of querying a section that doesn't exist (which is
-    // what was making the "go to section" click silently loop).
-    if (sectionId === "brand-brain") return navigate("/audience");
-    if (sectionId === "brand-details") return setEditDialogOpen(true);
-    const el = document.querySelector(`[data-section="${sectionId}"]`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    } else {
-      // Unknown section → don't silently no-op; send the user somewhere they
-      // can actually take action.
-      navigate("/audience");
-    }
-  };
-
   if (loading) {
     return (
       <DashboardLayout>
@@ -126,8 +105,6 @@ export default function InitialSetup() {
             Re-run setup wizard
           </Button>
         </div>
-
-        <InlineProgressChecklist brand={brand} offers={offers} onScrollToSection={scrollToSection} />
 
         <OnboardingChecklist brand={brand} offers={offers} onEditBrand={() => setEditDialogOpen(true)} />
       </div>
