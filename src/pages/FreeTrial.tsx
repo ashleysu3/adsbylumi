@@ -78,7 +78,7 @@ const FreeTrial = () => {
 
   // SEO
   useEffect(() => {
-    document.title = "Start Your 7-Day Free Trial | LUMI Meta Ads Assistant";
+    document.title = "Get 50% Off Your First Month | LUMI Meta Ads Assistant";
 
     const setMeta = (name: string, content: string) => {
       let tag = document.querySelector(`meta[name="${name}"]`);
@@ -91,7 +91,7 @@ const FreeTrial = () => {
     };
     setMeta(
       "description",
-      "Try LUMI free for 7 days. AI builds, writes, and optimizes your Meta ad campaigns. No credit card games — cancel anytime."
+      "Get your first month with LUMI for 50% off. AI builds, writes, and optimizes your Meta ad campaigns — cancel anytime."
     );
 
     let canonical = document.querySelector('link[rel="canonical"]');
@@ -100,7 +100,7 @@ const FreeTrial = () => {
       canonical.setAttribute("rel", "canonical");
       document.head.appendChild(canonical);
     }
-    canonical.setAttribute("href", "https://adsbylumi.com/freetrial");
+    canonical.setAttribute("href", "https://adsbylumi.com/join");
   }, []);
 
   useEffect(() => {
@@ -228,7 +228,7 @@ const FreeTrial = () => {
             >
               Sign In
             </button>
-            <CheckoutButton size="sm">Start Free Trial</CheckoutButton>
+            <CheckoutButton size="sm">Get 50% Off</CheckoutButton>
           </div>
           <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             <Menu className="w-6 h-6" />
@@ -252,7 +252,7 @@ const FreeTrial = () => {
                 >
                   Sign In
                 </button>
-                <CheckoutButton size="sm">Start Free Trial</CheckoutButton>
+                <CheckoutButton size="sm">Get 50% Off</CheckoutButton>
               </div>
             </motion.div>
           )}
@@ -271,29 +271,29 @@ const FreeTrial = () => {
               variant="outline"
               className="mb-4 px-4 py-1 text-xs font-semibold border-primary/30 bg-primary/5 backdrop-blur-sm rounded-full"
             >
-              <Gift className="w-3.5 h-3.5 mr-1.5 inline" /> 7 Days Free · Cancel Anytime
+              <Gift className="w-3.5 h-3.5 mr-1.5 inline" /> 50% Off Your First Month · Cancel Anytime
             </Badge>
           </FadeUp>
           <FadeUp delay={0.1}>
             <h1 className="font-display text-4xl sm:text-5xl md:text-6xl leading-[1.08] mb-4">
-              Try Your AI Meta Ads Team{" "}
-              <span className="bg-gradient-lumi bg-clip-text text-transparent">Free for 7 Days</span>
+              Get Your AI Meta Ads Team{" "}
+              <span className="bg-gradient-lumi bg-clip-text text-transparent">for Half Off</span>
             </h1>
           </FadeUp>
           <FadeUp delay={0.15}>
             <p className="text-base sm:text-lg text-muted-foreground max-w-[560px] mx-auto mb-8 leading-relaxed">
               Plan, build, write, and optimize Meta ad campaigns with LUMI — your AI ad
-              department. Full access for 7 days. No commitment. Cancel in one click.
+              department. Full access from day one. 50% off your first month. Cancel in one click.
             </p>
           </FadeUp>
           <FadeUp delay={0.25}>
             <div className="flex justify-center mb-3">
               <CheckoutButton className="px-8 text-base">
-                Start My 7-Day Free Trial <ArrowRight className="w-4 h-4 ml-1.5" />
+                Get 50% Off My First Month <ArrowRight className="w-4 h-4 ml-1.5" />
               </CheckoutButton>
             </div>
             <p className="text-xs text-muted-foreground">
-              7-day free trial · $97/mo after · Cancel anytime
+              50% off your first month · then $97/mo · Cancel anytime
             </p>
           </FadeUp>
 
@@ -304,7 +304,7 @@ const FreeTrial = () => {
                 <Shield className="w-4 h-4 text-primary" /> Secure Stripe checkout
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <CalendarClock className="w-4 h-4 text-primary" /> Reminder before trial ends
+                <CalendarClock className="w-4 h-4 text-primary" /> No trial to babysit
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <Zap className="w-4 h-4 text-primary" /> Setup in under 10 minutes
@@ -322,7 +322,7 @@ const FreeTrial = () => {
               variant="outline"
               className="mx-auto mb-4 block w-fit text-xs px-4 py-1.5 border-primary/30 bg-primary/5"
             >
-              What's included in your trial
+              What's included
             </Badge>
           </FadeUp>
           <FadeUp delay={0.05}>
@@ -354,35 +354,35 @@ const FreeTrial = () => {
         </div>
       </section>
 
-      {/* ═══════ HOW THE TRIAL WORKS ═══════ */}
+      {/* ═══════ HOW THE DISCOUNT WORKS ═══════ */}
       <section className="py-16 sm:py-24">
         <div className="container mx-auto px-4 max-w-5xl">
           <FadeUp>
             <h2 className="font-display text-3xl sm:text-4xl text-center mb-4">
-              How your free trial works
+              How the discount works
             </h2>
           </FadeUp>
           <FadeUp delay={0.05}>
             <p className="text-center text-muted-foreground max-w-xl mx-auto mb-12">
-              Honest, simple, and built so you can decide on your own time.
+              Honest, simple, and straightforward from day one.
             </p>
           </FadeUp>
           <div className="grid md:grid-cols-3 gap-6">
             {[
               {
                 icon: CreditCard,
-                title: "Day 0 — Sign up",
-                body: "Add your card to start your trial. You won't be charged today. Setup takes under 10 minutes.",
+                title: "Today — Sign up",
+                body: "Pay 50% off your first month, right now. Setup takes under 10 minutes.",
               },
               {
                 icon: Sparkles,
-                title: "Days 1–6 — Use everything",
+                title: "This month — Use everything",
                 body: "Build campaigns, generate creative, connect Meta, run real ads. Full Solo plan, no limits.",
               },
               {
                 icon: CalendarClock,
-                title: "Day 7 — You decide",
-                body: "We'll email a reminder before your trial ends. Stay for $97/mo or cancel in one click.",
+                title: "After that — Stay or go",
+                body: "Renews at $97/mo starting month two. Cancel anytime in one click, no awkward conversation.",
               },
             ].map(({ icon: Icon, title, body }, i) => (
               <FadeUp key={i} delay={i * 0.1}>
@@ -473,14 +473,14 @@ const FreeTrial = () => {
         <div className="container mx-auto px-4 max-w-3xl">
           <FadeUp>
             <h2 className="font-display text-3xl sm:text-4xl text-center mb-12">
-              Free trial questions, answered
+              Pricing questions, answered
             </h2>
           </FadeUp>
           <div className="space-y-4">
             {[
               {
                 q: "Will I be charged today?",
-                a: "No. You add a card to start your trial, but the first charge of $97 happens on day 8 — only if you stay.",
+                a: "Yes — at 50% off. No trial period, no card-hold games, no separate \"free\" phase to keep track of.",
               },
               {
                 q: "How do I cancel?",
@@ -499,8 +499,8 @@ const FreeTrial = () => {
                 a: "Yes — LUMI builds inside your own Meta account so you stay in full control. We'll walk you through connecting it during setup.",
               },
               {
-                q: "What's included after the trial?",
-                a: "The Solo plan: 1 brand, 1 ad account, full strategy + creative + build + optimization. $97/month, cancel anytime.",
+                q: "What do I pay after my first month?",
+                a: "The Solo plan continues at full price: 1 brand, 1 ad account, full strategy + creative + build + optimization. $97/month, cancel anytime.",
               },
             ].map((item, i) => (
               <FadeUp key={i} delay={i * 0.04}>
@@ -537,7 +537,7 @@ const FreeTrial = () => {
           </FadeUp>
           <FadeUp delay={0.1}>
             <p className="text-muted-foreground mb-8">
-              7 days free. Full access. Cancel any time, no awkward conversations.
+              50% off your first month. Full access. Cancel any time, no awkward conversations.
             </p>
           </FadeUp>
 
@@ -570,10 +570,10 @@ const FreeTrial = () => {
 
           <FadeUp delay={0.2}>
             <CheckoutButton className="px-10 text-base">
-              Start My 7-Day Free Trial <ArrowRight className="w-4 h-4 ml-1.5" />
+              Get 50% Off My First Month <ArrowRight className="w-4 h-4 ml-1.5" />
             </CheckoutButton>
             <p className="text-xs text-muted-foreground mt-3">
-              $97/mo after trial · Cancel anytime · Secure Stripe checkout
+              50% off first month · then $97/mo · Cancel anytime · Secure Stripe checkout
             </p>
           </FadeUp>
         </div>

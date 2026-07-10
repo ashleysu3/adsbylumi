@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Sparkles, Building2, Link2, Rocket, ArrowRight, Check } from "lucide-react";
@@ -32,7 +32,7 @@ export default function Welcome() {
       document.head.appendChild(metaDesc);
     }
     metaDesc.content =
-      "Welcome to LUMI — your 7-day free trial has started. Let's set up your brand and launch your first campaign.";
+      "Welcome to LUMI — your account is ready. Let's set up your brand and launch your first campaign.";
 
     const alreadyFired = sessionStorage.getItem(SESSION_FLAG);
     if (!alreadyFired && typeof window.fbq === "function") {
@@ -45,11 +45,6 @@ export default function Welcome() {
     sessionStorage.setItem(SESSION_FLAG, "true");
   }, []);
 
-  const trialEndDate = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 7);
-    return d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
-  }, []);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -205,7 +200,7 @@ export default function Welcome() {
           variants={itemVariants}
           className="text-center text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
         >
-          Your 7-day free trial just started — and the fun part begins now. Let's get your brand
+          You're in — and the fun part begins now. Let's get your brand
           set up so LUMI can start building campaigns that actually feel like you.
         </motion.p>
 
@@ -268,7 +263,7 @@ export default function Welcome() {
             </div>
             <div className="flex-1">
               <h3 className="font-display text-lg text-foreground mb-2">
-                Your 7-day free trial is active
+                Your account is active
               </h3>
               <ul className="space-y-1.5 text-sm text-muted-foreground">
                 <li className="flex items-start gap-2">
@@ -277,7 +272,7 @@ export default function Welcome() {
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  No charge until {trialEndDate}
+                  Your first month's already locked in at 50% off
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />

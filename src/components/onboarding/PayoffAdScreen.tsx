@@ -821,7 +821,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
               {checkoutLoading ? (
                 <><Loader2 className="h-5 w-5 mr-2 animate-spin" /> Opening checkout…</>
               ) : (
-                <>Start free trial to launch this <ArrowRight className="h-5 w-5 ml-2" /></>
+                <>Get 50% off to launch this <ArrowRight className="h-5 w-5 ml-2" /></>
               )}
             </Button>
           </div>

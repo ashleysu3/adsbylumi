@@ -485,7 +485,7 @@ const Sales = () => {
           <ScrollReveal className="mt-14 text-center">
             <CaptureBar size="lg" />
             <p className="mt-4 text-sm text-muted-foreground">
-              7-day free trial after your first ad · no card to start
+              50% off your first month after your first ad · no card to start
             </p>
           </ScrollReveal>
         </div>
@@ -754,7 +754,7 @@ const Sales = () => {
                 { q: "Will the ads actually look and sound like my brand?", a: "Yes — LUMI pulls your real colors, fonts, voice, and photos from your site, so every ad is on-brand automatically." },
                 { q: "How is this different from ChatGPT or Canva?", a: "Those give you words or a design and stop there. LUMI knows what's working on Meta now, writes in your voice, designs the creative, launches, and optimizes daily." },
                 { q: "Can I use my own photos or creative?", a: "Absolutely. Bring your own anytime, or let LUMI build from what it finds on your site." },
-                { q: "Is there a free trial?", a: "You can see your first ad free — no card to start. When you're ready to launch, there's a 7-day free trial, then one simple monthly price. Cancel anytime." },
+                { q: "Is there a free trial?", a: "You can see your first ad free — no card to start. When you're ready to launch, your first month is 50% off, then one simple monthly price. Cancel anytime." },
               ].map((f, i) => (
                 <AccordionItem key={i} value={`item-${i}`} className="border-0 px-5 md:px-6">
                   <AccordionTrigger className="text-left font-display text-base md:text-lg text-warm-black hover:no-underline py-5">
@@ -785,7 +785,7 @@ const Sales = () => {
               <CaptureBar size="lg" />
             </div>
             <p className="mt-5 text-sm text-lumi-black">
-              No card to begin · 7-day free trial to launch · cancel anytime
+              No card to begin · 50% off your first month to launch · cancel anytime
             </p>
           </div>
         </div>
