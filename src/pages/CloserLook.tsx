@@ -98,6 +98,7 @@ interface AdEval {
     confidence: "high" | "medium" | "low";
     impact: number;
     impactReasoning: string;
+    priorityTier?: number;
     diagnosis?: {
       rootCause: string;
       why: string;
@@ -340,6 +341,9 @@ export default function CloserLook() {
           reasoning: rec.recommendation.reasoning,
           hasBench,
           adSetId: targetAdSetId ?? null,
+          impact: rec.recommendation.impact,
+          confidence: rec.recommendation.confidence,
+          priorityTier: rec.recommendation.priorityTier,
         },
       ]);
     } catch (e) {

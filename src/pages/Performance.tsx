@@ -431,6 +431,9 @@ export default function Performance() {
               reasoning: t.recommendation?.reasoning || "",
               hasBench,
               adSetId: action === "increase_budget" || action === "reduce_budget" ? budgetTargetAdSetId(action, { result: r, rec: t }) : null,
+              impact: t.recommendation?.impact,
+              confidence: t.recommendation?.confidence,
+              priorityTier: t.recommendation?.priorityTier,
             });
           }
           await upsertRecommendationTasks(recsForTasks);

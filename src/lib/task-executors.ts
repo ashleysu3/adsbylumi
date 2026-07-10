@@ -133,6 +133,10 @@ export interface RecForTask {
   currentBudget?: number | null;
   /** Specific ad set to update when a campaign-level ABO budget rec needs a safe target. */
   adSetId?: string | null;
+  /** 0-100 score from evaluate-campaign-status's estimateImpact — how much this recommendation is worth acting on. */
+  impact?: number;
+  confidence?: "high" | "medium" | "low";
+  priorityTier?: number;
 }
 
 export interface UpsertedTask {
@@ -225,6 +229,9 @@ export async function upsertRecommendationTasks(recs: RecForTask[]) {
       workspaceId: rec.workspaceId,
       brandId: rec.brandId,
       action: rec.action,
+      impact: rec.impact ?? null,
+      confidence: rec.confidence ?? null,
+      priorityTier: rec.priorityTier ?? null,
     };
     if (actionType === "budget") {
       payload.kind = rec.action; // increase_budget | reduce_budget
