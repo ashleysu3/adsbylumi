@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, ArrowRight, RefreshCw, Sparkles, ChevronLeft, Target, Download, Mic, Film, Mail, Check } from "lucide-react";
 import { toast } from "sonner";
-import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 import type { RenderOverlay } from "@/lib/ffmpeg-renderer";
 import { getTestimonialQuotes, type TestimonialQuote } from "@/lib/social-proof";
 import lumiLogo from "@/assets/lumi-logo.png";
@@ -121,12 +121,12 @@ interface Props {
 }
 
 export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
+  const navigate = useNavigate();
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
   const [statusLine, setStatusLine] = useState<string>("Reading your brand kit…");
   const [images, setImages] = useState<RenderImage[]>([]);
   const [renderErr, setRenderErr] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   // Lead-magnet path: email this ad pack instead of (or before) paying.
   const [packFormOpen, setPackFormOpen] = useState(false);
@@ -185,54 +185,22 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
 
       setPackState("sent");
       toast.success("Check your inbox — your ad pack is on its way!");
+      // Brief pause so the "sent" confirmation is actually seen before
+      // handing off to the VSL page, per the funnel spec (lead capture
+      // -> VSL, not straight back to a blank screen).
+      setTimeout(() => navigate(`/your-ad-pack?brand=${brandId}`), 1200);
     } catch (err: any) {
       console.error("[payoff] send ad pack error", err);
       toast.error(err?.message || "Couldn't send your ad pack. Please try again.");
       setPackState("error");
     }
-  }, [brandId, images, leadEmail, leadName, packState]);
+  }, [brandId, images, leadEmail, leadName, packState, navigate]);
 
-  const startTrialCheckout = useCallback(async () => {
-    if (checkoutLoading) return;
-    setCheckoutLoading(true);
-    try {
-      // After Stripe returns to /auth?paid=true, sign-up upgrades the anonymous
-      // user in place (keeping this brand + ad), then routes to /launch so they
-      // can push the ad they just built live.
-      const returnTo = `/launch?brand=${brandId}`;
-      let rewardful_referral = "";
-      try {
-        if ((window as any).rewardful) {
-          rewardful_referral = await Promise.race([
-            new Promise<string>((resolve) => {
-              (window as any).rewardful("ready", function () {
-                resolve((window as any).Rewardful?.referral || "");
-              });
-            }),
-            new Promise<string>((resolve) => setTimeout(() => resolve(""), 2500)),
-          ]);
-        }
-      } catch { /* ignore */ }
-
-      const { data, error } = await supabase.functions.invoke("create-guest-checkout", {
-        body: {
-          priceId: SUBSCRIPTION_TIERS.solo.monthlyPriceId,
-          rewardful_referral,
-          returnTo,
-        },
-      });
-      if (error) throw error;
-      if (data?.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error("Checkout didn't return a URL");
-      }
-    } catch (err: any) {
-      console.error("[payoff] checkout error", err);
-      toast.error("Could not start checkout. Please try again.");
-      setCheckoutLoading(false);
-    }
-  }, [brandId, checkoutLoading]);
+  // The actual checkout call now lives on the VSL page (AdPackReveal) —
+  // this just hands off, same as the lead-magnet path below.
+  const goToAdPackReveal = useCallback(() => {
+    navigate(`/your-ad-pack?brand=${brandId}`);
+  }, [brandId, navigate]);
 
   // Prepared inputs
   const engineColorsRef = useRef<EngineColors>(DEFAULT_ENGINE_COLORS);
@@ -879,15 +847,11 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
               Show me another
             </Button>
             <Button
-              onClick={startTrialCheckout}
-              disabled={phase !== "ready" || checkoutLoading}
+              onClick={goToAdPackReveal}
+              disabled={phase !== "ready"}
               className="h-12 px-6 text-base font-semibold rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity shadow-lg shadow-pink-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {checkoutLoading ? (
-                <><Loader2 className="h-5 w-5 mr-2 animate-spin" /> Opening checkout…</>
-              ) : (
-                <>Start free trial to launch this <ArrowRight className="h-5 w-5 ml-2" /></>
-              )}
+              Get 50% off to launch this <ArrowRight className="h-5 w-5 ml-2" />
             </Button>
           </div>
         </div>

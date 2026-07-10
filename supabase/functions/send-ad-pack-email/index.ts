@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       from: 'Lumi <hello@adsbylumi.com>',
       to: [brand.lead_email],
       subject,
-      html: buildAdPackEmailHtml(firstName, brand.name || 'your brand', brand.ad_pack_image_url),
+      html: buildAdPackEmailHtml(firstName, brand.name || 'your brand', brand.ad_pack_image_url, brand_id),
     });
 
     if (emailError) {
@@ -89,12 +89,7 @@ Deno.serve(async (req) => {
   }
 });
 
-// NOTE: the CTA below points at /join (the 50%-off signup page) for now.
-// Once the VSL page ships, this should point there instead so the
-// email -> VSL -> discounted-signup flow described in the funnel spec is
-// actually connected end to end — tracked as a known follow-up, not
-// forgotten.
-function buildAdPackEmailHtml(firstName: string, brandName: string, imageUrl: string): string {
+function buildAdPackEmailHtml(firstName: string, brandName: string, imageUrl: string, brandId: string): string {
   return `
 <!DOCTYPE html>
 <html>
@@ -132,8 +127,8 @@ function buildAdPackEmailHtml(firstName: string, brandName: string, imageUrl: st
           </tr>
           <tr>
             <td style="padding: 5px 40px 35px 40px; text-align: center;">
-              <a href="https://adsbylumi.com/join" style="display: inline-block; background: linear-gradient(135deg, #F97316 0%, #EC4899 50%, #A78BFA 100%); color: #ffffff; text-decoration: none; padding: 16px 36px; border-radius: 12px; font-size: 16px; font-weight: 700; font-family: 'Red Hat Display', sans-serif; box-shadow: 0 6px 20px rgba(236, 72, 153, 0.3); letter-spacing: 0.3px;">
-                Get 50% Off Your First Month →
+              <a href="https://adsbylumi.com/your-ad-pack?brand=${brandId}" style="display: inline-block; background: linear-gradient(135deg, #F97316 0%, #EC4899 50%, #A78BFA 100%); color: #ffffff; text-decoration: none; padding: 16px 36px; border-radius: 12px; font-size: 16px; font-weight: 700; font-family: 'Red Hat Display', sans-serif; box-shadow: 0 6px 20px rgba(236, 72, 153, 0.3); letter-spacing: 0.3px;">
+                See Your Ad &amp; Get 50% Off →
               </a>
             </td>
           </tr>

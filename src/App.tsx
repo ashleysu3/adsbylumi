@@ -101,6 +101,7 @@ import AdminReviews from "./pages/admin/Reviews";
 import AdminMetaDebug from "./pages/admin/MetaDebug";
 import AdminOverlayTemplates from "./pages/admin/OverlayTemplates";
 import FreeTrial from "./pages/FreeTrial";
+import AdPackReveal from "./pages/AdPackReveal";
 import Welcome from "./pages/Welcome";
 import BrandPatterns from "./pages/BrandPatterns";
 import Retrospectives from "./pages/Retrospectives";
@@ -173,6 +174,7 @@ const App = () => {
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/freetrial" element={<FreeTrial />} />
                   <Route path="/free-trial" element={<Navigate to="/freetrial" replace />} />
+                  <Route path="/your-ad-pack" element={<AdPackReveal />} />
                   <Route path="/welcome" element={<Welcome />} />
                   <Route path="/onboarding" element={<GuidedOnboarding />} />
                   <Route path="/onboarding-legacy" element={<Onboarding />} />
