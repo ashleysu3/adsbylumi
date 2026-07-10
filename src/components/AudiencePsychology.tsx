@@ -247,6 +247,15 @@ export function AudiencePsychology({
         </CardHeader>
 
         <CardContent className="space-y-6">
+          {canApprove && (
+            <Alert className="border-primary/20 bg-primary/5">
+              <Sparkles className="h-4 w-4" />
+              <AlertDescription>
+                You're one step from finishing this part of your brand setup — review the insights below, then hit Approve at the bottom of this card.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {psychology?.demographics && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
