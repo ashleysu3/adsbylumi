@@ -64,10 +64,11 @@ export function OnboardingChecklist({ brand, offers, onEditBrand }: OnboardingCh
       title: "Approve Audience Psychology",
       description: "Review and approve AI-generated insights about your ideal customers",
       completed: brand?.psychology_status === "approved",
-      action: () => {
-        const section = document.querySelector('[data-section="audience-psychology"]');
-        section?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      },
+      // The psychology card lives on /audience, not on this page — querying
+      // a [data-section="audience-psychology"] element here always returns
+      // null, so this used to silently no-op instead of taking the user
+      // anywhere.
+      action: () => navigate("/audience"),
       actionLabel: "Go to Section"
     },
     {
@@ -104,9 +105,7 @@ export function OnboardingChecklist({ brand, offers, onEditBrand }: OnboardingCh
       title: "Enable Weekly Reports",
       description: "Get automated performance digests delivered to your inbox every week",
       completed: digestEnabled === true,
-      action: () => {
-        window.location.href = '/data';
-      },
+      action: () => navigate("/data"),
       actionLabel: "View Settings"
     }
   ];
