@@ -277,7 +277,7 @@ export function AngleSelector({
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 pb-20">
         {filteredAngles.map((angle) => {
           const isSelected = selectedAngles.includes(angle.id);
           const isDefault = angle.isDefault === true;
@@ -390,7 +390,7 @@ export function AngleSelector({
         </Card>
       </div>
 
-      <div className="flex justify-center pt-2 sm:pt-4 sticky bottom-4 z-10">
+      <div className="sticky bottom-0 z-10 pb-4 pt-8 bg-gradient-to-t from-background via-background to-transparent flex justify-center">
         <Button
           onClick={onContinue}
           disabled={!canContinue || isGenerating}
