@@ -60,6 +60,13 @@ export default function AdminMagicTemplates() {
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Stock props
+  const [props, setProps] = useState<StockProp[]>([]);
+  const [propFile, setPropFile] = useState<File | null>(null);
+  const [propLabel, setPropLabel] = useState("");
+  const [propDesc, setPropDesc] = useState("");
+  const [propBusy, setPropBusy] = useState(false);
+
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
