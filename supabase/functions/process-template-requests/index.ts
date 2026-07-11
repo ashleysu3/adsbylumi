@@ -7,10 +7,32 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ENGINE_URL = Deno.env.get("ENGINE_URL")!;
-const ENGINE_KEY = Deno.env.get("LUMI_ENGINE_KEY")!;
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const SAMPLE_PHOTO_URL =
   "https://sqwjbndgighjtifijgws.supabase.co/storage/v1/object/public/email-assets/sample-headshot.png";
+
+const CONTRACT = `You generate ONE self-contained HTML ad template for a render engine. Reproduce the LAYOUT and STYLE of the reference image — its composition, type hierarchy, shapes, photo placement, and any signature devices — but do NOT copy its exact text or photo. Follow this contract EXACTLY:
+
+CAPTURE THE REFERENCE'S DISTINCTIVE DEVICES if present:
+- An oversized faded/ghosted word in the background.
+- A portrait/photo region — match WHERE it sits and its size.
+- A frame or border, color-block panels, a divider line, or a circular badge/sticker.
+- A signature or small brand label.
+- The dominant background color of the reference -> map it to var(--bg) or var(--cream).
+- Serif vs sans choices and any italic kicker lines.
+
+HARD CONTRACT:
+1. One full HTML document, all CSS in one <style>, NO <script>, no external JS.
+2. COLORS: never hardcode brand colors. Use CSS variables only: var(--bg), var(--ink), var(--accent), var(--pop), var(--highlight), var(--cream), var(--cta).
+3. SIZES: stage is 100vw x 100vh. Provide CSS for BOTH body.feed (1080x1080) and body.story (1080x1920). Default <body class="feed">.
+4. TEXT SLOTS: each editable text element has an id; wrap the main text block in class="copy". Use ids from: eyebrow, headlinePre, headlineHL, headlinePost, accent, sub, cta, badgeTop, badgeBottom, sig, headline.
+5. PHOTO: if the design has a photo, add <img ... data-photo> with object-fit:cover. If no photo, needsPhoto=false and no data-photo element.
+6. STORY SAFE ZONES: in body.story keep ALL text within the middle band — nothing in top 14% or bottom 20%.
+7. FONTS: @import Poppins for sans; for serif use 'DisplayItalic' with a serif fallback, or @import Fraunces.
+8. Robust: no fixed heights that clip text; let .copy flow.
+
+Return ONLY JSON with this exact shape: {"name":"short-kebab-name","type":"single","needsPhoto":true,"copySlots":["..."],"html":"<full html string>"}`;
+
 
 const MAX_BATCH = 3;
 const MAX_ATTEMPTS = 3;
@@ -55,22 +77,34 @@ Deno.serve(async (req) => {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 90_000);
-        const r = await fetch(`${ENGINE_URL}/build-template`, {
+        const started = Date.now();
+        const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
-          headers: { "content-type": "application/json", "x-api-key": ENGINE_KEY },
+          headers: {
+            authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "content-type": "application/json",
+          },
           body: JSON.stringify({
-            imageUrl: row.reference_url,
-            notes: row.notes || "",
-            samplePhotoUrl: SAMPLE_PHOTO_URL,
-            tries: 3,
+            model: "google/gemini-2.5-flash",
+            response_format: { type: "json_object" },
+            messages: [
+              { role: "system", content: CONTRACT },
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: "Build a template matching this reference. Notes: " + (row.notes || "") },
+                  { type: "image_url", image_url: { url: row.reference_url } },
+                ],
+              },
+            ],
           }),
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
-        const body = await r.json().catch(() => ({}));
+        const aiJson = await aiResp.json().catch(() => ({} as any));
 
-        if (!r.ok || body?.error) {
-          const errMsg = body?.error || `engine ${r.status}`;
+        if (!aiResp.ok || aiJson?.error) {
+          const errMsg = aiJson?.error?.message || `ai gateway ${aiResp.status}`;
           const giveUp = (row.attempts || 0) >= MAX_ATTEMPTS;
           await admin
             .from("template_requests")
@@ -78,12 +112,40 @@ Deno.serve(async (req) => {
               status: giveUp ? "failed" : "pending",
               error: errMsg,
               locked_at: null,
-              result: body || null,
+              result: { error: errMsg, status: aiResp.status },
             })
             .eq("id", row.id);
           results.push({ id: row.id, ok: false, error: errMsg });
           continue;
         }
+
+        const content = aiJson?.choices?.[0]?.message?.content;
+        let body: any = null;
+        try {
+          const cleaned = String(content || "")
+            .replace(/```json\s*/gi, "")
+            .replace(/```\s*/g, "")
+            .trim();
+          body = JSON.parse(cleaned);
+        } catch (e) {
+          const giveUp = (row.attempts || 0) >= MAX_ATTEMPTS;
+          await admin
+            .from("template_requests")
+            .update({
+              status: giveUp ? "failed" : "pending",
+              error: "model returned invalid JSON",
+              locked_at: null,
+              result: { raw: String(content || "").slice(0, 2000) },
+            })
+            .eq("id", row.id);
+          results.push({ id: row.id, ok: false, error: "invalid_json" });
+          continue;
+        }
+
+        body.ok = typeof body?.html === "string" && body.html.length > 0;
+        body.ms = Date.now() - started;
+
+
 
         // Success — create draft template if engine flagged ok
         let templateId: string | null = null;
