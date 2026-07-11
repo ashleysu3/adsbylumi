@@ -115,19 +115,30 @@ export default function AdPackReveal() {
   const copyOption = kit?.ad_kit?.copy?.option;
   const copyTemplate = kit?.ad_kit?.copy?.template;
   const headline = kitHeadline(copyTemplate, copyOption);
-  const primaryText = String(copyOption?.sub || headline || "").trim();
+  // The feed body is only the real subheadline — the headline itself renders
+  // in the ad's link card, so we don't want it echoed above the image too.
+  const primaryText = String(copyOption?.sub || "").trim();
   const script = kit?.ad_kit?.script || null;
   const strategyData = kit?.ad_kit?.strategy || null;
   const kitVideoUrl = kit?.ad_kit?.videoUrl || null;
+  // Snapshotted at save time (brand data isn't returned by the token RPC).
+  const kitMeta = (kit?.ad_kit as any)?.meta || {};
+  const adDomain: string | null = kitMeta.domain || null;
+  const adAvatar: string | null = kitMeta.avatarUrl || null;
+  const adCta: string | null = (typeof copyOption?.cta === "string" && copyOption.cta) || kitMeta.cta || null;
   const ap = kit?.audience_psychology || {};
   const idealClient: string =
     (typeof ap.target_audience === "string" && ap.target_audience) ||
     (typeof ap.ideal_client === "string" && ap.ideal_client) ||
     kit?.target_audience ||
     "";
-  const firstPain: string = Array.isArray(ap.pain_points) ? ap.pain_points[0] || "" : "";
-  const firstDesire: string = Array.isArray(ap.desires) ? ap.desires[0] || "" : "";
-  const hasPsychology = !!(idealClient || firstPain || firstDesire);
+  const hasPsychology = !!(
+    idealClient ||
+    (Array.isArray(ap.pain_points) && ap.pain_points.length) ||
+    (Array.isArray(ap.desires) && ap.desires.length) ||
+    (Array.isArray(ap.objections) && ap.objections.length) ||
+    (typeof ap.motivations === "string" && ap.motivations.trim())
+  );
   const hasKitContent = !!(packImageUrl || headline || script || strategyData || hasPsychology);
 
   const ctaButton = (
@@ -152,8 +163,10 @@ export default function AdPackReveal() {
         </button>
       </nav>
 
-      {/* ---- Hero: VSL + primary CTA ---- */}
-      <section className="container mx-auto px-4 pt-6 pb-14 max-w-3xl text-center">
+      {/* ---- Hero: headline. The video is deliberately NOT here for a real
+             kit — it only lands once they've seen their own ad, so it moves
+             below. The generic (no-kit) marketing view keeps video up top. ---- */}
+      <section className="container mx-auto px-4 pt-6 pb-10 max-w-3xl text-center">
         <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <Badge variant="outline" className="mb-4 px-4 py-1 text-xs font-semibold border-primary/30 bg-primary/5">
             {brandName ? `Built for ${brandName}` : "Your Ad Kit"}
@@ -163,50 +176,52 @@ export default function AdPackReveal() {
               ? `${firstName ? `${firstName}, ` : ""}your Ad Kit is ready.`
               : "This is what LUMI can do for your business"}
           </h1>
-          <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto mb-10">
+          <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto">
             {hasKitContent
               ? "The plan, the creative, and the words — everything below was built from your website, and it's yours."
               : "A real, ready-to-run ad — built in about a minute, in your brand's own colors and voice."}
           </p>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="mb-10"
-        >
-          {vslVideoUrl ? (
-            <video
-              ref={videoRef}
-              src={vslVideoUrl}
-              controls
-              playsInline
-              muted
-              autoPlay
-              className="mx-auto max-w-full sm:max-w-xl w-full rounded-2xl shadow-card border border-border"
-              onLoadedMetadata={(e) => {
-                const v = e.currentTarget;
-                if (v.muted) v.play().catch(() => {});
-              }}
-            />
-          ) : !hasKitContent ? (
-            <div className="mx-auto max-w-full sm:max-w-md aspect-video rounded-2xl border-2 border-dashed border-border bg-muted/30 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-              <PlayCircle className="w-10 h-10" />
-              <p className="text-sm">Video walkthrough coming soon</p>
+        {/* Generic view only: no ad to anchor on, so the walkthrough leads. */}
+        {!hasKitContent && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="mt-10"
+          >
+            {vslVideoUrl ? (
+              <video
+                ref={videoRef}
+                src={vslVideoUrl}
+                controls
+                playsInline
+                muted
+                autoPlay
+                className="mx-auto max-w-full sm:max-w-xl w-full rounded-2xl shadow-card border border-border"
+                onLoadedMetadata={(e) => {
+                  const v = e.currentTarget;
+                  if (v.muted) v.play().catch(() => {});
+                }}
+              />
+            ) : (
+              <div className="mx-auto max-w-full sm:max-w-md aspect-video rounded-2xl border-2 border-dashed border-border bg-muted/30 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                <PlayCircle className="w-10 h-10" />
+                <p className="text-sm">Video walkthrough coming soon</p>
+              </div>
+            )}
+            <div className="mt-10">
+              {ctaButton}
+              <p className="text-xs text-muted-foreground mt-3 flex items-center justify-center gap-1.5">
+                <Shield className="w-3.5 h-3.5" /> Secure Stripe checkout · Cancel anytime
+              </p>
             </div>
-          ) : null}
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-          {ctaButton}
-          <p className="text-xs text-muted-foreground mt-3 flex items-center justify-center gap-1.5">
-            <Shield className="w-3.5 h-3.5" /> Secure Stripe checkout · Cancel anytime
-          </p>
-        </motion.div>
+          </motion.div>
+        )}
       </section>
 
-      {/* ---- The creative: your ad as it would appear in the feed ---- */}
+      {/* ---- The creative FIRST: your ad as it would appear in the feed ---- */}
       {packImageUrl && (
         <section className="py-14 bg-muted/30">
           <div className="container mx-auto px-4 max-w-lg">
@@ -219,23 +234,55 @@ export default function AdPackReveal() {
               imageUrl={packImageUrl}
               primaryText={primaryText || undefined}
               headline={headline || undefined}
+              domain={adDomain}
+              avatarUrl={adAvatar}
+              ctaLabel={adCta}
             />
           </div>
         </section>
       )}
 
-      {/* ---- The words: who your buyer is ---- */}
+      {/* ---- Who your buyer is — the part that sells ---- */}
       {hasPsychology && (
         <section className="py-14">
           <div className="container mx-auto px-4 max-w-2xl">
-            <BuyerPsychology idealClient={idealClient || undefined} pain={firstPain || undefined} desire={firstDesire || undefined} />
+            <BuyerPsychology idealClient={idealClient || undefined} ap={ap} />
+          </div>
+        </section>
+      )}
+
+      {/* ---- Now the video makes sense: they've seen their ad + their buyer ---- */}
+      {hasKitContent && (
+        <section className="py-14 bg-muted/30">
+          <div className="container mx-auto px-4 max-w-3xl text-center">
+            <h2 className="font-display text-2xl sm:text-3xl mb-2">
+              {firstName ? `${firstName}, here's how LUMI runs it for you` : "Here's how LUMI runs it for you"}
+            </h2>
+            <p className="text-sm text-muted-foreground max-w-xl mx-auto mb-8">
+              You've seen the ad and the buyer behind it. This is what happens when LUMI takes it from here.
+            </p>
+            {vslVideoUrl && (
+              <div className="mb-8">
+                <video
+                  ref={videoRef}
+                  src={vslVideoUrl}
+                  controls
+                  playsInline
+                  className="mx-auto max-w-full sm:max-w-xl w-full rounded-2xl shadow-card border border-border"
+                />
+              </div>
+            )}
+            {ctaButton}
+            <p className="text-xs text-muted-foreground mt-3 flex items-center justify-center gap-1.5">
+              <Shield className="w-3.5 h-3.5" /> Secure Stripe checkout · Cancel anytime
+            </p>
           </div>
         </section>
       )}
 
       {/* ---- The plan: exactly what LUMI would click in Ads Manager ---- */}
       {strategyData && Array.isArray(strategyData.campaigns) && strategyData.campaigns.length > 0 && (
-        <section className="py-14 bg-muted/30">
+        <section className="py-14">
           <div className="container mx-auto px-4 max-w-2xl">
             <GamePlanCard strategy={strategyData} variant="full" />
           </div>
@@ -244,7 +291,7 @@ export default function AdPackReveal() {
 
       {/* ---- The script + video ---- */}
       {(script || hasKitContent) && (
-        <section className="py-14">
+        <section className="py-14 bg-muted/30">
           <div className="container mx-auto px-4 max-w-2xl space-y-10">
             {script && <ScriptBlock beats={script} variant="full" />}
             {hasKitContent && <BrollBlock videoUrl={kitVideoUrl} pendingNote variant="full" />}
