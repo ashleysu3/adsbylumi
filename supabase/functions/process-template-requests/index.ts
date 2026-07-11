@@ -77,22 +77,34 @@ Deno.serve(async (req) => {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 90_000);
-        const r = await fetch(`${ENGINE_URL}/build-template`, {
+        const started = Date.now();
+        const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
-          headers: { "content-type": "application/json", "x-api-key": ENGINE_KEY },
+          headers: {
+            authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "content-type": "application/json",
+          },
           body: JSON.stringify({
-            imageUrl: row.reference_url,
-            notes: row.notes || "",
-            samplePhotoUrl: SAMPLE_PHOTO_URL,
-            tries: 3,
+            model: "google/gemini-2.5-flash",
+            response_format: { type: "json_object" },
+            messages: [
+              { role: "system", content: CONTRACT },
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: "Build a template matching this reference. Notes: " + (row.notes || "") },
+                  { type: "image_url", image_url: { url: row.reference_url } },
+                ],
+              },
+            ],
           }),
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
-        const body = await r.json().catch(() => ({}));
+        const aiJson = await aiResp.json().catch(() => ({} as any));
 
-        if (!r.ok || body?.error) {
-          const errMsg = body?.error || `engine ${r.status}`;
+        if (!aiResp.ok || aiJson?.error) {
+          const errMsg = aiJson?.error?.message || `ai gateway ${aiResp.status}`;
           const giveUp = (row.attempts || 0) >= MAX_ATTEMPTS;
           await admin
             .from("template_requests")
@@ -100,12 +112,40 @@ Deno.serve(async (req) => {
               status: giveUp ? "failed" : "pending",
               error: errMsg,
               locked_at: null,
-              result: body || null,
+              result: { error: errMsg, status: aiResp.status },
             })
             .eq("id", row.id);
           results.push({ id: row.id, ok: false, error: errMsg });
           continue;
         }
+
+        const content = aiJson?.choices?.[0]?.message?.content;
+        let body: any = null;
+        try {
+          const cleaned = String(content || "")
+            .replace(/```json\s*/gi, "")
+            .replace(/```\s*/g, "")
+            .trim();
+          body = JSON.parse(cleaned);
+        } catch (e) {
+          const giveUp = (row.attempts || 0) >= MAX_ATTEMPTS;
+          await admin
+            .from("template_requests")
+            .update({
+              status: giveUp ? "failed" : "pending",
+              error: "model returned invalid JSON",
+              locked_at: null,
+              result: { raw: String(content || "").slice(0, 2000) },
+            })
+            .eq("id", row.id);
+          results.push({ id: row.id, ok: false, error: "invalid_json" });
+          continue;
+        }
+
+        body.ok = typeof body?.html === "string" && body.html.length > 0;
+        body.ms = Date.now() - started;
+
+
 
         // Success — create draft template if engine flagged ok
         let templateId: string | null = null;
