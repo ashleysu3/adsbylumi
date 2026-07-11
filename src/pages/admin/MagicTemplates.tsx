@@ -38,6 +38,8 @@ interface RequestRow {
   created_at: string;
 }
 
+interface StockAsset { label: string; url: string; type?: string; notes?: string }
+
 export default function AdminMagicTemplates() {
   const navigate = useNavigate();
   const [authChecked, setAuthChecked] = useState(false);
@@ -49,6 +51,39 @@ export default function AdminMagicTemplates() {
   const [file, setFile] = useState<File | null>(null);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Stock props library
+  const [stock, setStock] = useState<StockAsset[]>([]);
+  const [stockDraft, setStockDraft] = useState<StockAsset>({ label: "", url: "", type: "", notes: "" });
+  const [stockSaving, setStockSaving] = useState(false);
+
+  const fetchStock = async () => {
+    const { data } = await supabase.from("site_settings").select("value").eq("key", "template_stock_assets").maybeSingle();
+    const list = (data?.value as any)?.assets || (data?.value as any) || [];
+    setStock(Array.isArray(list) ? list : []);
+  };
+  const saveStock = async (next: StockAsset[]) => {
+    setStockSaving(true);
+    const { error } = await supabase.from("site_settings").upsert({ key: "template_stock_assets", value: { assets: next } as any });
+    setStockSaving(false);
+    if (error) return toast.error(error.message);
+    setStock(next);
+    toast.success("Stock library saved");
+  };
+  const addStock = () => {
+    if (!stockDraft.label || !stockDraft.url) return toast.error("Label and URL required");
+    saveStock([...stock, stockDraft]);
+    setStockDraft({ label: "", url: "", type: "", notes: "" });
+  };
+  const removeStock = (idx: number) => saveStock(stock.filter((_, i) => i !== idx));
+  const uploadStockFile = async (f: File) => {
+    const path = `stock-props/${Date.now()}-${f.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    const { error } = await supabase.storage.from("email-assets").upload(path, f, { upsert: false });
+    if (error) return toast.error(error.message);
+    const { data } = supabase.storage.from("email-assets").getPublicUrl(path);
+    setStockDraft((d) => ({ ...d, url: data.publicUrl }));
+    toast.success("Uploaded — set a label then click Add");
+  };
 
   useEffect(() => {
     (async () => {
