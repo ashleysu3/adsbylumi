@@ -280,10 +280,24 @@ export default function AdminMagicTemplates() {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {rows.map((t) => (
                   <Card key={t.id} className="overflow-hidden">
-                    <div className="aspect-square bg-muted flex items-center justify-center">
-                      {t.preview_url
-                        ? <img src={t.preview_url} alt={t.name || ""} className="w-full h-full object-cover" />
-                        : <span className="text-xs text-muted-foreground">No preview</span>}
+                    <div className="aspect-square bg-muted flex items-center justify-center relative overflow-hidden">
+                      {t.preview_url ? (
+                        <img src={t.preview_url} alt={t.name || ""} className="w-full h-full object-cover" />
+                      ) : t.html ? (
+                        <div className="absolute inset-0 pointer-events-none" style={{ transform: "scale(0.28)", transformOrigin: "top left", width: "1080px", height: "1080px" }}>
+                          <iframe
+                            srcDoc={t.html}
+                            title={t.name || "preview"}
+                            sandbox="allow-same-origin"
+                            className="border-0"
+                            style={{ width: "1080px", height: "1080px" }}
+                          />
+                        </div>
+                      ) : t.source_image_url ? (
+                        <img src={t.source_image_url} alt="ref" className="w-full h-full object-cover opacity-60" />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">No preview</span>
+                      )}
                     </div>
                     <CardContent className="p-3 space-y-2">
                       <div className="flex items-start justify-between gap-2">
