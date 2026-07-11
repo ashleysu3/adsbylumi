@@ -88,7 +88,7 @@ export default function AdminMagicTemplates() {
 
   const fetchAll = async () => {
     setLoading(true);
-    await Promise.all([fetchList(), fetchRequests()]);
+    await Promise.all([fetchList(), fetchRequests(), fetchProps()]);
     setLoading(false);
   };
 
