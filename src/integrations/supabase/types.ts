@@ -701,8 +701,6 @@ export type Database = {
       }
       brands: {
         Row: {
-          ad_kit: Json | null
-          ad_kit_token: string | null
           ad_pack_image_url: string | null
           alert_thresholds: Json | null
           audience_psychology: Json | null
@@ -762,8 +760,6 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
-          ad_kit?: Json | null
-          ad_kit_token?: string | null
           ad_pack_image_url?: string | null
           alert_thresholds?: Json | null
           audience_psychology?: Json | null
@@ -823,8 +819,6 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
-          ad_kit?: Json | null
-          ad_kit_token?: string | null
           ad_pack_image_url?: string | null
           alert_thresholds?: Json | null
           audience_psychology?: Json | null
