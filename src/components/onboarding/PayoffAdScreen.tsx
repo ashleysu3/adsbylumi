@@ -178,69 +178,6 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const [leadEmail, setLeadEmail] = useState("");
   const [packState, setPackState] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
-  const sendAdPack = useCallback(async () => {
-    if (packState === "sending" || packState === "sent") return;
-    const heroImage = images[0];
-    if (!heroImage?.base64) {
-      toast.error("No ad ready to send yet — try again in a moment.");
-      return;
-    }
-    if (!leadEmail.trim() || !leadEmail.includes("@")) {
-      toast.error("Enter a valid email");
-      return;
-    }
-    setPackState("sending");
-    try {
-      // base64 -> Blob, same pattern used for approved-render uploads elsewhere.
-      const bin = atob(heroImage.base64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const blob = new Blob([bytes], { type: "image/png" });
-
-      // lead-magnet-assets (not brand-assets, which isn't a public bucket —
-      // an email client has no Supabase session, so a private-bucket URL
-      // would never load). RLS requires the uploader's own uid as the
-      // first path segment (see BrandImageLibrary.tsx's identical
-      // convention for brand-assets) — brandId alone isn't enough.
-      const { data: userRes } = await supabase.auth.getUser();
-      const userId = userRes?.user?.id;
-      if (!userId) throw new Error("Not signed in");
-      const path = `${userId}/${brandId}/ad-pack-${Date.now()}.png`;
-      const { error: upErr } = await supabase.storage
-        .from("lead-magnet-assets")
-        .upload(path, blob, { cacheControl: "3600", upsert: true, contentType: "image/png" });
-      if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from("lead-magnet-assets").getPublicUrl(path);
-
-      const { error: updateErr } = await supabase
-        .from("brands")
-        .update({
-          lead_email: leadEmail.trim(),
-          lead_name: leadName.trim() || null,
-          ad_pack_image_url: pub.publicUrl,
-        })
-        .eq("id", brandId);
-      if (updateErr) throw updateErr;
-
-      const { error: sendErr } = await supabase.functions.invoke("send-ad-pack-email", {
-        body: { brand_id: brandId },
-      });
-      if (sendErr) throw sendErr;
-
-      setPackState("sent");
-      trackLumiEvent("Lead");
-      toast.success("Check your inbox — your ad pack is on its way!");
-      // Brief pause so the "sent" confirmation is actually seen before
-      // handing off to the VSL page, per the funnel spec (lead capture
-      // -> VSL, not straight back to a blank screen).
-      setTimeout(() => navigate(`/your-ad-pack?brand=${brandId}`), 1200);
-    } catch (err: any) {
-      console.error("[payoff] send ad pack error", err);
-      toast.error(err?.message || "Couldn't send your ad pack. Please try again.");
-      setPackState("error");
-    }
-  }, [brandId, images, leadEmail, leadName, packState, navigate]);
-
   // The actual checkout call now lives on the VSL page (AdPackReveal) —
   // this just hands off, same as the lead-magnet path below.
   const goToAdPackReveal = useCallback(() => {
@@ -279,6 +216,113 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   useEffect(() => {
     return () => { if (videoUrl) URL.revokeObjectURL(videoUrl); };
   }, [videoUrl]);
+
+  // Defined AFTER the copy/strategy/script state it snapshots — a useCallback
+  // deps array evaluates at render time, and referencing a `const` state
+  // binding above its declaration is a TDZ error.
+  const sendAdPack = useCallback(async () => {
+    if (packState === "sending" || packState === "sent") return;
+    const heroImage = images[0];
+    if (!heroImage?.base64) {
+      toast.error("No ad ready to send yet — try again in a moment.");
+      return;
+    }
+    if (!leadEmail.trim() || !leadEmail.includes("@")) {
+      toast.error("Enter a valid email");
+      return;
+    }
+    setPackState("sending");
+    try {
+      // base64 -> Blob, same pattern used for approved-render uploads elsewhere.
+      const bin = atob(heroImage.base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: "image/png" });
+
+      // lead-magnet-assets (not brand-assets, which isn't a public bucket —
+      // an email client has no Supabase session, so a private-bucket URL
+      // would never load). RLS requires the uploader's own uid as the
+      // first path segment (see BrandImageLibrary.tsx's identical
+      // convention for brand-assets) — brandId alone isn't enough.
+      const { data: userRes } = await supabase.auth.getUser();
+      const userId = userRes?.user?.id;
+      if (!userId) throw new Error("Not signed in");
+      const path = `${userId}/${brandId}/ad-pack-${Date.now()}.png`;
+      const { error: upErr } = await supabase.storage
+        .from("lead-magnet-assets")
+        .upload(path, blob, { cacheControl: "3600", upsert: true, contentType: "image/png" });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("lead-magnet-assets").getPublicUrl(path);
+
+      // Mint the kit token — the one key that opens /your-ad-pack?kit=…
+      // from the email, on any device, with no session.
+      const tokenBytes = new Uint8Array(16);
+      crypto.getRandomValues(tokenBytes);
+      const kitToken = Array.from(tokenBytes)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+
+      // Snapshot everything the kit page shows — these live only in React
+      // state otherwise and would be gone by the time the email is opened.
+      const selectedOption = options[selectedIdx] || null;
+      const adKit: Record<string, any> = {
+        copy: selectedOption ? { template: templateRef.current, option: selectedOption } : null,
+        script: scriptBeats && scriptBeats.length ? scriptBeats : null,
+        strategy: strategy
+          ? {
+              title: strategy.personalized_title || strategy.name || null,
+              intro: strategy.personalized_intro || strategy.description || null,
+              campaigns: Array.isArray(strategy.campaigns) ? strategy.campaigns : null,
+            }
+          : null,
+      };
+
+      const { error: updateErr } = await supabase
+        .from("brands")
+        .update({
+          lead_email: leadEmail.trim(),
+          lead_name: leadName.trim() || null,
+          ad_pack_image_url: pub.publicUrl,
+          ad_kit_token: kitToken,
+          ad_kit: adKit,
+        })
+        .eq("id", brandId);
+      if (updateErr) throw updateErr;
+
+      // List add is marketing, not delivery — a Flodesk hiccup must never
+      // block the kit email. Fire-and-forget; the kit email itself always
+      // goes out from LUMI via Resend below.
+      supabase.functions
+        .invoke("sync-flodesk", {
+          body: {
+            email: leadEmail.trim(),
+            firstName: leadName.trim().split(" ")[0] || undefined,
+            segment: "ad_kit",
+          },
+        })
+        .then(({ error }) => {
+          if (error) console.warn("[payoff] flodesk sync failed", error);
+        })
+        .catch((e) => console.warn("[payoff] flodesk sync failed", e));
+
+      const { error: sendErr } = await supabase.functions.invoke("send-ad-pack-email", {
+        body: { brand_id: brandId },
+      });
+      if (sendErr) throw sendErr;
+
+      setPackState("sent");
+      trackLumiEvent("Lead");
+      toast.success("Check your inbox — your Ad Kit is on its way!");
+      // Brief pause so the "sent" confirmation is actually seen before
+      // handing off to the kit page, per the funnel spec (lead capture
+      // -> VSL/kit, not straight back to a blank screen).
+      setTimeout(() => navigate(`/your-ad-pack?kit=${kitToken}`), 1200);
+    } catch (err: any) {
+      console.error("[payoff] send ad kit error", err);
+      toast.error(err?.message || "Couldn't send your Ad Kit. Please try again.");
+      setPackState("error");
+    }
+  }, [brandId, images, leadEmail, leadName, packState, navigate, options, selectedIdx, scriptBeats, strategy]);
 
   const brandSlug = (brand?.name || "lumi-ad").trim().replace(/\s+/g, "-").toLowerCase();
 
@@ -1033,7 +1077,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
                 onClick={() => setPackFormOpen(true)}
                 className="text-xs text-muted-foreground hover:text-foreground transition underline underline-offset-2"
               >
-                Not ready to start? Get this ad pack emailed to you instead
+                Not ready to start? Email me my Ad Kit instead
               </button>
             )}
             {packFormOpen && packState !== "sent" && (
@@ -1060,7 +1104,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
                   {packState === "sending" ? (
                     <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending…</>
                   ) : (
-                    <><Mail className="h-4 w-4 mr-2" /> Email me this ad pack</>
+                    <><Mail className="h-4 w-4 mr-2" /> Email me my Ad Kit</>
                   )}
                 </Button>
               </div>
