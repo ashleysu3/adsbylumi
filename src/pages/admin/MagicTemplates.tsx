@@ -225,10 +225,24 @@ export default function AdminMagicTemplates() {
                   const attempt = r.result?.attempt ?? r.attempts;
                   return (
                     <Card key={r.id} className="overflow-hidden">
-                      <div className="aspect-square bg-muted flex items-center justify-center">
-                        {previewB64
-                          ? <img src={`data:image/png;base64,${previewB64}`} alt="preview" className="w-full h-full object-cover" />
-                          : <img src={r.reference_url} alt="ref" className="w-full h-full object-cover opacity-60" />}
+                      <div className="aspect-square bg-muted flex items-center justify-center relative overflow-hidden">
+                        {previewB64 ? (
+                          <img src={`data:image/png;base64,${previewB64}`} alt="preview" className="w-full h-full object-cover" />
+                        ) : tpl?.preview_url ? (
+                          <img src={tpl.preview_url} alt={tpl.name || ""} className="w-full h-full object-cover" />
+                        ) : tpl?.html ? (
+                          <div className="absolute inset-0 pointer-events-none" style={{ transform: "scale(0.28)", transformOrigin: "top left", width: "1080px", height: "1080px" }}>
+                            <iframe
+                              srcDoc={tpl.html}
+                              title={tpl.name || "preview"}
+                              sandbox="allow-same-origin"
+                              className="border-0"
+                              style={{ width: "1080px", height: "1080px" }}
+                            />
+                          </div>
+                        ) : (
+                          <img src={r.reference_url} alt="ref" className="w-full h-full object-cover opacity-60" />
+                        )}
                       </div>
                       <CardContent className="p-3 space-y-2">
                         <div className="flex items-start justify-between gap-2">
