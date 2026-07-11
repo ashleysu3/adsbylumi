@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
 
     const { data: brand, error: brandErr } = await supabaseAdmin
       .from('brands')
-      .select('name, lead_email, lead_name, ad_pack_image_url')
+      .select('name, lead_email, lead_name, ad_pack_image_url, ad_kit_token')
       .eq('id', brand_id)
       .maybeSingle();
     if (brandErr) throw brandErr;
@@ -44,13 +44,20 @@ Deno.serve(async (req) => {
     if (!brand.ad_pack_image_url) throw new Error('No ad pack image stored for this brand yet');
 
     const firstName = (brand.lead_name || '').trim().split(' ')[0] || 'there';
-    const subject = `${firstName}, your ad is ready 🎉`;
+    const subject = `${firstName}, your Ad Kit is ready 🎉`;
+
+    // Token link works on any device with no session (the kit page reads it
+    // via get-ad-kit). ?brand= fallback covers kits captured before tokens
+    // existed — same-session only, but better than a dead link.
+    const kitUrl = brand.ad_kit_token
+      ? `https://adsbylumi.com/your-ad-pack?kit=${brand.ad_kit_token}`
+      : `https://adsbylumi.com/your-ad-pack?brand=${brand_id}`;
 
     const { error: emailError } = await resend.emails.send({
       from: 'Lumi <hello@adsbylumi.com>',
       to: [brand.lead_email],
       subject,
-      html: buildAdPackEmailHtml(firstName, brand.name || 'your brand', brand.ad_pack_image_url, brand_id),
+      html: buildAdPackEmailHtml(firstName, brand.name || 'your brand', brand.ad_pack_image_url, kitUrl),
     });
 
     if (emailError) {
@@ -89,14 +96,14 @@ Deno.serve(async (req) => {
   }
 });
 
-function buildAdPackEmailHtml(firstName: string, brandName: string, imageUrl: string, brandId: string): string {
+function buildAdPackEmailHtml(firstName: string, brandName: string, imageUrl: string, kitUrl: string): string {
   return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your LUMI ad pack</title>
+  <title>Your LUMI Ad Kit</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700;800&display=swap');
   </style>
@@ -108,7 +115,7 @@ function buildAdPackEmailHtml(firstName: string, brandName: string, imageUrl: st
         <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);">
           <tr>
             <td style="background: linear-gradient(135deg, #F97316 0%, #EC4899 40%, #A78BFA 70%, #93C5FD 100%); padding: 45px 40px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 30px; font-weight: 800; font-family: 'Red Hat Display', sans-serif; letter-spacing: -0.5px;">Your ad is ready 🎉</h1>
+              <h1 style="color: #ffffff; margin: 0; font-size: 30px; font-weight: 800; font-family: 'Red Hat Display', sans-serif; letter-spacing: -0.5px;">Your Ad Kit is ready 🎉</h1>
               <p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 16px; font-weight: 500;">Built for ${brandName} in about a minute.</p>
             </td>
           </tr>
@@ -116,7 +123,7 @@ function buildAdPackEmailHtml(firstName: string, brandName: string, imageUrl: st
             <td style="padding: 40px 40px 20px 40px;">
               <p style="margin: 0; color: #111111; font-size: 18px; font-weight: 600; line-height: 1.5;">Hey ${firstName} 👋</p>
               <p style="margin: 16px 0 0 0; color: #4a5568; font-size: 15px; line-height: 1.8; font-weight: 400;">
-                Here's the real ad LUMI built for you — your colors, your voice, ready to run.
+                Here's a peek at the real ad LUMI built for you. Your full kit is waiting at your private link below — <strong>the plan</strong> (exactly what we'd set up in Ads Manager for you), <strong>the creative</strong> (your ad graphic, video, and talking-head script), and <strong>the words</strong> (ad copy built from your buyer psychology).
               </p>
             </td>
           </tr>
@@ -127,8 +134,8 @@ function buildAdPackEmailHtml(firstName: string, brandName: string, imageUrl: st
           </tr>
           <tr>
             <td style="padding: 5px 40px 35px 40px; text-align: center;">
-              <a href="https://adsbylumi.com/your-ad-pack?brand=${brandId}" style="display: inline-block; background: linear-gradient(135deg, #F97316 0%, #EC4899 50%, #A78BFA 100%); color: #ffffff; text-decoration: none; padding: 16px 36px; border-radius: 12px; font-size: 16px; font-weight: 700; font-family: 'Red Hat Display', sans-serif; box-shadow: 0 6px 20px rgba(236, 72, 153, 0.3); letter-spacing: 0.3px;">
-                See Your Ad &amp; Get 50% Off →
+              <a href="${kitUrl}" style="display: inline-block; background: linear-gradient(135deg, #F97316 0%, #EC4899 50%, #A78BFA 100%); color: #ffffff; text-decoration: none; padding: 16px 36px; border-radius: 12px; font-size: 16px; font-weight: 700; font-family: 'Red Hat Display', sans-serif; box-shadow: 0 6px 20px rgba(236, 72, 153, 0.3); letter-spacing: 0.3px;">
+                Open My Ad Kit →
               </a>
             </td>
           </tr>
@@ -136,7 +143,7 @@ function buildAdPackEmailHtml(firstName: string, brandName: string, imageUrl: st
             <td style="background: #FAF9F6; padding: 22px 40px; text-align: center; border-top: 1px solid #F5F3EE;">
               <p style="margin: 0; color: #a0aec0; font-size: 11px; line-height: 1.6;">
                 Lumi by Ads by Lumi · Meta Ads, Simplified<br/>
-                You're receiving this because you built an ad with LUMI and asked for a copy.
+                You're receiving this because you built an ad with LUMI and asked for your Ad Kit.
               </p>
             </td>
           </tr>
