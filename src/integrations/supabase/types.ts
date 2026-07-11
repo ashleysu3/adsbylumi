@@ -3423,6 +3423,36 @@ export type Database = {
         }
         Relationships: []
       }
+      template_stock_props: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          image_url: string
+          label: string
+          storage_path: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_url: string
+          label: string
+          storage_path?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string
+          label?: string
+          storage_path?: string | null
+        }
+        Relationships: []
+      }
       templates: {
         Row: {
           copy_slots: Json
