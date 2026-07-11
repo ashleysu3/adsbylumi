@@ -3914,6 +3914,7 @@ export type Database = {
         Returns: number
       }
       generate_referral_code: { Args: never; Returns: string }
+      get_ad_kit: { Args: { p_kit_token: string }; Returns: Json }
       get_meta_token: { Args: { p_brand_id: string }; Returns: string }
       get_my_partner_portal: { Args: never; Returns: Json }
       get_my_referral_summary: { Args: never; Returns: Json }
