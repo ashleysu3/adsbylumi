@@ -25,7 +25,8 @@ BEGIN
     'lead_name', b.lead_name,
     'ad_pack_image_url', b.ad_pack_image_url,
     'ad_kit', b.ad_kit,
-    'audience_psychology', b.audience_psychology
+    'audience_psychology', b.audience_psychology,
+    'target_audience', b.target_audience
   ) INTO v_kit
   FROM public.brands b
   WHERE b.ad_kit_token = p_kit_token;
