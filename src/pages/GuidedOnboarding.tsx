@@ -401,18 +401,41 @@ export default function GuidedOnboarding() {
         // Website changed → reset brand identity so old name/colors/etc don't bleed through.
         const placeholder = domainName(normalized);
         placeholderNameRef.current = placeholder;
-        await supabase.from("brands").update({
+        // NOTE: brand_colors/brand_fonts used to be in this update but those
+        // columns don't exist in the schema — PostgREST rejected the whole
+        // update with a 400, so none of this reset ever actually applied.
+        // Colors live in brand_kits, which extract-brand overwrites anyway.
+        const { error: resetErr } = await supabase.from("brands").update({
           website_url: normalized,
           name: placeholder,
-          brand_colors: null,
-          brand_fonts: null,
           value_proposition: null,
           target_audience: null,
           brand_voice: null,
           voice_profile: null,
           social_proof: null,
+          // audience_psychology carries onboarding answers keyed to the OLD
+          // site (onboarding_goal / onboarding_offer_url) — must not survive.
+          audience_psychology: null,
         }).eq("id", id);
-        row = { ...row, website_url: normalized, name: placeholder };
+        if (resetErr) console.warn("[onboarding] brand reset on website change failed", resetErr);
+        // Offers extracted from the old site would otherwise survive and
+        // recommend-strategy trusts them blindly — producing a strategy and
+        // ad copy about the previous business under the new brand's name.
+        // Archive rather than delete so nothing user-visible is destroyed.
+        const { error: offersErr } = await supabase
+          .from("offers")
+          .update({ archived: true, archived_at: new Date().toISOString() })
+          .eq("brand_id", id)
+          .eq("archived", false);
+        if (offersErr) console.warn("[onboarding] offer archive on website change failed", offersErr);
+        try {
+          localStorage.removeItem(`lumi_onboarding_goal_${id}`);
+          localStorage.removeItem(`lumi_onboarding_followers_intent_${id}`);
+          localStorage.removeItem(`lumi_onboarding_offer_url_${id}`);
+          localStorage.removeItem(`lumi_onboarding_offer_id_${id}`);
+          localStorage.removeItem(`lumi_onboarding_offer_hint_${id}`);
+        } catch { /* storage unavailable — non-blocking */ }
+        row = { ...row, website_url: normalized, name: placeholder, audience_psychology: null };
         setBrand(row);
       } else {
         placeholderNameRef.current = domainName(normalized);

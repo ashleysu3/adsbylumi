@@ -34,6 +34,42 @@ function luma(h: string): number {
   const b = parseInt(h.slice(5, 7), 16);
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 }
+// True when the kit contains at least one valid hex at all — extraction has
+// written *something*. Gates the retry loop: keep waiting only while the kit
+// is genuinely empty (extract-brand may still be running).
+function hasAnyColors(kitColors: any): boolean {
+  if (Array.isArray(kitColors)) return kitColors.some((h) => normalizeHex(h));
+  if (kitColors && typeof kitColors === "object") {
+    const o: any = kitColors;
+    return [
+      o.bg, o.background, o.ink, o.textPrimary, o.accent,
+      o.primary, o.pop, o.secondary, o.highlight, o.cream,
+    ].some((v) => normalizeHex(v));
+  }
+  return false;
+}
+
+// True when the kit has at least one color that will actually READ as a
+// brand color in the render — mid-luminance, same band toEngineColors uses
+// to pick accents. Extraction can "succeed" with a neutrals-only palette
+// (whites/creams/black — seen live with adsbylumi.com itself), which renders
+// visually identical to no branding at all. The caption must not claim
+// "your brand colors" in that case.
+function hasVividColors(kitColors: any): boolean {
+  const isVivid = (v: any) => {
+    const h = normalizeHex(v);
+    if (!h) return false;
+    const l = luma(h);
+    return l > 0.15 && l < 0.85;
+  };
+  if (Array.isArray(kitColors)) return kitColors.some(isVivid);
+  if (kitColors && typeof kitColors === "object") {
+    const o: any = kitColors;
+    return [o.accent, o.primary, o.pop, o.secondary, o.highlight].some(isVivid);
+  }
+  return false;
+}
+
 function toEngineColors(kitColors: any): EngineColors {
   if (kitColors && !Array.isArray(kitColors) && typeof kitColors === "object") {
     const o: any = kitColors;
@@ -128,6 +164,13 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const [images, setImages] = useState<RenderImage[]>([]);
   const [renderErr, setRenderErr] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
+  const [usedRealColors, setUsedRealColors] = useState(false);
+  // The palette actually driving the render, surfaced as tappable dots so a
+  // weak/wrong extraction is a ten-second fix in the moment — not homework
+  // on a page an anonymous onboarding visitor can't even reach yet.
+  const [palette, setPalette] = useState<EngineColors | null>(null);
+  const [paletteDirty, setPaletteDirty] = useState(false);
+  const [savingPalette, setSavingPalette] = useState(false);
 
   // Lead-magnet path: email this ad pack instead of (or before) paying.
   const [packFormOpen, setPackFormOpen] = useState(false);
@@ -308,6 +351,42 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
     [options, callRender],
   );
 
+  const updatePaletteColor = (key: keyof EngineColors, value: string) => {
+    const next = { ...(palette || engineColorsRef.current), [key]: value };
+    setPalette(next);
+    engineColorsRef.current = next;
+    setPaletteDirty(true);
+  };
+
+  const applyPalette = useCallback(async () => {
+    if (!palette) return;
+    setSavingPalette(true);
+    try {
+      // Persist first so every later render — the emailed ad pack, post-signup
+      // ads, the Style page — uses the user's corrected colors, not just this
+      // one preview.
+      const { data: userRes } = await supabase.auth.getUser();
+      const userId = userRes?.user?.id;
+      if (userId) {
+        const { error: kitErr } = await supabase
+          .from("brand_kits" as any)
+          .upsert(
+            { user_id: userId, brand_id: brandId, colors: palette as any },
+            { onConflict: "user_id,brand_id" },
+          );
+        if (kitErr) console.warn("[payoff-ad] palette persist failed", kitErr);
+      }
+      setUsedRealColors(true);
+      setPaletteDirty(false);
+      await rerenderWith(selectedIdx);
+    } catch (e: any) {
+      console.warn("[payoff-ad] palette apply failed", e);
+      toast.error("Couldn't update the colors — try again?");
+    } finally {
+      setSavingPalette(false);
+    }
+  }, [palette, brandId, rerenderWith, selectedIdx]);
+
   // Boot: fetch kit + photo, run recommend-strategy, compose 3 hooks, render first ad
   useEffect(() => {
     if (!brandId) return;
@@ -316,16 +395,33 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       try {
         setPhase("loading");
 
-        // 1) Brand kit
+        // 1) Brand kit. extract-brand runs fire-and-forget back in step 1 and
+        // nothing awaits it, so a fast visitor can get here before colors
+        // exist — retry for a bit rather than silently rendering the default
+        // palette under a caption that claims "your brand colors."
         setStatusLine("🎨 Loading your palette…");
-        const { data: kit } = await supabase
-          .from("brand_kits" as any)
-          .select("colors, fonts, logo_url")
-          .eq("brand_id", brandId)
-          .maybeSingle();
-        engineColorsRef.current = toEngineColors((kit as any)?.colors);
-        fontsRef.current = toFontsPayload((kit as any)?.fonts);
-        logoUrlRef.current = (kit as any)?.logo_url || undefined;
+        let kit: any = null;
+        for (let attempt = 0; attempt < 4; attempt++) {
+          if (attempt > 0) await new Promise((r) => setTimeout(r, 4000));
+          if (cancelled) return;
+          const { data, error } = await supabase
+            .from("brand_kits" as any)
+            .select("colors, fonts, logo_url")
+            .eq("brand_id", brandId)
+            .maybeSingle();
+          if (error) {
+            console.warn("[payoff-ad] brand_kits fetch failed", error);
+            continue;
+          }
+          kit = data;
+          if (hasAnyColors(kit?.colors)) break;
+        }
+        if (cancelled) return;
+        engineColorsRef.current = toEngineColors(kit?.colors);
+        fontsRef.current = toFontsPayload(kit?.fonts);
+        logoUrlRef.current = kit?.logo_url || undefined;
+        setUsedRealColors(hasVividColors(kit?.colors));
+        setPalette(engineColorsRef.current);
 
         // 2) Photo pick from brand_assets (harvested by harvest-brand-assets)
         let photoUrl: string | undefined;
@@ -684,11 +780,54 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> {statusLine}
               </span>
             ) : phase === "ready" ? (
-              <>
-                Rendered in {brand?.name || "your"} brand colors
-                {photoUrlRef.current ? ", with your photo" : ""}
-                .
-              </>
+              <span className="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5">
+                <span>
+                  {usedRealColors ? (
+                    <>
+                      Rendered in {brand?.name || "your"} brand colors
+                      {photoUrlRef.current ? ", with your photo" : ""}.
+                    </>
+                  ) : (
+                    <>These aren't quite your colors? Tap a dot to fix them —</>
+                  )}
+                </span>
+                {palette && (
+                  <span className="inline-flex items-center gap-1.5 align-middle">
+                    {(["accent", "pop", "highlight", "bg"] as (keyof EngineColors)[]).map((k) => (
+                      <label
+                        key={k}
+                        className="h-6 w-6 rounded-full border border-border shadow-sm cursor-pointer relative inline-block hover:scale-110 transition-transform"
+                        style={{ backgroundColor: palette[k] }}
+                        title={k === "bg" ? "Background color" : `${k.charAt(0).toUpperCase() + k.slice(1)} color`}
+                      >
+                        <input
+                          type="color"
+                          value={palette[k]}
+                          onChange={(e) => updatePaletteColor(k, e.target.value)}
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          aria-label={k === "bg" ? "Change background color" : `Change ${k} color`}
+                        />
+                      </label>
+                    ))}
+                    {paletteDirty && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={applyPalette}
+                        disabled={savingPalette || rendering}
+                        className="h-7 text-xs ml-1"
+                      >
+                        {savingPalette || rendering ? (
+                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        ) : (
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                        )}
+                        Update my ad
+                      </Button>
+                    )}
+                  </span>
+                )}
+              </span>
             ) : (
               <span className="text-destructive">{renderErr || "Something didn't line up."}</span>
             )}
