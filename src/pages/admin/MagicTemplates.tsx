@@ -245,6 +245,54 @@ export default function AdminMagicTemplates() {
         </Card>
 
         <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Stock props library</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Reusable images the builder can drop into templates (laptop mockups, person cutouts, hands, backgrounds). Give each a clear label — the AI picks by label when it matches the reference.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {stock.length > 0 && (
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {stock.map((a, i) => (
+                  <div key={i} className="flex items-center gap-2 border rounded p-2">
+                    <img src={a.url} alt={a.label} className="h-12 w-12 object-cover rounded bg-muted" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{a.label}</div>
+                      <div className="text-[10px] text-muted-foreground truncate">{a.type || "prop"} · {a.notes || ""}</div>
+                    </div>
+                    <Button size="icon" variant="ghost" onClick={() => removeStock(i)}><Trash2 className="h-3 w-3" /></Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="grid gap-3 md:grid-cols-4 items-end">
+              <div className="space-y-1">
+                <Label className="text-xs">Label</Label>
+                <Input value={stockDraft.label} onChange={(e) => setStockDraft({ ...stockDraft, label: e.target.value })} placeholder="laptop mockup" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Type</Label>
+                <Input value={stockDraft.type} onChange={(e) => setStockDraft({ ...stockDraft, type: e.target.value })} placeholder="mockup / cutout / bg" />
+              </div>
+              <div className="space-y-1 md:col-span-2">
+                <Label className="text-xs">Upload or paste URL</Label>
+                <div className="flex gap-2">
+                  <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadStockFile(e.target.files[0])} />
+                  <Input value={stockDraft.url} onChange={(e) => setStockDraft({ ...stockDraft, url: e.target.value })} placeholder="https://..." />
+                </div>
+              </div>
+              <div className="md:col-span-4 flex gap-2">
+                <Input value={stockDraft.notes} onChange={(e) => setStockDraft({ ...stockDraft, notes: e.target.value })} placeholder="Notes (transparent PNG, on white, etc.)" />
+                <Button onClick={addStock} disabled={stockSaving}>Add to library</Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+
+
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg">Build queue</CardTitle>
             <Button size="sm" variant="ghost" onClick={fetchRequests}><RefreshCw className="h-3 w-3 mr-1" />Refresh</Button>
