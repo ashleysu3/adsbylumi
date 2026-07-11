@@ -94,6 +94,17 @@ export default function GuidedOnboarding() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const addBrandMode = searchParams.get("mode") === "add-brand";
+  // Saving an Ad Kit stamps ?kit= onto THIS url (save-in-place, no redirect).
+  // If someone later lands here cold with that param — refresh, bookmark,
+  // shared link — their anonymous session is likely gone, so resolve it to
+  // the permanent token page instead of restarting onboarding. Captured at
+  // mount only: the in-session stamp must NOT bounce them away mid-flow.
+  const kitParamAtMountRef = useRef<string | null>(searchParams.get("kit"));
+  useEffect(() => {
+    const kitParam = kitParamAtMountRef.current;
+    if (kitParam) navigate(`/your-ad-pack?kit=${kitParam}`, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { refreshBrands, setActiveBrand } = useBrand();
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [step, setStep] = useState(1);
