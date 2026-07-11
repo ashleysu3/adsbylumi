@@ -8,91 +8,35 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const SAMPLE_PHOTO_URL =
+  "https://sqwjbndgighjtifijgws.supabase.co/storage/v1/object/public/email-assets/sample-headshot.png";
 
-const MAX_BATCH = 3;
-const MAX_ATTEMPTS = 3;
-const LOCK_STALE_MIN = 10;
+const CONTRACT = `You generate ONE self-contained HTML ad template for a render engine. Reproduce the LAYOUT and STYLE of the reference image — its composition, type hierarchy, shapes, photo placement, and any signature devices — but do NOT copy its exact text or photo. Follow this contract EXACTLY:
 
-// Pass 1: forensic analysis of the reference image
-const ANALYSIS_PROMPT = `You are a design director. Look at this ad reference image and describe EXACTLY what you see, as structured JSON. Do not invent — only describe what is visible.
-
-Return JSON with this shape:
-{
-  "layout": "one paragraph describing the overall composition, grid, where each block sits (top/middle/bottom, left/right), and vertical rhythm",
-  "background": { "type": "solid|gradient|photo|texture|color-block", "colors": ["hex or plain-english color name..."], "notes": "..." },
-  "typography": {
-    "headline": { "family": "serif|sans|display-serif|script|mono", "weight": "light|regular|medium|bold|black", "case": "upper|lower|title", "italic": true|false, "size": "small|medium|large|hero", "color": "..." },
-    "sub":      { "family": "...", "weight": "...", "case": "...", "italic": true|false, "size": "..." },
-    "eyebrow":  { "family": "...", "weight": "...", "case": "...", "notes": "e.g. tracked-out label above headline" }
-  },
-  "hierarchy": ["ordered list of text blocks from most to least prominent, with a short label for each"],
-  "signatureDevices": ["ghosted oversized word", "circular badge with rotating text", "hand-drawn arrow", "border/frame", "torn paper edge", "color-block panel behind photo", "brush stroke highlight", "diagonal divider", "polaroid", "sticker", "handwritten signature", "..."],
-  "photoTreatment": { "present": true|false, "shape": "rectangle|circle|blob|cutout|torn|polaroid", "position": "top|middle|bottom-left|right|center|behind-text|beside-text", "size": "small|medium|large|full-bleed", "subject": "person portrait|product|laptop mockup|hands|object|scene" },
-  "stockNeeded": ["from the provided STOCK library, list the labels that would BEST substitute the photo/prop shown — leave empty if none apply"],
-  "colorRoles": { "bg": "hex-ish", "ink": "hex-ish", "accent": "hex-ish", "pop": "hex-ish", "highlight": "hex-ish" },
-  "vibe": "3-6 word aesthetic descriptor (e.g. 'editorial magazine, cream + ink, high contrast')"
-}`;
-
-// Pass 2: build the HTML from the analysis + the reference (given both)
-const BUILD_CONTRACT = `You generate ONE self-contained HTML ad template for a render engine. You will be given (a) the reference image and (b) a forensic ANALYSIS of that image. Reproduce the LAYOUT, TYPE HIERARCHY, SIGNATURE DEVICES, PHOTO PLACEMENT, and VIBE described in the analysis as faithfully as possible. Do NOT copy the reference's exact text.
-
-FIDELITY RULES:
-- Match the composition described in analysis.layout — get the block positions right (top/middle/bottom, left/right, alignment).
-- Recreate every item in analysis.signatureDevices. If it says "ghosted oversized word", add one behind the copy at ~10-18% opacity, huge. If "circular badge", add a rotating-text or stamp badge. If "border/frame", add an inset frame. If "torn paper", use clip-path or SVG. If "color-block panel", add a solid block behind the photo/text.
-- Match analysis.typography exactly for family (serif vs sans vs display), weight, case, italic, and relative size. Use Google Fonts via @import when needed (Fraunces / Playfair / DM Serif for editorial serif, Poppins / Inter for sans, Caveat / Homemade Apple for script).
-- Match analysis.photoTreatment — shape (circle/blob/polaroid/cutout), position, and size. If shape is "cutout" or "blob", use border-radius or SVG clip-path so it looks intentional, not a raw rectangle.
-- Match the background type and dominant colors via CSS variables (never hardcode).
-
-STOCK ASSETS: If a stock asset from the provided library fits the photoTreatment.subject better than a generic photo (e.g. laptop mockup, person cutout), use its URL as the src of the <img data-photo>. Otherwise leave data-photo with an empty placeholder src="" — the render engine will fill it.
+CAPTURE THE REFERENCE'S DISTINCTIVE DEVICES if present:
+- An oversized faded/ghosted word in the background.
+- A portrait/photo region — match WHERE it sits and its size.
+- A frame or border, color-block panels, a divider line, or a circular badge/sticker.
+- A signature or small brand label.
+- The dominant background color of the reference -> map it to var(--bg) or var(--cream).
+- Serif vs sans choices and any italic kicker lines.
 
 HARD CONTRACT:
 1. One full HTML document, all CSS in one <style>, NO <script>, no external JS.
 2. COLORS: never hardcode brand colors. Use CSS variables only: var(--bg), var(--ink), var(--accent), var(--pop), var(--highlight), var(--cream), var(--cta).
 3. SIZES: stage is 100vw x 100vh. Provide CSS for BOTH body.feed (1080x1080) and body.story (1080x1920). Default <body class="feed">.
-4. TEXT SLOTS: each editable text element has an id; wrap the main text block in class="copy". Use ids from: eyebrow, headlinePre, headlineHL, headlinePost, accent, sub, cta, badgeTop, badgeBottom, sig, headline. Fill with realistic placeholder copy that matches the vibe.
-5. PHOTO: if analysis.photoTreatment.present is true, include <img ... data-photo> with the correct shape/position/size and object-fit:cover.
+4. TEXT SLOTS: each editable text element has an id; wrap the main text block in class="copy". Use ids from: eyebrow, headlinePre, headlineHL, headlinePost, accent, sub, cta, badgeTop, badgeBottom, sig, headline.
+5. PHOTO: if the design has a photo, add <img ... data-photo> with object-fit:cover. If no photo, needsPhoto=false and no data-photo element.
 6. STORY SAFE ZONES: in body.story keep ALL text within the middle band — nothing in top 14% or bottom 20%.
-7. Robust: no fixed heights that clip text; let .copy flow.
+7. FONTS: @import Poppins for sans; for serif use 'DisplayItalic' with a serif fallback, or @import Fraunces.
+8. Robust: no fixed heights that clip text; let .copy flow.
 
-Return ONLY JSON: {"name":"short-kebab-name","type":"single","needsPhoto":true|false,"copySlots":["..."],"styleHint":"one-line vibe","html":"<full html string>"}`;
+Return ONLY JSON with this exact shape: {"name":"short-kebab-name","type":"single","needsPhoto":true,"copySlots":["..."],"html":"<full html string>"}`;
 
-async function callAI(body: any, timeoutMs = 90_000) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-    const json = await resp.json().catch(() => ({} as any));
-    return { resp, json };
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
 
-function parseJSON(content: string) {
-  const cleaned = String(content || "")
-    .replace(/```json\s*/gi, "")
-    .replace(/```\s*/g, "")
-    .trim();
-  return JSON.parse(cleaned);
-}
-
-async function loadStockAssets(admin: any): Promise<Array<{ label: string; url: string; type?: string; notes?: string }>> {
-  const { data } = await admin
-    .from("site_settings")
-    .select("value")
-    .eq("key", "template_stock_assets")
-    .maybeSingle();
-  const list = (data?.value?.assets || data?.value || []) as any[];
-  return Array.isArray(list) ? list.filter((a) => a?.label && a?.url) : [];
-}
+const MAX_BATCH = 3;
+const MAX_ATTEMPTS = 3;
+const LOCK_STALE_MIN = 10;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -100,12 +44,14 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
   try {
+    // Reset stale building rows (lock older than LOCK_STALE_MIN minutes)
     await admin
       .from("template_requests")
       .update({ status: "pending", locked_at: null })
       .eq("status", "building")
       .lt("locked_at", new Date(Date.now() - LOCK_STALE_MIN * 60_000).toISOString());
 
+    // Claim a small batch of pending rows
     const { data: pending, error: pErr } = await admin
       .from("template_requests")
       .select("*")
@@ -126,35 +72,58 @@ Deno.serve(async (req) => {
       if (upd) claimed.push(upd);
     }
 
-    const stock = await loadStockAssets(admin);
-    const stockLibraryText = stock.length
-      ? "STOCK LIBRARY (labels the engine may reference in stockNeeded, and URLs the builder may use as <img data-photo src>):\n" +
-        stock.map((a) => `- ${a.label}${a.type ? ` [${a.type}]` : ""}: ${a.url}${a.notes ? ` — ${a.notes}` : ""}`).join("\n")
-      : "STOCK LIBRARY: (empty — no stock props available)";
+    // Load stock props catalog so the builder can reference them by label
+    const { data: propsRows } = await admin
+      .from("template_stock_props")
+      .select("label, description, image_url, storage_path")
+      .order("created_at", { ascending: false })
+      .limit(40);
+    const props = await Promise.all((propsRows || []).map(async (p: any) => {
+      let url = p.image_url;
+      if (p.storage_path) {
+        const { data: signed } = await admin.storage.from("template-props").createSignedUrl(p.storage_path, 60 * 60);
+        if (signed?.signedUrl) url = signed.signedUrl;
+      }
+      return { label: p.label, description: p.description, url };
+    }));
+    const propsBlock = props.length
+      ? "\n\nAVAILABLE STOCK PROPS — you may reference these when the reference image needs a mockup, cutout, or texture. Use the EXACT url in an <img data-photo src=\"URL\"> (or a decorative <img> if not the primary photo). Do NOT invent props that aren't listed.\n" +
+        props.map(p => `- ${p.label}${p.description ? ` (${p.description})` : ""}: ${p.url}`).join("\n")
+      : "";
 
     const results: any[] = [];
     for (const row of claimed) {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 90_000);
         const started = Date.now();
-
-        // ---------- PASS 1: forensic analysis ----------
-        const { resp: aResp, json: aJson } = await callAI({
-          model: "google/gemini-2.5-pro",
-          response_format: { type: "json_object" },
-          messages: [
-            { role: "system", content: ANALYSIS_PROMPT + "\n\n" + stockLibraryText },
-            {
-              role: "user",
-              content: [
-                { type: "text", text: "Analyze this reference. Notes from admin: " + (row.notes || "(none)") },
-                { type: "image_url", image_url: { url: row.reference_url } },
-              ],
-            },
-          ],
+        const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            response_format: { type: "json_object" },
+            messages: [
+              { role: "system", content: CONTRACT + propsBlock },
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: "Build a template matching this reference. Notes: " + (row.notes || "") },
+                  { type: "image_url", image_url: { url: row.reference_url } },
+                ],
+              },
+            ],
+          }),
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
+        const aiJson = await aiResp.json().catch(() => ({} as any));
 
-        if (!aResp.ok || aJson?.error) {
-          const errMsg = aJson?.error?.message || `analysis gateway ${aResp.status}`;
+        if (!aiResp.ok || aiJson?.error) {
+          const errMsg = aiJson?.error?.message || `ai gateway ${aiResp.status}`;
           const giveUp = (row.attempts || 0) >= MAX_ATTEMPTS;
           await admin
             .from("template_requests")
@@ -162,64 +131,22 @@ Deno.serve(async (req) => {
               status: giveUp ? "failed" : "pending",
               error: errMsg,
               locked_at: null,
-              result: { stage: "analysis", error: errMsg, status: aResp.status },
+              result: { error: errMsg, status: aiResp.status },
             })
             .eq("id", row.id);
-          results.push({ id: row.id, ok: false, error: errMsg, stage: "analysis" });
+          results.push({ id: row.id, ok: false, error: errMsg });
           continue;
         }
 
-        let analysis: any = null;
-        try {
-          analysis = parseJSON(aJson?.choices?.[0]?.message?.content);
-        } catch {
-          analysis = { raw: aJson?.choices?.[0]?.message?.content };
-        }
-
-        // ---------- PASS 2: build HTML ----------
-        const { resp: bResp, json: bJson } = await callAI({
-          model: "google/gemini-2.5-pro",
-          response_format: { type: "json_object" },
-          messages: [
-            { role: "system", content: BUILD_CONTRACT + "\n\n" + stockLibraryText },
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text:
-                    "Build the template. Admin notes: " +
-                    (row.notes || "(none)") +
-                    "\n\nANALYSIS OF THE REFERENCE:\n" +
-                    JSON.stringify(analysis, null, 2),
-                },
-                { type: "image_url", image_url: { url: row.reference_url } },
-              ],
-            },
-          ],
-        });
-
-        if (!bResp.ok || bJson?.error) {
-          const errMsg = bJson?.error?.message || `build gateway ${bResp.status}`;
-          const giveUp = (row.attempts || 0) >= MAX_ATTEMPTS;
-          await admin
-            .from("template_requests")
-            .update({
-              status: giveUp ? "failed" : "pending",
-              error: errMsg,
-              locked_at: null,
-              result: { stage: "build", error: errMsg, status: bResp.status, analysis },
-            })
-            .eq("id", row.id);
-          results.push({ id: row.id, ok: false, error: errMsg, stage: "build" });
-          continue;
-        }
-
-        const content = bJson?.choices?.[0]?.message?.content;
+        const content = aiJson?.choices?.[0]?.message?.content;
         let body: any = null;
         try {
-          body = parseJSON(content);
-        } catch {
+          const cleaned = String(content || "")
+            .replace(/```json\s*/gi, "")
+            .replace(/```\s*/g, "")
+            .trim();
+          body = JSON.parse(cleaned);
+        } catch (e) {
           const giveUp = (row.attempts || 0) >= MAX_ATTEMPTS;
           await admin
             .from("template_requests")
@@ -227,7 +154,7 @@ Deno.serve(async (req) => {
               status: giveUp ? "failed" : "pending",
               error: "model returned invalid JSON",
               locked_at: null,
-              result: { stage: "build", raw: String(content || "").slice(0, 2000), analysis },
+              result: { raw: String(content || "").slice(0, 2000) },
             })
             .eq("id", row.id);
           results.push({ id: row.id, ok: false, error: "invalid_json" });
@@ -236,10 +163,12 @@ Deno.serve(async (req) => {
 
         body.ok = typeof body?.html === "string" && body.html.length > 0;
         body.ms = Date.now() - started;
-        body.analysis = analysis;
 
+
+
+        // Success — create draft template if engine flagged ok
         let templateId: string | null = null;
-        if (body?.ok) {
+        if (body?.ok && typeof body?.html === "string" && body.html) {
           const { data: ins } = await admin
             .from("templates")
             .insert({
@@ -249,7 +178,7 @@ Deno.serve(async (req) => {
               copy_slots: body.copySlots || [],
               slide_slots: body.slideSlots || [],
               needs_photo: body.needsPhoto ?? true,
-              style_hint: body.styleHint || analysis?.vibe || null,
+              style_hint: body.styleHint || null,
               source_image_url: row.source_path || row.reference_url,
               status: "draft",
             })

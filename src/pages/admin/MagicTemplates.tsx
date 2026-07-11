@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wand2, Check, X, RefreshCw, Trash2 } from "lucide-react";
+import { Loader2, Wand2, Check, X, RefreshCw, Trash2, Plus, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 
 interface TemplateRow {
@@ -38,7 +38,15 @@ interface RequestRow {
   created_at: string;
 }
 
-interface StockAsset { label: string; url: string; type?: string; notes?: string }
+interface StockProp {
+  id: string;
+  label: string;
+  description: string | null;
+  image_url: string;
+  storage_path: string | null;
+  created_at: string;
+}
+
 
 export default function AdminMagicTemplates() {
   const navigate = useNavigate();
@@ -52,38 +60,12 @@ export default function AdminMagicTemplates() {
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Stock props library
-  const [stock, setStock] = useState<StockAsset[]>([]);
-  const [stockDraft, setStockDraft] = useState<StockAsset>({ label: "", url: "", type: "", notes: "" });
-  const [stockSaving, setStockSaving] = useState(false);
-
-  const fetchStock = async () => {
-    const { data } = await supabase.from("site_settings").select("value").eq("key", "template_stock_assets").maybeSingle();
-    const list = (data?.value as any)?.assets || (data?.value as any) || [];
-    setStock(Array.isArray(list) ? list : []);
-  };
-  const saveStock = async (next: StockAsset[]) => {
-    setStockSaving(true);
-    const { error } = await supabase.from("site_settings").upsert({ key: "template_stock_assets", value: { assets: next } as any });
-    setStockSaving(false);
-    if (error) return toast.error(error.message);
-    setStock(next);
-    toast.success("Stock library saved");
-  };
-  const addStock = () => {
-    if (!stockDraft.label || !stockDraft.url) return toast.error("Label and URL required");
-    saveStock([...stock, stockDraft]);
-    setStockDraft({ label: "", url: "", type: "", notes: "" });
-  };
-  const removeStock = (idx: number) => saveStock(stock.filter((_, i) => i !== idx));
-  const uploadStockFile = async (f: File) => {
-    const path = `stock-props/${Date.now()}-${f.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-    const { error } = await supabase.storage.from("email-assets").upload(path, f, { upsert: false });
-    if (error) return toast.error(error.message);
-    const { data } = supabase.storage.from("email-assets").getPublicUrl(path);
-    setStockDraft((d) => ({ ...d, url: data.publicUrl }));
-    toast.success("Uploaded — set a label then click Add");
-  };
+  // Stock props
+  const [props, setProps] = useState<StockProp[]>([]);
+  const [propFile, setPropFile] = useState<File | null>(null);
+  const [propLabel, setPropLabel] = useState("");
+  const [propDesc, setPropDesc] = useState("");
+  const [propBusy, setPropBusy] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -94,7 +76,6 @@ export default function AdminMagicTemplates() {
       if (!roleRow) { navigate("/"); return; }
       setAuthChecked(true);
       fetchAll();
-      fetchStock();
     })();
   }, [navigate]);
 
@@ -107,7 +88,7 @@ export default function AdminMagicTemplates() {
 
   const fetchAll = async () => {
     setLoading(true);
-    await Promise.all([fetchList(), fetchRequests()]);
+    await Promise.all([fetchList(), fetchRequests(), fetchProps()]);
     setLoading(false);
   };
 
@@ -124,6 +105,65 @@ export default function AdminMagicTemplates() {
     if (error) return;
     setRequests((data || []) as RequestRow[]);
   };
+
+  const signPropUrl = async (path: string) => {
+    const { data } = await supabase.storage.from("template-props").createSignedUrl(path, 60 * 60 * 24 * 30);
+    return data?.signedUrl || "";
+  };
+
+  const fetchProps = async () => {
+    const { data, error } = await supabase
+      .from("template_stock_props" as any).select("*").order("created_at", { ascending: false });
+    if (error) return;
+    const rows = (data || []) as any as StockProp[];
+    // Refresh signed URLs for storage-backed props
+    const withUrls = await Promise.all(rows.map(async (p) => {
+      if (p.storage_path) return { ...p, image_url: await signPropUrl(p.storage_path) };
+      return p;
+    }));
+    setProps(withUrls);
+  };
+
+  const handleAddProp = async () => {
+    if (!propLabel.trim()) { toast.error("Give the prop a short label"); return; }
+    if (!propFile) { toast.error("Upload an image"); return; }
+    setPropBusy(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const ext = propFile.name.split(".").pop() || "png";
+      const path = `${user!.id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("template-props").upload(path, propFile, { upsert: false });
+      if (upErr) throw upErr;
+      const url = await signPropUrl(path);
+      const { error: insErr } = await supabase.from("template_stock_props" as any).insert({
+        label: propLabel.trim(),
+        description: propDesc.trim() || null,
+        image_url: url,
+        storage_path: path,
+        created_by: user!.id,
+      });
+      if (insErr) throw insErr;
+      toast.success("Prop added");
+      setPropFile(null); setPropLabel(""); setPropDesc("");
+      fetchProps();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to add prop");
+    } finally {
+      setPropBusy(false);
+    }
+  };
+
+  const handleDeleteProp = async (p: StockProp) => {
+    if (!confirm(`Delete "${p.label}"?`)) return;
+    try {
+      if (p.storage_path) await supabase.storage.from("template-props").remove([p.storage_path]);
+      await supabase.from("template_stock_props" as any).delete().eq("id", p.id);
+      fetchProps();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to delete");
+    }
+  };
+
 
   const signUrl = async (path: string) => {
     const { data, error } = await supabase.storage.from("template-refs").createSignedUrl(path, 60 * 60 * 24 * 30);
@@ -247,46 +287,52 @@ export default function AdminMagicTemplates() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Stock props library</CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">
-              Reusable images the builder can drop into templates (laptop mockups, person cutouts, hands, backgrounds). Give each a clear label — the AI picks by label when it matches the reference.
+            <p className="text-xs text-muted-foreground">
+              Named assets (laptop mockups, cutout people, textures) the builder can drop into templates via <code>&lt;img data-photo src="..."&gt;</code>. Give each a clear label so the AI can reference it.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            {stock.length > 0 && (
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {stock.map((a, i) => (
-                  <div key={i} className="flex items-center gap-2 border rounded p-2">
-                    <img src={a.url} alt={a.label} className="h-12 w-12 object-cover rounded bg-muted" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">{a.label}</div>
-                      <div className="text-[10px] text-muted-foreground truncate">{a.type || "prop"} · {a.notes || ""}</div>
+            <div className="grid gap-3 md:grid-cols-4">
+              <div className="space-y-2">
+                <Label>Label</Label>
+                <Input value={propLabel} onChange={(e) => setPropLabel(e.target.value)} placeholder="laptop-mockup" />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Description (optional)</Label>
+                <Input value={propDesc} onChange={(e) => setPropDesc(e.target.value)} placeholder="Silver MacBook, 3/4 angle, transparent bg" />
+              </div>
+              <div className="space-y-2">
+                <Label>Image</Label>
+                <Input type="file" accept="image/*" onChange={(e) => setPropFile(e.target.files?.[0] || null)} />
+              </div>
+            </div>
+            <Button onClick={handleAddProp} disabled={propBusy || !propFile || !propLabel.trim()} size="sm">
+              {propBusy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+              Add prop
+            </Button>
+
+            {props.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center flex items-center justify-center gap-2">
+                <ImageIcon className="h-4 w-4" /> No props yet.
+              </p>
+            ) : (
+              <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+                {props.map((p) => (
+                  <Card key={p.id} className="overflow-hidden">
+                    <div className="aspect-square bg-muted">
+                      <img src={p.image_url} alt={p.label} className="w-full h-full object-contain" />
                     </div>
-                    <Button size="icon" variant="ghost" onClick={() => removeStock(i)}><Trash2 className="h-3 w-3" /></Button>
-                  </div>
+                    <CardContent className="p-2 space-y-1">
+                      <div className="text-xs font-medium truncate">{p.label}</div>
+                      {p.description && <div className="text-[10px] text-muted-foreground line-clamp-2">{p.description}</div>}
+                      <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => handleDeleteProp(p)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             )}
-            <div className="grid gap-3 md:grid-cols-4 items-end">
-              <div className="space-y-1">
-                <Label className="text-xs">Label</Label>
-                <Input value={stockDraft.label} onChange={(e) => setStockDraft({ ...stockDraft, label: e.target.value })} placeholder="laptop mockup" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Type</Label>
-                <Input value={stockDraft.type} onChange={(e) => setStockDraft({ ...stockDraft, type: e.target.value })} placeholder="mockup / cutout / bg" />
-              </div>
-              <div className="space-y-1 md:col-span-2">
-                <Label className="text-xs">Upload or paste URL</Label>
-                <div className="flex gap-2">
-                  <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadStockFile(e.target.files[0])} />
-                  <Input value={stockDraft.url} onChange={(e) => setStockDraft({ ...stockDraft, url: e.target.value })} placeholder="https://..." />
-                </div>
-              </div>
-              <div className="md:col-span-4 flex gap-2">
-                <Input value={stockDraft.notes} onChange={(e) => setStockDraft({ ...stockDraft, notes: e.target.value })} placeholder="Notes (transparent PNG, on white, etc.)" />
-                <Button onClick={addStock} disabled={stockSaving}>Add to library</Button>
-              </div>
-            </div>
           </CardContent>
         </Card>
 
