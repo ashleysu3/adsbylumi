@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, ArrowRight, RefreshCw, Sparkles, ChevronLeft, Target, Download, Mic, Film, Mail, Check } from "lucide-react";
+import { Loader2, ArrowRight, RefreshCw, Sparkles, ChevronLeft, Target, Download, Mic, Film, Mail, Check, ImagePlus, Type } from "lucide-react";
 import { toast } from "sonner";
 import type { RenderOverlay } from "@/lib/ffmpeg-renderer";
 import { getTestimonialQuotes, type TestimonialQuote } from "@/lib/social-proof";
@@ -129,6 +129,31 @@ function pathFromUrl(url: string): string | null {
 
 type RenderImage = { placement: string; width: number; height: number; base64: string; label?: string };
 
+// generate-creative-angles returns psychologyTrigger as a raw data path
+// ("pain_points.my ad results are inconsistent and I don't understand why…").
+// The buyer's-own-words part is the proof the angle isn't generic — show it as
+// a quote, with a short human label as the chip, never the raw key in caps.
+function parseAngleTrigger(trigger: unknown): { label: string; insight?: string } | null {
+  if (typeof trigger !== "string" || !trigger.trim()) return null;
+  const t = trigger.trim();
+  const labels: Record<string, string> = {
+    pain_points: "Pain point",
+    painpoints: "Pain point",
+    desires: "Desire",
+    objections: "Objection",
+    motivations: "Motivation",
+    hesitations: "Hesitation",
+    identity: "Identity",
+  };
+  const m = t.match(/^([a-z_ ]+)\.(.+)$/i);
+  if (m) {
+    const key = m[1].trim().toLowerCase().replace(/\s+/g, "_");
+    return { label: labels[key] || "Buyer psychology", insight: m[2].trim() };
+  }
+  if (t.length <= 40) return { label: t };
+  return { label: "Buyer psychology", insight: t };
+}
+
 const PHOTO_ROLES = new Set(["photo", "lifestyle", "full_body", "headshot"]);
 
 // When a photo is available, rotate across every photo-forward template
@@ -161,7 +186,17 @@ interface Props {
 
 export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const navigate = useNavigate();
-  const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
+  // loading → (choosing → building) → ready. "choosing" is the new two-tap
+  // moment — pick the angle, pick the photo — that turns "a machine made me
+  // an ad" into "I made this ad." If angle generation fails we skip straight
+  // to the old auto-build path; the user is never trapped behind a choice.
+  const [phase, setPhase] = useState<"loading" | "choosing" | "building" | "ready" | "error">("loading");
+  const [angles, setAngles] = useState<any[]>([]);
+  const [chosenAngleIdx, setChosenAngleIdx] = useState<number | null>(null);
+  const [photoCandidates, setPhotoCandidates] = useState<{ url: string; label?: string }[]>([]);
+  // index into photoCandidates, or -1 for "bold text, no photo"
+  const [chosenPhotoIdx, setChosenPhotoIdx] = useState<number>(-1);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [statusLine, setStatusLine] = useState<string>("Reading your brand kit…");
   const [images, setImages] = useState<RenderImage[]>([]);
   const [renderErr, setRenderErr] = useState<string | null>(null);
@@ -208,6 +243,18 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   // or if there's no stock footage on file yet.
   const userGoalRef = useRef<string>("get_leads");
   const offerHintRef = useRef<string>("");
+  // Context Phase B (buildAd) needs after the user makes their choices —
+  // captured by the boot effect so the build callback works from refs alone.
+  const onboardingGoalRef = useRef<string | null>(null);
+  const followersIntentRef = useRef<string | null>(null);
+  const offerUrlRef = useRef<string>("");
+  const offerRowRef = useRef<any>(null);
+  const chosenAngleRef = useRef<any>(null);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
   const bonusStartedRef = useRef(false);
   const [scriptBeats, setScriptBeats] = useState<ScriptBeat[] | null>(null);
   const [scriptState, setScriptState] = useState<"idle" | "loading" | "ready" | "error">("idle");
@@ -273,6 +320,17 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       const selectedOption = options[selectedIdx] || null;
       const adKit: Record<string, any> = {
         copy: selectedOption ? { template: templateRef.current, option: selectedOption } : null,
+        // Which angle they chose — the kit page can name it, and it's the
+        // seed data for knowing which angles actually convert.
+        angle: chosenAngleRef.current
+          ? {
+              name: chosenAngleRef.current.name || null,
+              psychologyTrigger:
+                chosenAngleRef.current.psychologyTrigger ||
+                chosenAngleRef.current.psychology_trigger ||
+                null,
+            }
+          : null,
         script: scriptBeats && scriptBeats.length ? scriptBeats : null,
         strategy: strategy
           ? {
@@ -437,6 +495,124 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
     }
   }, [palette, brandId, rerenderWith, selectedIdx]);
 
+  // Phase B of the build: compose the copy and render the ad. Runs either from
+  // the user's "Build my ad" click (with their chosen angle + photo) or straight
+  // from boot when angle generation came back empty — so the old auto-build path
+  // still exists and nobody gets trapped behind a choice screen with no options.
+  // Reads refs, not boot-effect locals, because a click handler can't see those.
+  const buildAd = useCallback(async (angle: any | null, photoUrl: string | undefined) => {
+    setPhase("building");
+    setRenderErr(null);
+    try {
+      chosenAngleRef.current = angle;
+      photoUrlRef.current = photoUrl;
+      const offerHint = offerHintRef.current;
+      const offerRowFull = offerRowRef.current;
+      const userGoal = userGoalRef.current;
+      const onboardingGoal = onboardingGoalRef.current;
+      const followersIntent = followersIntentRef.current;
+
+      // Template decision happens HERE, not in boot — it depends on whether the
+      // user picked a photo. Same priority order as before the choice flow:
+      // photo beats checklist beats bigtype.
+      templateRef.current = photoUrl
+        ? pickPhotoTemplate(brandId)
+        : (offerHint || offerRowFull?.url || offerUrlRef.current)
+          ? "checklist"
+          : "bigtype";
+      const template = templateRef.current;
+
+      setStatusLine("✍️ Writing your copy…");
+      // A goal-appropriate default CTA — still far better than always
+      // "Learn more" even when there's no offerHint, and compose-ad's own
+      // prompt (which explicitly matches the CTA to the real offer once
+      // offerContext is present) takes precedence over this when it can.
+      const ctaByGoal: Record<string, string> = {
+        booked_calls: "Book your call",
+        leads: "Send it to me",
+        sales: "Learn more",
+        followers: followersIntent === "dms" ? "DM me" : "Follow me",
+      };
+      const brief = {
+        template,
+        format: "single",
+        styleHint: template,
+        goal: userGoal,
+        concept: brand?.value_proposition || "",
+        keyMessage: brand?.value_proposition || "",
+        offer: offerHint || "",
+        cta: ctaByGoal[onboardingGoal || ""] || "Learn more",
+        brandName: brand?.name || "",
+      };
+      const composeRes = await supabase.functions.invoke("compose-ad", {
+        body: {
+          brief,
+          brandVoice: brand?.voice_profile || brand?.brand_voice || {},
+          count: 3,
+          audiencePsychology: brand?.audience_psychology || null,
+          // The chosen angle constrains every option compose-ad writes — this
+          // is the whole point of the choice screen. Omitted on the fallback
+          // auto path, where compose-ad picks its own angle like it always did.
+          angle: angle
+            ? {
+                name: angle.name,
+                description: angle.description,
+                psychologyTrigger: angle.psychologyTrigger || angle.psychology_trigger || undefined,
+              }
+            : undefined,
+          // compose-ad reads offer details from `offerContext`, not `brief.offer`
+          // (brief.offer was a no-op — always "" before this fix). Only sent
+          // when we actually have something, so buildContextBlock's own
+          // truthiness check correctly skips it otherwise. The real offers-row
+          // fields (name/price/page_goal/url) previously never traveled here —
+          // the copy was writing to a description with no idea what it costs
+          // or what the page asks people to do.
+          offerContext: offerRowFull || offerHint
+            ? {
+                name: offerRowFull?.name || undefined,
+                description: offerHint || offerRowFull?.description || undefined,
+                price: offerRowFull?.price_point || undefined,
+                type: offerRowFull?.page_goal || undefined,
+                url: offerRowFull?.url || undefined,
+              }
+            : undefined,
+          offerPsychology: offerPsychologyRef.current || undefined,
+          socialProofContext: socialProofRef.current
+            ? { quote: socialProofRef.current.text, attribution: socialProofRef.current.attribution }
+            : undefined,
+          brandContext: {
+            name: brand?.name,
+            idealClient: brand?.target_audience || brand?.value_proposition,
+            voiceNotes: brand?.voice_profile || brand?.brand_voice,
+          },
+        },
+      });
+      if (composeRes.error) throw composeRes.error;
+      if ((composeRes.data as any)?.error) throw new Error((composeRes.data as any).error);
+      const returned = ((composeRes.data as any)?.options || []) as any[];
+      if (!mountedRef.current) return;
+      if (!returned.length) throw new Error("No copy options returned");
+      setOptions(returned);
+      setSelectedIdx(0);
+
+      setStatusLine("🖼️ Rendering your first ad…");
+      const imgs = await callRender(returned[0]);
+      if (!mountedRef.current) return;
+      setImages(imgs);
+      setPhase("ready");
+      // Once per brand per browser session — the payoff moment is the
+      // key retargeting signal (people who saw their ad and left).
+      trackLumiEventOnce(`adgen_${brandId}`, "AdGenerated");
+    } catch (e: any) {
+      if (!mountedRef.current) return;
+      console.error("[payoff-ad] build failed", e);
+      setRenderErr(e?.message || "Something didn't line up");
+      setPhase("error");
+    }
+  }, [brandId, brand, callRender]);
+  const buildAdRef = useRef(buildAd);
+  buildAdRef.current = buildAd;
+
   // Boot: fetch kit + photo, run recommend-strategy, compose 3 hooks, render first ad
   useEffect(() => {
     if (!brandId) return;
@@ -473,8 +649,10 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         setUsedRealColors(hasVividColors(kit?.colors));
         setPalette(engineColorsRef.current);
 
-        // 2) Photo pick from brand_assets (harvested by harvest-brand-assets)
-        let photoUrl: string | undefined;
+        // 2) Photo candidates from brand_assets (harvested by harvest-brand-assets).
+        // Top 3 by the same role priority as before — the user picks one (or
+        // uploads their own, or goes bold-text) instead of us guessing.
+        let candidates: { url: string; label?: string }[] = [];
         try {
           const { data: rows } = await supabase
             .from("brand_assets" as any)
@@ -482,28 +660,32 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             .eq("brand_id", brandId)
             .order("created_at", { ascending: false });
           const kept = ((rows || []) as any[]).filter((r) => r.kept !== false);
-          // Priority: full_body, lifestyle, photo, headshot, then anything image-like left.
           const priority = ["full_body", "lifestyle", "photo", "headshot"];
-          let chosen: any = null;
+          const ranked: any[] = [];
           for (const p of priority) {
-            chosen = kept.find((r) => r.role === p);
-            if (chosen) break;
+            for (const r of kept) if (r.role === p && !ranked.includes(r)) ranked.push(r);
           }
-          if (!chosen) chosen = kept.find((r) => PHOTO_ROLES.has(r.role));
-          if (chosen) {
-            const p = pathFromUrl(chosen.url);
+          for (const r of kept) if (PHOTO_ROLES.has(r.role) && !ranked.includes(r)) ranked.push(r);
+          for (const r of ranked.slice(0, 3)) {
+            const p = pathFromUrl(r.url);
             if (p) {
               const { data: s } = await supabase.storage
                 .from("brand-assets")
                 .createSignedUrl(p, 60 * 60);
-              photoUrl = s?.signedUrl || chosen.url;
+              candidates.push({ url: s?.signedUrl || r.url });
             } else {
-              photoUrl = chosen.url;
+              candidates.push({ url: r.url });
             }
           }
         } catch {
-          /* brand_assets may not exist; keep photoUrl undefined */
+          /* brand_assets may not exist; keep candidates empty */
         }
+        if (cancelled) return;
+        setPhotoCandidates(candidates);
+        setChosenPhotoIdx(candidates.length ? 0 : -1);
+        // The auto path (angle generation unavailable) uses the best candidate,
+        // same behavior as before this screen learned to ask.
+        const photoUrl: string | undefined = candidates[0]?.url;
         photoUrlRef.current = photoUrl;
 
         // 3) Goal + offer — read before the template decision below, since a
@@ -529,6 +711,8 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           ? (followersIntent === "dms" ? "dm_leads" : "grow_social")
           : (onboardingGoal ? (goalMap[onboardingGoal] || "get_leads") : "get_leads");
         userGoalRef.current = userGoal;
+        onboardingGoalRef.current = onboardingGoal;
+        followersIntentRef.current = followersIntent;
 
         // A real `offers` row created from onboarding's "give us a link"
         // question (booked_calls/leads/sales goals) — extract-offer-info
@@ -547,6 +731,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           ? localStorage.getItem(`lumi_onboarding_offer_url_${brandId}`)
           : null) ||
           ((brand?.audience_psychology as any)?.onboarding_offer_url ?? "");
+        offerUrlRef.current = offerUrl;
 
         // The real offer's description grounds the copy — the modern
         // replacement for the old free-text "what do they get" hint, which no
@@ -585,11 +770,8 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         // headline/body — it just isn't the visual layout anymore.
         const testimonials = getTestimonialQuotes(brand?.social_proof);
         socialProofRef.current = testimonials[0] || null;
-        templateRef.current = photoUrl
-          ? pickPhotoTemplate(brandId)
-          : (offerHint || offerUrl)
-            ? "checklist"
-            : "bigtype";
+        // Template decision moved into buildAd — it depends on the PHOTO the
+        // user picks, which hasn't happened yet at this point in the flow.
 
         // 4) Ground the copy in this specific offer, not just an abstract goal —
         // run alongside strategy recommendation since neither depends on the other.
@@ -606,89 +788,66 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
               })
             : Promise.resolve(null),
         ]);
+        let strategyLocal: any = null;
         if (!cancelled && strategyResult.status === "fulfilled" && strategyResult.value) {
           const recData = strategyResult.value.data;
           const s = (recData as any)?.strategy ?? recData ?? null;
-          if (s && !((recData as any)?.pending)) setStrategy(s);
+          if (s && !((recData as any)?.pending)) { setStrategy(s); strategyLocal = s; }
         }
         if (offerPsychologyResult.status === "fulfilled" && offerPsychologyResult.value) {
           offerPsychologyRef.current = (offerPsychologyResult.value.data as any)?.offer_psychology || null;
         }
+        offerRowRef.current = offerRowFull;
 
-        // 5) Compose 3 hook options
-        setStatusLine("✍️ Writing three hook angles…");
-        const template = templateRef.current;
-        // A goal-appropriate default CTA — still far better than always
-        // "Learn more" even when there's no offerHint, and compose-ad's own
-        // prompt (which explicitly matches the CTA to the real offer once
-        // offerContext is present) takes precedence over this when it can.
-        const ctaByGoal: Record<string, string> = {
-          booked_calls: "Book your call",
-          leads: "Send it to me",
-          sales: "Learn more",
-          followers: followersIntent === "dms" ? "DM me" : "Follow me",
-        };
-        const brief = {
-          template,
-          format: "single",
-          styleHint: template,
-          goal: userGoal,
-          concept: brand?.value_proposition || "",
-          keyMessage: brand?.value_proposition || "",
-          offer: offerHint || "",
-          cta: ctaByGoal[onboardingGoal || ""] || "Learn more",
-          brandName: brand?.name || "",
-        };
-        const composeRes = await supabase.functions.invoke("compose-ad", {
-          body: {
-            brief,
-            brandVoice: brand?.voice_profile || brand?.brand_voice || {},
-            count: 3,
-            audiencePsychology: brand?.audience_psychology || null,
-            // compose-ad reads offer details from `offerContext`, not `brief.offer`
-            // (brief.offer was a no-op — always "" before this fix). Only sent
-            // when we actually have something, so buildContextBlock's own
-            // truthiness check correctly skips it otherwise. The real offers-row
-            // fields (name/price/page_goal/url) previously never traveled here —
-            // the copy was writing to a description with no idea what it costs
-            // or what the page asks people to do.
-            offerContext: offerRowFull || offerHint
-              ? {
-                  name: offerRowFull?.name || undefined,
-                  description: offerHint || offerRowFull?.description || undefined,
-                  price: offerRowFull?.price_point || undefined,
-                  type: offerRowFull?.page_goal || undefined,
-                  url: offerRowFull?.url || undefined,
-                }
-              : undefined,
-            offerPsychology: offerPsychologyRef.current || undefined,
-            socialProofContext: socialProofRef.current
-              ? { quote: socialProofRef.current.text, attribution: socialProofRef.current.attribution }
-              : undefined,
-            brandContext: {
-              name: brand?.name,
-              idealClient: brand?.target_audience || brand?.value_proposition,
-              voiceNotes: brand?.voice_profile || brand?.brand_voice,
+        // 5) Three angles for the user to choose from — generate-creative-angles
+        // is the same engine Creative Studio uses (copywriting frameworks +
+        // awareness levels), grounded in the audience + offer psychology that
+        // just resolved. The user picking the angle beats us guessing: they know
+        // which conversation their buyers are actually having.
+        setStatusLine("🧠 Finding your three strongest angles…");
+        let generatedAngles: any[] = [];
+        try {
+          const objectiveByGoal: Record<string, string> = {
+            get_sales: "sales",
+            get_leads: "leads",
+            book_calls: "leads",
+            dm_leads: "engagement",
+            grow_social: "awareness",
+          };
+          const { data: angleData, error: angleErr } = await supabase.functions.invoke(
+            "generate-creative-angles",
+            {
+              body: {
+                brandId,
+                offerId: offerId || undefined,
+                brandName: brand?.name || "",
+                audiencePsychology: brand?.audience_psychology || null,
+                offerAudiencePsychology: offerPsychologyRef.current || undefined,
+                offerData: offerRowFull || (offerHint ? { description: offerHint } : undefined),
+                strategyData: strategyLocal || undefined,
+                maxAngles: 3,
+                campaignObjective: objectiveByGoal[userGoal] || "leads",
+              },
             },
-          },
-        });
-        if (composeRes.error) throw composeRes.error;
-        if ((composeRes.data as any)?.error) throw new Error((composeRes.data as any).error);
-        const returned = ((composeRes.data as any)?.options || []) as any[];
+          );
+          if (!angleErr && !(angleData as any)?.error) {
+            generatedAngles = (((angleData as any)?.angles || []) as any[]).slice(0, 3);
+          }
+        } catch {
+          /* fall through to the auto build — angles are an upgrade, not a gate */
+        }
         if (cancelled) return;
-        if (!returned.length) throw new Error("No copy options returned");
-        setOptions(returned);
-        setSelectedIdx(0);
 
-        // 5) Render first ad
-        setStatusLine("🖼️ Rendering your first ad…");
-        const imgs = await callRender(returned[0]);
-        if (cancelled) return;
-        setImages(imgs);
-        setPhase("ready");
-        // Once per brand per browser session — the payoff moment is the
-        // key retargeting signal (people who saw their ad and left).
-        trackLumiEventOnce(`adgen_${brandId}`, "AdGenerated");
+        if (generatedAngles.length >= 2) {
+          setAngles(generatedAngles);
+          setChosenAngleIdx(0);
+          setPhase("choosing");
+          return; // the user's "Build my ad" click calls buildAd from here
+        }
+
+        // Angle generation unavailable or too thin to be a real choice —
+        // auto-build exactly like the pre-choice flow did.
+        await buildAdRef.current(null, photoUrlRef.current);
       } catch (e: any) {
         if (cancelled) return;
         console.error("[payoff-ad] boot failed", e);
@@ -855,6 +1014,53 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
     await rerenderWith(idx);
   };
 
+  // Upload a photo from the choice screen. Same storage path + brand_assets
+  // row as BrandImageLibrary, so re-runs and post-signup renders see it too —
+  // the upload becomes a permanent brand asset, not a one-off.
+  const uploadFileInputRef = useRef<HTMLInputElement | null>(null);
+  const uploadChoicePhoto = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    setUploadingPhoto(true);
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      const userId = u.user?.id;
+      if (!userId) throw new Error("Not signed in");
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${userId}/${brandId}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("brand-assets")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      // Store the public-style URL like BrandImageLibrary does — the boot's
+      // candidate loader derives the storage path back out of it to re-sign.
+      const { data: pub } = supabase.storage.from("brand-assets").getPublicUrl(path);
+      await supabase
+        .from("brand_assets" as any)
+        .insert({ user_id: userId, brand_id: brandId, url: pub.publicUrl, source_url: null, role: "photo" });
+      // Render with a signed URL — the bucket is private for anonymous sessions.
+      const { data: s } = await supabase.storage.from("brand-assets").createSignedUrl(path, 60 * 60);
+      if (!s?.signedUrl) throw new Error("Couldn't read the upload back");
+      setPhotoCandidates((prev) => {
+        const next = [{ url: s.signedUrl, label: "Your upload" }, ...prev].slice(0, 4);
+        return next;
+      });
+      setChosenPhotoIdx(0);
+    } catch (e: any) {
+      console.warn("[payoff-ad] photo upload failed", e);
+      toast.error(e?.message || "Upload didn't take — try another photo?");
+    } finally {
+      setUploadingPhoto(false);
+      if (uploadFileInputRef.current) uploadFileInputRef.current.value = "";
+    }
+  };
+
+  const confirmChoices = () => {
+    const angle = chosenAngleIdx !== null ? angles[chosenAngleIdx] || null : null;
+    const photoUrl = chosenPhotoIdx >= 0 ? photoCandidates[chosenPhotoIdx]?.url : undefined;
+    void buildAd(angle, photoUrl);
+  };
+
   const template = templateRef.current;
   const heroImage = images[0];
 
@@ -869,6 +1075,8 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
             {phase === "ready" ? (
               <>Meet your first ad.</>
+            ) : phase === "choosing" ? (
+              <>Pick your angle.</>
             ) : phase === "error" ? (
               <>Almost — one more try?</>
             ) : (
@@ -876,9 +1084,13 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             )}
           </h1>
           <div className="min-h-[24px] text-sm text-muted-foreground">
-            {phase === "loading" ? (
+            {phase === "loading" || phase === "building" ? (
               <span className="inline-flex items-center gap-2 animate-fade-in">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> {statusLine}
+              </span>
+            ) : phase === "choosing" ? (
+              <span className="animate-fade-in">
+                Three ways into your buyer's head — you know them best.
               </span>
             ) : phase === "ready" ? (
               <span className="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5">
@@ -935,7 +1147,142 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           </div>
         </div>
 
+        {/* Choose your angle + photo — the build waits on this. The user knows
+            which conversation their buyers are having better than we do. */}
+        {phase === "choosing" && (
+          <div className="space-y-5 animate-fade-in">
+            <div className="rounded-3xl border bg-card shadow-sm p-4 sm:p-6 space-y-3">
+              <div className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
+                The angle
+              </div>
+              <div className="grid gap-2">
+                {angles.map((a, i) => {
+                  const active = i === chosenAngleIdx;
+                  const trig = parseAngleTrigger(a.psychologyTrigger || a.psychology_trigger);
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setChosenAngleIdx(i)}
+                      className={
+                        "text-left rounded-2xl border p-4 transition " +
+                        (active
+                          ? "border-transparent ring-2 ring-pink-500/70 bg-muted/40 shadow-sm"
+                          : "border-border hover:bg-muted/40")
+                      }
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold">{a.name}</div>
+                          {a.description && (
+                            <p className="text-xs text-muted-foreground mt-1 leading-snug">
+                              {a.description}
+                            </p>
+                          )}
+                        </div>
+                        {active && <Check className="h-4 w-4 shrink-0 text-pink-500 mt-0.5" />}
+                      </div>
+                      {trig && (
+                        <div className="mt-2.5 flex items-start gap-2">
+                          <span className="shrink-0 text-[10px] uppercase tracking-wide font-semibold rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+                            {trig.label}
+                          </span>
+                          {trig.insight && (
+                            <p className="text-xs italic text-muted-foreground leading-snug">
+                              “{trig.insight}”
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rounded-3xl border bg-card shadow-sm p-4 sm:p-6 space-y-3">
+              <div className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
+                The visual
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {photoCandidates.map((c, i) => {
+                  const active = chosenPhotoIdx === i;
+                  return (
+                    <button
+                      key={`${i}-${c.url}`}
+                      type="button"
+                      onClick={() => setChosenPhotoIdx(i)}
+                      className={
+                        "relative h-24 w-24 rounded-2xl overflow-hidden border transition " +
+                        (active ? "ring-2 ring-pink-500/70 border-transparent" : "border-border hover:opacity-90")
+                      }
+                    >
+                      <img
+                        src={c.url}
+                        alt={c.label || `Photo option ${i + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                      {active && (
+                        <span className="absolute top-1 right-1 h-5 w-5 rounded-full bg-pink-500 text-white flex items-center justify-center">
+                          <Check className="h-3 w-3" />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => uploadFileInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="h-24 w-24 rounded-2xl border border-dashed border-border hover:bg-muted/40 transition flex flex-col items-center justify-center gap-1 text-muted-foreground"
+                >
+                  {uploadingPhoto ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <ImagePlus className="h-5 w-5" />
+                  )}
+                  <span className="text-[10px] font-medium">Upload</span>
+                </button>
+                <input
+                  ref={uploadFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => uploadChoicePhoto(e.target.files)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setChosenPhotoIdx(-1)}
+                  className={
+                    "h-24 w-24 rounded-2xl border transition flex flex-col items-center justify-center gap-1 " +
+                    (chosenPhotoIdx === -1
+                      ? "ring-2 ring-pink-500/70 border-transparent bg-muted/40 text-foreground"
+                      : "border-border hover:bg-muted/40 text-muted-foreground")
+                  }
+                >
+                  <Type className="h-5 w-5" />
+                  <span className="text-[10px] font-medium">Bold text</span>
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {photoCandidates.length
+                  ? "Photos pulled from your site — or upload your own, or go bold text-only."
+                  : "Upload a photo of you or your work — or go bold text-only. Both convert."}
+              </p>
+            </div>
+
+            <Button
+              onClick={confirmChoices}
+              disabled={chosenAngleIdx === null || uploadingPhoto}
+              className="w-full h-12 text-base font-semibold rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity shadow-lg shadow-pink-500/20 disabled:opacity-60"
+            >
+              Build my ad <ArrowRight className="h-5 w-5 ml-2" />
+            </Button>
+          </div>
+        )}
+
         {/* Ad hero */}
+        {phase !== "choosing" && (
         <div className="rounded-3xl border bg-card shadow-sm p-4 sm:p-6">
           <div
             className="relative mx-auto rounded-2xl overflow-hidden bg-muted"
@@ -956,7 +1303,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                {phase === "loading" ? (
+                {phase === "loading" || phase === "building" ? (
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 ) : (
                   <span className="text-sm text-muted-foreground">
@@ -1012,6 +1359,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             </div>
           )}
         </div>
+        )}
 
         {/* Game plan strip (shared ad-kit component, compact variant) */}
         {strategy && <GamePlanCard strategy={strategy} variant="compact" />}
@@ -1041,6 +1389,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           <Button variant="ghost" onClick={onBack} className="sm:w-auto">
             <ChevronLeft className="h-4 w-4 mr-1" /> Back
           </Button>
+          {phase !== "choosing" && (
           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
             <Button
               variant="outline"
@@ -1059,6 +1408,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
               Get 50% off to launch this <ArrowRight className="h-5 w-5 ml-2" />
             </Button>
           </div>
+          )}
         </div>
 
         {/* Lead magnet: email this pack instead of paying right now */}
