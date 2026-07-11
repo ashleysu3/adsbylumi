@@ -94,6 +94,7 @@ export default function AdminMagicTemplates() {
       if (!roleRow) { navigate("/"); return; }
       setAuthChecked(true);
       fetchAll();
+      fetchStock();
     })();
   }, [navigate]);
 
