@@ -285,6 +285,60 @@ export default function AdminMagicTemplates() {
         </Card>
 
         <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Stock props library</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Named assets (laptop mockups, cutout people, textures) the builder can drop into templates via <code>&lt;img data-photo src="..."&gt;</code>. Give each a clear label so the AI can reference it.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-4">
+              <div className="space-y-2">
+                <Label>Label</Label>
+                <Input value={propLabel} onChange={(e) => setPropLabel(e.target.value)} placeholder="laptop-mockup" />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Description (optional)</Label>
+                <Input value={propDesc} onChange={(e) => setPropDesc(e.target.value)} placeholder="Silver MacBook, 3/4 angle, transparent bg" />
+              </div>
+              <div className="space-y-2">
+                <Label>Image</Label>
+                <Input type="file" accept="image/*" onChange={(e) => setPropFile(e.target.files?.[0] || null)} />
+              </div>
+            </div>
+            <Button onClick={handleAddProp} disabled={propBusy || !propFile || !propLabel.trim()} size="sm">
+              {propBusy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+              Add prop
+            </Button>
+
+            {props.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center flex items-center justify-center gap-2">
+                <ImageIcon className="h-4 w-4" /> No props yet.
+              </p>
+            ) : (
+              <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+                {props.map((p) => (
+                  <Card key={p.id} className="overflow-hidden">
+                    <div className="aspect-square bg-muted">
+                      <img src={p.image_url} alt={p.label} className="w-full h-full object-contain" />
+                    </div>
+                    <CardContent className="p-2 space-y-1">
+                      <div className="text-xs font-medium truncate">{p.label}</div>
+                      {p.description && <div className="text-[10px] text-muted-foreground line-clamp-2">{p.description}</div>}
+                      <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => handleDeleteProp(p)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+
+
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg">Build queue</CardTitle>
             <Button size="sm" variant="ghost" onClick={fetchRequests}><RefreshCw className="h-3 w-3 mr-1" />Refresh</Button>
