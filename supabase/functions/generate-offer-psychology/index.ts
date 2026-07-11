@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireAuthedUser } from "../_shared/check-subscription.ts";
+import { firecrawlScrape } from "../_shared/scrape.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -112,7 +113,15 @@ serve(async (req) => {
       });
     }
 
-    const pageText = url && /^https?:\/\//i.test(url) ? await fetchPageText(url) : "";
+    // Firecrawl first (renders JS sites — most coach/creator sales pages are
+    // client-rendered and come back empty from a raw fetch), raw fetch as the
+    // no-API-key / Firecrawl-down fallback.
+    let pageText = "";
+    if (url && /^https?:\/\//i.test(url)) {
+      const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+      if (FIRECRAWL_API_KEY) pageText = await firecrawlScrape(url, FIRECRAWL_API_KEY);
+      if (!pageText || pageText.length < 200) pageText = await fetchPageText(url);
+    }
 
     const audienceContext = JSON.stringify(
       {

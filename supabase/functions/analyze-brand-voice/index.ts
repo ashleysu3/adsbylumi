@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.83.0";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { firecrawlScrape, fetchInstagramCaptions } from "../_shared/scrape.ts";
 
 function json(payload: Record<string, unknown>, cors: Record<string, string>, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -56,41 +57,8 @@ async function fetchWebsiteText(websiteUrl: string): Promise<string> {
   }
 }
 
-async function firecrawlScrape(url: string, apiKey: string): Promise<string> {
-  try {
-    const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true }),
-    });
-    const data = await res.json().catch(() => null);
-    const md: string | undefined = data?.data?.markdown || data?.markdown;
-    return md && md.length > 50 ? md.slice(0, 8000) : "";
-  } catch {
-    return "";
-  }
-}
-
-async function fetchInstagramCaptions(handle: string, apiKey: string): Promise<string> {
-  const clean = handle.replace(/^@/, "").trim();
-  if (!clean) return "";
-  try {
-    const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url: `https://www.instagram.com/${clean}/`,
-        formats: ["markdown"],
-        onlyMainContent: true,
-      }),
-    });
-    const data = await res.json().catch(() => null);
-    const md: string | undefined = data?.data?.markdown || data?.markdown;
-    return md && md.length > 20 ? md.slice(0, 5000) : "";
-  } catch {
-    return "";
-  }
-}
+// firecrawlScrape + fetchInstagramCaptions moved to _shared/scrape.ts so
+// generate-audience-psychology can use the same sources.
 
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
