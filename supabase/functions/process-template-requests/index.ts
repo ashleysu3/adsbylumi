@@ -72,6 +72,25 @@ Deno.serve(async (req) => {
       if (upd) claimed.push(upd);
     }
 
+    // Load stock props catalog so the builder can reference them by label
+    const { data: propsRows } = await admin
+      .from("template_stock_props")
+      .select("label, description, image_url, storage_path")
+      .order("created_at", { ascending: false })
+      .limit(40);
+    const props = await Promise.all((propsRows || []).map(async (p: any) => {
+      let url = p.image_url;
+      if (p.storage_path) {
+        const { data: signed } = await admin.storage.from("template-props").createSignedUrl(p.storage_path, 60 * 60);
+        if (signed?.signedUrl) url = signed.signedUrl;
+      }
+      return { label: p.label, description: p.description, url };
+    }));
+    const propsBlock = props.length
+      ? "\n\nAVAILABLE STOCK PROPS — you may reference these when the reference image needs a mockup, cutout, or texture. Use the EXACT url in an <img data-photo src=\"URL\"> (or a decorative <img> if not the primary photo). Do NOT invent props that aren't listed.\n" +
+        props.map(p => `- ${p.label}${p.description ? ` (${p.description})` : ""}: ${p.url}`).join("\n")
+      : "";
+
     const results: any[] = [];
     for (const row of claimed) {
       try {
@@ -88,7 +107,7 @@ Deno.serve(async (req) => {
             model: "google/gemini-2.5-flash",
             response_format: { type: "json_object" },
             messages: [
-              { role: "system", content: CONTRACT },
+              { role: "system", content: CONTRACT + propsBlock },
               {
                 role: "user",
                 content: [
