@@ -549,7 +549,11 @@ export default function GuidedOnboarding() {
 
       // Fire all extractors IN PARALLEL — total wait ≈ slowest one, not the sum.
       // Each one settles its own reveal flag independently so cards pop in as they arrive.
-      const pVoice = supabase.functions.invoke("analyze-brand-voice", { body: { brandId: brandIdLocal } })
+      // The Instagram handle (optional capture-bar field) feeds voice AND audience
+      // psychology — captions are often closer to how a brand talks to its people
+      // than the website is. Previously collected and never passed anywhere.
+      const igForExtractors = instagramHandle.trim().replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/\/+$/, "") || undefined;
+      const pVoice = supabase.functions.invoke("analyze-brand-voice", { body: { brandId: brandIdLocal, instagramHandle: igForExtractors } })
         .then(async () => {
           const { data: refreshed } = await supabase.from("brands").select("brand_voice, voice_profile").eq("id", brandIdLocal).maybeSingle();
           if (refreshed) {
@@ -557,7 +561,7 @@ export default function GuidedOnboarding() {
           }
         }).catch(() => {}).finally(() => { clearVoiceCap(); setLoadingVoice(false); });
 
-      const pAud = supabase.functions.invoke("generate-audience-psychology", { body: { brandId: brandIdLocal } })
+      const pAud = supabase.functions.invoke("generate-audience-psychology", { body: { brandId: brandIdLocal, instagramHandle: igForExtractors } })
         .then(async () => {
           const { data: refreshed } = await supabase.from("brands").select("audience_psychology").eq("id", brandIdLocal).maybeSingle();
           if (refreshed) {
@@ -586,7 +590,11 @@ export default function GuidedOnboarding() {
       // lands (even after the user has moved on), it silently improves brand
       // state for the next screen/regeneration. Safe no-op if the engine can't
       // read the site or isn't deployed yet — existing audience data is untouched.
-      supabase.functions.invoke("read-site-context", { body: { brandId: brandIdLocal } })
+      // CHAINED AFTER pAud on purpose: both write brands.audience_psychology, and
+      // firing them in parallel was a last-writer-wins race — the single-homepage
+      // generic profile could silently clobber this richer one. Sequencing makes
+      // "read-site-context strictly enriches" actually true.
+      pAud.then(() => supabase.functions.invoke("read-site-context", { body: { brandId: brandIdLocal } }))
         .then(async (r) => {
           if (r?.data?.success) {
             const { data: refreshed } = await supabase

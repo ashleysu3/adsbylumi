@@ -143,6 +143,13 @@ function buildContextBlock(payload: any): string {
     arrLine("Objections", ap.objections);
     arrLine("Motivations", ap.motivations);
     if (ap.identity) block.push(`Identity: "${truncate(ap.identity, 300)}"`);
+    // These were generated all along and silently dropped here — the summary
+    // especially is the "brief a copywriter" paragraph, i.e. exactly what this
+    // prompt is for.
+    if (ap.summary) block.push(`Copywriter brief: "${truncate(ap.summary, 600)}"`);
+    if (ap.target_audience) block.push(`Who they are: "${truncate(ap.target_audience, 300)}"`);
+    if (ap.demographics) block.push(`Demographics: "${truncate(ap.demographics, 300)}"`);
+    if (ap.psychographics) block.push(`Psychographics: "${truncate(ap.psychographics, 400)}"`);
     if (block.length === 1) block.push(truncate(ap, 1000));
     parts.push(block.join("\n"));
   }

@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.83.0';
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { requireAuthedUser } from '../_shared/check-subscription.ts';
+import { fetchInstagramCaptions } from '../_shared/scrape.ts';
 
 // UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -84,6 +85,8 @@ serve(async (req) => {
 
     const body = await req.json();
     const { brandId } = body;
+    const instagramHandle: string =
+      typeof body?.instagramHandle === 'string' ? body.instagramHandle.trim() : '';
 
     // Input validation
     if (!brandId) {
@@ -181,10 +184,25 @@ serve(async (req) => {
       }
     }
 
-    // If the site couldn't be read (bot-blocked / empty), we have NO real source
+    // Instagram captions are often richer "voice of the audience" material
+    // than a homepage — the handle is collected at the capture bar, so use it.
+    // Graceful no-op when Firecrawl returns nothing (private/blocked profile).
+    let igText = '';
+    const FIRECRAWL_API_KEY = Deno.env.get('FIRECRAWL_API_KEY');
+    const igHandle = instagramHandle || ((brand as any).instagram_account_name as string | null) || '';
+    if (igHandle && FIRECRAWL_API_KEY) {
+      try {
+        igText = await fetchInstagramCaptions(igHandle, FIRECRAWL_API_KEY);
+        console.log(`audience: instagram captions fetched (${igText.length} chars) for @${igHandle.replace(/^@/, '')}`);
+      } catch (e) {
+        console.warn('audience: instagram fetch failed', (e as any)?.message || e);
+      }
+    }
+
+    // If neither the site nor Instagram could be read, we have NO real source
     // to ground on. Without this guard the model invents a specific niche (e.g.
     // "wedding pros") out of thin air. Force it generic instead of wrong.
-    const hasRealSource = websiteText.trim().length > 200;
+    const hasRealSource = websiteText.trim().length > 200 || igText.trim().length > 200;
     const noSourceWarning = hasRealSource ? "" : `
 
 IMPORTANT — LIMITED SOURCE DATA: The brand's website could not be read (it likely blocks automated access) and there is little real copy to work from. Do NOT invent or guess a specific industry, niche, or ideal-client type — for example, do NOT assume "wedding planners", "real estate agents", "fitness coaches", or any other vertical. Base the profile strictly on the brand name and value proposition, keep it deliberately GENERIC, and clearly mark every item as a tentative inference ("likely…"). Being generic and correct is far better than specific and wrong.`;
@@ -252,7 +270,10 @@ ${voiceContext}
 
 === WEBSITE COPY (primary source — quote from this) ===
 ${websiteText || '(could not fetch — infer carefully and flag inferences)'}
-
+${igText ? `
+=== INSTAGRAM CONTENT (real captions/bio from @${igHandle.replace(/^@/, '')} — often closer to how they actually talk to their audience than the website; quote from this too) ===
+${igText}
+` : ''}
 ${contentAssets?.length ? `Use the ${contentAssets.length} real content asset(s) above as the highest-priority source.` : ''}
 
 Reminder: ground every claim in the source. Be specific. Skip the clichés.`;

@@ -552,10 +552,15 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         // instead. Falls back to the legacy hint for any session already in
         // flight when this shipped.
         let offerDescription = "";
+        let offerRowFull: any = null;
         if (offerId) {
           try {
             const { data: offerRow } = await supabase
-              .from("offers").select("description").eq("id", offerId).maybeSingle();
+              .from("offers")
+              .select("name, description, price_point, page_goal, url")
+              .eq("id", offerId)
+              .maybeSingle();
+            offerRowFull = offerRow || null;
             offerDescription = offerRow?.description || "";
           } catch { /* best-effort */ }
         }
@@ -641,8 +646,19 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             // compose-ad reads offer details from `offerContext`, not `brief.offer`
             // (brief.offer was a no-op — always "" before this fix). Only sent
             // when we actually have something, so buildContextBlock's own
-            // truthiness check correctly skips it otherwise.
-            offerContext: offerHint ? { description: offerHint } : undefined,
+            // truthiness check correctly skips it otherwise. The real offers-row
+            // fields (name/price/page_goal/url) previously never traveled here —
+            // the copy was writing to a description with no idea what it costs
+            // or what the page asks people to do.
+            offerContext: offerRowFull || offerHint
+              ? {
+                  name: offerRowFull?.name || undefined,
+                  description: offerHint || offerRowFull?.description || undefined,
+                  price: offerRowFull?.price_point || undefined,
+                  type: offerRowFull?.page_goal || undefined,
+                  url: offerRowFull?.url || undefined,
+                }
+              : undefined,
             offerPsychology: offerPsychologyRef.current || undefined,
             socialProofContext: socialProofRef.current
               ? { quote: socialProofRef.current.text, attribution: socialProofRef.current.attribution }
