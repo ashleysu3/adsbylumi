@@ -36,7 +36,16 @@ interface RequestRow {
   error: string | null;
   attempts: number;
   created_at: string;
+
+interface StockProp {
+  id: string;
+  label: string;
+  description: string | null;
+  image_url: string;
+  storage_path: string | null;
+  created_at: string;
 }
+
 
 export default function AdminMagicTemplates() {
   const navigate = useNavigate();
