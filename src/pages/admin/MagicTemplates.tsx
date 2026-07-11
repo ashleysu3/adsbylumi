@@ -36,6 +36,7 @@ interface RequestRow {
   error: string | null;
   attempts: number;
   created_at: string;
+}
 
 interface StockProp {
   id: string;
