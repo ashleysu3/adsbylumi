@@ -165,6 +165,12 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const [renderErr, setRenderErr] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
   const [usedRealColors, setUsedRealColors] = useState(false);
+  // The palette actually driving the render, surfaced as tappable dots so a
+  // weak/wrong extraction is a ten-second fix in the moment — not homework
+  // on a page an anonymous onboarding visitor can't even reach yet.
+  const [palette, setPalette] = useState<EngineColors | null>(null);
+  const [paletteDirty, setPaletteDirty] = useState(false);
+  const [savingPalette, setSavingPalette] = useState(false);
 
   // Lead-magnet path: email this ad pack instead of (or before) paying.
   const [packFormOpen, setPackFormOpen] = useState(false);
@@ -345,6 +351,42 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
     [options, callRender],
   );
 
+  const updatePaletteColor = (key: keyof EngineColors, value: string) => {
+    const next = { ...(palette || engineColorsRef.current), [key]: value };
+    setPalette(next);
+    engineColorsRef.current = next;
+    setPaletteDirty(true);
+  };
+
+  const applyPalette = useCallback(async () => {
+    if (!palette) return;
+    setSavingPalette(true);
+    try {
+      // Persist first so every later render — the emailed ad pack, post-signup
+      // ads, the Style page — uses the user's corrected colors, not just this
+      // one preview.
+      const { data: userRes } = await supabase.auth.getUser();
+      const userId = userRes?.user?.id;
+      if (userId) {
+        const { error: kitErr } = await supabase
+          .from("brand_kits" as any)
+          .upsert(
+            { user_id: userId, brand_id: brandId, colors: palette as any },
+            { onConflict: "user_id,brand_id" },
+          );
+        if (kitErr) console.warn("[payoff-ad] palette persist failed", kitErr);
+      }
+      setUsedRealColors(true);
+      setPaletteDirty(false);
+      await rerenderWith(selectedIdx);
+    } catch (e: any) {
+      console.warn("[payoff-ad] palette apply failed", e);
+      toast.error("Couldn't update the colors — try again?");
+    } finally {
+      setSavingPalette(false);
+    }
+  }, [palette, brandId, rerenderWith, selectedIdx]);
+
   // Boot: fetch kit + photo, run recommend-strategy, compose 3 hooks, render first ad
   useEffect(() => {
     if (!brandId) return;
@@ -379,6 +421,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         fontsRef.current = toFontsPayload(kit?.fonts);
         logoUrlRef.current = kit?.logo_url || undefined;
         setUsedRealColors(hasVividColors(kit?.colors));
+        setPalette(engineColorsRef.current);
 
         // 2) Photo pick from brand_assets (harvested by harvest-brand-assets)
         let photoUrl: string | undefined;
@@ -737,18 +780,54 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> {statusLine}
               </span>
             ) : phase === "ready" ? (
-              usedRealColors ? (
-                <>
-                  Rendered in {brand?.name || "your"} brand colors
-                  {photoUrlRef.current ? ", with your photo" : ""}
-                  .
-                </>
-              ) : (
-                <>
-                  Rendered in a starter palette — set your exact brand colors
-                  in Style and every ad after this uses them.
-                </>
-              )
+              <span className="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5">
+                <span>
+                  {usedRealColors ? (
+                    <>
+                      Rendered in {brand?.name || "your"} brand colors
+                      {photoUrlRef.current ? ", with your photo" : ""}.
+                    </>
+                  ) : (
+                    <>These aren't quite your colors? Tap a dot to fix them —</>
+                  )}
+                </span>
+                {palette && (
+                  <span className="inline-flex items-center gap-1.5 align-middle">
+                    {(["accent", "pop", "highlight", "bg"] as (keyof EngineColors)[]).map((k) => (
+                      <label
+                        key={k}
+                        className="h-6 w-6 rounded-full border border-border shadow-sm cursor-pointer relative inline-block hover:scale-110 transition-transform"
+                        style={{ backgroundColor: palette[k] }}
+                        title={k === "bg" ? "Background color" : `${k.charAt(0).toUpperCase() + k.slice(1)} color`}
+                      >
+                        <input
+                          type="color"
+                          value={palette[k]}
+                          onChange={(e) => updatePaletteColor(k, e.target.value)}
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          aria-label={k === "bg" ? "Change background color" : `Change ${k} color`}
+                        />
+                      </label>
+                    ))}
+                    {paletteDirty && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={applyPalette}
+                        disabled={savingPalette || rendering}
+                        className="h-7 text-xs ml-1"
+                      >
+                        {savingPalette || rendering ? (
+                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        ) : (
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                        )}
+                        Update my ad
+                      </Button>
+                    )}
+                  </span>
+                )}
+              </span>
             ) : (
               <span className="text-destructive">{renderErr || "Something didn't line up."}</span>
             )}
