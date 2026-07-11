@@ -10,11 +10,6 @@ import {
   Clapperboard,
   BarChart3,
   Shield,
-  Mic,
-  Film,
-  ThumbsUp,
-  MessageCircle,
-  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,14 +18,18 @@ import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 import { trackLumiEvent, trackLumiEventOnce } from "@/lib/lumi-pixel";
 import { toast } from "sonner";
 import lumiLogo from "@/assets/lumi-logo.png";
+import { AdFeedMock } from "@/components/ad-kit/AdFeedMock";
+import { BuyerPsychology } from "@/components/ad-kit/BuyerPsychology";
+import { GamePlanCard } from "@/components/ad-kit/GamePlanCard";
+import { ScriptBlock } from "@/components/ad-kit/ScriptBlock";
+import { BrollBlock } from "@/components/ad-kit/BrollBlock";
+import { kitHeadline, type KitStrategy, type ScriptBeat } from "@/components/ad-kit/types";
 
-// ---- Kit data shapes (whitelisted by the get_ad_kit RPC) ----
-type ScriptBeat = { line: string; category: string; seconds: number };
-type KitCampaign = { name?: string; objective?: string; audience?: string; creative_brief?: string };
+// ---- Kit data shape (whitelisted by the get_ad_kit RPC) ----
 type AdKitData = {
   copy?: { template?: string; option?: Record<string, any> } | null;
   script?: ScriptBeat[] | null;
-  strategy?: { title?: string | null; intro?: string | null; campaigns?: KitCampaign[] | null } | null;
+  strategy?: KitStrategy;
   videoUrl?: string | null;
 } | null;
 type Kit = {
@@ -41,27 +40,6 @@ type Kit = {
   ad_kit: AdKitData;
   audience_psychology: Record<string, any> | null;
   target_audience: string | null;
-};
-
-// Same extraction PayoffAdScreen uses — a compose-ad option's headline
-// lives in different slots depending on template.
-function kitHeadline(template: string | undefined, opt: Record<string, any> | undefined): string {
-  if (!opt) return "";
-  if (template === "bigtype" || template === "framed") {
-    return [opt.headlinePre, opt.headlineHL, opt.headlinePost].filter(Boolean).join(" ").trim();
-  }
-  return String(opt.headline || opt.quote || "").trim();
-}
-
-// Plain-English translations of Meta campaign objectives — shown NEXT TO
-// the raw value, never instead of it. The novice reads the left side; the
-// person who knows Ads Manager verifies the right side.
-const OBJECTIVE_PLAIN: Record<string, string> = {
-  OUTCOME_LEADS: "Bring you leads",
-  OUTCOME_SALES: "Drive sales",
-  OUTCOME_AWARENESS: "Get you seen",
-  OUTCOME_TRAFFIC: "Send people to your page",
-  OUTCOME_ENGAGEMENT: "Start conversations",
 };
 
 // Reached two ways: same-session right after PayoffAdScreen (?brand=, has a
@@ -290,37 +268,12 @@ export default function AdPackReveal() {
             <p className="text-sm text-muted-foreground text-center mb-8">
               Exactly how it would look in the feed.
             </p>
-            <div className="rounded-2xl border border-border bg-card shadow-card overflow-hidden max-w-sm mx-auto">
-              <div className="flex items-center gap-2.5 px-4 py-3">
-                <div className="h-9 w-9 rounded-full bg-gradient-lumi flex items-center justify-center text-primary-foreground text-sm font-bold">
-                  {(brandName || "You").charAt(0).toUpperCase()}
-                </div>
-                <div className="text-left leading-tight">
-                  <p className="text-sm font-semibold">{brandName || "Your brand"}</p>
-                  <p className="text-[11px] text-muted-foreground">Sponsored</p>
-                </div>
-              </div>
-              {primaryText && (
-                <p className="px-4 pb-3 text-sm text-left leading-snug">{primaryText}</p>
-              )}
-              <img src={packImageUrl} alt="Your ad" className="w-full" />
-              <div className="flex items-center justify-between px-4 py-2.5 bg-muted/40">
-                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">adsbylumi.com</span>
-                <span className="text-xs font-semibold rounded-md border border-border px-3 py-1.5 bg-background">
-                  Learn more
-                </span>
-              </div>
-              <div className="flex items-center gap-6 px-4 py-2.5 border-t border-border text-muted-foreground">
-                <ThumbsUp className="w-4 h-4" />
-                <MessageCircle className="w-4 h-4" />
-                <Share2 className="w-4 h-4" />
-              </div>
-            </div>
-            {headline && primaryText !== headline && (
-              <p className="text-center text-sm text-muted-foreground mt-6">
-                Headline: <span className="text-foreground font-medium">“{headline}”</span>
-              </p>
-            )}
+            <AdFeedMock
+              brandName={brandName}
+              imageUrl={packImageUrl}
+              primaryText={primaryText || undefined}
+              headline={headline || undefined}
+            />
           </div>
         </section>
       )}
@@ -329,36 +282,7 @@ export default function AdPackReveal() {
       {hasPsychology && (
         <section className="py-14">
           <div className="container mx-auto px-4 max-w-2xl">
-            <h2 className="font-display text-2xl sm:text-3xl text-center mb-2">Who your buyer is</h2>
-            <p className="text-sm text-muted-foreground text-center mb-8">
-              Every word in this kit was written from this — not from a template.
-            </p>
-            <div className="grid sm:grid-cols-3 gap-4">
-              {idealClient && (
-                <div className="rounded-2xl bg-muted/40 p-4">
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5">
-                    Who you're for
-                  </div>
-                  <p className="text-sm leading-snug">{idealClient}</p>
-                </div>
-              )}
-              {firstPain && (
-                <div className="rounded-2xl bg-muted/40 p-4">
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5">
-                    Pain point
-                  </div>
-                  <p className="text-sm leading-snug">{firstPain}</p>
-                </div>
-              )}
-              {firstDesire && (
-                <div className="rounded-2xl bg-muted/40 p-4">
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5">
-                    Desire
-                  </div>
-                  <p className="text-sm leading-snug">{firstDesire}</p>
-                </div>
-              )}
-            </div>
+            <BuyerPsychology idealClient={idealClient || undefined} pain={firstPain || undefined} desire={firstDesire || undefined} />
           </div>
         </section>
       )}
@@ -367,43 +291,7 @@ export default function AdPackReveal() {
       {strategyData && Array.isArray(strategyData.campaigns) && strategyData.campaigns.length > 0 && (
         <section className="py-14 bg-muted/30">
           <div className="container mx-auto px-4 max-w-2xl">
-            <h2 className="font-display text-2xl sm:text-3xl text-center mb-2">
-              {strategyData.title || "Your game plan"}
-            </h2>
-            <p className="text-sm text-muted-foreground text-center mb-3 max-w-xl mx-auto">
-              {strategyData.intro || "The campaign structure LUMI would build for you."}
-            </p>
-            <p className="text-xs text-muted-foreground text-center mb-8">
-              These are the exact settings LUMI sets up in Ads Manager — check our work, or never open it at all.
-            </p>
-            <div className="space-y-4">
-              {strategyData.campaigns.map((c, i) => (
-                <div key={i} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                  <p className="font-semibold text-sm mb-3">{c.name || `Campaign ${i + 1}`}</p>
-                  <div className="space-y-2 text-sm">
-                    {c.objective && (
-                      <div className="flex items-baseline justify-between gap-3 flex-wrap">
-                        <span className="text-muted-foreground">
-                          {OBJECTIVE_PLAIN[c.objective] || "Campaign objective"}
-                        </span>
-                        <code className="text-[11px] bg-muted rounded px-2 py-0.5">{c.objective}</code>
-                      </div>
-                    )}
-                    {c.audience && (
-                      <div className="flex items-baseline justify-between gap-3 flex-wrap">
-                        <span className="text-muted-foreground">Who sees it</span>
-                        <span className="text-right font-medium max-w-[60%]">{c.audience}</span>
-                      </div>
-                    )}
-                    {c.creative_brief && (
-                      <p className="text-xs text-muted-foreground pt-1 border-t border-border/60 mt-2">
-                        {c.creative_brief}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <GamePlanCard strategy={strategyData} variant="full" />
           </div>
         </section>
       )}
@@ -411,48 +299,9 @@ export default function AdPackReveal() {
       {/* ---- The script + video ---- */}
       {(script || hasKitContent) && (
         <section className="py-14">
-          <div className="container mx-auto px-4 max-w-2xl">
-            {script && (
-              <div className="mb-10">
-                <h2 className="font-display text-2xl sm:text-3xl text-center mb-2 flex items-center justify-center gap-2">
-                  <Mic className="w-6 h-6" /> Your talking-head script
-                </h2>
-                <p className="text-sm text-muted-foreground text-center mb-6">
-                  Read this on camera — it's already in your voice.
-                </p>
-                <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-                  {script.map((b, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold rounded bg-muted px-2 py-1 mt-0.5 whitespace-nowrap">
-                        {b.category}
-                      </span>
-                      <p className="text-sm leading-relaxed">{b.line}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {hasKitContent && (
-              <div className="text-center">
-                {kitVideoUrl ? (
-                  <>
-                    <h3 className="font-heading text-lg font-semibold mb-4 flex items-center justify-center gap-2">
-                      <Film className="w-5 h-5" /> Your b-roll video ad
-                    </h3>
-                    <video
-                      src={kitVideoUrl}
-                      controls
-                      playsInline
-                      className="mx-auto max-w-full sm:max-w-sm rounded-2xl shadow-card border border-border"
-                    />
-                  </>
-                ) : (
-                  <p className="text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-                    <Film className="w-3.5 h-3.5" /> Your b-roll video ad is still rendering — it'll appear right here.
-                  </p>
-                )}
-              </div>
-            )}
+          <div className="container mx-auto px-4 max-w-2xl space-y-10">
+            {script && <ScriptBlock beats={script} variant="full" />}
+            {hasKitContent && <BrollBlock videoUrl={kitVideoUrl} pendingNote variant="full" />}
           </div>
         </section>
       )}

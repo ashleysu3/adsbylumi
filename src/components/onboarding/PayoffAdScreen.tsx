@@ -9,8 +9,10 @@ import type { RenderOverlay } from "@/lib/ffmpeg-renderer";
 import { getTestimonialQuotes, type TestimonialQuote } from "@/lib/social-proof";
 import { trackLumiEvent, trackLumiEventOnce } from "@/lib/lumi-pixel";
 import lumiLogo from "@/assets/lumi-logo.png";
-
-type ScriptBeat = { line: string; category: string; seconds: number };
+import { GamePlanCard } from "@/components/ad-kit/GamePlanCard";
+import { ScriptBlock } from "@/components/ad-kit/ScriptBlock";
+import { BrollBlock } from "@/components/ad-kit/BrollBlock";
+import type { ScriptBeat } from "@/components/ad-kit/types";
 
 // Coerce however brand_kits.colors is shaped (array of hexes from extract-brand,
 // or the {bg, ink, accent, pop, highlight, cream} object the Style page saves)
@@ -1011,29 +1013,8 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           )}
         </div>
 
-        {/* Game plan strip */}
-        {strategy && (
-          <div className="rounded-2xl border bg-muted/30 p-4 animate-fade-in">
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 p-2 rounded-xl bg-background border">
-                <Target className="h-4 w-4 text-foreground" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
-                  Your game plan is ready
-                </div>
-                <div className="text-sm font-semibold text-foreground mt-0.5 truncate">
-                  {strategy?.name || strategy?.title || "Recommended campaign"}
-                </div>
-                {(strategy?.description || strategy?.personalized_intro) && (
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                    {strategy?.personalized_intro || strategy?.description}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Game plan strip (shared ad-kit component, compact variant) */}
+        {strategy && <GamePlanCard strategy={strategy} variant="compact" />}
 
         {/* Bonus creatives: talking-head script + b-roll ad, ready without an account */}
         {(scriptState === "loading" || videoState === "loading") && (
@@ -1043,59 +1024,16 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         )}
 
         {scriptState === "ready" && scriptBeats && (
-          <div className="rounded-2xl border bg-card p-4 sm:p-5 space-y-3 animate-fade-in">
-            <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
-              <Mic className="h-3.5 w-3.5" /> Talking-head script — read this on camera
-            </div>
-            <p className="text-sm leading-relaxed text-foreground">
-              {scriptBeats.map((b) => b.line).join(" ")}
-            </p>
-            <button
-              onClick={downloadScript}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition"
-            >
-              <Download className="h-3.5 w-3.5" /> Download this script
-            </button>
-          </div>
+          <ScriptBlock beats={scriptBeats} variant="compact" onDownload={downloadScript} />
         )}
 
         {videoState === "ready" && videoUrl && (
-          <div className="rounded-2xl border bg-card p-4 sm:p-5 space-y-3 animate-fade-in">
-            <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
-              <Film className="h-3.5 w-3.5" /> Your b-roll ad
-            </div>
-            <video
-              src={videoUrl}
-              controls
-              muted
-              loop
-              className="w-full rounded-xl bg-black mx-auto"
-              style={{ maxWidth: 460 }}
-            />
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <a
-                href={videoUrl}
-                download={`${brandSlug}-broll-ad.mp4`}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition"
-              >
-                <Download className="h-3.5 w-3.5" /> Download this video
-              </a>
-              {videoCredit && (
-                videoCredit.url ? (
-                  <a
-                    href={videoCredit.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[11px] text-muted-foreground hover:text-foreground transition"
-                  >
-                    Footage via {videoCredit.name}
-                  </a>
-                ) : (
-                  <span className="text-[11px] text-muted-foreground">Footage via {videoCredit.name}</span>
-                )
-              )}
-            </div>
-          </div>
+          <BrollBlock
+            videoUrl={videoUrl}
+            credit={videoCredit}
+            downloadName={`${brandSlug}-broll-ad.mp4`}
+            variant="compact"
+          />
         )}
 
         {/* CTAs */}
