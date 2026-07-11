@@ -212,6 +212,10 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const [videoState, setVideoState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoCredit, setVideoCredit] = useState<{ name: string; url: string | null } | null>(null);
+  // Raw mp4 blob kept for the Ad Kit upload — the object URL above only
+  // works in this tab; the kit page needs a real public URL.
+  const videoBlobRef = useRef<Blob | null>(null);
+  const kitVideoUploadedRef = useRef(false);
 
   useEffect(() => {
     return () => { if (videoUrl) URL.revokeObjectURL(videoUrl); };
@@ -726,6 +730,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         style: DEFAULT_RENDER_STYLE,
         loopVideo: true,
       });
+      videoBlobRef.current = blob;
       const url = URL.createObjectURL(blob);
       setVideoUrl(url);
       setVideoCredit(clip.credit_name ? { name: clip.credit_name, url: clip.credit_url || null } : null);
@@ -742,6 +747,40 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       setVideoState("error");
     }
   }, [brandId]);
+
+  // Upload the finished video into the lead's Ad Kit. The kit email never
+  // waits for this slow asset — whichever finishes second (the video render
+  // or the email capture) triggers the upload, and the kit page simply shows
+  // the video from then on.
+  const persistKitVideo = useCallback(async () => {
+    const blob = videoBlobRef.current;
+    if (!blob || kitVideoUploadedRef.current || packState !== "sent") return;
+    kitVideoUploadedRef.current = true;
+    try {
+      const { data: userRes } = await supabase.auth.getUser();
+      const userId = userRes?.user?.id;
+      if (!userId) return;
+      const path = `${userId}/${brandId}/ad-kit-video-${Date.now()}.mp4`;
+      const { error: upErr } = await supabase.storage
+        .from("lead-magnet-assets")
+        .upload(path, blob, { cacheControl: "3600", upsert: true, contentType: "video/mp4" });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("lead-magnet-assets").getPublicUrl(path);
+      // Merge, don't overwrite — ad_kit already holds copy/script/strategy
+      // from the capture write. Single writer in practice (this tab).
+      const { data: row } = await supabase.from("brands").select("ad_kit").eq("id", brandId).maybeSingle();
+      const merged = { ...(((row as any)?.ad_kit as Record<string, any>) || {}), videoUrl: pub.publicUrl };
+      const { error: patchErr } = await supabase.from("brands").update({ ad_kit: merged as any }).eq("id", brandId);
+      if (patchErr) throw patchErr;
+    } catch (e) {
+      kitVideoUploadedRef.current = false; // allow the next trigger to retry
+      console.warn("[payoff-ad] kit video persist failed", e);
+    }
+  }, [brandId, packState]);
+
+  useEffect(() => {
+    if (videoState === "ready" && packState === "sent") persistKitVideo();
+  }, [videoState, packState, persistKitVideo]);
 
   const generateBonusCreatives = useCallback(async () => {
     setScriptState("loading");
