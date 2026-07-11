@@ -401,17 +401,20 @@ export default function GuidedOnboarding() {
         // Website changed → reset brand identity so old name/colors/etc don't bleed through.
         const placeholder = domainName(normalized);
         placeholderNameRef.current = placeholder;
-        await supabase.from("brands").update({
+        // NOTE: brand_colors/brand_fonts used to be in this update but those
+        // columns don't exist in the schema — PostgREST rejected the whole
+        // update with a 400, so none of this reset ever actually applied.
+        // Colors live in brand_kits, which extract-brand overwrites anyway.
+        const { error: resetErr } = await supabase.from("brands").update({
           website_url: normalized,
           name: placeholder,
-          brand_colors: null,
-          brand_fonts: null,
           value_proposition: null,
           target_audience: null,
           brand_voice: null,
           voice_profile: null,
           social_proof: null,
         }).eq("id", id);
+        if (resetErr) console.warn("[onboarding] brand reset on website change failed", resetErr);
         row = { ...row, website_url: normalized, name: placeholder };
         setBrand(row);
       } else {
