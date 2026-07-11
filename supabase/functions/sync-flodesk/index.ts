@@ -5,13 +5,17 @@ interface FlodeskRequest {
   email: string;
   firstName?: string;
   lastName?: string;
-  segment: 'waitlist' | 'active';
+  segment: 'waitlist' | 'active' | 'ad_kit';
 }
 
 // Flodesk segment names - these must match exactly what's in Flodesk
 const SEGMENT_NAMES = {
   waitlist: 'LUMI Waitlist',
-  active: 'LUMI (active)'
+  active: 'LUMI (active)',
+  // Leads who traded their email for the Ad Kit — the nurture audience.
+  // Flodesk is list + occasional newsletters ONLY; the kit email itself
+  // always goes out from LUMI via Resend (send-ad-pack-email).
+  ad_kit: 'LUMI Ad Kit Leads'
 };
 
 // Cache for segment IDs to avoid fetching every time
