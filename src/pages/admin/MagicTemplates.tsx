@@ -106,6 +106,65 @@ export default function AdminMagicTemplates() {
     setRequests((data || []) as RequestRow[]);
   };
 
+  const signPropUrl = async (path: string) => {
+    const { data } = await supabase.storage.from("template-props").createSignedUrl(path, 60 * 60 * 24 * 30);
+    return data?.signedUrl || "";
+  };
+
+  const fetchProps = async () => {
+    const { data, error } = await supabase
+      .from("template_stock_props" as any).select("*").order("created_at", { ascending: false });
+    if (error) return;
+    const rows = (data || []) as any as StockProp[];
+    // Refresh signed URLs for storage-backed props
+    const withUrls = await Promise.all(rows.map(async (p) => {
+      if (p.storage_path) return { ...p, image_url: await signPropUrl(p.storage_path) };
+      return p;
+    }));
+    setProps(withUrls);
+  };
+
+  const handleAddProp = async () => {
+    if (!propLabel.trim()) { toast.error("Give the prop a short label"); return; }
+    if (!propFile) { toast.error("Upload an image"); return; }
+    setPropBusy(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const ext = propFile.name.split(".").pop() || "png";
+      const path = `${user!.id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("template-props").upload(path, propFile, { upsert: false });
+      if (upErr) throw upErr;
+      const url = await signPropUrl(path);
+      const { error: insErr } = await supabase.from("template_stock_props" as any).insert({
+        label: propLabel.trim(),
+        description: propDesc.trim() || null,
+        image_url: url,
+        storage_path: path,
+        created_by: user!.id,
+      });
+      if (insErr) throw insErr;
+      toast.success("Prop added");
+      setPropFile(null); setPropLabel(""); setPropDesc("");
+      fetchProps();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to add prop");
+    } finally {
+      setPropBusy(false);
+    }
+  };
+
+  const handleDeleteProp = async (p: StockProp) => {
+    if (!confirm(`Delete "${p.label}"?`)) return;
+    try {
+      if (p.storage_path) await supabase.storage.from("template-props").remove([p.storage_path]);
+      await supabase.from("template_stock_props" as any).delete().eq("id", p.id);
+      fetchProps();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to delete");
+    }
+  };
+
+
   const signUrl = async (path: string) => {
     const { data, error } = await supabase.storage.from("template-refs").createSignedUrl(path, 60 * 60 * 24 * 30);
     if (error) throw error;
