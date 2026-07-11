@@ -90,8 +90,18 @@ function truncate(v: unknown, max = 1400): string {
 }
 
 function buildContextBlock(payload: any): string {
-  const { offerContext, offerPsychology, audiencePsychology, brandContext, socialProofContext, referenceAdContext } = payload || {};
+  const { offerContext, offerPsychology, audiencePsychology, brandContext, socialProofContext, referenceAdContext, angle } = payload || {};
   const parts: string[] = [];
+  if (angle && (angle.name || angle.description)) {
+    // The user picked this angle from a set of three during onboarding —
+    // it's first in the context block because it's a constraint, not a hint.
+    parts.push(
+      `=== ANGLE (the user chose this — EVERY option must execute THIS angle, varying the hook/wording, never the angle itself) ===\n` +
+      (angle.name ? `Angle: ${truncate(angle.name, 100)}\n` : "") +
+      (angle.description ? `What it means: ${truncate(angle.description, 400)}\n` : "") +
+      (angle.psychologyTrigger ? `Psychology trigger to lean on: ${truncate(angle.psychologyTrigger, 120)}\n` : "")
+    );
+  }
   if (referenceAdContext && (referenceAdContext.structuralNotes || referenceAdContext.fontPersonality)) {
     parts.push(
       `=== REFERENCE AD YOU'RE ADAPTING (match this structure and rhythm — write NEW copy for THIS brand's offer, never reuse the reference's content) ===\n` +
