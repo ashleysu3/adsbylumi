@@ -73,6 +73,16 @@ const isNearGrayscale = (hex: string): boolean => {
   return max - min < 20;
 };
 
+// A color that will actually READ as branding in a rendered ad: has real
+// saturation and isn't a near-white tint or near-black shade. Pale tints
+// like #f9e6c6 pass the grayscale check but render as "no branding at all"
+// (seen live: adsbylumi.com extracted as cream/tan/mint/black only).
+const isVividHex = (hex: string): boolean => {
+  if (isNearGrayscale(hex)) return false;
+  const l = hexLuminance(hex);
+  return l > 0.03 && l < 0.75;
+};
+
 const DESKTOP_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
@@ -360,26 +370,44 @@ serve(async (req) => {
     const fcColors = fc && "suggested" in fc ? fc.suggested.colors : undefined;
     const fcHasUsefulColors =
       !!fcColors?.background && (!!fcColors?.accent || (fcColors?.pops?.length ?? 0) > 0);
-    if (fc && "suggested" in fc && fcHasUsefulColors) {
-      // Normalize into the flat shape the client reads (name, description, colors, fonts, logoUrl)
-      const colors = [
-        fc.suggested.colors?.accent,
-        ...(fc.suggested.colors?.pops ?? []),
-        fc.suggested.colors?.background,
-        fc.suggested.colors?.ink,
-      ].filter((c): c is string => !!c);
-      const fonts = [fc.suggested.fonts?.display?.family, fc.suggested.fonts?.body?.family].filter(
-        (f): f is string => !!f,
-      );
+    // "Useful" isn't enough on its own: Firecrawl's semantic palette can come back
+    // all neutrals (background/ink/pale tints) for vivid-gradient brands, which
+    // renders as an unbranded ad. Only short-circuit here when at least one
+    // accent/pop would actually read as a brand color; otherwise fall through to
+    // the engine's real pixel-based palette picking, keeping Firecrawl's result
+    // as fill-in.
+    const fcVivid = [fcColors?.accent, ...(fcColors?.pops ?? [])].some(
+      (c): c is string => !!c && isVividHex(c),
+    );
+    const fcFlatColors = fcColors
+      ? Array.from(new Set(
+          [fcColors.accent, ...(fcColors.pops ?? []), fcColors.background, fcColors.ink]
+            .filter((c): c is string => !!c),
+        ))
+      : [];
+    const fcFlatFonts = fc && "suggested" in fc
+      ? Array.from(new Set(
+          [fc.suggested.fonts?.display?.family, fc.suggested.fonts?.body?.family]
+            .filter((f): f is string => !!f),
+        ))
+      : [];
+    if (fc && "suggested" in fc && fcHasUsefulColors && fcVivid) {
+      console.log("[extract-brand] palette source: firecrawl", JSON.stringify(fcFlatColors));
       return json(200, {
         name: meta.name,
         description: meta.description,
-        colors: Array.from(new Set(colors)),
-        fonts: Array.from(new Set(fonts)),
+        colors: fcFlatColors,
+        fonts: fcFlatFonts,
         logoUrl: fc.suggested.imagery?.ogImage,
         suggested: fc.suggested,
         raw: fc.raw,
       });
+    }
+    if (fc && "suggested" in fc && fcHasUsefulColors && !fcVivid) {
+      console.log(
+        "[extract-brand] firecrawl palette is neutrals-only, trying engine",
+        JSON.stringify(fcFlatColors),
+      );
     }
 
     // Engine fallback — normalize to the same flat shape the client expects
@@ -408,7 +436,15 @@ serve(async (req) => {
       const fallbackColors = Array.isArray(raw?.backgrounds)
         ? raw.backgrounds.filter((c: unknown): c is string => typeof c === "string" && /^#[0-9a-f]{3,8}$/i.test(c))
         : [];
-      const colors = Array.from(new Set(colorList.length ? colorList : fallbackColors)).slice(0, 8);
+      // Engine colors lead; Firecrawl's palette (possibly neutrals-only, which
+      // is how we got here) fills in behind them rather than being discarded.
+      const engineColors = colorList.length ? colorList : fallbackColors;
+      const colors = Array.from(new Set([...engineColors, ...fcFlatColors])).slice(0, 8);
+      console.log(
+        "[extract-brand] palette source:",
+        engineColors.length ? "engine" : "firecrawl-fill",
+        JSON.stringify(colors),
+      );
 
       // Fonts
       const sf = suggested?.fonts ?? {};
@@ -416,7 +452,9 @@ serve(async (req) => {
         (f: unknown): f is string => typeof f === "string" && f.length > 0,
       );
       const fallbackFonts = Array.isArray(raw?.fonts) ? raw.fonts.filter((f: unknown) => typeof f === "string") : [];
-      const fonts = Array.from(new Set(fontList.length ? fontList : fallbackFonts)).slice(0, 6) as string[];
+      const fonts = Array.from(
+        new Set([...(fontList.length ? fontList : fallbackFonts), ...fcFlatFonts]),
+      ).slice(0, 6) as string[];
 
       const logoUrl = suggested?.imagery?.ogImage || raw?.ogImage || undefined;
 
@@ -433,6 +471,20 @@ serve(async (req) => {
         headers: { ...cors, "content-type": "application/json" },
       });
     } catch {
+      // Engine response unusable. If Firecrawl at least produced a weak
+      // palette, a neutrals-only result still beats an error.
+      if (fc && "suggested" in fc && fcHasUsefulColors) {
+        console.log("[extract-brand] engine failed, falling back to weak firecrawl palette");
+        return json(200, {
+          name: meta.name,
+          description: meta.description,
+          colors: fcFlatColors,
+          fonts: fcFlatFonts,
+          logoUrl: fc.suggested.imagery?.ogImage,
+          suggested: fc.suggested,
+          raw: fc.raw,
+        });
+      }
       return engineRes;
     }
   } catch (e) {
