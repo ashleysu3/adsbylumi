@@ -7,10 +7,32 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ENGINE_URL = Deno.env.get("ENGINE_URL")!;
-const ENGINE_KEY = Deno.env.get("LUMI_ENGINE_KEY")!;
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const SAMPLE_PHOTO_URL =
   "https://sqwjbndgighjtifijgws.supabase.co/storage/v1/object/public/email-assets/sample-headshot.png";
+
+const CONTRACT = `You generate ONE self-contained HTML ad template for a render engine. Reproduce the LAYOUT and STYLE of the reference image — its composition, type hierarchy, shapes, photo placement, and any signature devices — but do NOT copy its exact text or photo. Follow this contract EXACTLY:
+
+CAPTURE THE REFERENCE'S DISTINCTIVE DEVICES if present:
+- An oversized faded/ghosted word in the background.
+- A portrait/photo region — match WHERE it sits and its size.
+- A frame or border, color-block panels, a divider line, or a circular badge/sticker.
+- A signature or small brand label.
+- The dominant background color of the reference -> map it to var(--bg) or var(--cream).
+- Serif vs sans choices and any italic kicker lines.
+
+HARD CONTRACT:
+1. One full HTML document, all CSS in one <style>, NO <script>, no external JS.
+2. COLORS: never hardcode brand colors. Use CSS variables only: var(--bg), var(--ink), var(--accent), var(--pop), var(--highlight), var(--cream), var(--cta).
+3. SIZES: stage is 100vw x 100vh. Provide CSS for BOTH body.feed (1080x1080) and body.story (1080x1920). Default <body class="feed">.
+4. TEXT SLOTS: each editable text element has an id; wrap the main text block in class="copy". Use ids from: eyebrow, headlinePre, headlineHL, headlinePost, accent, sub, cta, badgeTop, badgeBottom, sig, headline.
+5. PHOTO: if the design has a photo, add <img ... data-photo> with object-fit:cover. If no photo, needsPhoto=false and no data-photo element.
+6. STORY SAFE ZONES: in body.story keep ALL text within the middle band — nothing in top 14% or bottom 20%.
+7. FONTS: @import Poppins for sans; for serif use 'DisplayItalic' with a serif fallback, or @import Fraunces.
+8. Robust: no fixed heights that clip text; let .copy flow.
+
+Return ONLY JSON with this exact shape: {"name":"short-kebab-name","type":"single","needsPhoto":true,"copySlots":["..."],"html":"<full html string>"}`;
+
 
 const MAX_BATCH = 3;
 const MAX_ATTEMPTS = 3;
