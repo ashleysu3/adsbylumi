@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Loader2, ArrowRight, RefreshCw, Sparkles, ChevronLeft, Target, Download, Mic, Film, Mail, Check, ImagePlus, Type } from "lucide-react";
 import { toast } from "sonner";
 import type { RenderOverlay } from "@/lib/ffmpeg-renderer";
@@ -12,6 +19,7 @@ import lumiLogo from "@/assets/lumi-logo.png";
 import { GamePlanCard } from "@/components/ad-kit/GamePlanCard";
 import { ScriptBlock } from "@/components/ad-kit/ScriptBlock";
 import { BrollBlock } from "@/components/ad-kit/BrollBlock";
+import { VslCloseSection, useKitCheckout } from "@/components/ad-kit/VslClose";
 import type { ScriptBeat } from "@/components/ad-kit/types";
 
 // Coerce however brand_kits.colors is shaped (array of hexes from extract-brand,
@@ -129,6 +137,27 @@ function pathFromUrl(url: string): string | null {
 
 type RenderImage = { placement: string; width: number; height: number; base64: string; label?: string };
 
+// One stop on the build's progress rail: ✓ done, spinner in flight, dim dot queued.
+function RailItem({ label, done, active }: { label: string; done: boolean; active?: boolean }) {
+  return (
+    <span
+      className={
+        "inline-flex items-center gap-1 " +
+        (done ? "text-foreground" : active ? "" : "opacity-50")
+      }
+    >
+      {done ? (
+        <Check className="h-3 w-3 text-primary" />
+      ) : active ? (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      ) : (
+        <span className="h-1 w-1 rounded-full bg-current inline-block" />
+      )}
+      {label}
+    </span>
+  );
+}
+
 // generate-creative-angles returns psychologyTrigger as a raw data path
 // ("pain_points.my ad results are inconsistent and I don't understand why…").
 // The buyer's-own-words part is the proof the angle isn't generic — show it as
@@ -152,6 +181,83 @@ function parseAngleTrigger(trigger: unknown): { label: string; insight?: string 
   }
   if (t.length <= 40) return { label: t };
   return { label: "Buyer psychology", insight: t };
+}
+
+// "Why this copy works" — computed from the actual option + the psychology it
+// was written from. Pure rules, no AI call: every claim here must be checkable
+// against the copy on screen, or it reads as filler and burns trust.
+function computeCopyAnnotations(
+  option: any,
+  ap: any,
+  voiceRaw: any,
+): { label: string; detail: string }[] {
+  if (!option) return [];
+  const texts = Object.values(option).filter((v) => typeof v === "string") as string[];
+  const joined = texts.join(" ").trim();
+  if (!joined) return [];
+  const out: { label: string; detail: string }[] = [];
+
+  // Feed copy is skimmed mid-scroll, not read like an email.
+  const sentences = joined.split(/[.!?…]+/).map((s) => s.trim()).filter(Boolean);
+  const avgWords = sentences.length
+    ? sentences.reduce((n, s) => n + s.split(/\s+/).length, 0) / sentences.length
+    : 0;
+  if (avgWords > 0 && avgWords <= 12) {
+    out.push({
+      label: "Built to skim",
+      detail: `Short lines (~${Math.round(avgWords)} words each) — readable mid-scroll, no wall of text.`,
+    });
+  }
+
+  // Quote back the strongest pain/desire the copy actually echoes — the
+  // overlap check keeps this honest (≥2 meaningful shared words, not vibes).
+  const stop = new Set([
+    "your", "that", "this", "with", "from", "they", "them", "have", "what",
+    "when", "will", "just", "like", "into", "more", "been", "their", "about",
+    "youre", "dont", "cant", "every", "without", "because",
+  ]);
+  const words = (s: string) =>
+    new Set(
+      s.toLowerCase().replace(/[^a-z\s']/g, " ").split(/\s+/)
+        .filter((w) => w.length > 3 && !stop.has(w)),
+    );
+  const copyWords = words(joined);
+  const bestEcho = (arr: any, label: string, lead: string) => {
+    if (!Array.isArray(arr)) return;
+    let best: { text: string; hits: number } | null = null;
+    for (const item of arr) {
+      if (typeof item !== "string" || !item.trim()) continue;
+      let hits = 0;
+      for (const w of words(item)) if (copyWords.has(w)) hits++;
+      if (hits >= 2 && (!best || hits > best.hits)) best = { text: item.trim(), hits };
+    }
+    if (best) {
+      // The psychology arrays often store items already wrapped in quotes —
+      // strip those so we don't render doubled quote marks.
+      const bare = best.text.replace(/^["'“”‘’\s]+|["'“”‘’\s;,]+$/g, "");
+      const quote = bare.length > 90 ? bare.slice(0, 87) + "…" : bare;
+      out.push({ label, detail: `${lead} “${quote}”` });
+    }
+  };
+  bestEcho(ap?.pain_points || ap?.painPoints, "Names their pain", "Speaks straight to:");
+  bestEcho(ap?.desires, "Sells the after", "Points at what they want:");
+
+  // Emoji presence/restraint — only claimed when their own voice supports it.
+  const voice = JSON.stringify(voiceRaw || "").toLowerCase();
+  const hasEmoji = /\p{Extended_Pictographic}/u.test(joined);
+  if (hasEmoji && /(warm|playful|fun|friendly|bold|energetic)/.test(voice)) {
+    out.push({ label: "Emoji, on voice", detail: "Used sparingly — matches the warmth in your brand voice." });
+  } else if (!hasEmoji && /(direct|no-nonsense|professional|clean|minimal)/.test(voice)) {
+    out.push({ label: "No emoji clutter", detail: "Matches your direct, no-nonsense voice." });
+  }
+
+  // One clear ask — decision fatigue is the silent conversion killer.
+  const ctaText = typeof option.cta === "string" ? option.cta.trim() : "";
+  if (ctaText) {
+    out.push({ label: "One clear ask", detail: `“${ctaText}” — a single action, nothing competing with it.` });
+  }
+
+  return out.slice(0, 4);
 }
 
 const PHOTO_ROLES = new Set(["photo", "lifestyle", "full_body", "headshot"]);
@@ -185,7 +291,7 @@ interface Props {
 }
 
 export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
-  const navigate = useNavigate();
+  const [, setSearchParams] = useSearchParams();
   // loading → (choosing → building) → ready. "choosing" is the new two-tap
   // moment — pick the angle, pick the photo — that turns "a machine made me
   // an ad" into "I made this ad." If angle generation fails we skip straight
@@ -209,17 +315,17 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const [paletteDirty, setPaletteDirty] = useState(false);
   const [savingPalette, setSavingPalette] = useState(false);
 
-  // Lead-magnet path: email this ad pack instead of (or before) paying.
+  // Save-in-place: the kit stays on this page. Saving emails the private
+  // /your-ad-pack?kit= link and stamps ?kit= onto THIS url (no navigation —
+  // the redundant "here's your kit again" redirect is exactly what we killed).
   const [packFormOpen, setPackFormOpen] = useState(false);
   const [leadName, setLeadName] = useState("");
   const [leadEmail, setLeadEmail] = useState("");
   const [packState, setPackState] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
-  // The actual checkout call now lives on the VSL page (AdPackReveal) —
-  // this just hands off, same as the lead-magnet path below.
-  const goToAdPackReveal = useCallback(() => {
-    navigate(`/your-ad-pack?brand=${brandId}`);
-  }, [brandId, navigate]);
+  // The quiet "ready to launch now?" path for hot buyers — same shared
+  // checkout the kit page uses. Buying otherwise lives AFTER the save.
+  const { goCheckout, checkoutLoading } = useKitCheckout(brandId);
 
   // Prepared inputs
   const engineColorsRef = useRef<EngineColors>(DEFAULT_ENGINE_COLORS);
@@ -375,18 +481,20 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       if (sendErr) throw sendErr;
 
       setPackState("sent");
+      setPackFormOpen(false);
       trackLumiEvent("Lead");
-      toast.success("Check your inbox — your Ad Kit is on its way!");
-      // Brief pause so the "sent" confirmation is actually seen before
-      // handing off to the kit page, per the funnel spec (lead capture
-      // -> VSL/kit, not straight back to a blank screen).
-      setTimeout(() => navigate(`/your-ad-pack?kit=${kitToken}`), 1200);
+      // Save-in-place: the kit stays right here. Stamp the token onto this
+      // URL (replace, not push — no back-button trap) so a refresh or a
+      // bookmark of THIS page resolves to the permanent kit link, and let
+      // the VSL + 50% close unfold below instead of navigating away.
+      setSearchParams({ kit: kitToken }, { replace: true });
+      toast.success("Saved — your private link is on its way to your inbox!");
     } catch (err: any) {
       console.error("[payoff] send ad kit error", err);
-      toast.error(err?.message || "Couldn't send your Ad Kit. Please try again.");
+      toast.error(err?.message || "Couldn't save your Ad Kit. Please try again.");
       setPackState("error");
     }
-  }, [brandId, images, leadEmail, leadName, packState, navigate, options, selectedIdx, scriptBeats, strategy]);
+  }, [brandId, images, leadEmail, leadName, packState, setSearchParams, options, selectedIdx, scriptBeats, strategy]);
 
   const brandSlug = (brand?.name || "lumi-ad").trim().replace(/\s+/g, "-").toLowerCase();
 
@@ -1064,6 +1172,22 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const template = templateRef.current;
   const heroImage = images[0];
 
+  const annotations = useMemo(
+    () =>
+      computeCopyAnnotations(
+        options[selectedIdx],
+        brand?.audience_psychology,
+        brand?.voice_profile || brand?.brand_voice,
+      ),
+    [options, selectedIdx, brand],
+  );
+
+  // The progress rail is a status, not decoration — visible only while
+  // something is genuinely still cooking, gone the moment everything's done.
+  const railVisible =
+    phase === "building" ||
+    (phase === "ready" && (scriptState === "loading" || videoState === "loading"));
+
   return (
     <div className="min-h-[70vh] py-4">
       <div className="max-w-2xl mx-auto space-y-6">
@@ -1146,6 +1270,17 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             )}
           </div>
         </div>
+
+        {/* Progress rail: the kit assembling itself, one piece at a time */}
+        {railVisible && (
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground animate-fade-in">
+            <RailItem label="plan" done={!!strategy} active={!strategy} />
+            <RailItem label="copy" done={options.length > 0} active={phase === "building" && !options.length} />
+            <RailItem label="graphic" done={images.length > 0} active={phase === "building" && options.length > 0 && !images.length} />
+            <RailItem label="script" done={scriptState === "ready"} active={scriptState === "loading"} />
+            <RailItem label="b-roll" done={videoState === "ready"} active={videoState === "loading"} />
+          </div>
+        )}
 
         {/* Choose your angle + photo — the build waits on this. The user knows
             which conversation their buyers are having better than we do. */}
@@ -1358,19 +1493,35 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
               </div>
             </div>
           )}
+
+          {/* Why this copy works — rule-based, checkable against the copy on
+              screen. Teaches the craft while proving the copy isn't generic. */}
+          {phase === "ready" && annotations.length > 0 && (
+            <div className="mt-5 space-y-2 animate-fade-in">
+              <div className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
+                Why this copy works
+              </div>
+              <div className="grid gap-1.5">
+                {annotations.map((a, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs">
+                    <Check className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                    <span>
+                      <span className="font-medium">{a.label}.</span>{" "}
+                      <span className="text-muted-foreground">{a.detail}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         )}
 
         {/* Game plan strip (shared ad-kit component, compact variant) */}
         {strategy && <GamePlanCard strategy={strategy} variant="compact" />}
 
-        {/* Bonus creatives: talking-head script + b-roll ad, ready without an account */}
-        {(scriptState === "loading" || videoState === "loading") && (
-          <div className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5 animate-fade-in">
-            <Loader2 className="h-3 w-3 animate-spin" /> Also brewing: a talking-head script + a b-roll ad…
-          </div>
-        )}
-
+        {/* Bonus creatives: talking-head script + b-roll ad, ready without an
+            account. Their in-flight status lives on the progress rail above. */}
         {scriptState === "ready" && scriptBeats && (
           <ScriptBlock beats={scriptBeats} variant="compact" onDownload={downloadScript} />
         )}
@@ -1400,65 +1551,41 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
               <RefreshCw className={"h-4 w-4 mr-2 " + (rendering ? "animate-spin" : "")} />
               Show me another
             </Button>
-            <Button
-              onClick={goToAdPackReveal}
-              disabled={phase !== "ready"}
-              className="h-12 px-6 text-base font-semibold rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity shadow-lg shadow-pink-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              Get 50% off to launch this <ArrowRight className="h-5 w-5 ml-2" />
-            </Button>
+            {packState === "sent" ? (
+              <span className="inline-flex items-center justify-center gap-1.5 h-12 px-4 text-sm font-medium text-primary">
+                <Check className="h-4 w-4" /> Saved — link emailed to {leadEmail}
+              </span>
+            ) : (
+              <Button
+                onClick={() => setPackFormOpen(true)}
+                disabled={phase !== "ready"}
+                className="h-12 px-6 text-base font-semibold rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity shadow-lg shadow-pink-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Save my Ad Kit <ArrowRight className="h-5 w-5 ml-2" />
+              </Button>
+            )}
           </div>
           )}
         </div>
 
-        {/* Lead magnet: email this pack instead of paying right now */}
-        {phase === "ready" && images[0] && (
-          <div className="text-center pt-1">
-            {!packFormOpen && packState !== "sent" && (
-              <button
-                type="button"
-                onClick={() => setPackFormOpen(true)}
-                className="text-xs text-muted-foreground hover:text-foreground transition underline underline-offset-2"
-              >
-                Not ready to start? Email me my Ad Kit instead
-              </button>
-            )}
-            {packFormOpen && packState !== "sent" && (
-              <div className="mt-3 max-w-sm mx-auto flex flex-col gap-2">
-                <Input
-                  placeholder="Your name"
-                  value={leadName}
-                  onChange={(e) => setLeadName(e.target.value)}
-                  className="h-10 text-sm"
-                />
-                <Input
-                  type="email"
-                  placeholder="you@email.com"
-                  value={leadEmail}
-                  onChange={(e) => setLeadEmail(e.target.value)}
-                  className="h-10 text-sm"
-                />
-                <Button
-                  onClick={sendAdPack}
-                  disabled={packState === "sending"}
-                  variant="outline"
-                  className="h-10 rounded-xl"
-                >
-                  {packState === "sending" ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending…</>
-                  ) : (
-                    <><Mail className="h-4 w-4 mr-2" /> Email me my Ad Kit</>
-                  )}
-                </Button>
-              </div>
-            )}
-            {packState === "sent" && (
-              <p className="text-xs text-primary inline-flex items-center gap-1.5">
-                <Check className="h-3.5 w-3.5" /> Sent to {leadEmail} — check your inbox
-              </p>
-            )}
+        {/* The quiet lane for hot buyers — buying otherwise lives after the save */}
+        {packState !== "sent" && (phase === "building" || phase === "ready") && (
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={goCheckout}
+              disabled={checkoutLoading}
+              className="text-xs text-muted-foreground hover:text-foreground transition underline underline-offset-2"
+            >
+              {checkoutLoading
+                ? "Opening checkout…"
+                : "Ready to launch this now? Get 50% off your first month →"}
+            </button>
           </div>
         )}
+
+        {/* Saved → the close unfolds right here. No redirect, no re-reveal. */}
+        {packState === "sent" && <VslCloseSection brandId={brandId} firstName={leadName.trim().split(" ")[0] || null} />}
 
         {phase === "error" && (
           <div className="text-center">
@@ -1479,6 +1606,49 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             </Button>
           </div>
         )}
+
+        {/* Save dialog — the honest framing: the kit stays here, the email is
+            the private link that survives this anonymous session. */}
+        <Dialog open={packFormOpen && packState !== "sent"} onOpenChange={setPackFormOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Save my Ad Kit</DialogTitle>
+              <DialogDescription>
+                Your kit stays right here — we'll email your private link so you can open it
+                anywhere, on any device.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-2">
+              <Input
+                placeholder="Your name"
+                value={leadName}
+                onChange={(e) => setLeadName(e.target.value)}
+                className="h-10 text-sm"
+              />
+              <Input
+                type="email"
+                placeholder="you@email.com"
+                value={leadEmail}
+                onChange={(e) => setLeadEmail(e.target.value)}
+                className="h-10 text-sm"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && packState !== "sending") sendAdPack();
+                }}
+              />
+              <Button
+                onClick={sendAdPack}
+                disabled={packState === "sending"}
+                className="h-11 rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity"
+              >
+                {packState === "sending" ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving…</>
+                ) : (
+                  <><Mail className="h-4 w-4 mr-2" /> Save my Ad Kit</>
+                )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

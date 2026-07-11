@@ -14,10 +14,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
-import { trackLumiEvent, trackLumiEventOnce } from "@/lib/lumi-pixel";
-import { toast } from "sonner";
+import { trackLumiEventOnce } from "@/lib/lumi-pixel";
 import lumiLogo from "@/assets/lumi-logo.png";
+import { useKitCheckout, useVslVideo } from "@/components/ad-kit/VslClose";
 import { AdFeedMock } from "@/components/ad-kit/AdFeedMock";
 import { BuyerPsychology } from "@/components/ad-kit/BuyerPsychology";
 import { GamePlanCard } from "@/components/ad-kit/GamePlanCard";
@@ -55,9 +54,7 @@ export default function AdPackReveal() {
   const [kit, setKit] = useState<Kit | null>(null);
   const [brandName, setBrandName] = useState<string | null>(null);
   const [packImageUrl, setPackImageUrl] = useState<string | null>(null);
-  const [vslVideoUrl, setVslVideoUrl] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   const brandId = kit?.brand_id || brandIdParam;
 
@@ -107,61 +104,10 @@ export default function AdPackReveal() {
     })();
   }, [kitToken, brandIdParam]);
 
-  useEffect(() => {
-    // Via an edge function, not a direct table read — a genuinely cold
-    // visitor has no way to satisfy site_settings' authenticated-only
-    // read policy, and the video is core content here, not a nicety.
-    (async () => {
-      try {
-        const { data } = await supabase.functions.invoke("get-vsl-video");
-        if (data?.url) setVslVideoUrl(data.url);
-      } catch (err) {
-        console.error("[ad-kit] couldn't load VSL video", err);
-      }
-    })();
-  }, []);
-
-  const goCheckout = async () => {
-    if (checkoutLoading) return;
-    setCheckoutLoading(true);
-    try {
-      let rewardful_referral = "";
-      try {
-        if ((window as any).rewardful) {
-          rewardful_referral = await Promise.race([
-            new Promise<string>((resolve) => {
-              (window as any).rewardful("ready", function () {
-                resolve((window as any).Rewardful?.referral || "");
-              });
-            }),
-            new Promise<string>((resolve) => setTimeout(() => resolve(""), 3000)),
-          ]);
-        }
-      } catch {
-        /* ignore */
-      }
-
-      const returnTo = brandId ? `/launch?brand=${brandId}` : undefined;
-      trackLumiEvent("InitiateCheckout");
-      const { data, error } = await supabase.functions.invoke("create-guest-checkout", {
-        body: {
-          priceId: SUBSCRIPTION_TIERS.solo.monthlyPriceId,
-          rewardful_referral,
-          returnTo,
-        },
-      });
-      if (error) throw error;
-      if (data?.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error("Checkout didn't return a URL");
-      }
-    } catch (err) {
-      console.error("[ad-kit] checkout error", err);
-      toast.error("Could not start checkout. Please try again.");
-      setCheckoutLoading(false);
-    }
-  };
+  // Shared with the onboarding save-unfold (VslClose.tsx) so the two funnel
+  // closes can never drift apart.
+  const vslVideoUrl = useVslVideo();
+  const { goCheckout, checkoutLoading } = useKitCheckout(brandId);
 
   // ---- Kit-derived display pieces (each section renders only when its
   // data exists — a missing piece disappears, it never apologizes) ----
