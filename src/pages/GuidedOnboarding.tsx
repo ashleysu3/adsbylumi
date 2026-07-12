@@ -1101,10 +1101,9 @@ export default function GuidedOnboarding() {
             <div className="w-full max-w-xl mx-auto">
               <div className="text-center mb-10 animate-fade-in">
                 <div className="inline-block mb-8">
-                  <span className="text-5xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600">
-                    LUMI
-                  </span>
+                  <img src={lumiLogo} alt="Lumi" className="h-14 object-contain mx-auto" />
                 </div>
+
                 <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground leading-tight">
                   Drop your website.<br />
                   <span className="text-muted-foreground">Watch LUMI do the rest.</span>
