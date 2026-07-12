@@ -252,6 +252,28 @@ function pickMeta(html: string, names: string[]): string | null {
   return null;
 }
 
+// Homepage <title> / og:title tags are very often a generic word like "Home"
+// or "Welcome" rather than the actual brand name. Taking those verbatim gave
+// people a brand literally named "Home". Reject the whole-string generic names
+// so the caller falls back to the domain-derived name instead. Exact-match only
+// (normalized) — never a substring, so real names like "Home Depot" survive.
+const GENERIC_SITE_NAMES = new Set([
+  "home", "homepage", "home page", "welcome", "welcome!", "index",
+  "untitled", "untitled document", "new page", "website", "my website",
+  "my site", "main", "start", "landing page", "loading", "dashboard",
+]);
+function isGenericName(s: string): boolean {
+  const normalized = s.trim().toLowerCase().replace(/[.!|·•–—\-\s]+$/, "").trim();
+  return GENERIC_SITE_NAMES.has(normalized);
+}
+function cleanBrandName(name?: string | null): string | undefined {
+  if (!name) return undefined;
+  const trimmed = name.trim();
+  if (!trimmed || trimmed.length >= 80) return undefined;
+  if (isGenericName(trimmed)) return undefined;
+  return trimmed;
+}
+
 function parseMetaFromHtml(html: string): { name?: string; description?: string } {
   const ogSite = pickMeta(html, ["og:site_name", "application-name", "twitter:site"]);
   const ogTitle = pickMeta(html, ["og:title", "twitter:title"]);
@@ -259,7 +281,11 @@ function parseMetaFromHtml(html: string): { name?: string; description?: string 
   const rawTitle = titleMatch ? decodeEntities(titleMatch[1].replace(/\s+/g, " ")) : null;
   const splitTitle = (t?: string | null) => {
     if (!t) return null;
-    const parts = t.split(/\s+[|—–\-·•:]\s+/).map((p) => p.trim()).filter(Boolean);
+    let parts = t.split(/\s+[|—–\-·•:]\s+/).map((p) => p.trim()).filter(Boolean);
+    // Drop generic segments ("Home", "Welcome") so a title like
+    // "Home | After Organic" yields the real brand, not the filler word.
+    const real = parts.filter((p) => !isGenericName(p));
+    if (real.length) parts = real;
     if (parts.length === 1) return parts[0];
     const last = parts[parts.length - 1];
     const first = parts[0];
@@ -270,7 +296,7 @@ function parseMetaFromHtml(html: string): { name?: string; description?: string 
   const description =
     pickMeta(html, ["og:description", "twitter:description", "description"]) || undefined;
   return {
-    name: name && name.length > 0 && name.length < 80 ? name : undefined,
+    name: cleanBrandName(name),
     description: description && description.length < 400 ? description : undefined,
   };
 }
@@ -325,7 +351,7 @@ async function fetchSiteMeta(url: string): Promise<{ name?: string; description?
         md?.title?.split?.(/\s+[|—–\-·•:]\s+/)?.[0]?.trim();
       const description = fromHtml.description || md?.description || md?.ogDescription;
       return {
-        name: name && name.length < 80 ? name : undefined,
+        name: cleanBrandName(name),
         description: description && description.length < 400 ? description : undefined,
       };
     } catch (e) {
@@ -460,7 +486,7 @@ serve(async (req) => {
 
       const merged = {
         ...parsed,
-        name: parsed?.name || meta.name,
+        name: cleanBrandName(parsed?.name) || meta.name,
         description: parsed?.description || meta.description || raw?.description,
         colors,
         fonts,
