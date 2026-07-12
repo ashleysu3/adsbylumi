@@ -42,6 +42,19 @@ export function OnboardingChecklist({ brand, offers, onEditBrand }: OnboardingCh
       });
   }, [brand?.id]);
 
+  // Onboarding stores "who you serve" in the audience_psychology JSONB
+  // (target_audience / summary / pains / desires), not the top-level
+  // value_proposition + target_audience columns. Checking only those columns
+  // told people who'd just finished the full brand read to "define your
+  // positioning" all over again — so credit the onboarding read too.
+  const ap = (brand?.audience_psychology as any) || {};
+  const hasOnboardingPositioning = !!(
+    ap.target_audience ||
+    ap.summary ||
+    (Array.isArray(ap.pain_points) && ap.pain_points.length) ||
+    (Array.isArray(ap.desires) && ap.desires.length)
+  );
+
   const checklistItems: ChecklistItem[] = [
     {
       id: "brand-basics",
@@ -55,7 +68,7 @@ export function OnboardingChecklist({ brand, offers, onEditBrand }: OnboardingCh
       id: "brand-positioning",
       title: "Define Your Positioning",
       description: "What you offer and who you serve",
-      completed: !!(brand?.value_proposition && brand?.target_audience),
+      completed: !!(brand?.value_proposition && brand?.target_audience) || hasOnboardingPositioning,
       action: onEditBrand,
       actionLabel: "Add Info"
     },
