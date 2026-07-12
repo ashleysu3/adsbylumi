@@ -134,7 +134,6 @@ export default function AdStrategy() {
   const [loading, setLoading] = useState(true);
   const [offers, setOffers] = useState<OfferRow[]>([]);
   const [workspaces, setWorkspaces] = useState<WorkspaceRow[]>([]);
-  const [hasDraftCampaigns, setHasDraftCampaigns] = useState(false);
   const [goals, setGoals] = useState<GoalRow[]>([]);
   const [evals, setEvals] = useState<Record<string, EvalResult>>({});
 
@@ -190,7 +189,6 @@ export default function AdStrategy() {
         });
         setOffers(offersList);
         setWorkspaces(wsList);
-        setHasDraftCampaigns((wsRes.data || []).length > wsList.length);
         setGoals((goalsRes.data || []) as GoalRow[]);
 
         // Health pings
@@ -579,25 +577,17 @@ export default function AdStrategy() {
               )}
             </section>
 
-            {/* 2. Realistic Goals */}
+            {/* 2. Realistic Goals — only once there's a campaign to set goals
+                on. Its empty state was one of four "no campaign yet / create a
+                campaign" repeats; the system map + next moves already carry
+                that, so it stays hidden until a campaign exists. */}
+            {workspaces.length > 0 && (
             <section className="space-y-3">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Wallet className="h-4 w-4 text-lumi-pink-1" /> Realistic goals
               </h2>
 
-              {workspaces.length === 0 ? (
-                <SetupPrompt
-                  title={hasDraftCampaigns ? "No live campaigns to set goals on yet" : "No campaigns to set goals on yet"}
-                  description={
-                    hasDraftCampaigns
-                      ? "You've got a campaign in progress — once it's live on Meta, set a business goal here and LUMI will reality-check it against your budget."
-                      : "Once you launch a campaign, set a business goal here and LUMI will reality-check it against your budget."
-                  }
-                  ctaLabel={hasDraftCampaigns ? "Continue building" : "Create campaign"}
-                  onCta={() => navigate(hasDraftCampaigns ? "/campaigns" : "/create?from=strategy")}
-                />
-              ) : (
-                <div className="space-y-2">
+              <div className="space-y-2">
                   {workspaces.map((w) => {
                     const g = goalForWs(w.id);
                     const ev = evals[w.id];
@@ -668,21 +658,18 @@ export default function AdStrategy() {
                     );
                   })}
                 </div>
-              )}
             </section>
+            )}
 
-            {/* 3. Health */}
+            {/* 3. Health — hidden until there's a campaign to have health for;
+                before that its empty state was just a third "no campaign yet"
+                repeat with nothing to act on. */}
+            {workspaces.length > 0 && (
             <section className="space-y-3">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Activity className="h-4 w-4 text-lumi-pink-1" /> System health
               </h2>
-              {workspaces.length === 0 ? (
-                <Card>
-                  <CardContent className="py-6 text-sm text-muted-foreground text-center">
-                    Health will appear once you have live campaigns.
-                  </CardContent>
-                </Card>
-              ) : systemHealth?.tone === "ok" ? (
+              {systemHealth?.tone === "ok" ? (
                 <Card className="border-emerald-500/30 bg-emerald-500/5">
                   <CardContent className="py-4 flex items-start gap-3">
                     <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5" />
@@ -704,6 +691,7 @@ export default function AdStrategy() {
                 </Card>
               )}
             </section>
+            )}
 
             {/* 4. Next moves */}
             <section className="space-y-3">
