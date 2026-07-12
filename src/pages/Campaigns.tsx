@@ -110,7 +110,7 @@ export default function Campaigns() {
           <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/40 border border-border/60 rounded-xl px-3 py-2">
             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground/70" />
             <p>
-              Everything here — drafts and live ads — is openable so you can add or refresh creative. For day-to-day performance, head to <button onClick={() => navigate("/ad-performance")} className="underline underline-offset-2 hover:text-foreground">Ad Performance</button>.
+              Everything here — drafts and live ads — is openable so you can add or refresh creative. For day-to-day performance, head to <button onClick={() => navigate("/ad-performance")} className="underline underline-offset-2 hover:text-foreground">Live Ads</button>.
             </p>
           </div>
         )}

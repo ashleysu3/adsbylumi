@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -345,11 +345,10 @@ export function CampaignsList({ brandId, addCreativeMode = false, excludeWorkspa
   return (
     <Card variant="glow">
       <CardHeader className="pb-3">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <CardTitle className="text-lg">My Campaigns</CardTitle>
-            <CardDescription className="text-sm">Every campaign for this brand — drafts you're still building and anything connected to Meta. Open one to manage its creative.</CardDescription>
-          </div>
+        {/* The page header ("My Campaigns" + description) already titles this
+            view — the card just holds the list + actions, so it doesn't repeat
+            the heading. */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
           <div className="flex items-center gap-2">
             {!combineMode && draftCount >= 2 && (
               <Button
