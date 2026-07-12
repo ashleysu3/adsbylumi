@@ -398,11 +398,9 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       const blob = new Blob([bytes], { type: "image/png" });
 
-      // lead-magnet-assets (not brand-assets, which isn't a public bucket —
-      // an email client has no Supabase session, so a private-bucket URL
-      // would never load). RLS requires the uploader's own uid as the
-      // first path segment (see BrandImageLibrary.tsx's identical
-      // convention for brand-assets) — brandId alone isn't enough.
+      // lead-magnet-assets. RLS requires the uploader's own uid as the first
+      // path segment (see BrandImageLibrary.tsx's identical convention for
+      // brand-assets) — brandId alone isn't enough.
       const { data: userRes } = await supabase.auth.getUser();
       const userId = userRes?.user?.id;
       if (!userId) throw new Error("Not signed in");
@@ -411,7 +409,21 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         .from("lead-magnet-assets")
         .upload(path, blob, { cacheControl: "3600", upsert: true, contentType: "image/png" });
       if (upErr) throw upErr;
+      // The bucket is private on Lovable (owner-only read policies were applied,
+      // but the public flag never was), so a getPublicUrl link 404s ("Bucket
+      // not found") for the cold email/token visitor with no session — which
+      // was showing a broken image on the kit page and in the email. A signed
+      // URL is pre-authorized and loads with no session; a long expiry keeps
+      // the lead magnet alive. (Making the bucket public is the clean fix, but
+      // this must work today without waiting on a deploy.)
       const { data: pub } = supabase.storage.from("lead-magnet-assets").getPublicUrl(path);
+      let imageUrl = pub.publicUrl;
+      try {
+        const { data: signed } = await supabase.storage
+          .from("lead-magnet-assets")
+          .createSignedUrl(path, 60 * 60 * 24 * 365);
+        if (signed?.signedUrl) imageUrl = signed.signedUrl;
+      } catch { /* fall back to the public URL */ }
 
       // Mint the kit token — the one key that opens /your-ad-pack?kit=…
       // from the email, on any device, with no session.
@@ -421,11 +433,36 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
 
+      // The domain the ad clicks through to, and a logo for the feed-post
+      // avatar — snapshotted here because the token-gated kit RPC returns
+      // only whitelisted columns, not the brand's website or logo. Derived
+      // from the real offer link first, then the brand site.
+      const adDomain: string | null = (() => {
+        const raw =
+          offerRowRef.current?.url ||
+          offerUrlRef.current ||
+          (brand as any)?.website_url ||
+          (brand as any)?.website ||
+          "";
+        if (!raw) return null;
+        try {
+          return new URL(raw.startsWith("http") ? raw : `https://${raw}`).hostname.replace(/^www\./, "");
+        } catch {
+          return null;
+        }
+      })();
+
       // Snapshot everything the kit page shows — these live only in React
       // state otherwise and would be gone by the time the email is opened.
       const selectedOption = options[selectedIdx] || null;
       const adKit: Record<string, any> = {
         copy: selectedOption ? { template: templateRef.current, option: selectedOption } : null,
+        // Brand chrome for the feed-post mock on the kit page.
+        meta: {
+          domain: adDomain,
+          avatarUrl: logoUrlRef.current || null,
+          cta: (typeof selectedOption?.cta === "string" && selectedOption.cta) || null,
+        },
         // Which angle they chose — the kit page can name it, and it's the
         // seed data for knowing which angles actually convert.
         angle: chosenAngleRef.current
@@ -452,7 +489,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
         .update({
           lead_email: leadEmail.trim(),
           lead_name: leadName.trim() || null,
-          ad_pack_image_url: pub.publicUrl,
+          ad_pack_image_url: imageUrl,
           ad_kit_token: kitToken,
           ad_kit: adKit,
         })
