@@ -107,6 +107,8 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = false
   [functions.get-ad-kit]
     verify_jwt = false
+  [functions.fetch-instagram-avatar]
+    verify_jwt = false
   [functions.get-shared-report]
     verify_jwt = false
   [functions.handle-cancellation]
