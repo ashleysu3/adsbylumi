@@ -232,7 +232,10 @@ export default function Create() {
   };
   const { activeBrand } = useBrand();
   const [loading, setLoading] = useState(true);
-  const [currentStep, setCurrentStep] = useState(fromStrategy && strategyOfferId ? 2 : fromStrategy ? 1 : 0); // 0 = entry choice
+  // Opens directly on the goal picker (step 1). The old 4-card entry chooser
+  // (step 0) was removed — it just bounced "recommended" to /strategy and made
+  // "pick a campaign" an extra click before the real "what's your goal?" screen.
+  const [currentStep, setCurrentStep] = useState(fromStrategy && strategyOfferId ? 2 : 1);
   const totalSteps = 2;
 
   // Data
@@ -261,9 +264,49 @@ export default function Create() {
   const [newOfferName, setNewOfferName] = useState("");
   const [newOfferUrl, setNewOfferUrl] = useState("");
 
-  // Access-code redemption (unlocks a specialized strategy)
+  // Access-code redemption (unlocks a specialized strategy) — now a secondary
+  // action tucked under the goal picker rather than a co-equal entry card.
   const [accessCode, setAccessCode] = useState("");
   const [redeemingCode, setRedeemingCode] = useState(false);
+  const [showCodeInput, setShowCodeInput] = useState(false);
+
+  const redeemAccessCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = accessCode.trim();
+    if (!code) {
+      toast.error("Enter a code first");
+      return;
+    }
+    setRedeemingCode(true);
+    try {
+      const { data, error } = await supabase.rpc("redeem_strategy_code" as any, { p_code: code });
+      if (error) throw error;
+      if (!data) {
+        toast.error("That code didn't match an active strategy. Double-check it and try again.");
+        return;
+      }
+      const strat: any = data;
+      const campaigns = Array.isArray(strat.campaigns) ? strat.campaigns : [];
+      const stored = {
+        slug: strat.slug,
+        name: strat.name,
+        why_it_works: strat.why_it_works ?? "",
+        intro: strat.description ?? "",
+        campaigns,
+        statuses: campaigns.map(() => "todo" as const),
+        activeIndex: null as number | null,
+        offer_id: null as string | null,
+      };
+      sessionStorage.setItem("lumi_strategy_plan", JSON.stringify(stored));
+      toast.success(`Unlocked: ${strat.name}`);
+      navigate("/strategy");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || "Couldn't redeem that code");
+    } finally {
+      setRedeemingCode(false);
+    }
+  };
 
   // Social growth flow state
   const [showSocialGrowthFlow, setShowSocialGrowthFlow] = useState(false);
@@ -336,7 +379,7 @@ export default function Create() {
     setGeneratedAngles([]);
     setSelectedCreativeTemplates([]);
     setShowSocialGrowthFlow(false);
-    setCurrentStep(fromStrategy && strategyOfferId ? 2 : fromStrategy ? 1 : 0);
+    setCurrentStep(fromStrategy && strategyOfferId ? 2 : 1);
   }, [activeBrand?.id, fromStrategy, strategyOfferId]);
 
   const fetchData = async () => {
@@ -542,16 +585,6 @@ export default function Create() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromStrategy, currentStep, selectedOfferId, selectedTemplateId]);
 
-  // Also skip the "What would you like to do?" entry card whenever the user
-  // arrived with an intent (onboarding hand-off, AdStrategy build action, or
-  // a saved strategy plan). The choice was already made.
-  useEffect(() => {
-    if (fromStrategy && currentStep === 0) {
-      setCurrentStep(1);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fromStrategy, currentStep]);
-
   const handleNext = async () => {
     if (currentStep === 2) {
       // After strategy, generate angles and go directly to Creative Studio
@@ -738,10 +771,9 @@ export default function Create() {
       setSelectedGoal("");
       setSelectedOfferId("");
       setShowSocialGrowthFlow(false);
-    } else if (currentStep === 1) {
-      setCurrentStep(0); // Go back to entry choice
     } else {
-      navigate("/start");
+      // The goal picker is the first step now — Back exits /create.
+      navigate("/home");
     }
   };
 
@@ -1015,156 +1047,6 @@ export default function Create() {
           }
         </AnimatePresence>
 
-        {/* Entry Step: Choose flow */}
-        {currentStep === 0 &&
-        <motion.div
-          key="step-entry"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6 py-8">
-          
-            <div className="text-center space-y-2 mb-8">
-              <h1 className="text-2xl font-heading font-bold text-foreground">What would you like to do?</h1>
-              <p className="text-muted-foreground">Choose how you'd like to get started</p>
-            </div>
-
-            <div className="space-y-4">
-              {/* LUMI Recommends */}
-              <button
-                onClick={() => navigate("/strategy")}
-                className="group text-left w-full"
-              >
-                <Card variant="gradient" className="p-6 hover:shadow-lumi transition-all cursor-pointer relative overflow-hidden">
-                  <div className="absolute top-3 right-3">
-                    <span className="text-[10px] uppercase tracking-wider font-semibold bg-gradient-to-r from-lumi-pink-1 to-lumi-orange-1 text-white px-2 py-1 rounded-full">
-                      Recommended
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-lumi-pink-1 to-lumi-purple-1 flex items-center justify-center flex-shrink-0">
-                      <Sparkles className="h-6 w-6 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0 pr-20">
-                      <h3 className="font-semibold text-foreground text-lg">LUMI recommended strategy</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Based on your website and business information provided
-                      </p>
-                    </div>
-                    <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all self-end flex-shrink-0" />
-                  </div>
-                </Card>
-              </button>
-
-              {/* Backup options */}
-              <div className="grid grid-cols-2 gap-3">
-                {/* Pick my ad campaign */}
-                <button
-                  onClick={() => setCurrentStep(1)}
-                  className="group text-left w-full"
-                >
-                  <Card variant="glow" className="p-4 hover:shadow-glow transition-all cursor-pointer group-hover:border-primary/50 h-full">
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-lumi-orange-1 to-lumi-pink-1 flex items-center justify-center flex-shrink-0">
-                        <Rocket className="h-4 w-4 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-foreground text-sm">Pick my ad campaign</h3>
-                      </div>
-                    </div>
-                  </Card>
-                </button>
-
-                {/* Update Existing Ads */}
-                <button
-                  onClick={() => navigate("/advanced-build")}
-                  className="group text-left w-full"
-                >
-                  <Card variant="glow" className="p-4 hover:shadow-glow transition-all cursor-pointer group-hover:border-primary/50 h-full">
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-lumi-purple-1 to-lumi-pink-1 flex items-center justify-center flex-shrink-0">
-                        <Upload className="h-4 w-4 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-foreground text-sm">Update existing ads</h3>
-                      </div>
-                    </div>
-                  </Card>
-                </button>
-              </div>
-
-              {/* I have a code! — redeems a specialized strategy */}
-              <Card variant="glow" className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-lumi-purple-1 to-lumi-orange-1 flex items-center justify-center flex-shrink-0">
-                    <Ticket className="h-4 w-4 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-foreground text-sm">I have a code!</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Got a code from a partner or coach? Drop it in to unlock a strategy made just for you.
-                    </p>
-                    <form
-                      className="flex gap-2 mt-3"
-                      onSubmit={async (e) => {
-                        e.preventDefault();
-                        const code = accessCode.trim();
-                        if (!code) {
-                          toast.error("Enter a code first");
-                          return;
-                        }
-                        setRedeemingCode(true);
-                        try {
-                          const { data, error } = await supabase.rpc(
-                            "redeem_strategy_code" as any,
-                            { p_code: code }
-                          );
-                          if (error) throw error;
-                          if (!data) {
-                            toast.error("That code didn't match an active strategy. Double-check it and try again.");
-                            return;
-                          }
-                          const strat: any = data;
-                          const campaigns = Array.isArray(strat.campaigns) ? strat.campaigns : [];
-                          const stored = {
-                            slug: strat.slug,
-                            name: strat.name,
-                            why_it_works: strat.why_it_works ?? "",
-                            intro: strat.description ?? "",
-                            campaigns,
-                            statuses: campaigns.map(() => "todo" as const),
-                            activeIndex: null as number | null,
-                            offer_id: null as string | null,
-                          };
-                          sessionStorage.setItem("lumi_strategy_plan", JSON.stringify(stored));
-                          toast.success(`Unlocked: ${strat.name}`);
-                          navigate("/strategy");
-                        } catch (err: any) {
-                          console.error(err);
-                          toast.error(err?.message || "Couldn't redeem that code");
-                        } finally {
-                          setRedeemingCode(false);
-                        }
-                      }}
-                    >
-                      <Input
-                        value={accessCode}
-                        onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
-                        placeholder="Enter your code"
-                        className="font-mono uppercase tracking-wider"
-                        maxLength={32}
-                        disabled={redeemingCode}
-                      />
-                      <Button type="submit" variant="lumi" disabled={redeemingCode || !accessCode.trim()}>
-                        {redeemingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : "Unlock"}
-                      </Button>
-                    </form>
-                  </div>
-                </div>
-              </Card>
-            </div>
-
-          </motion.div>
-        }
 
         {currentStep >= 1 &&
         <MobileStepWizard
@@ -1245,7 +1127,40 @@ export default function Create() {
                   icon={<MapPin className="h-5 w-5" />}
                   title="Event & location targeting"
                   description="Get in front of people at conferences, trade shows, or high-traffic venues" />
-                
+
+                    {/* Secondary paths — deliberately small. The goal picker
+                        above is the main way in; these two used to be co-equal
+                        entry cards that muddied "where do I start?". */}
+                    <div className="pt-4 mt-1 border-t border-border/60 flex flex-col gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => navigate("/advanced-build")}
+                        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors self-start">
+                        <Upload className="h-4 w-4" /> Already running ads? Update existing ads
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </button>
+                      {!showCodeInput ?
+                        <button
+                          type="button"
+                          onClick={() => setShowCodeInput(true)}
+                          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors self-start">
+                          <Ticket className="h-4 w-4" /> Have a partner or coach code?
+                        </button> :
+                        <form className="flex gap-2 max-w-sm" onSubmit={redeemAccessCode}>
+                          <Input
+                            value={accessCode}
+                            onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+                            placeholder="Enter your code"
+                            className="font-mono uppercase tracking-wider"
+                            maxLength={32}
+                            disabled={redeemingCode}
+                            autoFocus />
+                          <Button type="submit" variant="lumi" disabled={redeemingCode || !accessCode.trim()}>
+                            {redeemingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : "Unlock"}
+                          </Button>
+                        </form>
+                      }
+                    </div>
                   </div>
               }
 
