@@ -331,6 +331,10 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const engineColorsRef = useRef<EngineColors>(DEFAULT_ENGINE_COLORS);
   const fontsRef = useRef<{ displayFamily?: string; bodyFamily?: string }>({});
   const logoUrlRef = useRef<string | undefined>(undefined);
+  // The brand's Instagram profile pic, re-hosted server-side into a stable
+  // URL — used as the feed-post avatar on the kit page, preferred over the
+  // logo. Fetched fire-and-forget during boot so it's usually ready by save.
+  const avatarUrlRef = useRef<string | undefined>(undefined);
   const photoUrlRef = useRef<string | undefined>(undefined);
   const templateRef = useRef<PhotoTemplate | "checklist" | "bigtype">("bigtype");
   const socialProofRef = useRef<TestimonialQuote | null>(null);
@@ -457,10 +461,11 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       const selectedOption = options[selectedIdx] || null;
       const adKit: Record<string, any> = {
         copy: selectedOption ? { template: templateRef.current, option: selectedOption } : null,
-        // Brand chrome for the feed-post mock on the kit page.
+        // Brand chrome for the feed-post mock on the kit page. Instagram
+        // profile pic first (most recognizable), brand logo as the fallback.
         meta: {
           domain: adDomain,
-          avatarUrl: logoUrlRef.current || null,
+          avatarUrl: avatarUrlRef.current || logoUrlRef.current || null,
           cta: (typeof selectedOption?.cta === "string" && selectedOption.cta) || null,
         },
         // Which angle they chose — the kit page can name it, and it's the
@@ -765,6 +770,22 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
     (async () => {
       try {
         setPhase("loading");
+
+        // 0) Instagram avatar for the feed-post mock — kicked off first and
+        // never awaited, so the 2–4s scrape/re-host overlaps the whole build
+        // and is usually ready by the time they save. Falls back to the logo
+        // if there's no handle or the pic can't be fetched.
+        if ((brand as any)?.instagram_account_name) {
+          supabase.functions
+            .invoke("fetch-instagram-avatar", {
+              body: { brandId, username: (brand as any).instagram_account_name },
+            })
+            .then(({ data }) => {
+              const url = (data as any)?.url;
+              if (url && !cancelled) avatarUrlRef.current = url;
+            })
+            .catch(() => { /* logo fallback */ });
+        }
 
         // 1) Brand kit. extract-brand runs fire-and-forget back in step 1 and
         // nothing awaits it, so a fast visitor can get here before colors
