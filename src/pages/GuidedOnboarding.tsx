@@ -1190,13 +1190,17 @@ export default function GuidedOnboarding() {
           tones = tones.filter(Boolean).slice(0, 5);
 
           const ap: any = brand?.audience_psychology || {};
+          // The reveal's one-line "who you're for" teaser. Falls back to
+          // demographics/psychographics when there's no explicit target-audience
+          // field, so the montage tile never silently disappears for brands
+          // whose psychology is shaped differently (e.g. no target_audience key).
           const idealClient: string =
             (typeof ap.target_audience === "string" && ap.target_audience) ||
             (typeof ap.ideal_client === "string" && ap.ideal_client) ||
             brand?.target_audience ||
+            (typeof ap.demographics === "string" && ap.demographics) ||
+            (typeof ap.psychographics === "string" && ap.psychographics) ||
             "";
-          const firstPain: string = Array.isArray(ap.pain_points) ? (ap.pain_points[0] || "") : "";
-          const firstDesire: string = Array.isArray(ap.desires) ? (ap.desires[0] || "") : "";
 
           // Proof + photos: show a REAL taste (1-3 photos, 1-2 testimonial quotes),
           // then tease anything beyond that as a reason to start the trial — same
@@ -1498,31 +1502,18 @@ export default function GuidedOnboarding() {
 
                   {revealed.audience && <div className="h-px bg-border" />}
 
-                  {/* Who you're for */}
-                  {revealed.audience && (
+                  {/* Who you're for — kept as a light one-line teaser in the
+                      reveal montage (alongside palette / voice / proof). The
+                      full buyer psychology (pains, desires, objections, what
+                      moves them to buy) now lives on the build screen, so the
+                      pain/desire sub-cards here were removed to avoid showing a
+                      thin version right before the rich one. */}
+                  {revealed.audience && idealClient && (
                     <div className="animate-fade-in space-y-3">
                       <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <Target className="h-4 w-4 text-muted-foreground" /> Who you're for
                       </div>
-                      {idealClient && (
-                        <p className="text-sm text-foreground leading-relaxed">{idealClient}</p>
-                      )}
-                      {(firstPain || firstDesire) && (
-                        <div className="grid sm:grid-cols-2 gap-3 pt-1">
-                          {firstPain && (
-                            <div className="rounded-2xl bg-muted/40 p-3">
-                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Pain point</div>
-                              <div className="text-sm text-foreground leading-snug">{firstPain}</div>
-                            </div>
-                          )}
-                          {firstDesire && (
-                            <div className="rounded-2xl bg-muted/40 p-3">
-                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Desire</div>
-                              <div className="text-sm text-foreground leading-snug">{firstDesire}</div>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      <p className="text-sm text-foreground leading-relaxed">{idealClient}</p>
                     </div>
                   )}
 
