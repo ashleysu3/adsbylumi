@@ -17,6 +17,7 @@ import { getTestimonialQuotes, type TestimonialQuote } from "@/lib/social-proof"
 import { trackLumiEvent, trackLumiEventOnce } from "@/lib/lumi-pixel";
 import lumiLogo from "@/assets/lumi-logo.png";
 import { GamePlanCard } from "@/components/ad-kit/GamePlanCard";
+import { BuyerPsychology } from "@/components/ad-kit/BuyerPsychology";
 import { ScriptBlock } from "@/components/ad-kit/ScriptBlock";
 import { BrollBlock } from "@/components/ad-kit/BrollBlock";
 import { VslCloseSection, useKitCheckout } from "@/components/ad-kit/VslClose";
@@ -1230,6 +1231,18 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const template = templateRef.current;
   const heroImage = images[0];
 
+  // The buyer-psychology reveal — the moment that sells (seeing their own buyer
+  // described better than they could). Same shared component the kit page uses.
+  const buyerIdealClient = useMemo(() => {
+    const ap = (brand?.audience_psychology as any) || {};
+    return (
+      (typeof ap.target_audience === "string" && ap.target_audience) ||
+      (typeof ap.ideal_client === "string" && ap.ideal_client) ||
+      (brand as any)?.target_audience ||
+      ""
+    );
+  }, [brand]);
+
   const annotations = useMemo(
     () =>
       computeCopyAnnotations(
@@ -1573,6 +1586,16 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             </div>
           )}
         </div>
+        )}
+
+        {/* Who your buyer is — shown right after they meet their ad, before the
+            plan. This is the selling moment: their buyer, described better than
+            they'd describe it themselves. Same component as the kit page;
+            rendered bare (it brings its own cards) with a little breathing room. */}
+        {phase === "ready" && (
+          <div className="pt-2 animate-fade-in">
+            <BuyerPsychology idealClient={buyerIdealClient || undefined} ap={brand?.audience_psychology} />
+          </div>
         )}
 
         {/* Game plan strip (shared ad-kit component, compact variant) */}
