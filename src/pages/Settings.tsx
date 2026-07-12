@@ -19,7 +19,7 @@ import {
 import { CancelSubscriptionModal } from '@/components/CancelSubscriptionModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GlossaryTooltip } from '@/components/GlossaryTooltip';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers';
 import { CancellationPolicyBanner } from '@/components/CancellationPolicyBanner';
@@ -110,9 +110,17 @@ function UpgradePlanSection() {
   );
 }
 
+const SETTINGS_TABS = ["account", "notifications", "alerts", "creative", "billing", "integrations"];
+
 export default function Settings() {
   const navigate = useNavigate();
   const { getEffectiveUserId } = useImpersonation();
+  // Honor ?tab= so links can deep-link to a specific tab (e.g. the sidebar's
+  // "billing & plan" opens Billing directly instead of dropping on Account).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab") || "";
+  const activeTab = SETTINGS_TABS.includes(tabParam) ? tabParam : "account";
+  const setActiveTab = (v: string) => setSearchParams(v === "account" ? {} : { tab: v }, { replace: true });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<any>(null);
@@ -338,7 +346,7 @@ export default function Settings() {
           </p>
         </div>
 
-        <Tabs defaultValue="account" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="account" className="gap-2">
               <User className="h-4 w-4" />

@@ -382,7 +382,7 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/settings")}
+                onClick={() => navigate("/settings?tab=billing")}
                 className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
               >
                 <CreditCard className="h-3 w-3" /> billing & plan
