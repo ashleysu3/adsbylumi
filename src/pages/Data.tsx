@@ -235,7 +235,7 @@ export default function AdPerformance() {
         id: "data-no-campaigns",
         title: "No Live Campaigns Yet",
         message: "Publish your first campaign to start tracking performance and get AI-powered insights.",
-        actionLabel: "Create Campaign",
+        actionLabel: "New campaign",
         onAction: () => navigate("/create")
       });
       return;

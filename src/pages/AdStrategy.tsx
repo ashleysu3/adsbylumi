@@ -339,7 +339,7 @@ export default function AdStrategy() {
         moves.push({
           id: `offer-noc-${o.id}`,
           title: `${o.name} has no campaign running yet.`,
-          cta: "Create campaign",
+          cta: "New campaign",
           onCta: () => navigate(`/create?from=strategy&goal=promote_offer&offerId=${o.id}`),
         });
     });
@@ -484,7 +484,7 @@ export default function AdStrategy() {
                               onClick={() => navigate(`/create?from=strategy&goal=promote_offer&offerId=${f.offerId}`)}
                               className="gap-1.5"
                             >
-                              <Plus className="h-3.5 w-3.5" /> Build a campaign
+                              <Plus className="h-3.5 w-3.5" /> New campaign
                             </Button>
                           )}
                         </div>
