@@ -146,6 +146,7 @@ Remember: the footage plays behind ad copy. It should make THIS audience feel "t
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
+        response_format: { type: "json_object" },
       }),
     });
 
@@ -172,17 +173,32 @@ Remember: the footage plays behind ad copy. It should make THIS audience feel "t
     const data = await response.json();
     const rawContent = data.choices?.[0]?.message?.content || "";
 
+    const extractJson = (raw: string): any => {
+      let cleaned = raw.trim();
+      const fence = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (fence) cleaned = fence[1].trim();
+      const start = cleaned.search(/[\{\[]/);
+      const openChar = start !== -1 ? cleaned[start] : "";
+      const closeChar = openChar === "[" ? "]" : "}";
+      const end = cleaned.lastIndexOf(closeChar);
+      if (start !== -1 && end !== -1) cleaned = cleaned.substring(start, end + 1);
+      try {
+        return JSON.parse(cleaned);
+      } catch {
+        cleaned = cleaned
+          .replace(/,\s*}/g, "}")
+          .replace(/,\s*]/g, "]")
+          .replace(/[\x00-\x1F\x7F]/g, " ");
+        return JSON.parse(cleaned);
+      }
+    };
+
     let ideas;
     try {
-      let cleaned = rawContent.trim();
-      const jsonMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        cleaned = jsonMatch[1].trim();
-      }
-      const parsed = JSON.parse(cleaned);
-      ideas = parsed.ideas || parsed;
+      const parsed = extractJson(rawContent);
+      ideas = Array.isArray(parsed) ? parsed : parsed.ideas || [];
     } catch (parseErr) {
-      console.error("Failed to parse AI response:", rawContent);
+      console.error("Failed to parse AI response:", rawContent?.slice(0, 2000));
       throw new Error("Failed to parse B-roll ideas from AI response");
     }
 
