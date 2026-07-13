@@ -325,7 +325,7 @@ export default function Home() {
               icon={Rocket}
               title="Launch your first campaign"
               description="Once a campaign is live, LUMI will start showing the moves worth making each week."
-              ctaLabel="Create campaign"
+              ctaLabel="New campaign"
               onCta={() => navigate("/create")}
             />
           ) : isCaughtUp ? (

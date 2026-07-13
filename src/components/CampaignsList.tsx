@@ -385,7 +385,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, excludeWorkspa
             {!combineMode && (
               <Button onClick={() => navigate("/create")} size="sm" className="h-8">
                 <Plus className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">New Campaign</span>
+                <span className="hidden sm:inline">New campaign</span>
                 <span className="sm:hidden">New</span>
               </Button>
             )}
