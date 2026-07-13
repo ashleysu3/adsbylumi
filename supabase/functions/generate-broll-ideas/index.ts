@@ -146,6 +146,7 @@ Remember: the footage plays behind ad copy. It should make THIS audience feel "t
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
+        response_format: { type: "json_object" },
       }),
     });
 
