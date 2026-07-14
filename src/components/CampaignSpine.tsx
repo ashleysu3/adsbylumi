@@ -7,8 +7,13 @@ interface CampaignSpineProps {
   compact?: boolean;
 }
 
+// Step 1 is labeled "Plan" (not "Strategy") on purpose: this stepper is the
+// build-one-campaign flow, and its step-1 page (/strategy-builder) is "What
+// should you run? — here's the plan LUMI recommends." The sidebar's "Strategy"
+// is a *different* page (the funnel map, /strategy), so sharing the name made
+// "Strategy" point at two different places depending on where you clicked.
 const STEPS = [
-  { num: 1, label: "Strategy", path: "/strategy-builder" },
+  { num: 1, label: "Plan", path: "/strategy-builder" },
   { num: 2, label: "Creative", path: "/creative" },
   { num: 3, label: "Launch", path: "/launch" },
   { num: 4, label: "Optimize", path: "/performance" },
