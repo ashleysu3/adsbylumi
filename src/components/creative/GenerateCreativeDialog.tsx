@@ -739,10 +739,15 @@ export function GenerateCreativeDialog() {
       if (activeCustom) {
         if (activeCustom.type === "carousel") {
           const slots: string[] = Array.isArray(activeCustom.slide_slots) ? activeCustom.slide_slots : [];
-          const blankSlide: Slide = {};
-          slots.forEach((k) => (blankSlide[k] = ""));
-          setCarouselOptions([{ slides: [blankSlide] }]);
-          setEditedSlides([blankSlide]);
+          const makeBlank = (): Slide => {
+            const s: Slide = {};
+            slots.forEach((k) => (s[k] = ""));
+            return s;
+          };
+          const n = Math.max(1, slideCount || 1);
+          const blankSlides: Slide[] = Array.from({ length: n }, makeBlank);
+          setCarouselOptions([{ slides: blankSlides }]);
+          setEditedSlides(blankSlides);
           setSingleOptions([]);
           setEditedSingle({});
         } else {
