@@ -160,12 +160,19 @@ OUTPUT — return ONLY valid JSON, no markdown:
 
 Generate exactly 15 ideas. Vary the moods, settings, and times of day. Mood must be one of: Calm, Productive, Relatable, Warm, Authentic, Energetic, Aspirational, Grounded.`;
 
+    const libraryDirective = libraryClips.length > 0
+      ? `The creator has already uploaded ${libraryClips.length} B-roll clip${libraryClips.length === 1 ? "" : "s"} to their library (see libraryClips in BRAND CONTEXT — file names + tags describe what's in each clip). Bias AT LEAST HALF of your ideas so they could be shot with, or directly complement, the footage they already have. Reference the mood/subject of those clips when useful, but do NOT quote file names in the output.`
+      : `The creator has NOT uploaded any B-roll clips yet. Generate ideas they can film themselves on their phone in the next hour.`;
+
     const userPrompt = `Generate 15 B-roll clip ideas tailored to this brand and audience. Use the audience psychology (pains, desires, daily life) and brand voice/vibe to make each scene resonate — while keeping every clip lofi, action-based, no-acting, and filmable on a phone in under a minute.
+
+${libraryDirective}
 
 BRAND CONTEXT:
 ${brandContext}
 
 Remember: the footage plays behind ad copy. It should make THIS audience feel "that's my life" or "that's the life I want," and feel like THIS brand's world — without being on-the-nose about the offer.`;
+
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
