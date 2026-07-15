@@ -26,6 +26,10 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const { brandId } = body;
+    const libraryClipsInput: Array<{ file_name?: string; tags?: string[] }> = Array.isArray(body.libraryClips)
+      ? body.libraryClips
+      : [];
+
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
