@@ -133,24 +133,33 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
   const navigate = useNavigate();
   const [ideas, setIdeas] = useState<BRollIdea[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasGenerated, setHasGenerated] = useState(false);
   const [brandDetails, setBrandDetails] = useState<BrandDetails | null>(null);
+  const [libraryClips, setLibraryClips] = useState<Array<{ file_name: string; tags?: string[] }>>([]);
 
-  // Fetch extra brand fields not in context
+  // Fetch extra brand fields + uploaded b-roll library
   useEffect(() => {
     if (!activeBrand?.id) return;
     supabase
       .from("brands")
-      .select("target_audience, value_proposition")
+      .select("target_audience, value_proposition, broll_library")
       .eq("id", activeBrand.id)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
-        if (data) setBrandDetails(data);
+        if (!data) return;
+        setBrandDetails({
+          target_audience: (data as any).target_audience ?? null,
+          value_proposition: (data as any).value_proposition ?? null,
+        });
+        const lib = (data as any).broll_library;
+        setLibraryClips(Array.isArray(lib) ? lib : []);
       });
   }, [activeBrand?.id]);
 
   const generateIdeas = async () => {
     if (!activeBrand) return;
     setLoading(true);
+    setHasGenerated(true);
     try {
       const { data, error } = await supabase.functions.invoke("generate-broll-ideas", {
         body: {
@@ -159,13 +168,21 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
           industry: activeBrand.industry,
           targetAudience: brandDetails?.target_audience,
           valueProposition: brandDetails?.value_proposition,
+          libraryClips: libraryClips.map((c) => ({
+            file_name: c.file_name,
+            tags: Array.isArray(c.tags) ? c.tags : [],
+          })),
         },
       });
       if (error) throw error;
-      setIdeas(data?.ideas || []);
+      const nextIdeas = data?.ideas || [];
+      setIdeas(nextIdeas);
+      if (nextIdeas.length === 0) {
+        toast.error(data?.error || "No B-roll ideas came back. Try again in a moment.");
+      }
     } catch (e: any) {
       console.error("B-roll generation error:", e);
-      toast.error("Failed to generate ideas. Please try again.");
+      toast.error(e?.message || "Failed to generate ideas. Please try again.");
     } finally {
       setLoading(false);
     }
