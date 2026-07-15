@@ -214,13 +214,62 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
                 <Button variant="outline" onClick={() => navigate("/onboarding")}>Set Up Brand</Button>
               </div>
             ) : (
-              <Button
-                onClick={generateIdeas}
-                disabled={loading}
-                className="bg-[image:var(--gradient-lumi)] text-white hover:opacity-90"
-              >
-                {loading ? "LUMI is thinking about your brand..." : "Generate My B-Roll Ideas"}
-              </Button>
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  {libraryClips.length > 0 ? (
+                    <Badge variant="secondary" className="text-[11px]">
+                      <Film className="h-3 w-3 mr-1" />
+                      Using {libraryClips.length} clip{libraryClips.length === 1 ? "" : "s"} from your library
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[11px]">
+                      No library clips yet — ideas will be generic
+                    </Badge>
+                  )}
+                </div>
+                <Button
+                  onClick={generateIdeas}
+                  disabled={loading}
+                  className="bg-[image:var(--gradient-lumi)] text-white hover:opacity-90"
+                >
+                  {loading ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> LUMI is thinking about your brand...</>
+                  ) : (
+                    "Generate My B-Roll Ideas"
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {/* Loading skeletons */}
+            {loading && ideas.length === 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-28 w-full rounded-lg" />
+                ))}
+              </div>
+            )}
+
+            {/* Empty state after a generation attempt */}
+            {!loading && hasGenerated && ideas.length === 0 && (
+              <div className="rounded-xl border border-dashed p-6 text-center space-y-3">
+                <Film className="h-8 w-8 mx-auto text-muted-foreground" />
+                <p className="text-sm font-medium text-foreground">No ideas came back this time.</p>
+                {libraryClips.length === 0 ? (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      Upload a few B-roll clips to your library so LUMI can build ideas around footage you already have.
+                    </p>
+                    <Button variant="outline" size="sm" onClick={() => navigate("/style")}>
+                      <Upload className="h-3.5 w-3.5 mr-1.5" /> Go to B-Roll Library
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={generateIdeas}>
+                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Try again
+                  </Button>
+                )}
+              </div>
             )}
 
             {/* Results */}
