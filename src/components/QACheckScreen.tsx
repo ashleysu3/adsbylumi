@@ -138,6 +138,7 @@ export function QACheckScreen({
           offerUrl: workspace.offer_url || workspace.offers?.url || workspace.brands?.website_url || answers?.destinationUrl || answers?.finalUrl || null,
           selectedCopy: workspace.selected_copy || null,
           template,
+          approvedCopySignature: workspace.approved_copy_signature || null,
         },
       });
 
