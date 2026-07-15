@@ -75,6 +75,33 @@ serve(async (req) => {
       audiences = audienceRows || [];
     }
 
+    // Normalize library clips (from client + fallback to brands.broll_library server-side)
+    let libraryClips = libraryClipsInput
+      .map((c) => ({
+        file_name: String(c?.file_name || "").trim(),
+        tags: Array.isArray(c?.tags) ? c.tags.filter(Boolean) : [],
+      }))
+      .filter((c) => c.file_name);
+
+    if (libraryClips.length === 0 && brandId) {
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const { data: b } = await supabase
+        .from("brands")
+        .select("broll_library")
+        .eq("id", brandId)
+        .maybeSingle();
+      const lib = Array.isArray((b as any)?.broll_library) ? (b as any).broll_library : [];
+      libraryClips = lib
+        .map((c: any) => ({
+          file_name: String(c?.file_name || "").trim(),
+          tags: Array.isArray(c?.tags) ? c.tags.filter(Boolean) : [],
+        }))
+        .filter((c: any) => c.file_name);
+    }
+
     const brandContext = JSON.stringify(
       {
         brandName,
@@ -85,10 +112,12 @@ serve(async (req) => {
         audiencePsychology,
         offers,
         audiences,
+        libraryClips: libraryClips.slice(0, 40),
       },
       null,
       2,
     );
+
 
     const systemPrompt = `You generate B-roll ideas for Meta ads. The B-roll plays BEHIND text/copy overlays — viewers READ the ad, the footage just adds warmth, motion, and a sense of the creator's world.
 
