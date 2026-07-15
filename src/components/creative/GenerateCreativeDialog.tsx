@@ -898,7 +898,7 @@ export function GenerateCreativeDialog() {
     } finally {
       setComposing(false);
     }
-  }, [brandVoice, template, activeCustom, referenceAnalysis]);
+  }, [brandVoice, template, activeCustom, referenceAnalysis, slideCount]);
 
   // Auto-compose when we hit Screen 2, AND whenever the template selection changes.
   // Skip while still on the style picker.
