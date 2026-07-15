@@ -837,6 +837,7 @@ export function GenerateCreativeDialog() {
           brief: briefWithTemplate,
           brandVoice: voicePayload,
           count: 3,
+          slideCount,
           feedback: feedback || null,
           offerContext,
           offerPsychology,
