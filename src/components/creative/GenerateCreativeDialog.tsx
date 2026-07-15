@@ -321,6 +321,11 @@ export function GenerateCreativeDialog() {
   // carousel state
   const [carouselOptions, setCarouselOptions] = useState<CarouselOption[]>([]);
   const [editedSlides, setEditedSlides] = useState<Slide[]>([]);
+  // Number of slides the user wants in a carousel. Default 5, clamped 3-10.
+  // Applied to both AI-generated carousels (sent to compose-ad) and blank
+  // custom-template carousels. Also used to pad/trim AI responses so we
+  // never render just slide 0.
+  const [slideCount, setSlideCount] = useState<number>(5);
 
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState<string>("");
