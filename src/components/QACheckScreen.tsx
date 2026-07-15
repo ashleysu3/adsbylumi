@@ -422,10 +422,35 @@ fbq('track', 'PageView');
   };
 
   const renderDefaultExpanded = (check: CheckResult) => {
+    const isCopyCheck = check.id === "spelling" || check.id === "ad_policy";
+    const failedFields = Array.from(
+      new Set((check.issues || []).map((i) => i.field).filter(Boolean))
+    );
     return (
       <div className="ml-10 mr-3 mb-3 space-y-2">
         {check.details && (
           <p className="text-sm text-muted-foreground">{check.details}</p>
+        )}
+        {isCopyCheck && (check.status === "warning" || check.status === "failed") && (
+          <div className="space-y-2">
+            {failedFields.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Issue in: <span className="font-medium">{failedFields.join(", ")}</span>
+                {check.id === "ad_policy" && " (Meta ad policy)"}
+              </p>
+            )}
+            {onFixIssue && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-2"
+                onClick={() => onFixIssue("copy", { check: check.id, issues: check.issues })}
+              >
+                <SpellCheck className="h-3.5 w-3.5" />
+                Edit copy
+              </Button>
+            )}
+          </div>
         )}
         {check.issues && check.issues.length > 0 && (
           <div className="space-y-2 mt-2">
@@ -437,7 +462,8 @@ fbq('track', 'PageView');
                     {" → "}
                     <span className="font-medium text-green-600">{issue.suggestion}</span>
                   </p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                    {issue.field && <Badge variant="secondary" className="text-xs">{issue.field}</Badge>}
                     <Badge variant="outline" className="text-xs">{issue.reason}</Badge>
                     {issue.location && <span>{issue.location}</span>}
                   </div>
