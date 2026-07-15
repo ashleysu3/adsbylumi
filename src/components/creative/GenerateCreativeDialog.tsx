@@ -2057,6 +2057,7 @@ function SingleEditor({
 
 function CarouselEditor({
   options, selectedIdx, setSelectedIdx, slides, setSlides, editing, setEditing, onRegenerate,
+  slideCount, setSlideCount,
 }: {
   options: CarouselOption[];
   selectedIdx: number;
@@ -2066,15 +2067,55 @@ function CarouselEditor({
   editing: boolean;
   setEditing: (b: boolean) => void;
   onRegenerate: () => void;
+  slideCount: number;
+  setSlideCount: (n: number) => void;
 }) {
+  const makeBlankFromExisting = (): Slide => {
+    if (slides[0]) {
+      return Object.fromEntries(Object.keys(slides[0]).map((k) => [k, ""])) as Slide;
+    }
+    return { headline: "", sub: "", cta: "" };
+  };
+  const addSlide = () => {
+    const next = [...slides, makeBlankFromExisting()];
+    setSlides(next);
+    setSlideCount(next.length);
+  };
+  const removeSlide = (idx: number) => {
+    if (slides.length <= 1) return;
+    const next = slides.filter((_, i) => i !== idx);
+    setSlides(next);
+    setSlideCount(next.length);
+  };
   if (slides.length === 0) {
     return <p className="text-sm text-muted-foreground">No slides yet.</p>;
   }
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <Label className="text-xs uppercase text-muted-foreground">{slides.length} slides</Label>
         <div className="flex items-center gap-1">
+          <Label className="text-[11px] text-muted-foreground mr-1">Slides</Label>
+          <Input
+            type="number"
+            min={1}
+            max={10}
+            value={slideCount}
+            onChange={(e) => {
+              const n = Math.max(1, Math.min(10, Number(e.target.value) || 1));
+              setSlideCount(n);
+              // Live-resize the current option so the editor reflects it
+              // immediately — user doesn't have to click Rewrite.
+              const next = [...slides];
+              if (n > next.length) {
+                while (next.length < n) next.push(makeBlankFromExisting());
+              } else if (n < next.length) {
+                next.length = n;
+              }
+              setSlides(next);
+            }}
+            className="h-8 w-16 text-sm"
+          />
           <Button size="sm" variant="ghost" onClick={onRegenerate}>
             <RefreshCw className="h-3 w-3 mr-1" /> Rewrite
           </Button>
