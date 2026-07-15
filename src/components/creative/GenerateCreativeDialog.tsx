@@ -1711,6 +1711,8 @@ export function GenerateCreativeDialog() {
                           editing={editingCopy}
                           setEditing={setEditingCopy}
                           onRegenerate={() => setFeedbackOpen(true)}
+                          slideCount={slideCount}
+                          setSlideCount={(n) => setSlideCount(Math.max(1, Math.min(10, n)))}
                         />
                       ) : (
                         <SingleEditor
