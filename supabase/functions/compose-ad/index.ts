@@ -299,7 +299,7 @@ serve(async (req) => {
   if (gate.blocked) return gate.blocked;
   try {
     const body = await req.json();
-    const { brief = {}, brandVoice = {}, count = 3, feedback = null, positioningBrief = null } = body;
+    const { brief = {}, brandVoice = {}, count = 3, slideCount, feedback = null, positioningBrief = null } = body;
     const template = brief.template || mapStyle(brief.styleHint, brief.format);
     const feedbackBlock = feedback && (feedback.quickSelections?.length || feedback.additionalNotes)
       ? `\n\nUSER FEEDBACK ON PREVIOUS COPY — apply these changes in this rewrite:\n- Issues: ${(feedback.quickSelections || []).join(", ") || "(none)"}\n- Notes: ${feedback.additionalNotes || "(none)"}\n`
