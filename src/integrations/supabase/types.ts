@@ -1150,6 +1150,8 @@ export type Database = {
       }
       campaign_workspaces: {
         Row: {
+          approved_copy_at: string | null
+          approved_copy_signature: string | null
           archived: boolean | null
           archived_at: string | null
           auto_rotate_enabled: boolean | null
@@ -1196,6 +1198,8 @@ export type Database = {
           weekly_report_draft: string | null
         }
         Insert: {
+          approved_copy_at?: string | null
+          approved_copy_signature?: string | null
           archived?: boolean | null
           archived_at?: string | null
           auto_rotate_enabled?: boolean | null
@@ -1242,6 +1246,8 @@ export type Database = {
           weekly_report_draft?: string | null
         }
         Update: {
+          approved_copy_at?: string | null
+          approved_copy_signature?: string | null
           archived?: boolean | null
           archived_at?: string | null
           auto_rotate_enabled?: boolean | null

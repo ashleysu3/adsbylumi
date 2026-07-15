@@ -41,6 +41,7 @@ serve(async (req) => {
       offerUrl,
       selectedCopy,
       template,
+      approvedCopySignature,
     } = await req.json();
 
     console.log('QA Preflight Check started');
@@ -57,6 +58,12 @@ serve(async (req) => {
       || null;
     console.log('Resolved landing page URL:', resolvedUrl, '(offerUrl:', offerUrl, ')');
 
+    // If the copy currently being published exactly matches what the user
+    // already approved in the copy step, skip the AI copy/policy re-review.
+    const currentSignature = await computeCurrentCopySignature(selectedCopy, productionItems);
+    const copyPreApproved = !!approvedCopySignature && approvedCopySignature === currentSignature;
+    console.log('Copy pre-approval:', { copyPreApproved, currentSignature, approvedCopySignature });
+
     const results: CheckResult[] = [];
 
     results.push(checkMetaConnection(brand));
@@ -64,8 +71,14 @@ serve(async (req) => {
     results.push(checkSchedule(answers));
     results.push(await checkLandingPage(resolvedUrl, brand));
     results.push(checkEventTracking(brand, template));
-    results.push(await checkSpellingGrammar(creativeJson, productionItems, selectedCopy));
-    results.push(await checkAdPolicy(selectedCopy, productionItems, brand, authHeader));
+    if (copyPreApproved) {
+      results.push({ id: 'spelling', name: 'Spelling & Grammar', status: 'passed', message: 'Approved copy — skipped', details: 'Copy was already reviewed and approved.' });
+      results.push({ id: 'ad_policy', name: 'Ad Policy', status: 'passed', message: 'Approved copy — skipped', details: 'Copy was already reviewed and approved.' });
+    } else {
+      results.push(await checkSpellingGrammar(creativeJson, productionItems, selectedCopy));
+      results.push(await checkAdPolicy(selectedCopy, productionItems, brand, authHeader));
+    }
+
 
 
     const summary = {
@@ -91,6 +104,49 @@ serve(async (req) => {
     );
   }
 });
+
+// ---- Copy signature (must match src/lib/copy-signature.ts) --------------
+function normalizeCopyVariations(variations: any[]): { h: string; p: string; d: string }[] {
+  if (!Array.isArray(variations)) return [];
+  return variations
+    .map((v) => ({
+      h: (v?.headline || '').toString().trim(),
+      p: (v?.primary_text || v?.primaryText || '').toString().trim(),
+      d: (v?.description || '').toString().trim(),
+    }))
+    .filter((v) => v.h || v.p || v.d)
+    .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function computeCurrentCopySignature(
+  selectedCopy: any,
+  productionItems: any[] | undefined,
+): Promise<string> {
+  const variations: any[] = [];
+  const sv = selectedCopy?.shared_variations;
+  if (Array.isArray(sv)) variations.push(...sv);
+  if (Array.isArray(productionItems)) {
+    for (const item of productionItems) {
+      const fc = item?.finalCopy || item?.final_copy;
+      if (fc) {
+        variations.push({
+          headline: fc.headline,
+          primary_text: fc.primary_text || fc.primaryText,
+          description: fc.description,
+        });
+      }
+    }
+  }
+  return await sha256Hex(JSON.stringify(normalizeCopyVariations(variations)));
+}
+
 
 function extractUrlFromProductionItems(items: any[]): string | null {
   if (!items || !Array.isArray(items)) return null;
