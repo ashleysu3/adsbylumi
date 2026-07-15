@@ -2182,6 +2182,11 @@ function CarouselEditor({
             </div>
           );
         })}
+        {slides.length < 10 && (
+          <Button size="sm" variant="outline" className="w-full" onClick={addSlide}>
+            + Add slide
+          </Button>
+        )}
       </div>
     </div>
   );
