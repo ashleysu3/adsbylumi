@@ -858,9 +858,23 @@ export function GenerateCreativeDialog() {
       setTemplate(returnedTemplate);
       const options: any[] = data?.options || [];
       if (returnedTemplate === "carousel" || b.format === "carousel") {
-        const carOpts: CarouselOption[] = options.map((o) => ({
-          slides: (o?.slides || []).map((sl: any) => ({ ...sl })),
-        }));
+        // Ensure every option has exactly `slideCount` slides. The model
+        // often ignores the requested count and returns just 1 — pad with
+        // blank slides so the user can fill them in rather than shipping
+        // a "carousel" that's only slide 0.
+        const targetN = Math.max(1, slideCount || 1);
+        const carOpts: CarouselOption[] = options.map((o) => {
+          const raw = Array.isArray(o?.slides) ? o.slides : [];
+          const cleaned: Slide[] = raw.map((sl: any) => ({ ...(sl || {}) }));
+          if (cleaned.length > targetN) cleaned.length = targetN;
+          while (cleaned.length < targetN) {
+            const template: Slide = cleaned[0]
+              ? Object.fromEntries(Object.keys(cleaned[0]).map((k) => [k, ""]))
+              : { headline: "", sub: "", cta: "" };
+            cleaned.push(template);
+          }
+          return { slides: cleaned };
+        });
         setCarouselOptions(carOpts);
         setSelectedOptionIdx(0);
         setEditedSlides(carOpts[0]?.slides || []);
