@@ -1,14 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Sparkles, Film, ExternalLink, RefreshCw } from "lucide-react";
+import { Sparkles, Film, ExternalLink, RefreshCw, Upload, Loader2 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
 
 interface BrandDetails {
   target_audience: string | null;
@@ -133,24 +133,33 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
   const navigate = useNavigate();
   const [ideas, setIdeas] = useState<BRollIdea[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasGenerated, setHasGenerated] = useState(false);
   const [brandDetails, setBrandDetails] = useState<BrandDetails | null>(null);
+  const [libraryClips, setLibraryClips] = useState<Array<{ file_name: string; tags?: string[] }>>([]);
 
-  // Fetch extra brand fields not in context
+  // Fetch extra brand fields + uploaded b-roll library
   useEffect(() => {
     if (!activeBrand?.id) return;
     supabase
       .from("brands")
-      .select("target_audience, value_proposition")
+      .select("target_audience, value_proposition, broll_library")
       .eq("id", activeBrand.id)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
-        if (data) setBrandDetails(data);
+        if (!data) return;
+        setBrandDetails({
+          target_audience: (data as any).target_audience ?? null,
+          value_proposition: (data as any).value_proposition ?? null,
+        });
+        const lib = (data as any).broll_library;
+        setLibraryClips(Array.isArray(lib) ? lib : []);
       });
   }, [activeBrand?.id]);
 
   const generateIdeas = async () => {
     if (!activeBrand) return;
     setLoading(true);
+    setHasGenerated(true);
     try {
       const { data, error } = await supabase.functions.invoke("generate-broll-ideas", {
         body: {
@@ -159,13 +168,21 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
           industry: activeBrand.industry,
           targetAudience: brandDetails?.target_audience,
           valueProposition: brandDetails?.value_proposition,
+          libraryClips: libraryClips.map((c) => ({
+            file_name: c.file_name,
+            tags: Array.isArray(c.tags) ? c.tags : [],
+          })),
         },
       });
       if (error) throw error;
-      setIdeas(data?.ideas || []);
+      const nextIdeas = data?.ideas || [];
+      setIdeas(nextIdeas);
+      if (nextIdeas.length === 0) {
+        toast.error(data?.error || "No B-roll ideas came back. Try again in a moment.");
+      }
     } catch (e: any) {
       console.error("B-roll generation error:", e);
-      toast.error("Failed to generate ideas. Please try again.");
+      toast.error(e?.message || "Failed to generate ideas. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -197,13 +214,62 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
                 <Button variant="outline" onClick={() => navigate("/onboarding")}>Set Up Brand</Button>
               </div>
             ) : (
-              <Button
-                onClick={generateIdeas}
-                disabled={loading}
-                className="bg-[image:var(--gradient-lumi)] text-white hover:opacity-90"
-              >
-                {loading ? "LUMI is thinking about your brand..." : "Generate My B-Roll Ideas"}
-              </Button>
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  {libraryClips.length > 0 ? (
+                    <Badge variant="secondary" className="text-[11px]">
+                      <Film className="h-3 w-3 mr-1" />
+                      Using {libraryClips.length} clip{libraryClips.length === 1 ? "" : "s"} from your library
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[11px]">
+                      No library clips yet — ideas will be generic
+                    </Badge>
+                  )}
+                </div>
+                <Button
+                  onClick={generateIdeas}
+                  disabled={loading}
+                  className="bg-[image:var(--gradient-lumi)] text-white hover:opacity-90"
+                >
+                  {loading ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> LUMI is thinking about your brand...</>
+                  ) : (
+                    "Generate My B-Roll Ideas"
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {/* Loading skeletons */}
+            {loading && ideas.length === 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-28 w-full rounded-lg" />
+                ))}
+              </div>
+            )}
+
+            {/* Empty state after a generation attempt */}
+            {!loading && hasGenerated && ideas.length === 0 && (
+              <div className="rounded-xl border border-dashed p-6 text-center space-y-3">
+                <Film className="h-8 w-8 mx-auto text-muted-foreground" />
+                <p className="text-sm font-medium text-foreground">No ideas came back this time.</p>
+                {libraryClips.length === 0 ? (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      Upload a few B-roll clips to your library so LUMI can build ideas around footage you already have.
+                    </p>
+                    <Button variant="outline" size="sm" onClick={() => navigate("/style")}>
+                      <Upload className="h-3.5 w-3.5 mr-1.5" /> Go to B-Roll Library
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={generateIdeas}>
+                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Try again
+                  </Button>
+                )}
+              </div>
             )}
 
             {/* Results */}

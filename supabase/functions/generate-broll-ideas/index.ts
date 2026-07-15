@@ -26,6 +26,10 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const { brandId } = body;
+    const libraryClipsInput: Array<{ file_name?: string; tags?: string[] }> = Array.isArray(body.libraryClips)
+      ? body.libraryClips
+      : [];
+
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -71,6 +75,33 @@ serve(async (req) => {
       audiences = audienceRows || [];
     }
 
+    // Normalize library clips (from client + fallback to brands.broll_library server-side)
+    let libraryClips = libraryClipsInput
+      .map((c) => ({
+        file_name: String(c?.file_name || "").trim(),
+        tags: Array.isArray(c?.tags) ? c.tags.filter(Boolean) : [],
+      }))
+      .filter((c) => c.file_name);
+
+    if (libraryClips.length === 0 && brandId) {
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const { data: b } = await supabase
+        .from("brands")
+        .select("broll_library")
+        .eq("id", brandId)
+        .maybeSingle();
+      const lib = Array.isArray((b as any)?.broll_library) ? (b as any).broll_library : [];
+      libraryClips = lib
+        .map((c: any) => ({
+          file_name: String(c?.file_name || "").trim(),
+          tags: Array.isArray(c?.tags) ? c.tags.filter(Boolean) : [],
+        }))
+        .filter((c: any) => c.file_name);
+    }
+
     const brandContext = JSON.stringify(
       {
         brandName,
@@ -81,10 +112,12 @@ serve(async (req) => {
         audiencePsychology,
         offers,
         audiences,
+        libraryClips: libraryClips.slice(0, 40),
       },
       null,
       2,
     );
+
 
     const systemPrompt = `You generate B-roll ideas for Meta ads. The B-roll plays BEHIND text/copy overlays — viewers READ the ad, the footage just adds warmth, motion, and a sense of the creator's world.
 
@@ -127,12 +160,19 @@ OUTPUT — return ONLY valid JSON, no markdown:
 
 Generate exactly 15 ideas. Vary the moods, settings, and times of day. Mood must be one of: Calm, Productive, Relatable, Warm, Authentic, Energetic, Aspirational, Grounded.`;
 
+    const libraryDirective = libraryClips.length > 0
+      ? `The creator has already uploaded ${libraryClips.length} B-roll clip${libraryClips.length === 1 ? "" : "s"} to their library (see libraryClips in BRAND CONTEXT — file names + tags describe what's in each clip). Bias AT LEAST HALF of your ideas so they could be shot with, or directly complement, the footage they already have. Reference the mood/subject of those clips when useful, but do NOT quote file names in the output.`
+      : `The creator has NOT uploaded any B-roll clips yet. Generate ideas they can film themselves on their phone in the next hour.`;
+
     const userPrompt = `Generate 15 B-roll clip ideas tailored to this brand and audience. Use the audience psychology (pains, desires, daily life) and brand voice/vibe to make each scene resonate — while keeping every clip lofi, action-based, no-acting, and filmable on a phone in under a minute.
+
+${libraryDirective}
 
 BRAND CONTEXT:
 ${brandContext}
 
 Remember: the footage plays behind ad copy. It should make THIS audience feel "that's my life" or "that's the life I want," and feel like THIS brand's world — without being on-the-nose about the offer.`;
+
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
