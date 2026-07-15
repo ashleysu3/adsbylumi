@@ -521,7 +521,17 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
             </>
           )}
           {stage === 'qa-check' && (
-            <QACheckScreen workspace={workspace} answers={answers} onBack={handleBackToConfigure} onProceed={handleQAComplete} />
+            <QACheckScreen
+              workspace={workspace}
+              answers={answers}
+              onBack={handleBackToConfigure}
+              onProceed={handleQAComplete}
+              onFixIssue={(type) => {
+                if (type === "copy") {
+                  navigate(`/production?workspace=${workspaceId}&edit=copy`);
+                }
+              }}
+            />
           )}
           {stage === 'publishing' && (
             <div className="bg-card rounded-lg border p-12 text-center max-w-lg mx-auto">
