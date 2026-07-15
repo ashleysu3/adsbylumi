@@ -395,7 +395,17 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
             </>
           )}
           {stage === 'qa-check' && (
-            <QACheckScreen workspace={workspace} answers={answers} onBack={handleBackToConfigure} onProceed={handleQAComplete} />
+            <QACheckScreen
+              workspace={workspace}
+              answers={answers}
+              onBack={handleBackToConfigure}
+              onProceed={handleQAComplete}
+              onFixIssue={(type) => {
+                if (type === "copy") {
+                  navigate(`/production?workspace=${workspaceId}&edit=copy`);
+                }
+              }}
+            />
           )}
           {stage === 'publishing' && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
