@@ -354,6 +354,17 @@ export default function AdvancedBuild({ embedded = false }: { embedded?: boolean
       await saveState();
 
       const approvedVariations = sharedCopy.selectedIndices.map(i => sharedCopy.variations[i]);
+      const approvedCopySignature = await computeCopySignature(approvedVariations);
+      // Persist the signature immediately so the QA preflight check on the next
+      // screen recognizes this copy as already approved and does not re-flag it.
+      await supabase
+        .from("campaign_workspaces")
+        .update({
+          approved_copy_signature: approvedCopySignature,
+          approved_copy_at: new Date().toISOString(),
+        } as any)
+        .eq("id", workspaceId!);
+
 
       if (saveToBench) {
         for (const asset of assets) {
