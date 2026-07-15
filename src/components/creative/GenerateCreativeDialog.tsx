@@ -321,6 +321,11 @@ export function GenerateCreativeDialog() {
   // carousel state
   const [carouselOptions, setCarouselOptions] = useState<CarouselOption[]>([]);
   const [editedSlides, setEditedSlides] = useState<Slide[]>([]);
+  // Number of slides the user wants in a carousel. Default 5, clamped 3-10.
+  // Applied to both AI-generated carousels (sent to compose-ad) and blank
+  // custom-template carousels. Also used to pad/trim AI responses so we
+  // never render just slide 0.
+  const [slideCount, setSlideCount] = useState<number>(5);
 
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState<string>("");
@@ -734,10 +739,15 @@ export function GenerateCreativeDialog() {
       if (activeCustom) {
         if (activeCustom.type === "carousel") {
           const slots: string[] = Array.isArray(activeCustom.slide_slots) ? activeCustom.slide_slots : [];
-          const blankSlide: Slide = {};
-          slots.forEach((k) => (blankSlide[k] = ""));
-          setCarouselOptions([{ slides: [blankSlide] }]);
-          setEditedSlides([blankSlide]);
+          const makeBlank = (): Slide => {
+            const s: Slide = {};
+            slots.forEach((k) => (s[k] = ""));
+            return s;
+          };
+          const n = Math.max(1, slideCount || 1);
+          const blankSlides: Slide[] = Array.from({ length: n }, makeBlank);
+          setCarouselOptions([{ slides: blankSlides }]);
+          setEditedSlides(blankSlides);
           setSingleOptions([]);
           setEditedSingle({});
         } else {
@@ -827,6 +837,7 @@ export function GenerateCreativeDialog() {
           brief: briefWithTemplate,
           brandVoice: voicePayload,
           count: 3,
+          slideCount,
           feedback: feedback || null,
           offerContext,
           offerPsychology,
@@ -847,9 +858,23 @@ export function GenerateCreativeDialog() {
       setTemplate(returnedTemplate);
       const options: any[] = data?.options || [];
       if (returnedTemplate === "carousel" || b.format === "carousel") {
-        const carOpts: CarouselOption[] = options.map((o) => ({
-          slides: (o?.slides || []).map((sl: any) => ({ ...sl })),
-        }));
+        // Ensure every option has exactly `slideCount` slides. The model
+        // often ignores the requested count and returns just 1 — pad with
+        // blank slides so the user can fill them in rather than shipping
+        // a "carousel" that's only slide 0.
+        const targetN = Math.max(1, slideCount || 1);
+        const carOpts: CarouselOption[] = options.map((o) => {
+          const raw = Array.isArray(o?.slides) ? o.slides : [];
+          const cleaned: Slide[] = raw.map((sl: any) => ({ ...(sl || {}) }));
+          if (cleaned.length > targetN) cleaned.length = targetN;
+          while (cleaned.length < targetN) {
+            const template: Slide = cleaned[0]
+              ? Object.fromEntries(Object.keys(cleaned[0]).map((k) => [k, ""]))
+              : { headline: "", sub: "", cta: "" };
+            cleaned.push(template);
+          }
+          return { slides: cleaned };
+        });
         setCarouselOptions(carOpts);
         setSelectedOptionIdx(0);
         setEditedSlides(carOpts[0]?.slides || []);
@@ -873,7 +898,7 @@ export function GenerateCreativeDialog() {
     } finally {
       setComposing(false);
     }
-  }, [brandVoice, template, activeCustom, referenceAnalysis]);
+  }, [brandVoice, template, activeCustom, referenceAnalysis, slideCount]);
 
   // Auto-compose when we hit Screen 2, AND whenever the template selection changes.
   // Skip while still on the style picker.
@@ -1686,6 +1711,8 @@ export function GenerateCreativeDialog() {
                           editing={editingCopy}
                           setEditing={setEditingCopy}
                           onRegenerate={() => setFeedbackOpen(true)}
+                          slideCount={slideCount}
+                          setSlideCount={(n) => setSlideCount(Math.max(1, Math.min(10, n)))}
                         />
                       ) : (
                         <SingleEditor
@@ -2030,6 +2057,7 @@ function SingleEditor({
 
 function CarouselEditor({
   options, selectedIdx, setSelectedIdx, slides, setSlides, editing, setEditing, onRegenerate,
+  slideCount, setSlideCount,
 }: {
   options: CarouselOption[];
   selectedIdx: number;
@@ -2039,15 +2067,55 @@ function CarouselEditor({
   editing: boolean;
   setEditing: (b: boolean) => void;
   onRegenerate: () => void;
+  slideCount: number;
+  setSlideCount: (n: number) => void;
 }) {
+  const makeBlankFromExisting = (): Slide => {
+    if (slides[0]) {
+      return Object.fromEntries(Object.keys(slides[0]).map((k) => [k, ""])) as Slide;
+    }
+    return { headline: "", sub: "", cta: "" };
+  };
+  const addSlide = () => {
+    const next = [...slides, makeBlankFromExisting()];
+    setSlides(next);
+    setSlideCount(next.length);
+  };
+  const removeSlide = (idx: number) => {
+    if (slides.length <= 1) return;
+    const next = slides.filter((_, i) => i !== idx);
+    setSlides(next);
+    setSlideCount(next.length);
+  };
   if (slides.length === 0) {
     return <p className="text-sm text-muted-foreground">No slides yet.</p>;
   }
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <Label className="text-xs uppercase text-muted-foreground">{slides.length} slides</Label>
         <div className="flex items-center gap-1">
+          <Label className="text-[11px] text-muted-foreground mr-1">Slides</Label>
+          <Input
+            type="number"
+            min={1}
+            max={10}
+            value={slideCount}
+            onChange={(e) => {
+              const n = Math.max(1, Math.min(10, Number(e.target.value) || 1));
+              setSlideCount(n);
+              // Live-resize the current option so the editor reflects it
+              // immediately — user doesn't have to click Rewrite.
+              const next = [...slides];
+              if (n > next.length) {
+                while (next.length < n) next.push(makeBlankFromExisting());
+              } else if (n < next.length) {
+                next.length = n;
+              }
+              setSlides(next);
+            }}
+            className="h-8 w-16 text-sm"
+          />
           <Button size="sm" variant="ghost" onClick={onRegenerate}>
             <RefreshCw className="h-3 w-3 mr-1" /> Rewrite
           </Button>
@@ -2077,6 +2145,16 @@ function CarouselEditor({
                 {!editing && s.eyebrow && (
                   <span className="text-[11px] uppercase text-muted-foreground">{s.eyebrow}</span>
                 )}
+                {slides.length > 1 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="ml-auto h-6 px-2 text-[11px] text-muted-foreground hover:text-destructive"
+                    onClick={() => removeSlide(i)}
+                  >
+                    Remove
+                  </Button>
+                )}
               </div>
               {editing ? (
                 <div className="space-y-2 pt-1">
@@ -2104,6 +2182,11 @@ function CarouselEditor({
             </div>
           );
         })}
+        {slides.length < 10 && (
+          <Button size="sm" variant="outline" className="w-full" onClick={addSlide}>
+            + Add slide
+          </Button>
+        )}
       </div>
     </div>
   );

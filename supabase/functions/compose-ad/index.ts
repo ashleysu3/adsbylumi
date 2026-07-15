@@ -76,9 +76,10 @@ function mapStyle(styleHint?: string, format?: string): string {
   return (styleHint && m[styleHint]) || "bigtype";
 }
 
-function instruction(template: string, count: number): string {
+function instruction(template: string, count: number, slideCount?: number): string {
   if (template === "carousel") {
-    return `Return ${count} option(s). Each option is {"slides":[...]} with one slide per slidePlan role (3-6 slides). Each slide = {"eyebrow":"<=4 words","headline":"<=8 words","sub":"one sentence <=15 words","cta":"ONLY on the last slide, <=4 words, MUST match the brief's offer/format — e.g. free class → \\"Save my seat\\", download → \\"Send me the guide\\", waitlist → \\"Join the waitlist\\"; NEVER \\"Learn more\\", \\"Sign up\\", \\"Get started\\"; omit on other slides"}. Slide 1 = the hook; last slide = the CTA.`;
+    const n = Math.max(1, Math.min(10, Number(slideCount) || 5));
+    return `Return ${count} option(s). Each option is {"slides":[...]} with EXACTLY ${n} slide(s) — do NOT return fewer than ${n} and do NOT return more. Each slide = {"eyebrow":"<=4 words","headline":"<=8 words","sub":"one sentence <=15 words","cta":"ONLY on the last (${n}${n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th"}) slide, <=4 words, MUST match the brief's offer/format — e.g. free class → \\"Save my seat\\", download → \\"Send me the guide\\", waitlist → \\"Join the waitlist\\"; NEVER \\"Learn more\\", \\"Sign up\\", \\"Get started\\"; omit on all other slides (use \\"\\")"}. Slide 1 = the hook; the middle slides deliver the payoff/proof/steps; the final slide = the CTA. Every slide must earn its place — no filler.`;
   }
   return `Return ${count} DISTINCT option(s) (different angles). For template "${template}", each option is a JSON object with EXACTLY these keys: ${SLOTS[template] || SLOTS.bigtype}. Use "" for any optional field you skip. Full headline reads as one natural line, <=8 words.`;
 }
@@ -298,7 +299,7 @@ serve(async (req) => {
   if (gate.blocked) return gate.blocked;
   try {
     const body = await req.json();
-    const { brief = {}, brandVoice = {}, count = 3, feedback = null, positioningBrief = null } = body;
+    const { brief = {}, brandVoice = {}, count = 3, slideCount, feedback = null, positioningBrief = null } = body;
     const template = brief.template || mapStyle(brief.styleHint, brief.format);
     const feedbackBlock = feedback && (feedback.quickSelections?.length || feedback.additionalNotes)
       ? `\n\nUSER FEEDBACK ON PREVIOUS COPY — apply these changes in this rewrite:\n- Issues: ${(feedback.quickSelections || []).join(", ") || "(none)"}\n- Notes: ${feedback.additionalNotes || "(none)"}\n`
@@ -314,7 +315,7 @@ serve(async (req) => {
       `=== CREATIVE BRIEF ===\n${JSON.stringify(brief)}\n\n` +
       `=== BRAND VOICE SAMPLES (mirror the tone, rhythm, punctuation) ===\n${JSON.stringify(brandVoice)}` +
       `${feedbackBlock}\n\n` +
-      `${instruction(template, count)}\n\n` +
+      `${instruction(template, count, slideCount)}\n\n` +
       `${realTestimonialRule}` +
       `Hard rule: every option must reference at least one SPECIFIC element from the OFFER PSYCHOLOGY or AUDIENCE PSYCHOLOGY above (a named moment, a real pain, a real hesitation, a concrete before/after). Generic copy that could belong to any brand is an instant fail.\n\n` +
       `Output ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
