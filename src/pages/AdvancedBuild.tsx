@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import lumiLogo from "@/assets/lumi-logo.png";
 import { FitBadge } from "@/components/insights/FitBadge";
+import { computeCopySignature } from "@/lib/copy-signature";
 
 interface UploadedAsset {
   id: string;
