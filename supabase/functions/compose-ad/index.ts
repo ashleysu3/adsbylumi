@@ -315,7 +315,7 @@ serve(async (req) => {
       `=== CREATIVE BRIEF ===\n${JSON.stringify(brief)}\n\n` +
       `=== BRAND VOICE SAMPLES (mirror the tone, rhythm, punctuation) ===\n${JSON.stringify(brandVoice)}` +
       `${feedbackBlock}\n\n` +
-      `${instruction(template, count)}\n\n` +
+      `${instruction(template, count, slideCount)}\n\n` +
       `${realTestimonialRule}` +
       `Hard rule: every option must reference at least one SPECIFIC element from the OFFER PSYCHOLOGY or AUDIENCE PSYCHOLOGY above (a named moment, a real pain, a real hesitation, a concrete before/after). Generic copy that could belong to any brand is an instant fail.\n\n` +
       `Output ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
