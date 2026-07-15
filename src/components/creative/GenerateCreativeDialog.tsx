@@ -2145,6 +2145,16 @@ function CarouselEditor({
                 {!editing && s.eyebrow && (
                   <span className="text-[11px] uppercase text-muted-foreground">{s.eyebrow}</span>
                 )}
+                {slides.length > 1 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="ml-auto h-6 px-2 text-[11px] text-muted-foreground hover:text-destructive"
+                    onClick={() => removeSlide(i)}
+                  >
+                    Remove
+                  </Button>
+                )}
               </div>
               {editing ? (
                 <div className="space-y-2 pt-1">
