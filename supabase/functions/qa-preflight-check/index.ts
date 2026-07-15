@@ -41,6 +41,7 @@ serve(async (req) => {
       offerUrl,
       selectedCopy,
       template,
+      approvedCopySignature,
     } = await req.json();
 
     console.log('QA Preflight Check started');
@@ -57,6 +58,12 @@ serve(async (req) => {
       || null;
     console.log('Resolved landing page URL:', resolvedUrl, '(offerUrl:', offerUrl, ')');
 
+    // If the copy currently being published exactly matches what the user
+    // already approved in the copy step, skip the AI copy/policy re-review.
+    const currentSignature = await computeCurrentCopySignature(selectedCopy, productionItems);
+    const copyPreApproved = !!approvedCopySignature && approvedCopySignature === currentSignature;
+    console.log('Copy pre-approval:', { copyPreApproved, currentSignature, approvedCopySignature });
+
     const results: CheckResult[] = [];
 
     results.push(checkMetaConnection(brand));
@@ -64,8 +71,14 @@ serve(async (req) => {
     results.push(checkSchedule(answers));
     results.push(await checkLandingPage(resolvedUrl, brand));
     results.push(checkEventTracking(brand, template));
-    results.push(await checkSpellingGrammar(creativeJson, productionItems, selectedCopy));
-    results.push(await checkAdPolicy(selectedCopy, productionItems, brand, authHeader));
+    if (copyPreApproved) {
+      results.push({ id: 'spelling', name: 'Spelling & Grammar', status: 'passed', message: 'Approved copy — skipped', details: 'Copy was already reviewed and approved.' });
+      results.push({ id: 'ad_policy', name: 'Ad Policy', status: 'passed', message: 'Approved copy — skipped', details: 'Copy was already reviewed and approved.' });
+    } else {
+      results.push(await checkSpellingGrammar(creativeJson, productionItems, selectedCopy));
+      results.push(await checkAdPolicy(selectedCopy, productionItems, brand, authHeader));
+    }
+
 
 
     const summary = {
