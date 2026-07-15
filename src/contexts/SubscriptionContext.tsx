@@ -214,7 +214,24 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        checkSubscription();
+        (async () => {
+          await checkSubscription();
+          // Fallback reconciliation: if the local state came back as
+          // unsubscribed but Stripe actually has an active/trialing sub for
+          // this email (e.g. the webhook missed us because profiles.email was
+          // null at the time of payment), flip the local row now and re-check.
+          setState((prev) => {
+            if (!prev.isLoading && !prev.isSubscribed) {
+              supabase.functions
+                .invoke('reconcile-subscription', { body: {} })
+                .then((res) => {
+                  if ((res.data as any)?.reconciled) checkSubscription();
+                })
+                .catch(() => { /* ignore */ });
+            }
+            return prev;
+          });
+        })();
       } else if (event === 'SIGNED_OUT') {
         setState({
           isLoading: false,

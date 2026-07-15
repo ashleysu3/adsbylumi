@@ -225,6 +225,27 @@ export default function Auth() {
               }
             } catch { /* localStorage unavailable — skip the nudge */ }
           }
+
+          // If the user just paid at Stripe checkout, don't wait for the async
+          // webhook — reconcile from Stripe now, then poll check-subscription
+          // so they never land back in the app in "preview mode".
+          if (hasPaid) {
+            const stripeSessionId = searchParams.get('session_id') || undefined;
+            try {
+              await supabase.functions.invoke('reconcile-subscription', {
+                body: stripeSessionId ? { session_id: stripeSessionId } : {},
+              });
+            } catch (err) {
+              console.error('[auth] reconcile-subscription failed:', err);
+            }
+            // Short poll — check-subscription reads the row we just upserted.
+            for (let i = 0; i < 5; i++) {
+              const { data: subCheck } = await supabase.functions.invoke('check-subscription');
+              if ((subCheck as any)?.subscribed) break;
+              await new Promise(r => setTimeout(r, 1000));
+            }
+          }
+
           // Anonymous → paid upgrade: honor the returnTo they came in with
           // (e.g. /launch?brand=xyz) so they land back on the ad they built.
           navigate(safeReturnTo || "/welcome");
