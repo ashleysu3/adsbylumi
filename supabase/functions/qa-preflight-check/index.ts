@@ -105,6 +105,49 @@ serve(async (req) => {
   }
 });
 
+// ---- Copy signature (must match src/lib/copy-signature.ts) --------------
+function normalizeCopyVariations(variations: any[]): { h: string; p: string; d: string }[] {
+  if (!Array.isArray(variations)) return [];
+  return variations
+    .map((v) => ({
+      h: (v?.headline || '').toString().trim(),
+      p: (v?.primary_text || v?.primaryText || '').toString().trim(),
+      d: (v?.description || '').toString().trim(),
+    }))
+    .filter((v) => v.h || v.p || v.d)
+    .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function computeCurrentCopySignature(
+  selectedCopy: any,
+  productionItems: any[] | undefined,
+): Promise<string> {
+  const variations: any[] = [];
+  const sv = selectedCopy?.shared_variations;
+  if (Array.isArray(sv)) variations.push(...sv);
+  if (Array.isArray(productionItems)) {
+    for (const item of productionItems) {
+      const fc = item?.finalCopy || item?.final_copy;
+      if (fc) {
+        variations.push({
+          headline: fc.headline,
+          primary_text: fc.primary_text || fc.primaryText,
+          description: fc.description,
+        });
+      }
+    }
+  }
+  return await sha256Hex(JSON.stringify(normalizeCopyVariations(variations)));
+}
+
+
 function extractUrlFromProductionItems(items: any[]): string | null {
   if (!items || !Array.isArray(items)) return null;
   for (const item of items) {
