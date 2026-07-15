@@ -22,7 +22,9 @@ export function normalizeCopyVariations(variations: CopyVariationLike[] | undefi
     .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
 }
 
-export async function computeCopySignature(variations: CopyVariationLike[] | undefined | null): Promise<string> {
+export async function computeCopySignature(
+  variations: CopyVariationLike[] | undefined | null,
+): Promise<string> {
   const payload = JSON.stringify(normalizeCopyVariations(variations));
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
   return Array.from(new Uint8Array(buf))
