@@ -222,24 +222,64 @@ Remember: the footage plays behind ad copy. It should make THIS audience feel "t
       const closeChar = openChar === "[" ? "]" : "}";
       const end = cleaned.lastIndexOf(closeChar);
       if (start !== -1 && end !== -1) cleaned = cleaned.substring(start, end + 1);
-      try {
-        return JSON.parse(cleaned);
-      } catch {
-        cleaned = cleaned
-          .replace(/,\s*}/g, "}")
-          .replace(/,\s*]/g, "]")
-          .replace(/[\x00-\x1F\x7F]/g, " ");
-        return JSON.parse(cleaned);
+      const attempts = [
+        cleaned,
+        cleaned.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]").replace(/[\x00-\x1F\x7F]/g, " "),
+      ];
+      for (const a of attempts) {
+        try { return JSON.parse(a); } catch { /* keep trying */ }
       }
+      throw new Error("unparseable");
     };
 
-    let ideas;
+    // Salvage: pull out any complete top-level idea objects even from truncated output
+    const salvageIdeas = (raw: string): any[] => {
+      const out: any[] = [];
+      let depth = 0;
+      let startIdx = -1;
+      let inStr = false;
+      let esc = false;
+      for (let i = 0; i < raw.length; i++) {
+        const c = raw[i];
+        if (inStr) {
+          if (esc) esc = false;
+          else if (c === "\\") esc = true;
+          else if (c === '"') inStr = false;
+          continue;
+        }
+        if (c === '"') { inStr = true; continue; }
+        if (c === "{") { if (depth === 0) startIdx = i; depth++; }
+        else if (c === "}") {
+          depth--;
+          if (depth === 0 && startIdx !== -1) {
+            const chunk = raw.slice(startIdx, i + 1);
+            try {
+              const obj = JSON.parse(chunk);
+              if (obj && (obj.scene || obj.direction || obj.label || obj.description)) {
+                out.push(obj);
+              }
+            } catch { /* skip */ }
+            startIdx = -1;
+          }
+        }
+      }
+      return out;
+    };
+
+    let ideas: any[] = [];
     try {
       const parsed = extractJson(rawContent);
       ideas = Array.isArray(parsed) ? parsed : parsed.ideas || [];
-    } catch (parseErr) {
+    } catch {
+      ideas = salvageIdeas(rawContent);
+    }
+
+    if (!Array.isArray(ideas) || ideas.length === 0) {
       console.error("Failed to parse AI response:", rawContent?.slice(0, 2000));
-      throw new Error("Failed to parse B-roll ideas from AI response");
+      return new Response(
+        JSON.stringify({ error: "The AI response was incomplete. Please try again." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     return new Response(JSON.stringify({ ideas }), {
