@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { PayoffAdScreen } from "@/components/onboarding/PayoffAdScreen";
+import { OnboardingLoadingOverlay } from "@/components/onboarding/OnboardingLoadingOverlay";
 import { SetupPrompt } from "@/components/SetupPrompt";
 import { LumiThinkingInline } from "@/components/LumiThinking";
 import { LumiPageLoader } from "@/components/LumiLoader";
@@ -73,6 +74,21 @@ function domainName(url: string): string {
     const h = new URL(url).hostname.replace(/^www\./, "");
     return h.split(".")[0].replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) || "My brand";
   } catch { return "My brand"; }
+}
+
+// Picks a real accent from the brand's own extracted palette instead of a
+// generic app color, so the "Why they'll say yes" cards read as THIS brand's
+// colors, not LUMI's. Same luma-window approach PayoffAdScreen's
+// toEngineColors uses for the same reason (skip near-black/near-white swatches).
+function pickAccentColor(colors: string[]): string | null {
+  const valid = colors.filter((c) => /^#[0-9a-fA-F]{6}$/.test(c));
+  if (!valid.length) return null;
+  const luma = (h: string) => {
+    const r = parseInt(h.slice(1, 3), 16), g = parseInt(h.slice(3, 5), 16), b = parseInt(h.slice(5, 7), 16);
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  };
+  const mids = valid.filter((c) => { const l = luma(c); return l > 0.15 && l < 0.85; });
+  return mids[0] || valid[0];
 }
 
 const WITTY_LINES = [
@@ -153,6 +169,11 @@ export default function GuidedOnboarding() {
   // deterministically instead of guessing from hand-typed text.
   const [offerHintUrl, setOfferHintUrl] = useState("");
   const [offerLinkBusy, setOfferLinkBusy] = useState(false);
+  // The offer-specific psychology (objections, what finally convinces them,
+  // etc.) — generated the moment a real link is in, so it's ready to show on
+  // THIS reveal page instead of only grounding copy invisibly downstream.
+  const [offerPsychology, setOfferPsychology] = useState<Record<string, any> | null>(null);
+  const [offerPsychologyLoading, setOfferPsychologyLoading] = useState(false);
   // For the "followers" bucket, which has no offer page to read — a binary
   // split so recommend-strategy gets an explicit signal instead of guessing
   // DM vs. general growth from free text (the actual bug being fixed here).
@@ -770,16 +791,33 @@ export default function GuidedOnboarding() {
       setBrand((prev: any) => ({ ...(prev || {}), audience_psychology: nextAp }));
     } catch { /* non-blocking */ }
 
+    // Both reads only need the URL itself, not each other's result — run
+    // them concurrently so the psychology section isn't waiting behind the
+    // offers-row extraction for no reason.
     setOfferLinkBusy(true);
-    try {
-      const offerId = await findOrCreateOffer(normalized);
-      await applyExtractedOfferInfo(offerId, normalized);
-      localStorage.setItem(`lumi_onboarding_offer_id_${brandId}`, offerId);
-    } catch (e) {
-      console.warn("[onboarding] ad-link offer extraction failed", e);
-    } finally {
-      setOfferLinkBusy(false);
+    setOfferPsychologyLoading(true);
+    const [offerResult, psychResult] = await Promise.allSettled([
+      (async () => {
+        const offerId = await findOrCreateOffer(normalized);
+        await applyExtractedOfferInfo(offerId, normalized);
+        return offerId;
+      })(),
+      supabase.functions.invoke("generate-offer-psychology", {
+        body: { brand_id: brandId, offer_url: normalized, user_goal: goalChoice || undefined },
+      }),
+    ]);
+    if (offerResult.status === "fulfilled") {
+      localStorage.setItem(`lumi_onboarding_offer_id_${brandId}`, offerResult.value);
+    } else {
+      console.warn("[onboarding] ad-link offer extraction failed", offerResult.reason);
     }
+    setOfferLinkBusy(false);
+    if (psychResult.status === "fulfilled") {
+      setOfferPsychology((psychResult.value?.data as any)?.offer_psychology || null);
+    } else {
+      console.warn("[onboarding] offer psychology generation failed", psychResult.reason);
+    }
+    setOfferPsychologyLoading(false);
   };
 
   const updateOffer = async (offerId: string, patch: Record<string, any>) => {
@@ -1163,6 +1201,7 @@ export default function GuidedOnboarding() {
         {/* ============== STEP 2 — Reveal page (streams in live) ============== */}
         {step === 2 && (() => {
           const colors: string[] = (brand?._kit?.colors as string[] | undefined) || [];
+          const accentColor = pickAccentColor(colors);
           // Voice tone chips — prefer structured, standalone descriptors.
           // analyze-brand-voice actually writes this array as `tone_descriptors`
           // (see supabase/functions/analyze-brand-voice), each entry a short
@@ -1223,7 +1262,12 @@ export default function GuidedOnboarding() {
           const siteHost = brand?.website_url ? brand.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "") : "";
 
           return (
-            <div className="min-h-[70vh] py-4">
+            <>
+              <OnboardingLoadingOverlay
+                visible={!canContinue}
+                statusLabel={slowMode ? "Almost there — the deep read takes a beat longer." : WITTY_LINES[narrationIdx]}
+              />
+              <div className="min-h-[70vh] py-4">
               <div className="max-w-2xl mx-auto space-y-6">
                 {/* Header */}
                 <div className="text-center space-y-3 animate-fade-in">
@@ -1526,6 +1570,54 @@ export default function GuidedOnboarding() {
                     </div>
                   )}
 
+                  {/* Why they'll say yes — offer-specific objections LUMI
+                      already anticipated, styled in this brand's own colors,
+                      not LUMI's. Only for goals with a real offer link
+                      (booked_calls/leads/sales, gated in submitAdLink above)
+                      — "followers" has no offer page to ground this in. */}
+                  {goalChoice && goalChoice !== "followers" && (offerPsychology || offerPsychologyLoading) && (
+                    <>
+                      <div className="h-px bg-border" />
+                      <div className="animate-fade-in space-y-3">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                          <Sparkles className="h-4 w-4 text-muted-foreground" /> Why they'll say yes
+                        </div>
+                        {offerPsychologyLoading && !offerPsychology && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading what's stopping them from buying…
+                          </div>
+                        )}
+                        {Array.isArray(offerPsychology?.specific_hesitations) && offerPsychology.specific_hesitations.length > 0 && (
+                          <div className="space-y-2">
+                            <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+                              What's stopping them — until now
+                            </div>
+                            <div className="grid sm:grid-cols-2 gap-2">
+                              {offerPsychology.specific_hesitations.slice(0, 4).map((h: string, i: number) => (
+                                <div
+                                  key={i}
+                                  className="rounded-2xl p-3 text-sm text-foreground leading-snug border-l-4"
+                                  style={{
+                                    borderLeftColor: accentColor || "#ec4899",
+                                    backgroundColor: accentColor ? `${accentColor}14` : "rgba(236,72,153,0.06)",
+                                  }}
+                                >
+                                  {h}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {offerPsychology?.what_finally_convinces && (
+                          <p className="text-sm text-foreground leading-relaxed">
+                            <span className="font-semibold">What gets them to yes: </span>
+                            {offerPsychology.what_finally_convinces}
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
+
                   {(revealed.proof || revealed.images) && showFoundSection && <div className="h-px bg-border" />}
 
                   {/* Found on your site — a real taste (up to 3 photos, up to 2
@@ -1650,7 +1742,8 @@ export default function GuidedOnboarding() {
                   </Button>
                 </div>
               </div>
-            </div>
+              </div>
+            </>
           );
         })()}
 
