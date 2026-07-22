@@ -658,6 +658,10 @@ Deno.serve(async (req) => {
     let optimizationGoal = 'LINK_CLICKS';
     let needsPixel = false;
     let conversionEvent = 'PURCHASE';
+    // Where the ad actually sends people. Left null for normal website traffic
+    // (Meta's default); set explicitly for profile-visit campaigns, which are
+    // otherwise indistinguishable from a website campaign at the API level.
+    let destinationType: string | null = null;
 
     if (normalizedOptEvent === 'PURCHASE') {
       metaObjective = 'OUTCOME_SALES';
@@ -676,24 +680,32 @@ Deno.serve(async (req) => {
       metaObjective = 'OUTCOME_TRAFFIC';
       optimizationGoal = 'LINK_CLICKS';
     } else if (normalizedOptEvent === 'THRUPLAY') {
-      metaObjective = 'OUTCOME_AWARENESS';
-      optimizationGoal = 'THRUPLAY';
-    } else if (normalizedOptEvent === 'PROFILE_VISITS') {
-      // Profile visits = Traffic objective with profile destination (handled by Meta)
+      // Video views used to build an awareness campaign. LUMI doesn't run
+      // awareness — impressions nobody acts on aren't an outcome — so the
+      // closest useful thing is traffic optimized for the click.
       metaObjective = 'OUTCOME_TRAFFIC';
       optimizationGoal = 'LINK_CLICKS';
+    } else if (normalizedOptEvent === 'PROFILE_VISITS') {
+      // Profile visits = Traffic objective sent to the Instagram profile.
+      // destination_type is what makes that real — without it Meta defaults to
+      // WEBSITE and the "profile growth" campaign quietly sends people to the
+      // user's website instead of the profile they wanted followers on.
+      metaObjective = 'OUTCOME_TRAFFIC';
+      optimizationGoal = 'LINK_CLICKS';
+      destinationType = 'INSTAGRAM_PROFILE';
     } else if (normalizedOptEvent === 'CONVERSATIONS') {
       metaObjective = 'OUTCOME_ENGAGEMENT';
       optimizationGoal = 'CONVERSATIONS';
     } else if (normalizedOptEvent === 'POST_ENGAGEMENT') {
       metaObjective = 'OUTCOME_ENGAGEMENT';
       optimizationGoal = 'POST_ENGAGEMENT';
-    } else if (normalizedOptEvent === 'REACH') {
-      metaObjective = 'OUTCOME_AWARENESS';
-      optimizationGoal = 'REACH';
-    } else if (normalizedOptEvent === 'IMPRESSIONS') {
-      metaObjective = 'OUTCOME_AWARENESS';
-      optimizationGoal = 'IMPRESSIONS';
+    } else if (normalizedOptEvent === 'REACH' || normalizedOptEvent === 'IMPRESSIONS') {
+      // Same rule as THRUPLAY above: no awareness campaigns. A stale template
+      // row asking for reach/impressions gets the useful equivalent — traffic
+      // optimized for clicks — rather than a campaign that buys eyeballs and
+      // reports nothing the user can act on.
+      metaObjective = 'OUTCOME_TRAFFIC';
+      optimizationGoal = 'LINK_CLICKS';
     }
 
     console.log('Final Meta config:', { metaObjective, optimizationGoal, needsPixel, conversionEvent });
@@ -1077,6 +1089,12 @@ Deno.serve(async (req) => {
       coldAdSetParams.promoted_object = JSON.stringify(promotedObject);
     }
 
+    // Send the ad to the Instagram profile rather than the website when this is
+    // a profile-growth campaign.
+    if (destinationType) {
+      coldAdSetParams.destination_type = destinationType;
+    }
+
     const coldAdSetResponse = await fetch(
       `https://graph.facebook.com/v25.0/act_${accountId}/adsets`,
       {
@@ -1143,6 +1161,10 @@ Deno.serve(async (req) => {
       // Add promoted_object if we have a pixel for conversion tracking
       if (promotedObject) {
         warmAdSetParams.promoted_object = JSON.stringify(promotedObject);
+      }
+
+      if (destinationType) {
+        warmAdSetParams.destination_type = destinationType;
       }
 
       const warmAdSetResponse = await fetch(

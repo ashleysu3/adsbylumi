@@ -239,10 +239,12 @@ Deno.serve(async (req) => {
       // DM funnels — that's the bug this guards against.
       if (explicitGoal === "dm_leads") return g.includes("dm_leads");
       if (explicitGoal === "grow_social") return g.includes("grow_social");
-      if (obj === "OUTCOME_LEADS") {
-        return g.some((x) => ["get_leads", "book_calls"].includes(x));
+      if (obj === "OUTCOME_LEADS" || obj === "OUTCOME_ENGAGEMENT") {
+        return g.some((x) => ["get_leads", "book_calls", "dm_leads"].includes(x));
       }
-      if (obj === "OUTCOME_AWARENESS") {
+      // Templates are still tagged with the old "awareness" vocabulary — match
+      // on the tag we have, even though we no longer BUILD awareness campaigns.
+      if (obj === "OUTCOME_TRAFFIC") {
         return g.some((x) => ["grow_social", "awareness"].includes(x));
       }
       // OUTCOME_SALES
@@ -297,15 +299,17 @@ Deno.serve(async (req) => {
     }
 
 
-    // Adapt the matched template's campaign objectives to the actual offer.
-    // Templates are written generically (often defaulting to OUTCOME_SALES),
-    // but the PRIMARY campaign must reflect what the user is promoting:
-    //   - Free trial / webinar / opt-in / lead magnet → OUTCOME_LEADS
-    //   - Paid product / course / coaching            → OUTCOME_SALES
-    //   - "Just grow / awareness" goals               → OUTCOME_AWARENESS
-    // Top-of-funnel (awareness) and warm retargeting layers are preserved
-    // and aligned to the primary objective so the funnel stays coherent.
-    const adapted = adaptCampaignsToOffer(matched, brandSnapshot);
+    // Collapse the matched template to the simplest single campaign that can
+    // actually work for THIS offer:
+    //   - Opt-in / lead magnet / discovery call → one OUTCOME_LEADS campaign
+    //   - Paid product / course / coaching      → one OUTCOME_SALES campaign
+    //   - "More followers"                      → one OUTCOME_TRAFFIC campaign
+    //                                             pointed at the IG profile
+    //   - "More DMs"                            → one OUTCOME_ENGAGEMENT
+    //                                             (conversations) campaign
+    // 100% of budget, every time. Retargeting and supplemental layers are
+    // added later during optimization, once the main campaign has proven data.
+    const adapted = buildNeedsFirstStrategy(matched, brandSnapshot);
 
     // Every seeded template was authored once as a generic funnel SHAPE, often
     // under an illustrative example-industry name (a template literally named
@@ -342,9 +346,13 @@ Deno.serve(async (req) => {
   }
 });
 
-function detectPrimaryObjective(
-  snapshot: any,
-): "OUTCOME_LEADS" | "OUTCOME_SALES" | "OUTCOME_AWARENESS" {
+type PrimaryObjective =
+  | "OUTCOME_LEADS"
+  | "OUTCOME_SALES"
+  | "OUTCOME_TRAFFIC"
+  | "OUTCOME_ENGAGEMENT";
+
+function detectPrimaryObjective(snapshot: any): PrimaryObjective {
   const offer =
     snapshot?.selected_offer || (snapshot?.offers && snapshot.offers[0]) || {};
   const goal = String(snapshot?.user_goal || "").toLowerCase();
@@ -352,8 +360,15 @@ function detectPrimaryObjective(
   // Explicit intent from a binary onboarding choice ("more DMs" vs "more
   // followers/engagement") always wins over guessing from offer text — there
   // is no offer page for a followers goal to read in the first place.
-  if (goal === "dm_leads") return "OUTCOME_LEADS";
-  if (goal === "grow_social") return "OUTCOME_AWARENESS";
+  //
+  // "More DMs" is a messaging campaign, not a website-lead campaign — the
+  // conversation IS the conversion, so there's no landing page to optimize for.
+  if (goal === "dm_leads") return "OUTCOME_ENGAGEMENT";
+  // "More followers" is TRAFFIC pointed at the Instagram/Facebook profile —
+  // never an awareness campaign. Awareness optimizes for impressions nobody
+  // acts on; a profile-destination traffic campaign optimizes for the click
+  // that actually lands someone on the profile they can follow.
+  if (goal === "grow_social") return "OUTCOME_TRAFFIC";
 
   const fields = [
     offer?.name,
@@ -381,7 +396,10 @@ function detectPrimaryObjective(
     "inquiry", "inquire", "waitlist", "email capture", "newsletter",
     "subscribe", "leads", "get leads",
   ];
-  const awarenessSignals = [
+  // Growth-shaped language routes to profile traffic, never to an awareness
+  // campaign. If someone's stated want is "be seen / grow my account", the
+  // useful version of that is people landing on their profile and following.
+  const profileGrowthSignals = [
     "awareness", "grow social", "grow my account", "grow following",
     "build audience", "brand awareness", "video views",
   ];
@@ -409,11 +427,11 @@ function detectPrimaryObjective(
   if (pageGoal === "purchase") return "OUTCOME_SALES";
 
   const hasLead = leadSignals.some((s) => fields.includes(s));
-  const hasAwareness = awarenessSignals.some((s) => fields.includes(s));
+  const hasProfileGrowth = profileGrowthSignals.some((s) => fields.includes(s));
   const hasSale = salesSignals.some((s) => fields.includes(s));
 
   if (isFree || hasLead) return "OUTCOME_LEADS";
-  if (hasAwareness && !hasSale) return "OUTCOME_AWARENESS";
+  if (hasProfileGrowth && !hasSale) return "OUTCOME_TRAFFIC";
   return "OUTCOME_SALES";
 }
 
@@ -436,69 +454,135 @@ function classifyRole(c: any): "awareness" | "primary" | "retarget" {
   return "primary";
 }
 
-function adaptCampaignsToOffer(matched: any, snapshot: any) {
-  const primaryObjective = detectPrimaryObjective(snapshot);
+type CampaignShape = {
+  name: string;
+  optimization_event: "LEAD" | "PURCHASE" | "PROFILE_VISITS" | "CONVERSATIONS";
+  destination?: "INSTAGRAM_PROFILE";
+  creative_brief: string;
+  why: string;
+};
+
+function shapeFor(
+  objective: PrimaryObjective,
+  offerName: string,
+  brandName: string,
+): CampaignShape {
+  switch (objective) {
+    case "OUTCOME_LEADS":
+      return {
+        name: "Lead generation",
+        optimization_event: "LEAD",
+        creative_brief:
+          `Direct invitation to sign up for ${offerName}. Lead with the outcome they get by registering, ` +
+          `one clear benefit, and a single CTA to the opt-in / registration page. Use an instant lead form if it fits, ` +
+          `otherwise drive to the registration landing page.`,
+        why:
+          `The job of ${offerName} is to collect contact details, so this runs as one lead campaign with your ` +
+          `whole budget behind it. A single campaign with your full budget gets through Meta's learning phase; ` +
+          `the same money split three ways usually never does.`,
+      };
+    case "OUTCOME_SALES":
+      return {
+        name: "Sales",
+        optimization_event: "PURCHASE",
+        creative_brief:
+          `Offer-focused with proof: the specific result someone gets from ${offerName}, a testimonial or ` +
+          `before/after that makes it believable, and one clear CTA to the sales page.`,
+        why:
+          `${offerName} is something people buy, so this runs as one sales campaign optimized for purchases, ` +
+          `with your whole budget behind it. Adding a second campaign before this one is producing just splits ` +
+          `the data Meta needs to find your buyers.`,
+      };
+    case "OUTCOME_TRAFFIC":
+      return {
+        name: "Profile growth",
+        optimization_event: "PROFILE_VISITS",
+        destination: "INSTAGRAM_PROFILE",
+        creative_brief:
+          `Teach ONE genuinely useful thing in about 30 seconds — no opt-in, no registration. Hook on a specific ` +
+          `pain or misconception → the quick insight → an invitation to follow ${brandName} for more. ` +
+          `This ad sends people to your profile, not to your website.`,
+        why:
+          `You said you want more followers, so this is a traffic campaign pointed at your Instagram profile — ` +
+          `not an awareness campaign. Awareness buys impressions nobody acts on; this buys the click that ` +
+          `actually puts someone on your profile, where they can follow you.`,
+      };
+    case "OUTCOME_ENGAGEMENT":
+      return {
+        name: "DM conversations",
+        optimization_event: "CONVERSATIONS",
+        creative_brief:
+          `Invite one specific conversation: name the exact thing they get when they message you (a keyword, ` +
+          `a question answered, a quick audit), then ask for the DM. Don't send them to a landing page.`,
+        why:
+          `You said you want more DMs, so this runs as one messaging campaign optimized for conversations ` +
+          `started. The DM is the conversion, so there's no landing page in the middle losing people.`,
+      };
+  }
+}
+
+// The needs-first decision: what is the SIMPLEST single campaign that can work?
+//
+// Templates used to dictate structure. The template matched to LUMI's core
+// avatar is literally named `coach-course-creator-3step` and shipped three
+// campaigns at 40/40/20 — awareness + cold sales + retargeting — to anyone it
+// matched, including a coach whose entire funnel is one free guide. On a starter
+// budget that splits spend three ways, so no campaign gets enough data to leave
+// Meta's learning phase and none of them work. The user concludes ads don't work
+// for their business.
+//
+// The template still supplies creative direction and audience flavor. It no
+// longer decides the shape or the split.
+//
+// Layering (retargeting, supplemental traffic) is deliberately NOT here. It
+// belongs in optimization, once the main campaign has real data proving it
+// works — never in the plan handed to someone on day one.
+function buildNeedsFirstStrategy(matched: any, snapshot: any) {
+  const objective = detectPrimaryObjective(snapshot);
   const offerName: string =
     snapshot?.selected_offer?.name ||
     snapshot?.offers?.[0]?.name ||
     snapshot?.offer_hint ||
     "your offer";
-  const campaigns = Array.isArray(matched?.campaigns)
-    ? matched.campaigns.slice()
-    : [];
+  const brandName: string = snapshot?.brand?.name || "your brand";
+  const shape = shapeFor(objective, offerName, brandName);
 
-  const rewritten = campaigns.map((c: any) => {
-    const role = classifyRole(c);
-    if (role === "awareness") {
-      // Every OTHER role gets its name/creative_brief rewritten below — awareness
-      // was the one gap left holding the matched template's raw, sometimes
-      // industry-specific example content (e.g. "newly-engaged couples"), which
-      // rendered straight to users in the campaign list. Give it the same
-      // treatment: a safe, objective-aligned name/brief, never the template's
-      // original wording.
-      return {
-        ...c,
-        name: "Cold traffic (awareness)",
-        creative_brief:
-          `Introduce ${offerName} to a cold, broad audience with the strongest hook or proof point available — ` +
-          `no hard ask yet, just earn the click/save/follow that feeds the next campaign.`,
-      };
-    }
+  // Borrow the matched template's PRIMARY campaign for audience/creative
+  // flavor only — never its count, never its budget split.
+  const templateCampaigns = Array.isArray(matched?.campaigns) ? matched.campaigns : [];
+  const templatePrimary =
+    templateCampaigns.find((c: any) => classifyRole(c) === "primary") ??
+    templateCampaigns[0] ??
+    {};
 
-    if (role === "primary") {
-      if (primaryObjective === "OUTCOME_LEADS") {
-        return {
-          ...c,
-          name: "Lead generation (primary)",
-          objective: "OUTCOME_LEADS",
-          creative_brief:
-            `Direct invitation to sign up for ${offerName}. Lead with the outcome they get by registering, ` +
-            `one clear benefit, and a single CTA to the opt-in / registration page. Use an instant lead form if it fits, ` +
-            `otherwise drive to the registration landing page.`,
-        };
-      }
-      if (primaryObjective === "OUTCOME_AWARENESS") {
-        return { ...c, name: "Awareness (primary)", objective: "OUTCOME_AWARENESS" };
-      }
-      return { ...c, objective: "OUTCOME_SALES" };
-    }
+  const campaign = {
+    ...templatePrimary,
+    name: shape.name,
+    objective,
+    optimization_event: shape.optimization_event,
+    ...(shape.destination ? { destination: shape.destination } : {}),
+    audience: templatePrimary?.audience || "Broad+",
+    budget_pct: 100,
+    creative_brief: shape.creative_brief,
+    // Plain-language reasoning for the "teach the why" layer — every
+    // recommendation should be able to explain itself.
+    why: shape.why,
+  };
 
-    // Retarget: align with whatever the primary objective is.
-    if (primaryObjective === "OUTCOME_LEADS") {
-      return {
-        ...c,
-        name: "Warm retargeting (sign-ups)",
-        objective: "OUTCOME_LEADS",
-        creative_brief:
-          `Re-invite warm viewers/visitors who haven't signed up yet for ${offerName}. ` +
-          `Handle the top 1-2 objections (time, "is this for me?", trust), then a clear CTA to register.`,
-      };
-    }
-    if (primaryObjective === "OUTCOME_AWARENESS") {
-      return { ...c, objective: "OUTCOME_AWARENESS" };
-    }
-    return { ...c, objective: "OUTCOME_SALES" };
-  });
-
-  return { ...matched, campaigns: rewritten };
+  return {
+    ...matched,
+    campaigns: [campaign],
+    // build-meta-campaign resolves objective/optimization_event off
+    // strategy_json at launch time, so carrying them at the top level is what
+    // makes the profile destination survive into the real Meta ad set.
+    objective,
+    optimization_event: shape.optimization_event,
+  };
 }
+
+// Exposed ONLY for index.test.ts — do not use in production code.
+export const __test_exports = {
+  detectPrimaryObjective,
+  shapeFor,
+  buildNeedsFirstStrategy,
+};
