@@ -937,10 +937,20 @@ export default function GuidedOnboarding() {
       const { error } = await supabase.storage.from("ad-photos").upload(path, file, { upsert: true });
       if (error) { toast.error(error.message); return; }
       const { data: pub } = supabase.storage.from("ad-photos").getPublicUrl(path);
-      await supabase.from("user_assets" as any).insert({
+      const { data: assetRow } = await supabase.from("user_assets" as any).insert({
         user_id: user.id, brand_id: brandId, kind: "headshot", original_url: pub.publicUrl,
-      });
+      }).select("id").maybeSingle();
       setHeadshotUrl(pub.publicUrl);
+      // Cut the background out ONCE, now, instead of re-running removal inside
+      // every render that uses a cutout template. Fire-and-forget: the upload is
+      // already done and usable, so a slow or failed cutout must never block
+      // onboarding — renders simply fall back to removing it on the fly.
+      const newAssetId = (assetRow as any)?.id;
+      if (newAssetId) {
+        supabase.functions
+          .invoke("generate-cutout", { body: { assetId: newAssetId } })
+          .catch(() => { /* falls back to per-render removal */ });
+      }
     } else {
       const { error } = await supabase.storage.from("brand-assets").upload(path, file, { upsert: true });
       if (error) { toast.error(error.message); return; }
