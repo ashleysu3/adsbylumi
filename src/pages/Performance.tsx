@@ -1071,7 +1071,7 @@ export default function Performance() {
             <div className="text-center">
               <Button variant="link" onClick={() => navigate("/data")} className="gap-2">
                 <BarChart2 className="h-4 w-4" />
-                See all metrics
+                See full results
               </Button>
             </div>
 
