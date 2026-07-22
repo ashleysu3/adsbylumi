@@ -319,7 +319,7 @@ export default function Start() {
 
   const quickActions = [
     { label: "Create New Ad", icon: PlusCircle, path: "/create", color: "text-primary" },
-    { label: "View Results", icon: BarChart3, path: "/data", color: "text-primary" },
+    { label: "Results", icon: BarChart3, path: "/data", color: "text-primary" },
     { label: "Manage Offers", icon: Package, path: "/dashboard", color: "text-primary" },
     { label: "Creative Studio", icon: Palette, path: "/creative-studio", color: "text-primary" },
   ];

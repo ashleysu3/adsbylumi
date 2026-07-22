@@ -1152,13 +1152,21 @@ export default function AdPerformance() {
 
 
         {/* ─── Page Header ─── */}
-        <div className="mb-4 sm:mb-6">
-          {reportLastUpdated && view === 'home' && (
-            <div className="text-xs text-muted-foreground text-right">
-              LUMI last checked: {reportLastUpdated}
+        {view === 'home' && (
+          <div className="mb-4 sm:mb-6 flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">Results</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                The full picture on how your ads are performing — your deep dive from Live Ads.
+              </p>
             </div>
-          )}
-        </div>
+            {reportLastUpdated && (
+              <div className="text-xs text-muted-foreground text-right shrink-0 mt-1">
+                LUMI last checked: {reportLastUpdated}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Meta Token Expired */}
         {metaTokenExpired &&
