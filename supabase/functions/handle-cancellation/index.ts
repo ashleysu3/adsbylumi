@@ -1,7 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
 import { getCorsHeaders } from "../_shared/cors.ts";
-import { isInternalOrAuthenticated } from "../_shared/internal-auth.ts";
+import { isInternalOrAuthenticated, isServiceRoleRequest, getAuthenticatedUser } from "../_shared/internal-auth.ts";
+import { isAdminUser } from "../_shared/access.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : "";
@@ -33,6 +34,18 @@ Deno.serve(async (req) => {
     const { userId, userEmail, fullName, tierName, periodEnd } = await req.json();
 
     if (!userId) throw new Error("userId is required");
+
+    // Ownership check: only the target user, an admin, or service-role may act
+    if (!isServiceRoleRequest(req)) {
+      const caller = await getAuthenticatedUser(req);
+      const isAdmin = caller ? await isAdminUser(supabaseAdmin, caller.userId) : false;
+      if (!caller || (caller.userId !== userId && !isAdmin)) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     logStep("Processing cancellation", { userId, userEmail });
 
