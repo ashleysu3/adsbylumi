@@ -24,6 +24,14 @@ interface MetaAccountConnectProps {
    * and still needs to select an ad account + Page.
    */
   autoOpen?: boolean;
+  /**
+   * A counter a parent bumps to open the dialog on demand (e.g. from a
+   * "Fix / re-pick assets" button that lives in a different component). Any
+   * increase from its previous value opens the dialog; it starts at 0 so it
+   * never fires on mount. This is the ONLY way an outside component can open
+   * this flow — the `open` state is otherwise fully internal.
+   */
+  openSignal?: number;
   onUpdate: () => void;
 }
 
@@ -58,7 +66,8 @@ export function MetaAccountConnect({
   tokenExpired = false,
   triggerSize = "sm",
   autoOpen = false,
-  onUpdate 
+  openSignal = 0,
+  onUpdate
 }: MetaAccountConnectProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -170,6 +179,12 @@ export function MetaAccountConnect({
     const payload = getPendingSelectionPayload();
     if (payload) setOpen(true);
   }, [autoOpen, brandId]);
+
+  // Parent-driven open: a "Fix / re-pick assets" button elsewhere on the page
+  // bumps openSignal. Guard on > 0 so the initial 0 never opens on mount.
+  useEffect(() => {
+    if (openSignal > 0) setOpen(true);
+  }, [openSignal]);
 
   // When the dialog opens, try to resume selection from stored OAuth result.
   useEffect(() => {
