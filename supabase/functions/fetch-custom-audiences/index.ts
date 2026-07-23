@@ -1,5 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { requireAuthedUser } from '../_shared/check-subscription.ts';
+import { canAccessBrand } from '../_shared/access.ts';
 
 interface CustomAudience {
   id: string;
