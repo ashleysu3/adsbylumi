@@ -40,6 +40,10 @@ export default function MetaSettings() {
   // Bumped after each connection check so the log panel re-fetches
   const [logRefreshKey, setLogRefreshKey] = useState(0);
   const bumpLog = () => setLogRefreshKey((k) => k + 1);
+  // Bumped by "Fix / re-pick assets" so the connected card's re-pick dialog
+  // opens on demand. Before this, that button only scrolled to a
+  // #meta-connect-section that doesn't exist while connected — a silent no-op.
+  const [reconnectSignal, setReconnectSignal] = useState(0);
   const [testResult, setTestResult] = useState<{
     success: boolean;
     message: string;
@@ -717,6 +721,11 @@ export default function MetaSettings() {
           <MetaSetupStatus
             brandId={brand.id}
             onReconnectRequested={() => {
+              // Open the re-pick dialog directly (connected state), and scroll to
+              // whichever meta-connect-section is on the page. When connected, the
+              // signal is what actually resolves it — the scroll alone landed on a
+              // section that isn't rendered, doing nothing.
+              setReconnectSignal((n) => n + 1);
               document.getElementById('meta-connect-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }}
             onPixelSetupRequested={() => navigate('/tracking-setup')}
@@ -727,7 +736,7 @@ export default function MetaSettings() {
         {/* CONNECTED — compact essentials + small secondary actions     */}
         {/* ============================================================ */}
         {isConnected && (
-          <Card>
+          <Card id="meta-connect-section">
             <CardContent className="p-5 space-y-4">
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="text-sm font-medium text-foreground">
@@ -792,6 +801,7 @@ export default function MetaSettings() {
                   currentInstagramId={brand.instagram_account_id}
                   currentInstagramName={brand.instagram_account_name}
                   tokenExpired={isExpired || isExpiringSoon}
+                  openSignal={reconnectSignal}
                   onUpdate={fetchBrand}
                 />
                 <Button variant="ghost" size="sm" onClick={handleDisconnectMeta} className="h-8 text-xs text-destructive hover:text-destructive">
