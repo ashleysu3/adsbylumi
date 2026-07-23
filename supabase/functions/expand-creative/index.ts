@@ -29,6 +29,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const { blocked } = await requirePaidUser(req, corsHeaders);
+  if (blocked) return blocked;
+
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
