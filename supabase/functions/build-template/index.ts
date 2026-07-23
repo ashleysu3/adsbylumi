@@ -1,4 +1,5 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { requireAuthedUser } from "../_shared/check-subscription.ts";
 
 const ENGINE_URL = Deno.env.get("ENGINE_URL")!;
 const ENGINE_KEY = Deno.env.get("LUMI_ENGINE_KEY") ?? "";
@@ -14,6 +15,8 @@ const json = (payload: unknown, status = 200) =>
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers });
+  const { blocked } = await requireAuthedUser(req, headers as Record<string, string>);
+  if (blocked) return blocked;
   try {
     const body = await req.json();
 
