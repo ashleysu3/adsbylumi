@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { requirePaidUser } from '../_shared/check-subscription.ts';
 
 // ALL Knowledge Base categories that must be fetched and applied
 const ALL_KB_CATEGORIES = [
@@ -27,6 +28,10 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const { blocked } = await requirePaidUser(req, corsHeaders);
+  if (blocked) return blocked;
+
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;

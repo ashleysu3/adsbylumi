@@ -1,7 +1,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { Resend } from 'npm:resend@2.0.0';
 import { getCorsHeaders } from '../_shared/cors.ts';
-import { isInternalOrAuthenticated } from "../_shared/internal-auth.ts";
+import { isInternalOrAuthenticated, isServiceRoleRequest, getAuthenticatedUser } from "../_shared/internal-auth.ts";
+import { canAccessBrand } from '../_shared/access.ts';
 import { metaErrorMessage } from "../_shared/meta-errors.ts";
 
 Deno.serve(async (req) => {
@@ -37,17 +38,42 @@ Deno.serve(async (req) => {
     const { brandId } = body;
 
     if (brandId) {
+      // Non-service callers must own the brand
+      if (!isServiceRoleRequest(req)) {
+        const caller = await getAuthenticatedUser(req);
+        const { data: brandOwner } = await supabase
+          .from('brands')
+          .select('user_id')
+          .eq('id', brandId)
+          .maybeSingle();
+        if (!caller || !(await canAccessBrand(supabase, brandOwner?.user_id, caller.userId))) {
+          return new Response(
+            JSON.stringify({ error: 'Forbidden' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
       // Refresh a specific brand's token
       const result = await refreshBrandToken(supabase, brandId, META_APP_ID, META_APP_SECRET);
-      
+
       // Email notifications disabled — users are notified in-app on next login
       // via the user_alerts banner. Do not send reconnect emails.
-      
+
       return new Response(
         JSON.stringify(result),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Bulk refresh path: restrict to service-role callers only
+    if (!isServiceRoleRequest(req)) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
 
     // Find all brands with tokens expiring in the next 7 days
     const sevenDaysFromNow = new Date();
