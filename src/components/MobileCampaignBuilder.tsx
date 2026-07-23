@@ -39,10 +39,12 @@ const OBJECTIVE_LABELS: Record<string, string> = {
   OUTCOME_SALES: "Sales",
   OUTCOME_LEADS: "Leads",
   OUTCOME_TRAFFIC: "Traffic",
+  OUTCOME_ENGAGEMENT: "Conversations",
   OUTCOME_AWARENESS: "Awareness",
   sales: "Sales",
   leads: "Leads",
   traffic: "Traffic",
+  engagement: "Conversations",
   awareness: "Awareness",
 };
 
