@@ -101,6 +101,9 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const { userId, blocked } = await requireAuthedUser(req, corsHeaders);
+  if (blocked) return blocked;
+
   try {
     const { brandId, event, testEventCode } = await req.json() as {
       brandId: string;
@@ -129,7 +132,7 @@ Deno.serve(async (req) => {
     // Get brand data including pixel and access token via Vault
     const { data: brand, error: brandError } = await supabase
       .from('brands')
-      .select('meta_pixel_id, meta_access_token')
+      .select('user_id, meta_pixel_id, meta_access_token')
       .eq('id', brandId)
       .single();
 
@@ -138,6 +141,13 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'Brand not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!(await canAccessBrand(supabase, brand.user_id, userId))) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Access denied' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
