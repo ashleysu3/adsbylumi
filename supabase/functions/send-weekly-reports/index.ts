@@ -110,6 +110,43 @@ Deno.serve(async (req) => {
 
 
   if (!isServiceRoleRequest(req)) {
+    // A 401 here is EXACTLY the failure that went unnoticed for a month: the
+    // pg_cron job was POSTing with the anon key, got rejected before this
+    // function did anything, and nothing recorded it — pg_cron only sees that
+    // the HTTP request was dispatched, not what came back. Make it loud.
+    //
+    // A caller that presented SOME bearer token but the wrong one is almost
+    // certainly a misconfigured internal caller (a cron using the anon key),
+    // which is worth a Slack alert. A request with no auth at all is more likely
+    // a random probe, so it's only logged — that keeps the alert from becoming
+    // noise if the endpoint ever gets scanned.
+    const presentedBearer = (req.headers.get('Authorization') || req.headers.get('authorization') || '')
+      .startsWith('Bearer ');
+    console.error(
+      `[weekly] REJECTED non-service-role call (401). presentedBearer=${presentedBearer}. ` +
+      `If this is the scheduled job, its Authorization header is using the wrong key — ` +
+      `it must send the service-role key, not the anon key.`,
+    );
+    if (presentedBearer) {
+      try {
+        await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/slack-error-alert`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+          },
+          body: JSON.stringify({
+            category: 'Email', severity: 'critical',
+            title: 'Weekly reports blocked — wrong auth key',
+            message:
+              'send-weekly-reports was called with a non-service-role bearer token and rejected (401). ' +
+              'No weekly report emails will send until the caller — almost certainly the pg_cron job — ' +
+              'uses the service-role key. This fails silently otherwise, which is how it went a month unnoticed.',
+            source: 'send-weekly-reports',
+          }),
+        });
+      } catch { /* never let alerting block the response */ }
+    }
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -314,7 +351,20 @@ Deno.serve(async (req) => {
 
     const sentCount = results.filter(r => r.status === 'sent').length;
     const errorCount = results.filter(r => r.status === 'error').length;
-    console.log(`Reports complete: ${sentCount} sent, ${errorCount} errors`);
+    const skippedResults = results.filter(r => r.status === 'skipped');
+    // Break skips down by reason so a run that emails nobody is diagnosable at a
+    // glance (e.g. "everyone was Already sent this week" — the benign double-job
+    // case — vs. "No email" or "Not Monday", which mean something else).
+    const skipBreakdown = skippedResults.reduce((acc, r) => {
+      const reason = r.error || 'unknown';
+      acc[reason] = (acc[reason] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    const skipSummary = Object.entries(skipBreakdown).map(([k, v]) => `${k}: ${v}`).join(', ');
+    console.log(
+      `Reports complete: ${sentCount} sent, ${errorCount} errors, ${skippedResults.length} skipped` +
+      (skipSummary ? ` (${skipSummary})` : ''),
+    );
 
     if (errorCount > 0) {
       try {
