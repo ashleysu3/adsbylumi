@@ -402,7 +402,7 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
               onProceed={handleQAComplete}
               onFixIssue={(type) => {
                 if (type === "copy") {
-                  navigate(`/production?workspace=${workspaceId}&edit=copy`);
+                  handleBackToConfigure();
                 }
               }}
             />
