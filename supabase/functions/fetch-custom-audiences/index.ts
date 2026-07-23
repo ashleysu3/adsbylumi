@@ -24,6 +24,9 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const { userId, blocked } = await requireAuthedUser(req, corsHeaders);
+  if (blocked) return blocked;
+
   try {
     const { brandId } = await req.json();
 
@@ -38,11 +41,18 @@ Deno.serve(async (req) => {
     // Fetch brand with Meta credentials
     const { data: brand, error: brandError } = await supabase
       .from('brands')
-      .select('id, name, meta_account_id, meta_access_token')
+      .select('id, name, user_id, meta_account_id, meta_access_token')
       .eq('id', brandId)
       .single();
 
     if (brandError) throw brandError;
+
+    if (!(await canAccessBrand(supabase, brand.user_id, userId))) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Access denied' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (!brand.meta_account_id) {
       throw new Error('Meta account not connected');
