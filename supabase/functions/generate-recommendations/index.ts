@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { isServiceRoleRequest } from '../_shared/internal-auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -65,17 +66,27 @@ Deno.serve(async (req) => {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    const anonClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    );
-    const { data: userData } = await anonClient.auth.getUser();
-    const authedUser = userData?.user;
-    if (!authedUser) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Internal service-role callers (the weekly-report cron) are trusted and
+    // carry no user context — accept them directly and skip the per-user
+    // ownership check below. Only real user tokens go through getUser(). Without
+    // this, send-weekly-reports (which runs as the cron and calls this with the
+    // service-role key) gets a 401 here and every report email goes out with no
+    // recommendations — a hollow email.
+    const isInternal = isServiceRoleRequest(req);
+    let authedUser: { id: string } | null = null;
+    if (!isInternal) {
+      const anonClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const { data: userData } = await anonClient.auth.getUser();
+      authedUser = userData?.user ?? null;
+      if (!authedUser) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const { workspaceId, brandId, metrics, ads, goals } = await req.json();
@@ -107,8 +118,11 @@ Deno.serve(async (req) => {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    if (brandUserId !== authedUser.id) {
-      const { data: isAdmin } = await supabase.rpc('has_role', { _user_id: authedUser.id, _role: 'admin' });
+    // Ownership check applies only to user calls. A service-role/internal call
+    // is trusted and has no user to compare against; send-weekly-reports only
+    // ever generates for a brand's own workspaces.
+    if (!isInternal && brandUserId !== authedUser!.id) {
+      const { data: isAdmin } = await supabase.rpc('has_role', { _user_id: authedUser!.id, _role: 'admin' });
       if (!isAdmin) {
         return new Response(JSON.stringify({ error: 'Forbidden' }), {
           status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
