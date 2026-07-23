@@ -747,7 +747,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
   // and (c) warn the user on tab close while a save is in flight.
   const angleCopyRef = useRef(angleCopy);
   angleCopyRef.current = angleCopy;
-  const copySaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const copySaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyPendingRef = useRef(false);
   const copyInFlightRef = useRef(false);
 

@@ -71,8 +71,8 @@ export default function Onboarding() {
   const brandEmojis = DEFAULT_EMOJIS;
   const bulletEmoji = '✅';
 
-  const extractDebounceRef = useRef<NodeJS.Timeout | null>(null);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const extractDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     checkAuth();

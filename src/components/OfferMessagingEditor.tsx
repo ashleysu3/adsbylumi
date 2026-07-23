@@ -44,7 +44,7 @@ export function OfferMessagingEditor({
   
   // Track if we've made any changes (to avoid saving on initial load)
   const hasChangedRef = useRef(false);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitialLoadRef = useRef(true);
 
   useEffect(() => {

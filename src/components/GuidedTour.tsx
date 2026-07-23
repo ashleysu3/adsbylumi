@@ -29,8 +29,8 @@ export function GuidedTour({ steps, onClose }: GuidedTourProps) {
   const [stepIndex, setStepIndex] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout>();
-  const retryRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const retryRef = useRef<ReturnType<typeof setTimeout>>();
 
   const step = steps[stepIndex];
   const isLastStep = stepIndex >= steps.length - 1;
