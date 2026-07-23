@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.83.0';
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { buildPositioningBriefBlock } from '../_shared/positioning-brief.ts';
+import { requirePaidUser } from '../_shared/check-subscription.ts';
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -11,6 +12,10 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const { blocked } = await requirePaidUser(req, corsHeaders);
+  if (blocked) return blocked;
+
 
   try {
     const { concept, stage, uploadedAssetUrl, brandInfo, positioningBrief } = await req.json();
