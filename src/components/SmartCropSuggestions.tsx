@@ -4,11 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Scissors, Check } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-import { pipeline, env } from '@huggingface/transformers';
-
-// Configure transformers.js
-env.allowLocalModels = false;
-env.useBrowserCache = true;
+// Note: on-device object detection was removed in favor of a lightweight
+// heuristic (center-based rule-of-thirds crop) to avoid shipping a vulnerable
+// upstream dependency chain. Crop suggestions are still safe defaults.
 
 interface CropSuggestion {
   aspectRatio: '1:1' | '9:16';
