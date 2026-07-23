@@ -37,7 +37,15 @@ Deno.serve(async (req) => {
       .eq('id', brandId)
       .single();
     if (brandError || !brand) throw new Error('Brand not found');
-    if (brand.user_id !== user.id) throw new Error('Access denied');
+    if (brand.user_id !== user.id) {
+      // Admins may generate a report for another user's brand — this is how an
+      // admin viewing a customer via impersonation runs a report. Impersonation
+      // is frontend-only and keeps the admin's token, so without this an admin
+      // always hits "Access denied" on someone else's brand. Everyone else is
+      // still denied.
+      const { data: isAdmin } = await supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' });
+      if (!isAdmin) throw new Error('Access denied');
+    }
 
     // Fetch all campaign workspaces with meta_campaign_ids
     const { data: workspaces, error: wsError } = await supabase
