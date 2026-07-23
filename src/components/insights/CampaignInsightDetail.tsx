@@ -245,6 +245,7 @@ interface CampaignInsightDetailProps {
   onDateRangeChange?: (range: string) => void;
   onOfferLinked?: () => void;
   isLoading: boolean;
+  datePreset?: string;
   dateRangeStart?: string;
   dateRangeEnd?: string;
 }
@@ -280,6 +281,7 @@ export function CampaignInsightDetail({
   onDateRangeChange,
   onOfferLinked,
   isLoading,
+  datePreset,
   dateRangeStart,
   dateRangeEnd,
 }: CampaignInsightDetailProps) {
@@ -946,8 +948,9 @@ export function CampaignInsightDetail({
           </Card>
 
           {/* Ad-Level Breakdown */}
-          <AdBreakdown 
-            workspaceId={campaign.id} 
+          <AdBreakdown
+            workspaceId={campaign.id}
+            datePreset={datePreset}
             dateRangeStart={dateRangeStart}
             dateRangeEnd={dateRangeEnd}
             objective={campaign.objective}

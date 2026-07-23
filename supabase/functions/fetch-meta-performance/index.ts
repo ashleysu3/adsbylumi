@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { buildDateWindowParam, UNIFIED_ATTRIBUTION_PARAM } from '../_shared/meta-insights.ts';
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -10,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { workspaceId, dateRangeStart, dateRangeEnd } = await req.json();
+    const { workspaceId, dateRangeStart, dateRangeEnd, datePreset } = await req.json();
 
     if (!workspaceId) {
       throw new Error('Workspace ID is required');
@@ -300,10 +301,10 @@ Deno.serve(async (req) => {
     const adSetIds = metaCampaignIds.adSetIds || [];
     const adIds = metaCampaignIds.adIds || [];
 
-    // Build date range params
-    const timeRange = dateRangeStart && dateRangeEnd
-      ? `time_range={'since':'${dateRangeStart}','until':'${dateRangeEnd}'}`
-      : `date_preset=last_7d`;
+    // Build date range params. Prefer a preset so Meta computes the window in
+    // the account timezone (matches Ads Manager); fall back to explicit dates
+    // for custom ranges. See _shared/meta-insights.ts.
+    const timeRange = `${buildDateWindowParam({ datePreset, dateRangeStart, dateRangeEnd })}&${UNIFIED_ATTRIBUTION_PARAM}`;
 
     // Fetch Campaign-level insights - including video_p100_watched_actions for thruplay data
     // (safeJson helper defined above)

@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { buildDateWindowParam, UNIFIED_ATTRIBUTION_PARAM } from '../_shared/meta-insights.ts';
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -10,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { brandId, dateRangeStart, dateRangeEnd } = await req.json();
+    const { brandId, dateRangeStart, dateRangeEnd, datePreset } = await req.json();
 
     if (!brandId) {
       throw new Error('brandId is required');
@@ -84,18 +85,20 @@ Deno.serve(async (req) => {
 
     console.log(`Fetching account overview for brand ${brandId}, date range: ${dateRangeStart} to ${dateRangeEnd}`);
 
-    // Fetch account-level insights from Meta
-    // IMPORTANT: Add filtering to only include ACTIVE campaigns
-    const timeRange = dateRangeStart && dateRangeEnd 
-      ? `time_range={"since":"${dateRangeStart}","until":"${dateRangeEnd}"}`
-      : 'date_preset=last_7d';
+    // Account-level insights for the whole account over the window. Match Meta
+    // Ads Manager (account timezone via date_preset, unified attribution) — see
+    // _shared/meta-insights.ts.
+    //
+    // NOTE: we intentionally do NOT filter to active campaigns. That filter made
+    // the account total exclude paused/finished campaigns that spent during the
+    // window, so LUMI's account number under-reported vs Ads Manager AND
+    // disagreed with LUMI's own per-campaign cards (which count paused spend).
+    // Ads Manager's account view includes every campaign for the range; so do we.
+    const timeRange = `${buildDateWindowParam({ datePreset, dateRangeStart, dateRangeEnd })}&${UNIFIED_ATTRIBUTION_PARAM}`;
 
-    // URL-encode the filtering parameter to only include active campaigns
-    const filtering = encodeURIComponent('[{"field":"campaign.delivery_info","operator":"IN","value":["active"]}]');
-    
-    const insightsUrl = `https://graph.facebook.com/v25.0/${brand.meta_account_id}/insights?${timeRange}&fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,purchase_roas&level=account&filtering=${filtering}&access_token=${metaAccessToken}`;
+    const insightsUrl = `https://graph.facebook.com/v25.0/${brand.meta_account_id}/insights?${timeRange}&fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,purchase_roas&level=account&access_token=${metaAccessToken}`;
 
-    console.log('Fetching insights with active-only filter');
+    console.log('Fetching account-level insights (all campaigns in window)');
     const insightsResponse = await fetch(insightsUrl);
     const insightsData = await insightsResponse.json();
 
