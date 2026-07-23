@@ -18,8 +18,6 @@ type BrandRow = {
   id: string;
   name: string;
   user_id: string;
-  owner_email: string | null;
-  owner_name: string | null;
 };
 
 const WINDOWS: { label: string; days: number }[] = [
@@ -39,17 +37,20 @@ export default function AdminTestReports() {
   const { data: brands, isLoading } = useQuery({
     queryKey: ["admin-test-reports-brands"],
     queryFn: async (): Promise<BrandRow[]> => {
+      // Plain column select only. An earlier version embedded
+      // `profiles!brands_user_id_fkey(...)` to show owner email, but brands.user_id
+      // references auth.users, not profiles, so that relationship doesn't exist —
+      // PostgREST errored the whole query and the brand list came back empty for
+      // everyone. Names are enough to pick and search a brand.
       const { data, error } = await supabase
         .from("brands")
-        .select("id, name, user_id, profiles!brands_user_id_fkey(email, full_name)")
+        .select("id, name, user_id")
         .order("name", { ascending: true });
       if (error) throw error;
       return (data || []).map((b: any) => ({
         id: b.id,
         name: b.name,
         user_id: b.user_id,
-        owner_email: b.profiles?.email || null,
-        owner_name: b.profiles?.full_name || null,
       }));
     },
   });
@@ -58,22 +59,10 @@ export default function AdminTestReports() {
     if (!brands) return [];
     const q = search.trim().toLowerCase();
     if (!q) return brands;
-    return brands.filter(
-      (b) =>
-        b.name?.toLowerCase().includes(q) ||
-        b.owner_email?.toLowerCase().includes(q) ||
-        b.owner_name?.toLowerCase().includes(q),
-    );
+    return brands.filter((b) => b.name?.toLowerCase().includes(q));
   }, [brands, search]);
 
   const selectedBrand = brands?.find((b) => b.id === brandId);
-
-  // Default recipient to brand owner when brand is picked and recipient empty.
-  const handleBrandChange = (id: string) => {
-    setBrandId(id);
-    const b = brands?.find((x) => x.id === id);
-    if (b?.owner_email && !recipient) setRecipient(b.owner_email);
-  };
 
   const handleSend = async () => {
     if (!brandId) return toast.error("Pick a brand");
@@ -134,12 +123,12 @@ export default function AdminTestReports() {
             <div className="space-y-2">
               <Label>Brand</Label>
               <Input
-                placeholder="Search brands by name or owner email…"
+                placeholder="Search brands by name…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="mb-2"
               />
-              <Select value={brandId} onValueChange={handleBrandChange} disabled={isLoading}>
+              <Select value={brandId} onValueChange={setBrandId} disabled={isLoading}>
                 <SelectTrigger>
                   <SelectValue placeholder={isLoading ? "Loading brands…" : "Choose a brand"} />
                 </SelectTrigger>
@@ -147,9 +136,6 @@ export default function AdminTestReports() {
                   {filtered.map((b) => (
                     <SelectItem key={b.id} value={b.id}>
                       <span className="font-medium">{b.name}</span>
-                      {b.owner_email && (
-                        <span className="text-muted-foreground"> · {b.owner_email}</span>
-                      )}
                     </SelectItem>
                   ))}
                   {filtered.length === 0 && (
@@ -157,11 +143,6 @@ export default function AdminTestReports() {
                   )}
                 </SelectContent>
               </Select>
-              {selectedBrand?.owner_email && (
-                <p className="text-xs text-muted-foreground">
-                  Owner: {selectedBrand.owner_name || "—"} ({selectedBrand.owner_email})
-                </p>
-              )}
             </div>
 
             <div className="space-y-2">
