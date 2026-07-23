@@ -216,51 +216,10 @@ export function SmartCropSuggestions({
       imageRef.current = img;
       console.log(`Image loaded: ${img.width}x${img.height}`);
 
-      // Use object detection to find subjects
-      console.log("Loading object detection model...");
-      let detector;
-      try {
-        // Try WebGPU first
-        detector = await pipeline(
-          'object-detection',
-          'Xenova/detr-resnet-50',
-          { device: 'webgpu' }
-        );
-      } catch (webgpuError) {
-        console.log("WebGPU not available, falling back to WASM");
-        // Fallback to WASM
-        detector = await pipeline(
-          'object-detection',
-          'Xenova/detr-resnet-50'
-        );
-      }
+      // Heuristic-only path: no on-device model. Skip detection and let the
+      // crop calculator return safe center-based suggestions.
+      const pixelDetections: any[] = [];
 
-      console.log("Detecting objects...");
-      const detections = await detector(imageUrl, {
-        threshold: 0.3,
-        percentage: true
-      });
-
-      console.log("Detections:", detections);
-
-      // Filter for people and important objects
-      const importantLabels = ['person', 'face', 'dog', 'cat', 'bird', 'car', 'bottle', 'cup'];
-      const filteredDetections = detections.filter((det: any) => 
-        importantLabels.some(label => det.label.toLowerCase().includes(label))
-      );
-
-      console.log("Filtered detections:", filteredDetections);
-
-      // Convert percentage-based boxes to pixel coordinates
-      const pixelDetections = filteredDetections.map((det: any) => ({
-        ...det,
-        box: {
-          xmin: det.box.xmin * img.width,
-          ymin: det.box.ymin * img.height,
-          xmax: det.box.xmax * img.width,
-          ymax: det.box.ymax * img.height
-        }
-      }));
 
       const cropSuggestions = calculateCropSuggestions(
         pixelDetections,
