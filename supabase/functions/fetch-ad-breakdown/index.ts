@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { buildDateWindowParam, UNIFIED_ATTRIBUTION_PARAM } from '../_shared/meta-insights.ts';
 
 interface AdMetrics {
   id: string;
@@ -26,7 +27,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { workspaceId, dateRangeStart, dateRangeEnd } = await req.json();
+    const { workspaceId, dateRangeStart, dateRangeEnd, datePreset } = await req.json();
 
     if (!workspaceId) {
       throw new Error('workspaceId is required');
@@ -99,9 +100,9 @@ Deno.serve(async (req) => {
     console.log(`Fetching ad breakdown for campaign ${campaignId}`);
 
     // Time range
-    const timeRange = dateRangeStart && dateRangeEnd 
-      ? `time_range={"since":"${dateRangeStart}","until":"${dateRangeEnd}"}`
-      : 'date_preset=last_7d';
+    // Match Ads Manager (account-tz window + unified attribution) — see
+    // _shared/meta-insights.ts.
+    const timeRange = `${buildDateWindowParam({ datePreset, dateRangeStart, dateRangeEnd })}&${UNIFIED_ATTRIBUTION_PARAM}`;
 
     // Fetch ads within this campaign
     const adsUrl = `https://graph.facebook.com/v25.0/${campaignId}/ads?fields=id,name,status&limit=100&access_token=${metaAccessToken}`;

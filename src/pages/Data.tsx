@@ -319,6 +319,23 @@ export default function AdPerformance() {
     }
   };
 
+  // Map our range selector to Meta's own date_preset token. When we send this,
+  // the edge functions let Meta compute the window in the AD ACCOUNT's timezone
+  // with standard semantics (e.g. "last 7 days" = 7 full days ending yesterday,
+  // no partial today) so LUMI's numbers match Ads Manager instead of drifting
+  // all day. Returns undefined for custom ranges, which keep explicit dates.
+  const getDatePreset = (rangeValue: string): string | undefined => {
+    switch (rangeValue) {
+      case '1': return 'today';
+      case 'yesterday': return 'yesterday';
+      case '3': return 'last_3d';
+      case '7': return 'last_7d';
+      case '14': return 'last_14d';
+      case 'custom': return undefined;
+      default: return 'last_7d';
+    }
+  };
+
   // Fetch campaigns when brand is available. Auto-sync from Meta first so
   // live campaigns running in Meta but not yet imported as workspaces get
   // pulled in, and stale meta_campaign_status values get refreshed. Without
@@ -547,10 +564,11 @@ export default function AdPerformance() {
       if (hoursDiff < 3) return;
     }
 
-    // Auto-run report in background
+    // Auto-run report in background. Window ends YESTERDAY (not today) so it
+    // matches Meta's "last 7 days" and doesn't include today's partial day.
     setReportAutoRunning(true);
     try {
-      const endDate = format(new Date(), 'yyyy-MM-dd');
+      const endDate = format(subDays(new Date(), 1), 'yyyy-MM-dd');
       const startDate = format(subDays(new Date(), 7), 'yyyy-MM-dd');
       const { data, error } = await supabase.functions.invoke('run-optimization-report', {
         body: { brandId, dateRangeStart: startDate, dateRangeEnd: endDate },
@@ -570,8 +588,10 @@ export default function AdPerformance() {
     if (!brandId) return;
     setReportLoading(true);
     try {
-      const endDate = format(new Date(), 'yyyy-MM-dd');
-      const startDate = format(subDays(new Date(), parseInt(globalDateRange) || 7), 'yyyy-MM-dd');
+      // Window ends YESTERDAY (not today) to match Meta's "last N days" preset.
+      const days = parseInt(globalDateRange) || 7;
+      const endDate = format(subDays(new Date(), 1), 'yyyy-MM-dd');
+      const startDate = format(subDays(new Date(), days), 'yyyy-MM-dd');
       const { data, error } = await supabase.functions.invoke('run-optimization-report', {
         body: { brandId, dateRangeStart: startDate, dateRangeEnd: endDate },
       });
@@ -749,6 +769,7 @@ export default function AdPerformance() {
       const { data, error } = await supabase.functions.invoke('fetch-account-overview', {
         body: {
           brandId: id,
+          datePreset: getDatePreset(globalDateRange),
           dateRangeStart: format(dateRange.from, 'yyyy-MM-dd'),
           dateRangeEnd: format(dateRange.to, 'yyyy-MM-dd')
         }
@@ -817,6 +838,7 @@ export default function AdPerformance() {
             const { data, error } = await supabase.functions.invoke('fetch-meta-performance', {
               body: {
                 workspaceId: campaign.id,
+                datePreset: getDatePreset(globalDateRange),
                 dateRangeStart: format(dateRange.from, 'yyyy-MM-dd'),
                 dateRangeEnd: format(dateRange.to, 'yyyy-MM-dd')
               }
@@ -902,12 +924,14 @@ export default function AdPerformance() {
 
   const fetchCampaignDetail = async (campaignId: string, dateRangeValue?: string) => {
     setSyncing(true);
-    const dateRange = getDateRange(dateRangeValue || detailDateRange);
+    const rangeKey = dateRangeValue || detailDateRange;
+    const dateRange = getDateRange(rangeKey);
 
     try {
       const { data: metricsData, error: metricsError } = await supabase.functions.invoke('fetch-meta-performance', {
         body: {
           workspaceId: campaignId,
+          datePreset: getDatePreset(rangeKey),
           dateRangeStart: format(dateRange.from, 'yyyy-MM-dd'),
           dateRangeEnd: format(dateRange.to, 'yyyy-MM-dd')
         }
@@ -1240,6 +1264,7 @@ export default function AdPerformance() {
             onDateRangeChange={handleDetailDateRangeChange}
             onOfferLinked={() => { fetchCampaigns(); }}
             isLoading={syncing}
+            datePreset={getDatePreset(detailDateRange)}
             dateRangeStart={format(getDateRange(detailDateRange, customDateRange).from, 'yyyy-MM-dd')}
             dateRangeEnd={format(getDateRange(detailDateRange, customDateRange).to, 'yyyy-MM-dd')}
           />

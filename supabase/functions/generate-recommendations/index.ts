@@ -227,7 +227,9 @@ Deno.serve(async (req) => {
         const trendUrl =
           `https://graph.facebook.com/v25.0/${campaignIdForTrend}/insights` +
           `?fields=spend,impressions,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency,purchase_roas` +
-          `&time_increment=1&date_preset=last_7d&access_token=${encodeURIComponent(metaTokenForTrend)}`;
+          // use_unified_attribution_setting → conversions/ROAS match Ads Manager,
+          // consistent with the card metrics this trend sits beside.
+          `&time_increment=1&date_preset=last_7d&use_unified_attribution_setting=true&access_token=${encodeURIComponent(metaTokenForTrend)}`;
         const trendResp = await fetch(trendUrl);
         const trendData = await trendResp.json();
         const days: any[] = Array.isArray(trendData?.data) ? trendData.data : [];

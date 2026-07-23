@@ -30,6 +30,7 @@ interface AdMetrics {
 
 interface AdBreakdownProps {
   workspaceId: string;
+  datePreset?: string;
   dateRangeStart?: string;
   dateRangeEnd?: string;
   objective?: string | null;
@@ -129,7 +130,7 @@ function getAdRecommendation(ad: AdMetrics, primaryKPI?: string): { label: strin
   return { label: 'Keep running', color: 'bg-green-50 text-green-700 border-green-200', action: 'On track' };
 }
 
-export function AdBreakdown({ workspaceId, dateRangeStart, dateRangeEnd, objective, primaryKPI }: AdBreakdownProps) {
+export function AdBreakdown({ workspaceId, datePreset, dateRangeStart, dateRangeEnd, objective, primaryKPI }: AdBreakdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ads, setAds] = useState<AdMetrics[]>([]);
@@ -150,7 +151,7 @@ export function AdBreakdown({ workspaceId, dateRangeStart, dateRangeEnd, objecti
     setError(null);
     try {
       const { data, error: fetchError } = await supabase.functions.invoke('fetch-ad-breakdown', {
-        body: { workspaceId, dateRangeStart, dateRangeEnd },
+        body: { workspaceId, datePreset, dateRangeStart, dateRangeEnd },
       });
       if (fetchError || !data?.success) {
         throw new Error(data?.error || fetchError?.message || 'Failed to fetch ad breakdown');

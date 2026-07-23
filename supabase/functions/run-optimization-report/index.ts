@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { UNIFIED_ATTRIBUTION_PARAM } from '../_shared/meta-insights.ts';
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -19,13 +20,16 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400,
       });
     }
-    // Default to a trailing 7-day window when caller (e.g. auto-refresh after
-    // confirming goals) doesn't specify a range.
+    // Default to Meta's "last 7 days" window — 7 full days ending YESTERDAY —
+    // when the caller (e.g. auto-refresh after confirming goals, or the cron)
+    // doesn't specify a range. Ending yesterday (not today) excludes today's
+    // still-accumulating partial day, so the report matches Ads Manager's
+    // "Last 7 days" and doesn't drift through the day.
     if (!dateRangeStart || !dateRangeEnd) {
-      const end = new Date();
-      const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
       const fmt = (d: Date) => d.toISOString().slice(0, 10);
-      dateRangeEnd = dateRangeEnd || fmt(end);
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const start = new Date(yesterday.getTime() - 6 * 24 * 60 * 60 * 1000);
+      dateRangeEnd = dateRangeEnd || fmt(yesterday);
       dateRangeStart = dateRangeStart || fmt(start);
     }
     console.log('[run-optimization-report] Params:', { brandId, dateRangeStart, dateRangeEnd });
@@ -232,7 +236,7 @@ Deno.serve(async (req) => {
         }
 
         console.log('[run-optimization-report] Fetching Meta insights for campaign:', campaignId);
-        const insightsUrl = `https://graph.facebook.com/v25.0/${campaignId}/insights?fields=spend,impressions,clicks,ctr,cpm,cpc,actions,cost_per_action_type,frequency,reach,purchase_roas&time_range={'since':'${dateRangeStart}','until':'${dateRangeEnd}'}&access_token=${brand.meta_access_token}`;
+        const insightsUrl = `https://graph.facebook.com/v25.0/${campaignId}/insights?fields=spend,impressions,clicks,ctr,cpm,cpc,actions,cost_per_action_type,frequency,reach,purchase_roas&time_range={'since':'${dateRangeStart}','until':'${dateRangeEnd}'}&${UNIFIED_ATTRIBUTION_PARAM}&access_token=${brand.meta_access_token}`;
         const insightsRes = await fetch(insightsUrl);
         const insightsData = await insightsRes.json();
         console.log('[run-optimization-report] Meta response for', campaignId, ':', JSON.stringify(insightsData).slice(0, 500));
@@ -318,7 +322,7 @@ Deno.serve(async (req) => {
         // Fetch ad-level breakdown
         let adLevelData: any[] = [];
         try {
-          const adsUrl = `https://graph.facebook.com/v25.0/${campaignId}/ads?fields=name,insights.time_range({"since":"${dateRangeStart}","until":"${dateRangeEnd}"}){spend,actions,cost_per_action_type}&limit=50&access_token=${brand.meta_access_token}`;
+          const adsUrl = `https://graph.facebook.com/v25.0/${campaignId}/ads?fields=name,insights.time_range({"since":"${dateRangeStart}","until":"${dateRangeEnd}"}).use_unified_attribution_setting(true){spend,actions,cost_per_action_type}&limit=50&access_token=${brand.meta_access_token}`;
           const adsRes = await fetch(adsUrl);
           const adsData = await adsRes.json();
 
