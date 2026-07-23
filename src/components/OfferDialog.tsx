@@ -76,7 +76,7 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
     use_brand_style_defaults: true,
   });
 
-  const extractDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const extractDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastExtractedUrl = useRef<string>("");
 
   // Auto-extract when URL is pasted/changed (debounced)
