@@ -390,6 +390,15 @@ export function GenerateCreativeDialog() {
       setApprovedIdxs(new Set());
       setBrief(detail.brief);
 
+      // Seed the carousel slide count from the brief's plan so the studio
+      // renders the intended number of slides instead of always defaulting to
+      // 5 (or collapsing to 1). The user can still adjust it before rewriting.
+      const plannedSlides =
+        (detail.brief as any).slideCount ?? (detail.brief as any).slidePlan?.length;
+      if (typeof plannedSlides === "number" && plannedSlides >= 1) {
+        setSlideCount(Math.max(1, Math.min(10, plannedSlides)));
+      }
+
       setImageSource("uploads");
       setTemplate(mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
       setCustomTemplateId("");
