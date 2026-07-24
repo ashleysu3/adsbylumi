@@ -205,27 +205,48 @@ Deno.serve(async (req) => {
       }
     }
 
-    // No Stripe subscription found — fall back to code-based if available
-    if (localSub && !localSubError && !localSub.stripe_subscription_id && 
+    // No active Stripe subscription surfaced from the email lookup above. Fall
+    // back to the local `subscriptions` row, which the webhook/reconcile write
+    // and treat as the source of truth. Two cases we honor here:
+    //   1) Code-based comp (no stripe_subscription_id): honor active/trial as before.
+    //   2) A real PAID row (has stripe_subscription_id) whose live lookup came
+    //      back empty because the Stripe customer email drifted from the login
+    //      email (a typo/casing/alt-email mismatch). Previously this returned
+    //      preview mode even though the user had paid — the exact "paid but stuck
+    //      in preview" failure. We now honor it, but ONLY while its paid/trial
+    //      window is still valid, so a genuinely-lapsed row can't grant access
+    //      indefinitely.
+    if (localSub && !localSubError &&
         (localSub.status === 'active' || localSub.status === 'trial')) {
-      logStep("No Stripe sub, using code-based subscription", { tier: localSub.tier, status: localSub.status });
-      return new Response(JSON.stringify({
-        subscribed: true,
-        product_id: null,
-        price_id: null,
-        tier: localSub.tier,
-        status: localSub.status,
-        subscription_end: localSub.current_period_end,
-        cancel_at_period_end: localSub.cancel_at_period_end || false,
-        is_code_based: true,
-        is_trial: localSub.status === 'trial',
-        discount: null,
-        amount_paid: null,
-        billing_interval: null,
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
+      const isCodeBased = !localSub.stripe_subscription_id;
+      const now = new Date();
+      const periodEnd = localSub.current_period_end ? new Date(localSub.current_period_end) : null;
+      const trialEnd = localSub.trial_end ? new Date(localSub.trial_end) : null;
+      const stillValid = (periodEnd && periodEnd > now) || (trialEnd && trialEnd > now);
+
+      // Comps have no billing period to check; paid rows must still be in-window.
+      if (isCodeBased || stillValid) {
+        logStep("No live Stripe sub, honoring local subscription row", {
+          tier: localSub.tier, status: localSub.status, isCodeBased, stillValid,
+        });
+        return new Response(JSON.stringify({
+          subscribed: true,
+          product_id: null,
+          price_id: null,
+          tier: localSub.tier,
+          status: localSub.status,
+          subscription_end: localSub.current_period_end,
+          cancel_at_period_end: localSub.cancel_at_period_end || false,
+          is_code_based: isCodeBased,
+          is_trial: localSub.status === 'trial',
+          discount: null,
+          amount_paid: null,
+          billing_interval: null,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
     }
 
     logStep("No subscription found at all");

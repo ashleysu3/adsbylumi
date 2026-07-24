@@ -140,7 +140,12 @@ async function handleCheckoutCompleted(
     return;
   }
   const subscription = await stripe.subscriptions.retrieve(subId);
-  await upsertSubscription(supabaseAdmin, stripe, subscription);
+  // Prefer the authoritative user_id we stamp on the checkout session
+  // (create-checkout sets metadata.user_id). This makes the entitlement write
+  // independent of the Stripe customer email matching the login email — the
+  // mismatch that otherwise leaves paying users stuck in preview mode.
+  const metadataUserId = (session.metadata as any)?.user_id || null;
+  await upsertSubscription(supabaseAdmin, stripe, subscription, undefined, metadataUserId);
 }
 
 /**
@@ -151,17 +156,23 @@ async function upsertSubscription(
   supabaseAdmin: any,
   stripe: Stripe,
   subscription: Stripe.Subscription,
-  forcedStatus?: string
+  forcedStatus?: string,
+  userIdOverride?: string | null
 ) {
-  const customerEmail = await getCustomerEmail(stripe, subscription.customer as string);
-  if (!customerEmail) {
-    logStep("upsertSubscription: no customer email, skipping", { subId: subscription.id });
-    return;
-  }
-
-  const userId = await getUserIdByEmail(supabaseAdmin, customerEmail);
+  // Resolve the app user: the authoritative checkout metadata user_id when we
+  // have it, otherwise the Stripe customer email. Email-only resolution silently
+  // drops the write when the Stripe email doesn't match profiles.email.
+  let userId = userIdOverride || null;
   if (!userId) {
-    logStep("upsertSubscription: no user found for email", { email: customerEmail });
+    const customerEmail = await getCustomerEmail(stripe, subscription.customer as string);
+    if (!customerEmail) {
+      logStep("upsertSubscription: no customer email, skipping", { subId: subscription.id });
+      return;
+    }
+    userId = await getUserIdByEmail(supabaseAdmin, customerEmail);
+  }
+  if (!userId) {
+    logStep("upsertSubscription: no user found (metadata or email)", { subId: subscription.id });
     return;
   }
 
@@ -335,12 +346,24 @@ async function getCustomerEmail(stripe: Stripe, customerId: string): Promise<str
 }
 
 async function getUserIdByEmail(supabaseAdmin: any, email: string): Promise<string | null> {
-  const { data } = await supabaseAdmin
+  const normalized = email.trim();
+  // Exact match first (fast path), then a case-insensitive fallback — Stripe
+  // customer emails can differ in casing from the stored profile email.
+  const { data: exact } = await supabaseAdmin
     .from("profiles")
     .select("id")
-    .eq("email", email)
+    .eq("email", normalized)
     .maybeSingle();
-  return data?.id || null;
+  if (exact?.id) return exact.id;
+
+  // Escape LIKE wildcards so an email with % or _ can't match a different user.
+  const escaped = normalized.replace(/[%_\\]/g, (m) => `\\${m}`);
+  const { data: ci } = await supabaseAdmin
+    .from("profiles")
+    .select("id")
+    .ilike("email", escaped)
+    .maybeSingle();
+  return ci?.id || null;
 }
 
 async function triggerHandleCancellation(payload: {
