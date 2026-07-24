@@ -180,7 +180,7 @@ export function ProductionManager({
     toast.success(`B-roll source: ${libName || "Brand-wide library"}`);
   };
 
-  // Build merged b-roll clip list: brand-wide + selected named library
+  // Build merged b-roll clip list: brand-wide + selected named library.
   const mergedBrand = (() => {
     if (!brand) return brand;
     const brandClips: any[] = Array.isArray((brand as any).broll_library)
@@ -189,14 +189,25 @@ export function ProductionManager({
     const extra = selectedLibraryId
       ? namedLibraries.find((l) => l.id === selectedLibraryId)?.clips || []
       : [];
+    const dedupe = (clips: any[]) => {
+      const seen = new Set<string>();
+      return clips.filter((c: any) => {
+        if (!c?.id) return true;
+        if (seen.has(c.id)) return false;
+        seen.add(c.id);
+        return true;
+      });
+    };
     // Dedupe by id, keep extras first so library-specific clips appear first
-    const seen = new Set<string>();
-    const merged = [...extra, ...brandClips].filter((c: any) => {
-      if (!c?.id) return true;
-      if (seen.has(c.id)) return false;
-      seen.add(c.id);
-      return true;
-    });
+    let merged = dedupe([...extra, ...brandClips]);
+    // Fallback: if the scoped source (brand-wide + selected library) is empty
+    // but the brand DOES have clips in other named libraries, surface those so
+    // a user who uploaded into a library that isn't the workspace's selected
+    // source still sees their clips — otherwise the generator shows an empty
+    // "upload b-roll" state even though they already uploaded.
+    if (merged.length === 0 && namedLibraries.length > 0) {
+      merged = dedupe(namedLibraries.flatMap((l) => l.clips || []));
+    }
     return { ...brand, broll_library: merged };
   })();
   const [previousOpen, setPreviousOpen] = useState(false);
