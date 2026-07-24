@@ -204,12 +204,24 @@ function getMetaErrorMessage(metaError: any): string {
   const baseMsg = typeof metaError.message === 'string' ? metaError.message.trim() : 'Unknown Meta error';
   const code = [metaError.code, metaError.error_subcode].filter(Boolean).join('/');
 
+  let msg: string;
   if (userMsg) {
-    return userTitle ? `${userTitle}: ${userMsg}` : userMsg;
+    msg = userTitle ? `${userTitle}: ${userMsg}` : userMsg;
+  } else if (code) {
+    msg = `${baseMsg} (Meta ${code})`;
+  } else {
+    msg = baseMsg;
   }
 
-  if (code) return `${baseMsg} (Meta ${code})`;
-  return baseMsg;
+  // Meta's copy/policy disapprovals (often titled "Ad Copy or Policy") are
+  // opaque to a non-marketer. When the error looks like one, append a plain-
+  // language next step so the user knows this is about the ad copy, not a bug.
+  const policyLike = /policy|disapprov|ad copy|prohibited|unacceptable|does not comply|violat/i;
+  if (policyLike.test(`${userTitle} ${userMsg} ${baseMsg}`)) {
+    msg += ' — This is an ad-copy/policy issue, not an app error. Edit your ad copy on the Creative page and republish.';
+  }
+
+  return msg;
 }
 
 // ---------------------------------------------------------------------------
