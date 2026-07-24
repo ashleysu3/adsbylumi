@@ -161,6 +161,13 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
 
   const handleReview = () => setStage('qa-check');
   const handleBackToConfigure = () => setStage('configure');
+  // The copy editor lives on the Production page, not the Configure (budget/
+  // targeting) step. "Edit copy" and copy/policy publish errors must route here.
+  const goEditCopy = () => navigate(`/production?workspace=${workspaceId}`);
+  // Meta's copy/policy disapprovals read as opaque errors to a non-marketer;
+  // when the publish error looks like one, surface a direct path to edit copy.
+  const isCopyPolicyError = (msg?: string | null) =>
+    !!msg && /(policy|disapprov|ad copy|prohibited|unacceptable|does not comply|violat)/i.test(msg);
 
   const handleQAComplete = () => {
     handlePublish(answers.launchActive ? 'active' : 'paused');
@@ -381,7 +388,16 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
                 <Alert variant="destructive" className="mb-4 relative">
                   <AlertTriangle className="h-4 w-4" />
                   <AlertTitle>Publish failed — please review</AlertTitle>
-                  <AlertDescription>{publishError}</AlertDescription>
+                  <AlertDescription>
+                    {publishError}
+                    {isCopyPolicyError(publishError) && (
+                      <div className="mt-3">
+                        <Button size="sm" variant="outline" onClick={goEditCopy}>
+                          Edit ad copy
+                        </Button>
+                      </div>
+                    )}
+                  </AlertDescription>
                   <button
                     onClick={() => setPublishError(null)}
                     aria-label="Dismiss"
@@ -402,7 +418,7 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
               onProceed={handleQAComplete}
               onFixIssue={(type) => {
                 if (type === "copy") {
-                  handleBackToConfigure();
+                  goEditCopy();
                 }
               }}
             />
@@ -502,7 +518,16 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
                 <Alert variant="destructive" className="mb-4 relative">
                   <AlertTriangle className="h-4 w-4" />
                   <AlertTitle>Publish failed — please review</AlertTitle>
-                  <AlertDescription>{publishError}</AlertDescription>
+                  <AlertDescription>
+                    {publishError}
+                    {isCopyPolicyError(publishError) && (
+                      <div className="mt-3">
+                        <Button size="sm" variant="outline" onClick={goEditCopy}>
+                          Edit ad copy
+                        </Button>
+                      </div>
+                    )}
+                  </AlertDescription>
                   <button
                     onClick={() => setPublishError(null)}
                     aria-label="Dismiss"
@@ -528,7 +553,7 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
               onProceed={handleQAComplete}
               onFixIssue={(type) => {
                 if (type === "copy") {
-                  handleBackToConfigure();
+                  goEditCopy();
                 }
               }}
             />
