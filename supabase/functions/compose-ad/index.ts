@@ -358,6 +358,54 @@ serve(async (req) => {
 
     let options: any[] = Array.isArray(parsed?.options) ? parsed.options : [];
 
+    // Carousels: enforce the requested slide count. The model frequently
+    // returns a single slide regardless of the "EXACTLY N slides" instruction,
+    // which ships a "carousel" that's really just slide 1. Re-prompt once for
+    // the right count, then trim any option that still overshoots.
+    if (template === "carousel" && options.length > 0) {
+      const targetN = Math.max(1, Math.min(10, Number(slideCount ?? (brief as any)?.slideCount) || 5));
+      const countIsWrong = (opts: any[]) =>
+        opts.some((o) => !Array.isArray(o?.slides) || o.slides.length !== targetN);
+
+      if (countIsWrong(options)) {
+        console.log(`compose-ad: carousel slide count off (want ${targetN}), retrying once.`);
+        const retryUser =
+          `The previous JSON returned the WRONG number of carousel slides. ` +
+          `Rewrite the SAME options — same angles, same voice, same ideas — but EACH option's "slides" array must contain EXACTLY ${targetN} slides. ` +
+          `Slide 1 = the hook; the middle slides deliver the payoff/proof/steps; the final slide carries the CTA (empty "cta" on every other slide). ` +
+          `Do NOT return fewer than ${targetN} and do NOT return more. Output the FULL same JSON shape.\n\n` +
+          `Previous JSON:\n${JSON.stringify(parsed)}\n\n` +
+          `Output ONLY valid JSON: {"template":"carousel","options":[ ... ]}`;
+        const retry = await callModel(voiceRulesFor(template), retryUser);
+        if (retry.ok) {
+          const retryContent = retry.data?.choices?.[0]?.message?.content;
+          if (retryContent) {
+            try {
+              const retryParsed = sanitize(JSON.parse(retryContent));
+              if (Array.isArray(retryParsed?.options) && retryParsed.options.length > 0) {
+                parsed = retryParsed;
+                options = retryParsed.options;
+              }
+            } catch (err) {
+              console.error("compose-ad carousel count retry parse failed:", err);
+            }
+          }
+        } else {
+          console.error("compose-ad carousel count retry HTTP error:", retry.status);
+        }
+
+        // Last resort: trim any option that still has too many slides. We never
+        // pad with blank slides server-side (they'd render as empty panels) —
+        // the client fills any remaining shortfall as editable blanks.
+        for (const o of options) {
+          if (Array.isArray(o?.slides) && o.slides.length > targetN) {
+            o.slides.length = targetN;
+          }
+        }
+        parsed.options = options;
+      }
+    }
+
     // Validate slot lengths. If any slot is over, re-prompt ONCE with the specific offenders.
     let violations = findViolations(options, template);
     if (violations.length > 0) {
