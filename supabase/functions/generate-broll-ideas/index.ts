@@ -68,8 +68,8 @@ serve(async (req) => {
       }
 
       const [{ data: offerRows }, { data: audienceRows }] = await Promise.all([
-        supabase.from("offers").select("name, type, price, auto_summary, offer_psychology").eq("brand_id", brandId).limit(5),
-        supabase.from("audiences").select("name, psychology_profile, pain_points, desires").eq("brand_id", brandId).limit(5),
+        supabase.from("offers").select("name, description, price_point, target_outcome, product_psychology").eq("brand_id", brandId).limit(5),
+        supabase.from("audiences").select("name, demographics, psychographics, pain_points, desires").eq("brand_id", brandId).limit(5),
       ]);
       offers = offerRows || [];
       audiences = audienceRows || [];
