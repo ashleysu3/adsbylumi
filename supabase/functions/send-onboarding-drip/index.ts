@@ -28,19 +28,37 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get all users who haven't completed the drip sequence (step < 4)
-    const { data: users, error: usersError } = await supabase
+    // Get all users who haven't completed the drip sequence (step < 4).
+    // Filter out profiles without an email so Resend never receives a null `to`
+    // and we don't retry the same broken user on every scheduled run.
+    const { data: rawUsers, error: usersError } = await supabase
       .from('profiles')
       .select('id, email, full_name, created_at, onboarding_email_step')
       .lt('onboarding_email_step', 4)
-      .eq('archived', false);
+      .eq('archived', false)
+      .not('email', 'is', null);
 
     if (usersError) {
       console.error('Error fetching users:', usersError);
       throw new Error(usersError.message);
     }
 
-    if (!users || users.length === 0) {
+    // Basic email format guard (must contain `@` and a `.` in the domain).
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const users = (rawUsers || []).filter((u) => u.email && EMAIL_RE.test(u.email));
+    const skipped = (rawUsers?.length || 0) - users.length;
+    if (skipped > 0) {
+      console.log(`Skipping ${skipped} profile(s) with missing/invalid emails`);
+      // Advance their step so we don't re-process them every run.
+      const skippedIds = (rawUsers || [])
+        .filter((u) => !u.email || !EMAIL_RE.test(u.email))
+        .map((u) => u.id);
+      if (skippedIds.length > 0) {
+        await supabase.from('profiles').update({ onboarding_email_step: 4 }).in('id', skippedIds);
+      }
+    }
+
+    if (users.length === 0) {
       console.log('No users need onboarding emails');
       return new Response(JSON.stringify({ sent: 0 }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
