@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
+import Stripe from "https://esm.sh/stripe@17.7.0";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { isInternalOrAuthenticated, isServiceRoleRequest, getAuthenticatedUser } from "../_shared/internal-auth.ts";
 import { isAdminUser } from "../_shared/access.ts";
@@ -48,6 +49,18 @@ Deno.serve(async (req) => {
     }
 
     logStep("Processing cancellation", { userId, userEmail });
+
+    // Safety net: this function pauses ads and tells the customer their
+    // cancellation is confirmed, but it trusts whatever the caller (client
+    // code-based path, Stripe path, or the webhook) claims already happened.
+    // If a Stripe customer for this email still has a live subscription —
+    // e.g. the client misclassified the account as code-based, a duplicate
+    // Stripe customer record was missed, or the webhook never linked
+    // stripe_subscription_id — actually cancel it here so the "you won't be
+    // charged again" promise in the email is always true, not just assumed.
+    if (userEmail) {
+      await ensureStripeSubscriptionCancelled(userEmail);
+    }
 
     // 1. Get all brands for this user
     const { data: brands, error: brandsError } = await supabaseAdmin
@@ -181,6 +194,43 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+/**
+ * Belt-and-suspenders: make sure no Stripe subscription for this email is
+ * still live before we tell the customer they're cancelled. Checks every
+ * Stripe customer matching the email (not just the first) since duplicate
+ * customer records under the same email are a known way a real subscription
+ * gets missed by the primary cancellation flow.
+ */
+async function ensureStripeSubscriptionCancelled(userEmail: string): Promise<void> {
+  const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+  if (!stripeKey) return;
+
+  try {
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    const customers = await stripe.customers.list({ email: userEmail, limit: 10 });
+
+    for (const customer of customers.data) {
+      const [active, trialing] = await Promise.all([
+        stripe.subscriptions.list({ customer: customer.id, status: "active", limit: 10 }),
+        stripe.subscriptions.list({ customer: customer.id, status: "trialing", limit: 10 }),
+      ]);
+
+      for (const sub of [...active.data, ...trialing.data]) {
+        if (!sub.cancel_at_period_end) {
+          await stripe.subscriptions.update(sub.id, { cancel_at_period_end: true });
+          logStep("SAFETY NET: found still-active Stripe subscription at cancellation time, cancelled it", {
+            customerId: customer.id,
+            subscriptionId: sub.id,
+          });
+        }
+      }
+    }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    logStep("Safety-net Stripe check failed (non-fatal)", { error: message });
+  }
+}
 
 function buildCancellationEmailHtml(
   firstName: string,
