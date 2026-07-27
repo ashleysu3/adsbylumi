@@ -76,7 +76,7 @@ serve(async (req) => {
       results.push({ id: 'ad_policy', name: 'Ad Policy', status: 'passed', message: 'Approved copy — skipped', details: 'Copy was already reviewed and approved.' });
     } else {
       results.push(await checkSpellingGrammar(creativeJson, productionItems, selectedCopy));
-      results.push(await checkAdPolicy(selectedCopy, productionItems, brand, authHeader));
+      results.push(await checkAdPolicy(selectedCopy, productionItems, brand, authHeader, creativeJson));
     }
 
 
@@ -699,6 +699,7 @@ Return ONLY the JSON array, no other text.`;
 function extractRepresentativeCopy(
   selectedCopy: any,
   productionItems: any[],
+  creativeJson?: any,
 ): { headline: string; primary_text: string; description: string } | null {
   // 1. shared_variations on selectedCopy (advanced builder)
   const sv = selectedCopy?.shared_variations;
@@ -737,6 +738,65 @@ function extractRepresentativeCopy(
     }
   }
 
+  // 4. Inside creative_json — angle_copy, copy_selections, and any nested
+  // shared_variations. This is where Creative Studio (the actual, current
+  // copy-editing surface) saves copy, and checkSpellingGrammar already reads
+  // it (see its "legacy support" sources above). Without this, copy written
+  // there was invisible to the Ad Policy check specifically, which kept
+  // reporting "No copy to review" no matter what the user finalized —
+  // Spelling passing while Ad Policy insists there's nothing to check is
+  // exactly that contradiction, and it left users with no way to satisfy
+  // this check before publishing.
+  if (creativeJson && typeof creativeJson === 'object') {
+    const angleCopy = creativeJson.angleCopy || creativeJson.angle_copy || {};
+    for (const data of Object.values(angleCopy)) {
+      const angleData = data as any;
+      const headline = angleData?.headlines?.[0]?.text || '';
+      const primary_text =
+        angleData?.primary_copy?.[0]?.text || angleData?.primaryCopy?.[0]?.text || '';
+      const description = angleData?.descriptions?.[0]?.text || '';
+      if (headline || primary_text || description) {
+        return { headline, primary_text, description };
+      }
+    }
+
+    const nestedShared =
+      creativeJson.selected_copy?.shared_variations ||
+      creativeJson.copy_selections?.shared_variations ||
+      creativeJson.copySelections?.shared_variations;
+    if (Array.isArray(nestedShared) && nestedShared.length) {
+      const v = nestedShared[0];
+      const headline = v?.headline || '';
+      const primary_text = v?.primary_text || v?.primaryText || '';
+      const description = v?.description || '';
+      if (headline || primary_text || description) {
+        return { headline, primary_text, description };
+      }
+    }
+
+    const copySelections =
+      creativeJson.copy_selections || creativeJson.copySelections || creativeJson.selected_copy || {};
+    if (copySelections && typeof copySelections === 'object') {
+      let headline = '';
+      let primary_text = '';
+      let description = '';
+      let fallbackAny = '';
+      for (const [key, val] of Object.entries(copySelections)) {
+        const text = typeof val === 'string' ? val : (val as any)?.text;
+        if (!text || typeof text !== 'string' || !text.trim()) continue;
+        const k = key.toLowerCase();
+        if (!headline && k.includes('headline')) headline = text;
+        else if (!primary_text && (k.includes('primary') || k.includes('body'))) primary_text = text;
+        else if (!description && k.includes('description')) description = text;
+        if (!fallbackAny) fallbackAny = text;
+      }
+      if (!headline && !primary_text && !description && fallbackAny) primary_text = fallbackAny;
+      if (headline || primary_text || description) {
+        return { headline, primary_text, description };
+      }
+    }
+  }
+
   return null;
 }
 
@@ -745,8 +805,9 @@ async function checkAdPolicy(
   productionItems: any[],
   brand: any,
   authHeader: string,
+  creativeJson?: any,
 ): Promise<CheckResult> {
-  const copy = extractRepresentativeCopy(selectedCopy, productionItems);
+  const copy = extractRepresentativeCopy(selectedCopy, productionItems, creativeJson);
   if (!copy) {
     return {
       id: 'ad_policy',

@@ -161,9 +161,13 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
 
   const handleReview = () => setStage('qa-check');
   const handleBackToConfigure = () => setStage('configure');
-  // The copy editor lives on the Production page, not the Configure (budget/
-  // targeting) step. "Edit copy" and copy/policy publish errors must route here.
-  const goEditCopy = () => navigate(`/production?workspace=${workspaceId}`);
+  // The copy editor lives in Creative Studio, not the Configure (budget/
+  // targeting) step. "Edit copy" and copy/policy publish errors must route
+  // here. `/production` used to be that destination but is now a dead
+  // redirect to `/campaigns` that drops the workspace param entirely — it
+  // sent users into an unrecoverable loop (QA screen → "Edit copy" →
+  // Campaigns list → same workspace → same QA screen).
+  const goEditCopy = () => navigate(`/creative-studio?workspace=${workspaceId}`);
   // Meta's copy/policy disapprovals read as opaque errors to a non-marketer;
   // when the publish error looks like one, surface a direct path to edit copy.
   const isCopyPolicyError = (msg?: string | null) =>
@@ -365,7 +369,7 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
       <Layout>
         <div className="px-4 pb-24">
           <div className="flex items-center gap-3 py-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(`/production?workspace=${workspaceId}`)} className="touch-target">
+            <Button variant="ghost" size="icon" onClick={() => navigate(`/creative-studio?workspace=${workspaceId}`)} className="touch-target">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex-1 min-w-0">
@@ -464,7 +468,7 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(`/production?workspace=${workspaceId}`)}>
+            <Button variant="ghost" size="icon" onClick={() => navigate(`/creative-studio?workspace=${workspaceId}`)}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
