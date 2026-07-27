@@ -968,7 +968,17 @@ export function CreativeChecklistCard({
                             variant={brollSource === "lumi" ? "default" : "outline"}
                             size="sm"
                             className="h-7 text-[11px] flex-1"
-                            onClick={() => setBrollSource("lumi")}
+                            onClick={() => {
+                              // "lumi" is already the default brollSource, so this was a
+                              // true no-op when a user was already on this tab — with no
+                              // clips uploaded, that made the click look completely dead
+                              // (no re-render, no toast, nothing). Always give the click
+                              // visible feedback: switch tabs, or explain what's missing.
+                              setBrollSource("lumi");
+                              if (brollClips.length === 0) {
+                                toast.info("Upload b-roll clips in My Brand first, then come back here — Lumi will pick the best one for this ad.");
+                              }
+                            }}
                           >
                             <Sparkles className="h-3 w-3 mr-1" />
                             Make it for me
