@@ -392,11 +392,23 @@ export function GenerateCreativeDialog() {
 
       // Seed the carousel slide count from the brief's plan so the studio
       // renders the intended number of slides instead of always defaulting to
-      // 5 (or collapsing to 1). The user can still adjust it before rewriting.
+      // 5. The user can still adjust it before rewriting.
+      //
+      // Floor at 3 for carousel format specifically: generate-creative-grid's
+      // own prompt asks the model for "3 to 6 for carousel," but nothing
+      // downstream enforces that — an LLM that returns slideCount:1 for a
+      // carousel cell was silently honored end to end (compose-ad, the
+      // client-side padding below) as a valid 1-slide "carousel." A single
+      // slide is a legitimate result for a single_graphic cell, so the floor
+      // only applies when the brief is actually asking for a carousel.
       const plannedSlides =
         (detail.brief as any).slideCount ?? (detail.brief as any).slidePlan?.length;
+      const briefIsCarousel = detail.brief.format === "carousel";
       if (typeof plannedSlides === "number" && plannedSlides >= 1) {
-        setSlideCount(Math.max(1, Math.min(10, plannedSlides)));
+        const floor = briefIsCarousel ? 3 : 1;
+        setSlideCount(Math.max(floor, Math.min(10, plannedSlides)));
+      } else if (briefIsCarousel) {
+        setSlideCount(4);
       }
 
       setImageSource("uploads");
