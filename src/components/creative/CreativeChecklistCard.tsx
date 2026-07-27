@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -184,6 +185,7 @@ export function CreativeChecklistCard({
   onMakeVideo,
   brand,
 }: CreativeChecklistCardProps) {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [justFocused, setJustFocused] = useState(false);
   const [showRationale, setShowRationale] = useState(false);
@@ -976,7 +978,15 @@ export function CreativeChecklistCard({
                               // visible feedback: switch tabs, or explain what's missing.
                               setBrollSource("lumi");
                               if (brollClips.length === 0) {
-                                toast.info("Upload b-roll clips in My Brand first, then come back here — Lumi will pick the best one for this ad.");
+                                // Tell them AND get them there in one click — a text-only
+                                // message still leaves the user to go find "My Brand" > "Style"
+                                // on their own.
+                                toast.info("Upload b-roll clips in My Brand first, then come back here — Lumi will pick the best one for this ad.", {
+                                  action: {
+                                    label: "Upload b-roll",
+                                    onClick: () => navigate("/style"),
+                                  },
+                                });
                               }
                             }}
                           >
@@ -1094,8 +1104,16 @@ export function CreativeChecklistCard({
                             ) : (
                               <Alert>
                                 <Info className="h-4 w-4" />
-                                <AlertDescription className="text-xs">
-                                  Upload b-roll clips in My Brand to see Lumi-matched previews here.
+                                <AlertDescription className="text-xs flex items-center justify-between gap-2">
+                                  <span>Upload b-roll clips in My Brand to see Lumi-matched previews here.</span>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-6 text-[11px] shrink-0"
+                                    onClick={() => navigate("/style")}
+                                  >
+                                    Upload b-roll
+                                  </Button>
                                 </AlertDescription>
                               </Alert>
                             )}
