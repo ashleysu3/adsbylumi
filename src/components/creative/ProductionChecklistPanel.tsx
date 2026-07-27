@@ -194,8 +194,10 @@ export function ProductionChecklistPanel({
   }, {} as Record<string, (ProductionItem | RankedItem)[]>);
 
   const handleGoToProduction = () => {
+    // `/production` is a dead route (redirects to `/campaigns`, dropping the
+    // workspace param) — Creative Studio is the real destination now.
     if (workspaceId) {
-      navigate(`/production?workspace=${workspaceId}`);
+      navigate(`/creative-studio?workspace=${workspaceId}`);
     }
   };
 
