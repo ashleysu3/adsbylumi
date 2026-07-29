@@ -1410,15 +1410,37 @@ export function CreativeChecklistCard({
                           ]
                         : undefined,
                     };
+                    // The item's own format wins. Older saved briefs sometimes
+                    // say "single_graphic" for a carousel concept, which is how
+                    // a carousel ended up generating one lone image.
+                    const finalBrief = isCar
+                      ? {
+                          ...synth,
+                          format: "carousel",
+                          slideCount: Math.max(2, (synth as any).slideCount || 5),
+                          slidePlan:
+                            (synth as any).slidePlan || [
+                              { role: "hook" },
+                              { role: "problem" },
+                              { role: "framework" },
+                              { role: "proof" },
+                              { role: "cta" },
+                            ],
+                        }
+                      : synth;
+                    console.log("[creative-brief:generate]", { itemId: item.id, format: (finalBrief as any).format, slideCount: (finalBrief as any).slideCount });
                     window.dispatchEvent(
                       new CustomEvent("creative-brief:generate", {
-                        detail: { itemId: item.id, brief: synth },
+                        detail: { itemId: item.id, brief: finalBrief },
                       }),
                     );
                   }}
                 >
                   <Wand2 className="h-3.5 w-3.5" />
-                  Generate this creative (beta)
+                  {item.format === "carousel" &&
+                  (Array.isArray((item as any).cards) ? (item as any).cards.length : hasAsset ? 1 : 0) === 1
+                    ? "Generate remaining slides"
+                    : "Generate this creative (beta)"}
                 </Button>
               )}
 

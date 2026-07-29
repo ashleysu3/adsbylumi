@@ -883,7 +883,9 @@ export function GenerateCreativeDialog() {
         // often ignores the requested count and returns just 1 — pad with
         // blank slides so the user can fill them in rather than shipping
         // a "carousel" that's only slide 0.
-        const targetN = Math.max(1, slideCount || 1);
+        // Hard minimum of 2 — Meta rejects a 1-card carousel, and a 1-slide
+        // "carousel" is the exact bug users hit ("generated only 1 slide").
+        const targetN = Math.max(2, slideCount || 4);
         const carOpts: CarouselOption[] = options.map((o) => {
           const raw = Array.isArray(o?.slides) ? o.slides : [];
           const cleaned: Slide[] = raw.map((sl: any) => ({ ...(sl || {}) }));
@@ -1077,6 +1079,12 @@ export function GenerateCreativeDialog() {
       };
 
       if (isCarousel) {
+        if (!Array.isArray(editedSlides) || editedSlides.length < 2) {
+          toast.error("Carousels need at least 2 slides. Add another slide or switch this to a single image.");
+          setProgress("");
+          setGenerating(false);
+          return;
+        }
         setProgress("Rendering carousel slides…");
         const slides = sanitizeCopy(editedSlides);
         const imgs = await callRender({
@@ -1133,6 +1141,17 @@ export function GenerateCreativeDialog() {
     setApprovingIdx(idx);
     try {
       const isVertical = (img.placement || "").toLowerCase().includes("story") || (img.height > img.width);
+      // Carousel slides all belong to the same concept — tag each with its
+      // index so saving slide 2 doesn't overwrite slide 1.
+      const slide: any = isCarousel ? (editedSlides?.[idx] || {}) : null;
+      const cardIndex = isCarousel ? idx : undefined;
+      const cardMeta = isCarousel
+        ? {
+            index: idx,
+            headline: slide?.headline || slide?.title || "",
+            description: slide?.sub || slide?.body || slide?.description || "",
+          }
+        : undefined;
       await new Promise<void>((resolve, reject) => {
         const reqId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const onDone = (e: Event) => {
@@ -1152,6 +1171,8 @@ export function GenerateCreativeDialog() {
               mime: "image/png",
               fileName: `ad-${img.label?.replace(/\s+/g, "-").toLowerCase() || img.placement}-${idx + 1}.png`,
               isVertical,
+              cardIndex,
+              cardMeta,
             },
           }),
         );

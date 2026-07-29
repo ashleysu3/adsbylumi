@@ -358,20 +358,72 @@ async function renderTextToPng(
   return new Uint8Array(buf);
 }
 
-function readVideoMetadata(videoUrl: string): Promise<{ width: number; height: number; duration: number }> {
-  return new Promise((resolve, reject) => {
+/**
+ * Client-side metadata read. Never rejects and never hangs: iPhone HEVC/H.265
+ * clips often fire neither `loadedmetadata` nor `error` in browsers without a
+ * decoder, which used to leave the whole render promise pending forever.
+ * Returns zeros when it can't read — callers fall back to an ffmpeg probe.
+ */
+function readVideoMetadata(
+  videoUrl: string,
+  timeoutMs = 8000,
+): Promise<{ width: number; height: number; duration: number }> {
+  return new Promise((resolve) => {
     const v = document.createElement('video');
+    let settled = false;
+    const done = (r: { width: number; height: number; duration: number }) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      v.onloadedmetadata = null;
+      v.onerror = null;
+      v.removeAttribute('src');
+      resolve(r);
+    };
+    const timer = setTimeout(() => done({ width: 0, height: 0, duration: 0 }), timeoutMs);
     v.preload = 'metadata';
     v.muted = true;
-    v.src = videoUrl;
     v.crossOrigin = 'anonymous';
-    v.onloadedmetadata = () => resolve({
-      width: v.videoWidth,
-      height: v.videoHeight,
-      duration: Number.isFinite(v.duration) ? v.duration : 0,
-    });
-    v.onerror = () => reject(new Error('Could not read video metadata'));
+    v.onloadedmetadata = () =>
+      done({
+        width: v.videoWidth,
+        height: v.videoHeight,
+        duration: Number.isFinite(v.duration) ? v.duration : 0,
+      });
+    v.onerror = () => done({ width: 0, height: 0, duration: 0 });
+    v.src = videoUrl;
   });
+}
+
+/**
+ * Server-free fallback probe: ask ffmpeg.wasm itself. `-i file` with no output
+ * exits non-zero but prints the stream info we need to the log.
+ */
+async function probeWithFfmpeg(
+  ffmpeg: any,
+  fileName: string,
+): Promise<{ width: number; height: number; duration: number }> {
+  let log = '';
+  const listener = ({ message }: { message: string }) => {
+    log += message + '\n';
+  };
+  ffmpeg.on('log', listener);
+  try {
+    await ffmpeg.exec(['-i', fileName]);
+  } catch {
+    /* expected: no output file */
+  } finally {
+    ffmpeg.off?.('log', listener);
+  }
+  const dims = log.match(/,\s(\d{2,5})x(\d{2,5})[\s,]/);
+  const dur = log.match(/Duration:\s(\d+):(\d+):(\d+\.?\d*)/);
+  return {
+    width: dims ? parseInt(dims[1], 10) : 0,
+    height: dims ? parseInt(dims[2], 10) : 0,
+    duration: dur
+      ? parseInt(dur[1], 10) * 3600 + parseInt(dur[2], 10) * 60 + parseFloat(dur[3])
+      : 0,
+  };
 }
 
 async function ensureFontLoaded(family: string, weightCss: string): Promise<void> {
@@ -400,12 +452,27 @@ export async function renderVideoWithText(opts: RenderOptions): Promise<Blob> {
 
   try {
     onProgress?.({ pct: 0, message: 'Reading video dimensions…' });
-    const { width, height, duration } = await readVideoMetadata(videoUrl);
-    if (!width || !height) throw new Error('Video has no dimensions');
+    let { width, height, duration } = await readVideoMetadata(videoUrl);
 
     onProgress?.({ pct: 0, message: 'Fetching video…' });
     const videoBytes = await fetchFile(videoUrl);
     await ffmpeg.writeFile('input.mp4', videoBytes);
+
+    // Browser couldn't decode (typically an iPhone HEVC/H.265 clip) — probe with
+    // ffmpeg instead of failing the job.
+    if (!width || !height) {
+      onProgress?.({ pct: 0, message: 'Checking your clip…' });
+      const probed = await probeWithFfmpeg(ffmpeg, 'input.mp4');
+      width = probed.width;
+      height = probed.height;
+      if (!duration) duration = probed.duration;
+    }
+    if (!width || !height) {
+      const name = decodeURIComponent((videoUrl.split('?')[0].split('/').pop() || 'your clip'));
+      throw new Error(
+        `We couldn't read "${name}". iPhone clips are often saved in a format browsers can't open (HEVC/H.265). Re-export or re-save it as an H.264 MP4 and upload again.`,
+      );
+    }
 
     onProgress?.({ pct: 0, message: 'Preparing fonts…' });
     await Promise.all([

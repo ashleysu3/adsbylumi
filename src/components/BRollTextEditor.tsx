@@ -211,6 +211,16 @@ export function BRollTextEditor({
       })
       .filter((x): x is NonNullable<typeof x> => !!x);
 
+    // Never exit silently: if nothing survived timing parsing, say so.
+    if (specs.length === 0) {
+      toast.error('None of your text blocks have a valid timing (e.g. "0-3s"). Fix the timings and try again.');
+      return;
+    }
+    if (!activeVideoUrl) {
+      toast.error('No clip selected — pick a b-roll clip first.');
+      return;
+    }
+
     const renderStyle: RenderStyle = templateStyle
       ? {
           ...templateStyle,
@@ -233,6 +243,7 @@ export function BRollTextEditor({
           emphasisStyle: style.emphasisStyle,
         };
 
+    try {
     enqueue({
       title: activeClipName || 'B-roll video',
       sourceClipName: activeClipName,
@@ -244,6 +255,11 @@ export function BRollTextEditor({
       trimEnd: outputTrim?.end,
       context: brandId ? { brandId } : undefined,
     });
+    } catch (err: any) {
+      console.error('Failed to queue b-roll render:', err);
+      toast.error(err?.message || "Couldn't start your video — try again.");
+      return;
+    }
 
     onOpenChange(false);
   };

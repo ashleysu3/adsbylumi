@@ -23,6 +23,7 @@ import {
   HelpCircle,
   Copy,
   Code,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,6 +59,8 @@ interface CheckResult {
   pixelId?: string | null;
   pixelNotInstalled?: boolean;
   campaignGoal?: string;
+  pixelState?: 'no_url' | 'unknown' | 'no_pixel_on_page' | 'pixel_mismatch' | 'pixel_matched';
+  foundPixelId?: string | null;
 }
 
 interface QACheckScreenProps {
@@ -107,6 +110,19 @@ export function QACheckScreen({
   const [trackingSaving, setTrackingSaving] = useState(false);
   const [trackingCheck, setTrackingCheck] = useState<CheckResult | null>(null);
 
+  // ---- Landing page URL (editable at publish) ----
+  const initialLandingUrl: string =
+    workspace.offer_url ||
+    workspace.offers?.url ||
+    answers?.destinationUrl ||
+    answers?.finalUrl ||
+    workspace.brands?.website_url ||
+    "";
+  const [landingUrl, setLandingUrl] = useState<string>(initialLandingUrl);
+  const [editingUrl, setEditingUrl] = useState(false);
+  const [urlDraft, setUrlDraft] = useState<string>(initialLandingUrl);
+  const [savingUrl, setSavingUrl] = useState(false);
+
   const progress = phase === "complete" 
     ? 100 
     : Math.round((currentCheckIndex / INITIAL_CHECKS.length) * 100);
@@ -117,7 +133,7 @@ export function QACheckScreen({
     runChecks();
   }, []);
 
-  const runChecks = async () => {
+  const runChecks = async (overrideUrl?: string) => {
     for (let i = 0; i < INITIAL_CHECKS.length; i++) {
       setCurrentCheckIndex(i);
       setChecks((prev) =>
@@ -135,7 +151,7 @@ export function QACheckScreen({
           answers,
           creativeJson: workspace.creative_json,
           productionItems: workspace.production_items,
-          offerUrl: workspace.offer_url || workspace.offers?.url || workspace.brands?.website_url || answers?.destinationUrl || answers?.finalUrl || null,
+          offerUrl: overrideUrl || landingUrl || null,
           selectedCopy: workspace.selected_copy || null,
           template,
           approvedCopySignature: workspace.approved_copy_signature || null,
@@ -165,6 +181,61 @@ export function QACheckScreen({
     }
 
     setPhase("complete");
+  };
+
+  /**
+   * Fix 3/4: changing the landing page URL invalidates the Landing Page and
+   * Event Tracking rows. Clear them immediately, then re-run the whole
+   * preflight against the new URL so a green check can never carry over.
+   */
+  const saveLandingUrl = async () => {
+    const raw = urlDraft.trim();
+    if (!raw) {
+      toast.error("Enter a landing page URL");
+      return;
+    }
+    const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    let parsed: URL;
+    try {
+      parsed = new URL(withScheme);
+    } catch {
+      toast.error("That doesn't look like a valid URL");
+      return;
+    }
+    if (parsed.protocol !== "https:") {
+      toast.error("Landing page URL must start with https://");
+      return;
+    }
+    const finalUrl = parsed.toString();
+
+    setSavingUrl(true);
+    try {
+      const { error } = await supabase
+        .from("campaign_workspaces")
+        .update({ offer_url: finalUrl, tracking_verified: false, updated_at: new Date().toISOString() })
+        .eq("id", workspace.id);
+      if (error) throw error;
+
+      setLandingUrl(finalUrl);
+      setUrlDraft(finalUrl);
+      setEditingUrl(false);
+      // Invalidate the dependent rows right away — no stale green checks.
+      setChecks((prev) =>
+        prev.map((c) =>
+          c.id === "landing_page" || c.id === "tracking"
+            ? { id: c.id, name: c.name, status: "running" as const, message: "Re-checking…" }
+            : c,
+        ),
+      );
+      setPhase("running");
+      toast.success("Landing page updated — re-running checks");
+      await runChecks(finalUrl);
+    } catch (err: any) {
+      console.error("Failed to save landing page URL:", err);
+      toast.error(err?.message || "Couldn't save that URL");
+    } finally {
+      setSavingUrl(false);
+    }
   };
 
   const toggleExpand = (id: string) => {
@@ -298,40 +369,81 @@ src="https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1"
   };
 
   const renderLandingPageExpanded = (check: CheckResult) => {
-    const url = check.message;
+    const url = landingUrl || check.message;
     const isNoUrl = !url || url === 'No landing page URL set';
     return (
       <div className="ml-10 mr-3 mb-3 space-y-3">
-        {isNoUrl && (
+        {editingUrl ? (
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">
-              Add a landing page URL to your offer so Meta knows where to send people when they click your ad.
+            <Label className="text-xs">Landing page URL (this is where your ad sends people)</Label>
+            <Input
+              value={urlDraft}
+              onChange={(e) => setUrlDraft(e.target.value)}
+              placeholder="https://yoursite.com/facebook-offer"
+              autoFocus
+            />
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={saveLandingUrl} disabled={savingUrl} className="gap-2">
+                {savingUrl ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                Save & re-check
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={savingUrl}
+                onClick={() => { setUrlDraft(landingUrl); setEditingUrl(false); }}
+              >
+                Cancel
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Must start with https://. Saving clears the pixel + event checks and runs them again on the new URL.
             </p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-2"
-              onClick={() => navigate("/offers")}
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              Go to Offers
-            </Button>
           </div>
-        )}
-        {!isNoUrl && url && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground truncate max-w-[280px]" title={url}>
-              {url}
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 gap-1.5 shrink-0 text-xs"
-              onClick={() => window.open(url.startsWith('http') ? url : `https://${url}`, '_blank')}
-            >
-              <ExternalLink className="h-3 w-3" />
-              Open
-            </Button>
+        ) : (
+          <div className="space-y-2">
+            {isNoUrl ? (
+              <p className="text-xs text-muted-foreground">
+                No landing page URL set yet — add the page your ad should send people to.
+              </p>
+            ) : (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-muted-foreground truncate max-w-[240px]" title={url}>
+                  {url}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 gap-1.5 shrink-0 text-xs"
+                  onClick={() => window.open(url.startsWith('http') ? url : `https://${url}`, '_blank')}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Open
+                </Button>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1.5 text-xs"
+                onClick={() => { setUrlDraft(landingUrl); setEditingUrl(true); }}
+              >
+                <Pencil className="h-3 w-3" />
+                {isNoUrl ? 'Add URL' : 'Change URL'}
+              </Button>
+              {isNoUrl && (
+                <Button size="sm" variant="ghost" className="h-7 gap-1.5 text-xs" onClick={() => navigate("/offers")}>
+                  <ExternalLink className="h-3 w-3" />
+                  Go to Offers
+                </Button>
+              )}
+            </div>
+            {!isNoUrl && (
+              <p className="text-[11px] text-muted-foreground">
+                This exact URL is what ships in the ad.
+              </p>
+            )}
           </div>
         )}
         {check.details && !isNoUrl && (
@@ -395,31 +507,51 @@ fbq('track', 'PageView');
   const renderTrackingExpanded = (check: CheckResult) => {
     const goal = (check.campaignGoal as 'leads' | 'sales') || 'leads';
     const event = check.requiredEvent || (goal === 'sales' ? 'Purchase' : 'Lead');
-    
+    const pixelState = check.pixelState;
+    // A pixel problem is not an event problem — only offer the event setup flow
+    // when the pixel itself is actually on the landing page.
+    const isPixelProblem = pixelState === 'no_pixel_on_page' || pixelState === 'pixel_mismatch' || !check.pixelId;
+
     return (
       <div className="ml-10 mr-3 mb-3 space-y-3">
         {check.details && (
           <p className="text-sm text-muted-foreground">{check.details}</p>
         )}
         {(check.status === 'warning' || check.status === 'failed') && (
-          <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">
-              Tell us the page someone lands on after they {goal === 'leads' ? 'submit your form' : 'complete a purchase'}.
-              Meta will count a conversion every time someone visits that page.
-            </p>
-            <Button
-              size="sm"
-              className="gap-2"
-              onClick={() => openTrackingDialog(check)}
-            >
-              <Zap className="h-3.5 w-3.5" />
-              Set Up Tracking
-            </Button>
-          </div>
+          isPixelProblem ? (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Fix the pixel first — open the <strong>Landing Page</strong> row above for install steps.
+                Once the right pixel is on your page, come back and set up the {event} event.
+              </p>
+              <Button size="sm" variant="outline" className="gap-2" onClick={() => openTrackingDialog(check)}>
+                <Zap className="h-3.5 w-3.5" />
+                Set Up {event} Event Anyway
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Tell us the page someone lands on after they {goal === 'leads' ? 'submit your form' : 'complete a purchase'}.
+                Meta will count a conversion every time someone visits that page.
+                Your thank-you page has to be on the same domain as your landing page — if you just changed the
+                landing page URL, the thank-you URL probably needs to change too.
+              </p>
+              <Button
+                size="sm"
+                className="gap-2"
+                onClick={() => openTrackingDialog(check)}
+              >
+                <Zap className="h-3.5 w-3.5" />
+                Set Up Tracking
+              </Button>
+            </div>
+          )
         )}
       </div>
     );
   };
+
 
   const renderDefaultExpanded = (check: CheckResult) => {
     const isCopyCheck = check.id === "spelling" || check.id === "ad_policy";

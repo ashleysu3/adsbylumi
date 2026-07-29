@@ -24,6 +24,10 @@ interface CheckResult {
   pixelId?: string | null;
   pixelNotInstalled?: boolean;
   campaignGoal?: string;
+  /** Explicit pixel state, shared between the Landing Page and Event Tracking rows. */
+  pixelState?: 'no_url' | 'unknown' | 'no_pixel_on_page' | 'pixel_mismatch' | 'pixel_matched';
+  /** Pixel ID actually detected on the landing page (may differ from pixelId). */
+  foundPixelId?: string | null;
 }
 
 serve(async (req) => {
@@ -69,8 +73,9 @@ serve(async (req) => {
     results.push(checkMetaConnection(brand));
     results.push(checkBudget(answers));
     results.push(checkSchedule(answers));
-    results.push(await checkLandingPage(resolvedUrl, brand));
-    results.push(checkEventTracking(brand, template));
+    const landingPageResult = await checkLandingPage(resolvedUrl, brand);
+    results.push(landingPageResult);
+    results.push(checkEventTracking(brand, template, landingPageResult));
     if (copyPreApproved) {
       results.push({ id: 'spelling', name: 'Spelling & Grammar', status: 'passed', message: 'Approved copy — skipped', details: 'Copy was already reviewed and approved.' });
       results.push({ id: 'ad_policy', name: 'Ad Policy', status: 'passed', message: 'Approved copy — skipped', details: 'Copy was already reviewed and approved.' });
@@ -355,9 +360,23 @@ async function scanHtmlForPixel(fullUrl: string, timeoutMs = 10000): Promise<{
   }
 }
 
+// ---------------------------------------------------------------------------
+// SINGLE SOURCE OF TRUTH for pixel presence.
+// checkLandingPage() runs the scan and stamps an explicit `pixelState` on its
+// result; checkEventTracking() consumes that same state instead of guessing
+// from brand.meta_pixel_id. That's what keeps the two rows from contradicting
+// each other ("pixel installed" vs "no pixel connected").
+// ---------------------------------------------------------------------------
+type PixelState =
+  | 'no_url'
+  | 'unknown'            // couldn't load / couldn't scan the page
+  | 'no_pixel_on_page'   // page loaded, no Meta Pixel found
+  | 'pixel_mismatch'     // pixel found, but not this ad account's pixel
+  | 'pixel_matched';     // pixel found and it matches this ad account
+
 async function checkLandingPage(url: string | undefined, brand: any): Promise<CheckResult> {
   if (!url) {
-    return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: 'No landing page URL set', details: 'Add a URL to track conversions properly' };
+    return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: 'No landing page URL set', details: 'Add a URL to track conversions properly', pixelState: 'no_url' };
   }
 
   const pixelId = brand?.meta_pixel_id || null;
@@ -371,7 +390,8 @@ async function checkLandingPage(url: string | undefined, brand: any): Promise<Ch
   if (parsed && isTrustedCheckoutHost(parsed.hostname)) {
     return {
       id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl,
-      details: 'Hosted checkout / site-builder URL detected — Meta will accept this. The pixel is typically installed on the site template, not on each dynamic order-confirmation page.',
+      details: 'Hosted checkout / site-builder URL detected — Meta will accept this. We can\'t scan it for your pixel, so double-check the pixel is installed on your site template.',
+      pixelState: 'unknown', pixelId,
     };
   }
 
@@ -385,68 +405,84 @@ async function checkLandingPage(url: string | undefined, brand: any): Promise<Ch
       if (!pixelId || rootScan.foundPixelId === pixelId) {
         return {
           id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl,
-          details: `Dynamic confirmation URL — verified your Meta Pixel (…${rootScan.foundPixelId.slice(-6)}) is installed on ${parsed.hostname}, so it fires on this page too.`,
+          details: `Dynamic confirmation URL — verified a Meta Pixel (…${rootScan.foundPixelId.slice(-6)}) is installed on ${parsed.hostname}, so it fires on this page too.`,
           pixelId: pixelId || rootScan.foundPixelId,
+          foundPixelId: rootScan.foundPixelId,
+          pixelState: pixelId ? 'pixel_matched' : 'unknown',
         };
       }
       return {
         id: 'landing_page', name: 'Landing Page', status: 'warning', message: fullUrl,
-        details: `Dynamic confirmation URL — a Meta Pixel (…${rootScan.foundPixelId.slice(-6)}) is installed on ${parsed.hostname} but it doesn't match your ad account's pixel (…${String(pixelId).slice(-6)}).`,
-        pixelId, pixelNotInstalled: false,
+        details: `A Meta Pixel (…${rootScan.foundPixelId.slice(-6)}) is installed on ${parsed.hostname}, but it isn't the pixel on your ad account (…${String(pixelId).slice(-6)}).`,
+        pixelId, foundPixelId: rootScan.foundPixelId, pixelNotInstalled: false,
+        pixelState: 'pixel_mismatch',
       };
     }
-    // Couldn't confirm pixel from root — soft warning, never block.
     return {
       id: 'landing_page', name: 'Landing Page', status: 'warning', message: fullUrl,
-      details: 'This looks like a dynamic order-confirmation URL that changes per order, so we can\'t verify it directly. Make sure your Meta Pixel is installed site-wide so the Purchase event fires here.',
-      pixelId, pixelNotInstalled: false,
+      details: 'This looks like a dynamic order-confirmation URL that changes per order, so we can\'t verify it directly. Make sure your Meta Pixel is installed site-wide so the conversion event fires here.',
+      pixelId, pixelNotInstalled: false, pixelState: 'unknown',
     };
   }
 
   const scan = await scanHtmlForPixel(fullUrl);
   if (scan === null) {
-    return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: url, details: 'Could not verify URL — page may be slow, behind authentication, or behind a firewall. If it works in your browser, you\'re good to publish.' };
+    return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: fullUrl, details: 'Could not verify URL — page may be slow, behind authentication, or behind a firewall. If it works in your browser, you\'re good to publish.', pixelId, pixelState: 'unknown' };
   }
   if (!scan.ok) {
     if (scan.status === 403 || scan.status === 405) {
-      return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'Server blocked our verification, but the URL looks valid' };
+      return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'Server blocked our verification, but the URL looks valid. We couldn\'t check for your pixel.', pixelId, pixelState: 'unknown' };
     }
     if (scan.status >= 300 && scan.status < 400) {
-      return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'Page loads with a redirect — make sure it lands where you expect' };
+      return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'Page loads with a redirect — make sure it lands where you expect. We couldn\'t check for your pixel.', pixelId, pixelState: 'unknown' };
     }
-    return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: fullUrl, details: `We couldn't load this URL from our server (${scan.status}). If it works in your browser, you're good to publish — Meta will accept it.` };
+    return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: fullUrl, details: `We couldn't load this URL from our server (${scan.status}). If it works in your browser, you're good to publish — Meta will accept it.`, pixelId, pixelState: 'unknown' };
+  }
+
+  const found = scan.hasFbEvents ? (scan.foundPixelId || null) : null;
+
+  if (!found) {
+    return {
+      id: 'landing_page', name: 'Landing Page', status: pixelId ? 'warning' : 'passed', message: fullUrl,
+      details: pixelId
+        ? 'Page is live, but no Meta Pixel was found on it. Install your pixel so Meta can track conversions.'
+        : 'Page is live. No Meta Pixel found on it (and no pixel on your ad account yet).',
+      pixelId, pixelNotInstalled: !!pixelId, pixelState: 'no_pixel_on_page',
+    };
   }
 
   if (!pixelId) {
-    if (scan.hasFbEvents && scan.foundPixelId) {
-      return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'Page is live and has a Meta Pixel installed' };
-    }
-    return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'This is the URL people will land on when they click your ad' };
+    return {
+      id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl,
+      details: `Page is live and a Meta Pixel (…${found.slice(-6)}) is installed. We couldn't confirm it belongs to your ad account.`,
+      foundPixelId: found, pixelState: 'unknown',
+    };
   }
 
-  if (scan.hasFbEvents && scan.foundPixelId) {
-    if (scan.foundPixelId === pixelId) {
-      return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: `Page is live and your Meta Pixel (${pixelId.slice(-6)}) is active`, pixelId };
-    }
-    return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: fullUrl, details: `A Meta Pixel was found but it doesn't match your ad account's pixel. Found: ...${scan.foundPixelId.slice(-6)}, Expected: ...${pixelId.slice(-6)}`, pixelId, pixelNotInstalled: false };
+  if (found === pixelId) {
+    return {
+      id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl,
+      details: `Page is live and your Meta Pixel (…${pixelId.slice(-6)}) is installed on it.`,
+      pixelId, foundPixelId: found, pixelState: 'pixel_matched',
+    };
   }
 
   return {
     id: 'landing_page', name: 'Landing Page', status: 'warning', message: fullUrl,
-    details: 'Your Meta Pixel isn\'t installed on this page yet. Install it so Meta can track conversions.',
-    pixelId, pixelNotInstalled: true,
+    details: `A Meta Pixel was found on this page, but it isn't your ad account's pixel. Found: …${found.slice(-6)} · Expected: …${pixelId.slice(-6)}`,
+    pixelId, foundPixelId: found, pixelNotInstalled: false, pixelState: 'pixel_mismatch',
   };
 }
 
 
 
-function checkEventTracking(brand: any, template: any): CheckResult {
+function checkEventTracking(brand: any, template: any, lp?: CheckResult): CheckResult {
   const objective = template?.objective?.toLowerCase() || '';
   const optimizationEvent = template?.optimization_event || '';
-  
+
   let requiredEvent = '';
   let campaignGoal: 'leads' | 'sales' = 'leads';
-  
+
   if (optimizationEvent) {
     requiredEvent = optimizationEvent;
     campaignGoal = optimizationEvent.toLowerCase().includes('purchase') ? 'sales' : 'leads';
@@ -466,32 +502,52 @@ function checkEventTracking(brand: any, template: any): CheckResult {
 
   const pixelId = brand?.meta_pixel_id || null;
   const pixelEvents = brand?.meta_pixel_events || {};
+  const pixelState: PixelState = (lp?.pixelState as PixelState) || 'unknown';
+  const foundPixelId = lp?.foundPixelId || null;
+  const base = { id: 'tracking', name: 'Event Tracking', requiredEvent, pixelId, campaignGoal, pixelState } as const;
 
+  // 1. No pixel on the ad account at all — that IS "no pixel connected".
   if (!pixelId) {
     return {
-      id: 'tracking', name: 'Event Tracking', status: 'warning',
-      message: `${requiredEvent} event not verified`,
-      details: `No Meta Pixel connected. You'll need a "${requiredEvent}" event on your landing page for Meta to optimize your ads.`,
-      requiredEvent, pixelId, campaignGoal,
+      ...base, status: 'warning',
+      message: 'No Meta Pixel on your ad account',
+      details: `Connect a Meta Pixel to your ad account, then add a "${requiredEvent}" event so Meta can optimize.`,
     };
   }
 
-  const eventVerified = pixelEvents[requiredEvent] || pixelEvents[requiredEvent.toLowerCase()];
-  
+  // 2. The page we're sending traffic to has no pixel / the wrong pixel.
+  //    This is a pixel problem, not an event problem — say so precisely.
+  if (pixelState === 'no_pixel_on_page') {
+    return {
+      ...base, status: 'warning',
+      message: `Pixel not on your landing page`,
+      details: `Your ad account has a pixel (…${pixelId.slice(-6)}) but it isn't installed on your landing page, so the "${requiredEvent}" event can't fire. Install the pixel first.`,
+    };
+  }
+  if (pixelState === 'pixel_mismatch') {
+    return {
+      ...base, status: 'warning',
+      message: 'Wrong pixel on your landing page',
+      details: `Your page fires pixel …${String(foundPixelId).slice(-6)}, but this ad account uses …${pixelId.slice(-6)}. Meta won't see the "${requiredEvent}" event until they match.`,
+    };
+  }
+
+  // 3. Pixel is fine — the only remaining question is the event rule.
+  const eventVerified = !!(pixelEvents[requiredEvent] || pixelEvents[requiredEvent.toLowerCase()]);
   if (eventVerified) {
     return {
-      id: 'tracking', name: 'Event Tracking', status: 'passed',
+      ...base, status: 'passed',
       message: `${requiredEvent} event verified`,
-      details: `Pixel ${pixelId.slice(-6)} is tracking the ${requiredEvent} event`,
-      requiredEvent, pixelId, campaignGoal,
+      details: `Pixel …${pixelId.slice(-6)} is installed and the ${requiredEvent} event is firing.`,
     };
   }
 
   return {
-    id: 'tracking', name: 'Event Tracking', status: 'warning',
-    message: `${requiredEvent} event not detected`,
-    details: `Your Pixel is connected but we haven't seen the "${requiredEvent}" event fire yet. Add it to your landing page so Meta can optimize delivery.`,
-    requiredEvent, pixelId, campaignGoal,
+    ...base, status: 'warning',
+    message: `No ${requiredEvent} event yet`,
+    details: pixelState === 'pixel_matched'
+      ? `Your pixel (…${pixelId.slice(-6)}) is installed on the landing page, but no "${requiredEvent}" event has fired yet. Set up the event using your thank-you page URL — it has to be on the same domain as your landing page.`
+      : `Your pixel (…${pixelId.slice(-6)}) is connected, but we haven't seen a "${requiredEvent}" event fire yet. Set it up using your thank-you page URL (same domain as your landing page).`,
   };
 }
 
