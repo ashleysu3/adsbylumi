@@ -604,28 +604,72 @@ export function ProductionManager({
     }
   };
 
-  // Validate video aspect ratio — must be 9:16 (vertical)
-  const validateVideoAspectRatio = (file: File): Promise<boolean> => {
+  // Accepted video containers. Compared case-insensitively — an iPhone export
+  // is ".MP4" (uppercase) and used to fail a strict equality check.
+  const VIDEO_EXTS = ['mp4', 'mov', 'm4v', 'webm'];
+
+  const isVideoFile = (file: File) => {
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const mime = (file.type || '').toLowerCase();
+    return mime.startsWith('video/') || VIDEO_EXTS.includes(ext);
+  };
+
+  /**
+   * Read video dimensions without ever hanging. iPhone HEVC/H.265 clips often
+   * fire neither `loadedmetadata` nor `error`, so we time out at 8s and report
+   * unknown dimensions rather than blocking the upload.
+   */
+  const readVideoDimensions = (
+    file: File,
+    timeoutMs = 8000,
+  ): Promise<{ width: number; height: number } | null> => {
     return new Promise((resolve) => {
       const video = document.createElement('video');
+      const url = URL.createObjectURL(file);
+      let settled = false;
+      const done = (r: { width: number; height: number } | null) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        URL.revokeObjectURL(url);
+        resolve(r && r.width && r.height ? r : null);
+      };
+      const timer = setTimeout(() => done(null), timeoutMs);
       video.preload = 'metadata';
-      video.onloadedmetadata = () => {
-        URL.revokeObjectURL(video.src);
-        const ratio = video.videoWidth / video.videoHeight;
-        // 9:16 = 0.5625. Allow some tolerance (0.45–0.65)
-        if (ratio > 0.65) {
-          toast.error("Videos must be in 9:16 (vertical/reel) format. Please upload a vertical video.", { duration: 5000 });
-          resolve(false);
-        } else {
-          resolve(true);
-        }
-      };
-      video.onerror = () => {
-        URL.revokeObjectURL(video.src);
-        resolve(true); // Allow on error — don't block uploads we can't validate
-      };
-      video.src = URL.createObjectURL(file);
+      video.muted = true;
+      video.onloadedmetadata = () => done({ width: video.videoWidth, height: video.videoHeight });
+      video.onerror = () => done(null);
+      video.src = url;
     });
+  };
+
+  /**
+   * 9:16 gate. Fails OPEN on unknown dimensions (warn, don't block) and names
+   * the actual dimensions when it does block.
+   */
+  const validateVideoAspectRatio = async (file: File): Promise<boolean> => {
+    const dims = await readVideoDimensions(file);
+    if (!dims) {
+      toast.warning(
+        `We couldn't read the size of "${file.name}" — iPhone clips are often saved in a format browsers can't open (HEVC/H.265).`,
+        {
+          description:
+            "We'll upload it anyway. If your video fails later, re-export or re-save it as an H.264 MP4.",
+          duration: 9000,
+        },
+      );
+      return true;
+    }
+    const ratio = dims.width / dims.height;
+    // 9:16 = 0.5625. Allow some tolerance.
+    if (ratio > 0.65) {
+      toast.error(
+        `This clip is ${dims.width}x${dims.height}. B-roll ads need 9:16 vertical.`,
+        { duration: 6000 },
+      );
+      return false;
+    }
+    return true;
   };
 
   // Handle file selection for a specific item
@@ -639,8 +683,8 @@ export function ProductionManager({
       return;
     }
 
-    // Enforce 9:16 for videos
-    if (file.type.startsWith('video/')) {
+    // Enforce 9:16 for videos (extension-based too — uppercase .MP4 counts)
+    if (isVideoFile(file)) {
       const isValid = await validateVideoAspectRatio(file);
       if (!isValid) {
         event.target.value = '';
@@ -894,6 +938,9 @@ export function ProductionManager({
         mime: string;
         fileName: string;
         isVertical?: boolean;
+        /** Carousel slide index (0-based). Present only for carousel renders. */
+        cardIndex?: number;
+        cardMeta?: { index: number; headline?: string; description?: string };
       };
       const reply = (ok: boolean, error?: string) => {
         window.dispatchEvent(
@@ -924,6 +971,7 @@ export function ProductionManager({
         const { data: urlData } = supabase.storage.from("creative-assets").getPublicUrl(filePath);
 
         const conceptId = detail.isVertical ? `${item.id}_vertical` : item.id;
+        const isCard = typeof detail.cardIndex === "number";
         const newAsset: any = {
           id: `asset_${stamp}${detail.isVertical ? "_v" : ""}`,
           file_name: detail.fileName,
@@ -935,17 +983,44 @@ export function ProductionManager({
           linked_concept_id: conceptId,
           linked_concept_title: detail.isVertical && item.hook ? `${item.hook} (9:16)` : item.hook || null,
           ...(detail.isVertical ? { is_vertical_version: true } : {}),
+          ...(isCard ? { card_index: detail.cardIndex } : {}),
           source: "generated",
         };
 
         const currentAssets = uploadedAssetsRef.current as any[];
-        const filteredAssets = currentAssets.filter((a) => a.linked_concept_id !== conceptId);
+        // Carousel slides share one concept id, so only replace the SAME slide
+        // index. Non-carousel renders keep the old replace-everything behavior.
+        const filteredAssets = currentAssets.filter((a) =>
+          isCard
+            ? !(a.linked_concept_id === conceptId && a.card_index === detail.cardIndex)
+            : a.linked_concept_id !== conceptId,
+        );
         const updatedAssets = [...filteredAssets, newAsset];
+
+        // Keep an ordered `cards` array on the item for carousels. Card 0 also
+        // stays the item's primary asset, so anything reading a single image
+        // keeps working.
+        const buildCards = (pi: any) => {
+          if (!isCard) return pi.cards;
+          const existing: any[] = Array.isArray(pi.cards) ? [...pi.cards] : [];
+          const entry = {
+            index: detail.cardIndex,
+            image_url: urlData.publicUrl,
+            headline: detail.cardMeta?.headline || "",
+            description: detail.cardMeta?.description || "",
+            link: pi.link || null,
+          };
+          const at = existing.findIndex((c) => c?.index === detail.cardIndex);
+          if (at >= 0) existing[at] = entry;
+          else existing.push(entry);
+          return existing.sort((a, b) => (a?.index ?? 0) - (b?.index ?? 0));
+        };
 
         const updatedItems = items.map((pi) =>
           pi.id === item.id
             ? ({
                 ...pi,
+                ...(isCard ? { cards: buildCards(pi) } : {}),
                 approval_status: "approved",
                 approved_at: new Date().toISOString(),
               } as any)
@@ -1833,6 +1908,25 @@ export function ProductionManager({
                           `${imageItemsWithoutVertical.length} image${imageItemsWithoutVertical.length > 1 ? 's' : ''} without a 9:16 version — Meta will auto-extend with color bars`,
                           { duration: 4000 }
                         );
+                      }
+
+                      // Publish guard: a carousel with fewer than 2 cards is
+                      // rejected by Meta — block it here with a clear message
+                      // instead of letting it fail at the API.
+                      const thinCarousel = productionItems.find((pi: any) => {
+                        if (pi.format !== "carousel") return false;
+                        if (pi.approval_status !== "approved") return false;
+                        const cardCount = Array.isArray(pi.cards)
+                          ? pi.cards.length
+                          : uploadedAssets.filter((a: any) => a.linked_concept_id === pi.id).length;
+                        return cardCount < 2;
+                      });
+                      if (thinCarousel) {
+                        toast.error(
+                          "Carousels need at least 2 slides. Generate the rest or switch this to a single image.",
+                          { duration: 7000 },
+                        );
+                        return;
                       }
 
                       // This workspace already has a live Meta campaign — new

@@ -188,6 +188,9 @@ export function RenderQueueProvider({ children }: { children: ReactNode }) {
           },
         },
         duration: 12000,
+        // Same id as the "Got it — making your video" toast so it replaces it
+        // instead of stacking on top of it.
+        id: next.id,
       });
 
       if (publicUrl) {
@@ -215,6 +218,11 @@ export function RenderQueueProvider({ children }: { children: ReactNode }) {
       });
       toast.error(`Couldn't make your video for "${next.title}"`, {
         description: err?.message || 'Unknown error — try again from the bell.',
+        // Replace the info toast for this same job, stay on screen until the
+        // user dismisses it. A failure must never be hidden behind "Got it".
+        id: next.id,
+        duration: Infinity,
+        closeButton: true,
       });
     } finally {
       processingRef.current = false;
@@ -266,6 +274,7 @@ export function RenderQueueProvider({ children }: { children: ReactNode }) {
       setJobs(prev => [newJob, ...prev]);
 
       toast.info(`Got it — making your video: ${spec.title}`, {
+        id,
         description:
           "Keep this LUMI tab open. We'll ping the bell + email you when it's ready (usually under 3 minutes).",
         duration: 8000,
