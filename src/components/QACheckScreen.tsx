@@ -167,8 +167,12 @@ export function QACheckScreen({
         })));
         setSummary(data.summary);
 
+        // Landing Page always starts expanded — even a "passed" check can have
+        // resolved to the wrong URL (e.g. the brand's general site instead of
+        // an ad-specific tracking page), and a green checkmark gives no reason
+        // to click in and find the edit control otherwise.
         const issueChecks = data.checks
-          .filter((c: any) => c.status === "warning" || c.status === "failed")
+          .filter((c: any) => c.status === "warning" || c.status === "failed" || c.id === "landing_page")
           .map((c: any) => c.id);
         setExpandedChecks(new Set(issueChecks));
       }
