@@ -388,6 +388,138 @@ Deno.serve(async (req) => {
         console.log(`Using cloned ad set ${targetAdSetId} for asset ${asset.name}`);
       }
 
+      // ── Carousel path: upload every slide, build a real Meta carousel creative ──
+      // (asset_feed_spec / dynamic-creative logic below is single-image/video only —
+      // a carousel here previously collapsed to whichever slide got uploaded, since
+      // every asset was treated as one image no matter how many slides it had.)
+      if (asset.type === 'carousel' && Array.isArray(asset.cards) && asset.cards.length >= 2) {
+        console.log(`Processing carousel asset: ${asset.name} (${asset.cards.length} slides)`);
+
+        const uploadedCards: Array<{ image_hash: string; headline: string; description: string }> = [];
+        let cardUploadError: string | null = null;
+
+        for (const card of asset.cards) {
+          try {
+            const cardUploadResponse = await fetch(`${supabaseUrl}/functions/v1/upload-creative-to-meta`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
+              body: JSON.stringify({
+                assetStoragePath: card.storage_path,
+                brandId: brand.id,
+                fileName: card.file_name,
+              }),
+            });
+            const cardUploadResult = await cardUploadResponse.json();
+            if (!cardUploadResult.success || !cardUploadResult.assetId) {
+              cardUploadError = `Slide upload failed: ${cardUploadResult.error || 'Unknown'}`;
+              break;
+            }
+            uploadedCards.push({
+              image_hash: cardUploadResult.assetId,
+              headline: card.headline || '',
+              description: card.description || '',
+            });
+          } catch (e: any) {
+            cardUploadError = `Slide upload error: ${e.message}`;
+            break;
+          }
+        }
+
+        // A carousel that's missing slides shouldn't publish as a thinner one —
+        // fail the whole asset so the user gets a clear "try again" instead of
+        // a silently truncated carousel.
+        if (cardUploadError || uploadedCards.length < 2) {
+          failedAds.push({
+            assetName: asset.name,
+            error: cardUploadError || 'Fewer than 2 carousel slides uploaded successfully',
+          });
+          continue;
+        }
+
+        const carouselAdName = `Ad - ${asset.name.replace(/\.[^/.]+$/, '')}`;
+        const selectedCopy = copyVariations[0] || {};
+        const message = selectedCopy.primary_text || '';
+
+        const childAttachments = uploadedCards.map((c) => ({
+          link,
+          image_hash: c.image_hash,
+          name: c.headline || selectedCopy.headline || 'Learn more',
+          description: c.description || '',
+        }));
+
+        const carouselObjectStorySpec: any = {
+          page_id: pageId,
+          ...(igActorId ? { instagram_actor_id: igActorId } : {}),
+          link_data: {
+            link,
+            message,
+            child_attachments: childAttachments,
+            multi_share_optimized: false,
+            call_to_action: { type: ctaType, value: { link } },
+          },
+        };
+
+        const carouselCreativeParams: Record<string, string> = {
+          name: `Creative - ${carouselAdName}`,
+          access_token: metaAccessToken,
+          object_story_spec: JSON.stringify(carouselObjectStorySpec),
+          degrees_of_freedom_spec: JSON.stringify({
+            creative_features_spec: { standard_enhancements: { enroll_status: 'OPT_OUT' } },
+          }),
+        };
+        if (referenceSettings?.url_tags) {
+          carouselCreativeParams.url_tags = referenceSettings.url_tags;
+        }
+
+        try {
+          const creativeResponse = await fetch(
+            `https://graph.facebook.com/v25.0/act_${accountId}/adcreatives`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams(carouselCreativeParams),
+            }
+          );
+          const creativeData = await creativeResponse.json();
+          if (creativeData.error) {
+            throw new Error(
+              `Creative: ${creativeData.error.message} (code ${creativeData.error.code}${creativeData.error.error_subcode ? `/${creativeData.error.error_subcode}` : ''})`
+            );
+          }
+
+          const carouselAdParams: Record<string, string> = {
+            adset_id: targetAdSetId,
+            name: carouselAdName,
+            creative: JSON.stringify({ creative_id: creativeData.id }),
+            status: 'ACTIVE',
+            access_token: metaAccessToken,
+          };
+          if (!multiAdvertiserAds) carouselAdParams.multi_advertiser_ads = 'false';
+
+          const adResponse = await fetch(
+            `https://graph.facebook.com/v25.0/act_${accountId}/ads`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams(carouselAdParams),
+            }
+          );
+          const adData = await adResponse.json();
+          if (adData.error) {
+            throw new Error(
+              `Ad: ${adData.error.message} (code ${adData.error.code}${adData.error.error_subcode ? `/${adData.error.error_subcode}` : ''})`
+            );
+          }
+
+          createdAdIds.push(adData.id);
+          console.log(`Carousel ad created: ${adData.id} (${carouselAdName}) with ${uploadedCards.length} slides on ad set ${targetAdSetId}`);
+        } catch (carouselAdError: any) {
+          console.error(`Error creating carousel ad ${asset.name}:`, carouselAdError);
+          failedAds.push({ assetName: asset.name, error: carouselAdError.message });
+        }
+        continue;
+      }
+
       let uploadResult: any;
       try {
         const uploadResponse = await fetch(`${supabaseUrl}/functions/v1/upload-creative-to-meta`, {

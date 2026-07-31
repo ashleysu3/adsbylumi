@@ -399,6 +399,37 @@ export function ProductionManager({
     );
   };
 
+  // Carousel items save one asset per slide (tagged with card_index) plus an
+  // ordered `cards` array of {index, image_url, headline, description} on the
+  // item itself. getAssetForItem only ever resolves ONE of those assets via
+  // .find() — fine for a single-image checklist thumbnail, but publish needs
+  // every slide. Returns null for non-carousels or a carousel with fewer than
+  // 2 renderable slides (Meta rejects a 1-card carousel anyway).
+  const buildCarouselCards = (item: ProductionItem) => {
+    const itemAny = item as any;
+    if (itemAny.format !== "carousel" || !Array.isArray(itemAny.cards) || itemAny.cards.length < 2) {
+      return null;
+    }
+    const cardAssets = uploadedAssets.filter(
+      (a: any) => a.linked_concept_id === item.id && typeof a.card_index === "number"
+    );
+    const cards = itemAny.cards
+      .map((c: any) => {
+        const asset = normalizeUploadedAsset(
+          cardAssets.find((a: any) => a.card_index === c.index)
+        );
+        if (!asset?.storage_path) return null;
+        return {
+          storage_path: asset.storage_path,
+          file_name: asset.file_name,
+          headline: c.headline || "",
+          description: c.description || "",
+        };
+      })
+      .filter((c: any): c is NonNullable<typeof c> => !!c);
+    return cards.length >= 2 ? cards : null;
+  };
+
   // Relaxed asset lookup for legacy data in Ad Preview only
   const getPreviewAssetForItem = (item: ProductionItem) => {
     const strictAsset = getAssetForItem(item);
@@ -1103,9 +1134,17 @@ export function ProductionManager({
 
     setPushingToAd(true);
     try {
-      // Build asset list (shape expected by add-creative-to-campaign).
+      // Build asset list (shape expected by add-creative-to-campaign). A
+      // carousel with 2+ approved slides sends its full `cards` array so the
+      // edge function can build a real multi-image Meta carousel creative —
+      // previously every item (carousel or not) collapsed to a single asset
+      // here, which is why an N-slide carousel always published as 1 image.
       const assets = targets
         .map((item) => {
+          const cards = buildCarouselCards(item);
+          if (cards) {
+            return { id: item.id, name: item.hook || "Carousel", type: "carousel" as const, cards };
+          }
           const a = getAssetForItem(item);
           if (!a) return null;
           return {
