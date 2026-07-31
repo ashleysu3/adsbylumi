@@ -971,11 +971,12 @@ export function CreativeChecklistCard({
                             size="sm"
                             className="h-7 text-[11px] flex-1"
                             onClick={() => {
-                              // "lumi" is already the default brollSource, so this was a
-                              // true no-op when a user was already on this tab — with no
-                              // clips uploaded, that made the click look completely dead
-                              // (no re-render, no toast, nothing). Always give the click
-                              // visible feedback: switch tabs, or explain what's missing.
+                              // "lumi" is already the default brollSource, so re-clicking
+                              // it while already selected is a same-value setState — React
+                              // bails the re-render. The clips-uploaded toast below only
+                              // covered the empty-library case, so a click with clips
+                              // already present still looked completely dead. Always give
+                              // the click visible feedback, regardless of clip state.
                               setBrollSource("lumi");
                               if (brollClips.length === 0) {
                                 // Tell them AND get them there in one click — a text-only
@@ -987,6 +988,8 @@ export function CreativeChecklistCard({
                                     onClick: () => navigate("/style"),
                                   },
                                 });
+                              } else {
+                                toast.success(`Using your uploaded b-roll — pick a clip below and hit "Make my video".`);
                               }
                             }}
                           >
