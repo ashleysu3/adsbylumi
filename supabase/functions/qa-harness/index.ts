@@ -323,6 +323,42 @@ Deno.serve(async (req) => {
 
       const signature = await computeCopySignature(QA_COPY);
 
+      // Every publishable creative needs a real uploaded asset, so the fixture
+      // ships its own: a generated 1080x1080 PNG written to creative-assets.
+      const fixturePng = makeSolidPng(1080, 1080, [249, 115, 22]);
+      const assetPath = `${brand.id}/qa-fixture.png`;
+      const { error: uploadErr } = await db.storage
+        .from('creative-assets')
+        .upload(assetPath, fixturePng, { contentType: 'image/png', upsert: true });
+      if (uploadErr) {
+        return json({ success: false, error: `Fixture asset upload failed: ${uploadErr.message}` }, cors);
+      }
+      const { data: signed } = await db.storage
+        .from('creative-assets')
+        .createSignedUrl(assetPath, 60 * 60 * 24 * 7);
+
+      const uploadedAssets = QA_PRODUCTION_ITEMS.map((item, i) => ({
+        id: `qa_asset_${i + 1}`,
+        linked_concept_id: item.id,
+        file_url: signed?.signedUrl ?? null,
+        storage_path: assetPath,
+        file_type: 'image',
+        file_name: 'qa-fixture.png',
+      }));
+
+      const productionItems = QA_PRODUCTION_ITEMS.map((item, i) => ({
+        ...item,
+        uploaded_asset_id: uploadedAssets[i].id,
+        linkedAsset: {
+          id: uploadedAssets[i].id,
+          url: uploadedAssets[i].file_url,
+          storagePath: assetPath,
+          type: 'image',
+          fileName: 'qa-fixture.png',
+        },
+      }));
+
+
       const { data: workspace, error: wsErr } = await db
         .from('campaign_workspaces')
         .insert({
