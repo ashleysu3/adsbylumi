@@ -76,8 +76,27 @@ async def main():
             await browser.close()
             return 1
 
-        print("\n3. Looking for the publish control...")
+        print("\n3. Walking the configure wizard...")
+        for label in ("Continue", "Review Campaign"):
+            btn = page.get_by_role("button", name=label, exact=True)
+            present = await btn.count() > 0
+            check(f"'{label}' step control is present", present)
+            if present:
+                await btn.first.click()
+                await page.wait_for_timeout(2500)
+        await page.screenshot(path=str(SCREENSHOTS / "2_qa_check.png"))
+
+        print("\n4. Waiting for the QA checks to finish (up to 90s)...")
+        for _ in range(18):
+            body = (await page.locator("body").inner_text()).lower()
+            if "publish to meta" in body:
+                break
+            await page.wait_for_timeout(5000)
+        await page.screenshot(path=str(SCREENSHOTS / "3_qa_done.png"))
+
+        print("\n5. Looking for the publish control...")
         publish = page.get_by_role("button", name="Publish to Meta")
+
         found = await publish.count() > 0
         check("'Publish to Meta' button is present", found)
 
