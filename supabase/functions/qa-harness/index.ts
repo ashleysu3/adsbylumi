@@ -296,7 +296,7 @@ Deno.serve(async (req) => {
           meta_pixel_id: source.meta_pixel_id,
           meta_pixel_name: source.meta_pixel_name,
           meta_pixel_verified_at: source.meta_pixel_id ? new Date().toISOString() : null,
-          meta_connected: true,
+          // meta_connected is a generated column — derived from the token/account fields above.
           onboarding_step: 99,
           onboarding_completed_at: new Date().toISOString(),
         })
