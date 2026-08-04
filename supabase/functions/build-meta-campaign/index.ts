@@ -685,7 +685,7 @@ Deno.serve(async (req) => {
     };
     const objectiveName = objectiveDisplayMap[normalizedOptEvent] || 'Traffic';
 
-    const campaignBaseName = `LUMI // ${objectiveName} - ${productName} - ${startDate}`;
+    const campaignBaseName = `${isQaTestMode ? '[QA] ' : ''}LUMI // ${objectiveName} - ${productName} - ${startDate}`;
 
     // Determine Meta API objective + optimization_goal
     // Note: LEAD_GENERATION optimization_goal is for Facebook Instant Forms only.
