@@ -298,14 +298,10 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
 
 
       if (liveCount >= 10) {
-        toast.error(`You've reached the maximum of 10 live campaigns (currently ${liveCount}). Pause or archive an existing campaign before publishing a new one.`);
-        setPublishing(false);
+        abortToQA(`You've reached the maximum of 10 live campaigns (currently ${liveCount}). Pause or archive an existing campaign before publishing a new one.`);
         return;
       }
 
-
-      setPublishError(null); // clear any prior error before retry
-      setStage('publishing');
       const { data, error } = await supabase.functions.invoke('build-meta-campaign', {
         body: {
           workspaceId,
@@ -314,7 +310,9 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
         },
       });
       if (error) throw error;
+      if (!data) throw new Error('No response from the publisher. Please try again.');
       if (data.success) {
+
         const campaignData = { ...data.campaignIds, launchStatus };
         setCampaignIds(campaignData);
         await supabase
