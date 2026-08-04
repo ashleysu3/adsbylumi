@@ -284,7 +284,7 @@ Deno.serve(async (req) => {
           brand_voice: 'Warm, clear, strategy-first. Plain language, no hype.',
           target_audience: 'Coaches and course creators who run their own ads.',
           value_proposition: 'Plan, build and launch Meta ads without an agency.',
-          business_model: 'low_ticket',
+          business_model: 'low_ticket_direct',
           business_model_confirmed_at: new Date().toISOString(),
           meta_account_id: source.meta_account_id,
           meta_access_token: source.meta_access_token,
