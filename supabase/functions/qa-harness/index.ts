@@ -421,3 +421,77 @@ Deno.serve(async (req) => {
     return json({ success: false, error: (e as Error).message || 'Unexpected error' }, cors);
   }
 });
+
+/**
+ * Minimal PNG encoder — produces a solid-colour RGB image with no external
+ * dependency. Uses stored (uncompressed) deflate blocks, which every PNG
+ * decoder including Meta's accepts.
+ */
+function makeSolidPng(width: number, height: number, rgb: [number, number, number]): Uint8Array {
+  const crcTable = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  const crc32 = (buf: Uint8Array) => {
+    let c = 0xffffffff;
+    for (let i = 0; i < buf.length; i++) c = crcTable[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+
+  const be32 = (n: number) => new Uint8Array([(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]);
+
+  const concat = (parts: Uint8Array[]) => {
+    const total = parts.reduce((s, p) => s + p.length, 0);
+    const out = new Uint8Array(total);
+    let o = 0;
+    for (const p of parts) { out.set(p, o); o += p.length; }
+    return out;
+  };
+
+  const chunk = (type: string, data: Uint8Array) => {
+    const typeBytes = new TextEncoder().encode(type);
+    const body = concat([typeBytes, data]);
+    return concat([be32(data.length), body, be32(crc32(body))]);
+  };
+
+  // Raw scanlines: filter byte 0 + RGB triples.
+  const raw = new Uint8Array(height * (1 + width * 3));
+  for (let y = 0; y < height; y++) {
+    const rowStart = y * (1 + width * 3);
+    raw[rowStart] = 0;
+    for (let x = 0; x < width; x++) {
+      const o = rowStart + 1 + x * 3;
+      raw[o] = rgb[0];
+      raw[o + 1] = rgb[1];
+      raw[o + 2] = rgb[2];
+    }
+  }
+
+  // zlib container around stored deflate blocks.
+  const blocks: Uint8Array[] = [new Uint8Array([0x78, 0x01])];
+  const MAX = 65535;
+  for (let off = 0; off < raw.length; off += MAX) {
+    const len = Math.min(MAX, raw.length - off);
+    const last = off + len >= raw.length ? 1 : 0;
+    blocks.push(new Uint8Array([last, len & 255, (len >>> 8) & 255, ~len & 255, (~len >>> 8) & 255]));
+    blocks.push(raw.subarray(off, off + len));
+  }
+  // Adler-32 of the raw data.
+  let a = 1, b = 0;
+  for (let i = 0; i < raw.length; i++) { a = (a + raw[i]) % 65521; b = (b + a) % 65521; }
+  blocks.push(be32(((b << 16) | a) >>> 0));
+
+  const ihdr = concat([be32(width), be32(height), new Uint8Array([8, 2, 0, 0, 0])]);
+  return concat([
+    new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', concat(blocks)),
+    chunk('IEND', new Uint8Array(0)),
+  ]);
+}
