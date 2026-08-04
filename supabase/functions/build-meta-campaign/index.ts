@@ -318,7 +318,7 @@ Deno.serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    const { workspaceId, answers, actAsUserId } = parsedBody || {};
+    const { workspaceId, answers, actAsUserId, qaTestMode } = parsedBody || {};
 
 
     if (!workspaceId) {
@@ -350,6 +350,30 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // QA TEST MODE — admin only. Forces the campaign to PAUSED and prefixes the
+    // name with [QA] so real-account test runs can never spend money and can be
+    // cleaned up in bulk by the qa-harness function.
+    let isQaTestMode = false;
+    if (qaTestMode === true) {
+      const { data: qaAdminRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      if (!qaAdminRole) {
+        console.error('Non-admin attempted qaTestMode:', user.id);
+        return new Response(
+          JSON.stringify({ error: 'Admin role required for QA test mode' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      isQaTestMode = true;
+      console.log('QA TEST MODE enabled — campaign will be created PAUSED with a [QA] prefix');
+    }
+
+
     // 2. FETCH WORKSPACE WITH BRAND FOR OWNERSHIP CHECK
     const { data: workspace, error: workspaceError } = await supabase
       .from('campaign_workspaces')
@@ -368,6 +392,15 @@ Deno.serve(async (req) => {
     }
 
     const brand = workspace.brands;
+
+    // Belt and braces: any workspace seeded by qa-harness (its name is prefixed
+    // with "[QA]") is always treated as a test run, even if the caller forgot to
+    // pass qaTestMode. A QA fixture must never be able to spend money.
+    if (!isQaTestMode && typeof workspace.name === 'string' && workspace.name.startsWith('[QA]')) {
+      isQaTestMode = true;
+      console.log('QA fixture workspace detected — forcing QA test mode (PAUSED)');
+    }
+
 
     // 3. VERIFY OWNERSHIP
     if (brand.user_id !== effectiveUserId) {
@@ -661,7 +694,7 @@ Deno.serve(async (req) => {
     };
     const objectiveName = objectiveDisplayMap[normalizedOptEvent] || 'Traffic';
 
-    const campaignBaseName = `LUMI // ${objectiveName} - ${productName} - ${startDate}`;
+    const campaignBaseName = `${isQaTestMode ? '[QA] ' : ''}LUMI // ${objectiveName} - ${productName} - ${startDate}`;
 
     // Determine Meta API objective + optimization_goal
     // Note: LEAD_GENERATION optimization_goal is for Facebook Instant Forms only.
@@ -856,7 +889,8 @@ Deno.serve(async (req) => {
     }
 
     // Determine launch status (ACTIVE or PAUSED)
-    const launchStatus = answers?.launchStatus === 'active' ? 'ACTIVE' : 'PAUSED';
+    // QA test mode always publishes PAUSED, regardless of what the user picked.
+    const launchStatus = !isQaTestMode && answers?.launchStatus === 'active' ? 'ACTIVE' : 'PAUSED';
     console.log('Launch status:', launchStatus);
 
     // Step 2: Create Campaign
