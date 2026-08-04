@@ -346,14 +346,43 @@ Deno.serve(async (req) => {
       // Upload image
       console.log('Uploading image to Meta...');
 
+      // Meta's /adimages expects the binary under the "source" part. Naming the
+      // part "filename" makes Graph read the bytes as an unknown type and reply
+      // FileTypeNotSupported, so send a properly typed "source" part and fall
+      // back to the base64 "bytes" form if Graph still refuses the multipart.
+      const safeName = (fileName || 'image.jpg').replace(/[^a-zA-Z0-9._-]/g, '_');
+      const typedBlob = new Blob([await assetData.arrayBuffer()], {
+        type: contentType && contentType.startsWith('image/') ? contentType : 'image/jpeg',
+      });
+
       const imageFormData = new FormData();
       imageFormData.append('access_token', metaAccessToken);
-      imageFormData.append('filename', assetData, fileName || 'image.jpg');
+      imageFormData.append('source', typedBlob, safeName);
 
-      const imageResponse = await fetch(
+      let imageResponse = await fetch(
         `https://graph.facebook.com/v25.0/act_${accountId}/adimages`,
         { method: 'POST', body: imageFormData }
       );
+
+      if (!imageResponse.ok) {
+        const buf = new Uint8Array(await typedBlob.arrayBuffer());
+        let binary = '';
+        for (let i = 0; i < buf.length; i += 8192) {
+          binary += String.fromCharCode(...buf.subarray(i, i + 8192));
+        }
+        imageResponse = await fetch(
+          `https://graph.facebook.com/v25.0/act_${accountId}/adimages`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              access_token: metaAccessToken,
+              bytes: btoa(binary),
+            }),
+          }
+        );
+      }
+
 
       const img = await parseGraphResponse(imageResponse);
       if (!img.ok || img.json?.error) {
