@@ -240,8 +240,7 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
             .eq('id', workspace.brand_id)
             .single();
           if (!brand?.website_url) {
-            toast.error("No destination URL found. Please add a URL to your offer or enter a website URL in your brand settings.");
-            setPublishing(false);
+            abortToQA("No destination URL found. Please add a URL to your offer or enter a website URL in your brand settings.");
             return;
           }
         }
@@ -250,14 +249,19 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
       // Enforce 10 live campaign limit — first refresh statuses from Meta
       // so paused/archived campaigns the user toggled in Meta directly stop
       // counting as live (otherwise stale "active" rows can falsely trip
-      // this limit). Best-effort; ignore sync errors.
+      // this limit). Best-effort: cap at 12s so a slow/hung Meta sync can
+      // never leave the user stuck with nothing happening.
       try {
-        await supabase.functions.invoke('sync-meta-campaigns', {
-          body: { brandId: workspace.brand_id },
-        });
+        await Promise.race([
+          supabase.functions.invoke('sync-meta-campaigns', {
+            body: { brandId: workspace.brand_id },
+          }),
+          new Promise((resolve) => setTimeout(resolve, 12000)),
+        ]);
       } catch (syncErr) {
         console.warn('Pre-publish status refresh failed (continuing):', syncErr);
       }
+
 
       // Count only genuinely-live Meta campaigns for this brand:
       //   - status is the Meta effective_status "active" (or our "live" alias)
