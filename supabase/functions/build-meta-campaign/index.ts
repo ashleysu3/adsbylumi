@@ -318,7 +318,7 @@ Deno.serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    const { workspaceId, answers, actAsUserId } = parsedBody || {};
+    const { workspaceId, answers, actAsUserId, qaTestMode } = parsedBody || {};
 
 
     if (!workspaceId) {
