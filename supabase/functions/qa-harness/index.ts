@@ -242,12 +242,19 @@ Deno.serve(async (req) => {
         .eq('user_id', user.id)
         .neq('name', QA_BRAND_NAME)
         .not('meta_account_id', 'is', null)
-        .not('meta_access_token', 'is', null);
+        .not('meta_access_token', 'is', null)
+        // Prefer the connection that is furthest from expiring — an expired
+        // token makes every asset upload fail with "connection has expired".
+        .order('meta_token_expires_at', { ascending: false, nullsFirst: false });
 
       if (body.sourceBrandId) query = query.eq('id', body.sourceBrandId);
 
-      const { data: sources } = await query.limit(1);
-      const source = sources?.[0];
+      const { data: sources } = await query.limit(5);
+      const now = Date.now();
+      const source =
+        sources?.find(
+          (b) => !b.meta_token_expires_at || new Date(b.meta_token_expires_at).getTime() > now,
+        ) || sources?.[0];
 
       if (!source) {
         return json(
@@ -259,6 +266,22 @@ Deno.serve(async (req) => {
           cors,
         );
       }
+
+      const tokenExpired =
+        !!source.meta_token_expires_at && new Date(source.meta_token_expires_at).getTime() <= now;
+      if (tokenExpired) {
+        return json(
+          {
+            success: false,
+            error:
+              `Every connected Meta brand has an expired token (newest: "${source.name}", expired ${source.meta_token_expires_at}). ` +
+              'Reconnect Meta on a real brand, then re-run seed — otherwise the publish test can only ever fail on asset upload.',
+          },
+          cors,
+        );
+      }
+
+
 
       // Reset any previous fixture (DB only — Meta cleanup is a separate action).
       const { data: existing } = await db
