@@ -763,7 +763,7 @@ fbq('track', 'PageView');
             transition={{ delay: 0.3 }}
             className="flex items-center justify-between gap-4"
           >
-            <Button variant="outline" onClick={onBack} className="gap-2">
+            <Button variant="outline" onClick={onBack} className="gap-2" disabled={publishing}>
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
@@ -773,17 +773,22 @@ fbq('track', 'PageView');
                 <XCircle className="h-4 w-4" />
                 Fix Issues to Continue
               </Button>
-            ) : hasIssues ? (
-              <Button onClick={onProceed} className="gap-2">
-                <Rocket className="h-4 w-4" />
-                Publish Anyway
-              </Button>
             ) : (
-              <Button onClick={onProceed} className="gap-2" size="lg">
-                <Rocket className="h-4 w-4" />
-                Publish to Meta
+              <Button
+                onClick={onProceed}
+                className="gap-2"
+                size={hasIssues ? "default" : "lg"}
+                disabled={publishing}
+              >
+                {publishing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Rocket className="h-4 w-4" />
+                )}
+                {publishing ? "Publishing…" : hasIssues ? "Publish Anyway" : "Publish to Meta"}
               </Button>
             )}
+
           </motion.div>
         )}
       </div>
