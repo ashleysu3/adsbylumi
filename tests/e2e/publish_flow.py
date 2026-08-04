@@ -138,7 +138,7 @@ async def main():
 
         await browser.close()
 
-    print("\n5. Verifying on Meta...")
+    print("\n7. Verifying on Meta...")
     status = call_function("qa-harness", {"action": "status"})
     for ws in status.get("workspaces", []):
         print(f"   {ws['name']}: {ws.get('meta_campaign_status')} ids={ws.get('meta_campaign_ids')}")
