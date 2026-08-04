@@ -108,7 +108,7 @@ async def main():
             # The click must produce visible feedback within 3s — this is the
             # exact regression Holly hit (click, nothing happens).
             await page.wait_for_timeout(3000)
-            await page.screenshot(path=str(SCREENSHOTS / "2_after_click.png"))
+            await page.screenshot(path=str(SCREENSHOTS / "4_after_click.png"))
 
             body = (await page.locator("body").inner_text()).lower()
             reacted = any(
@@ -121,7 +121,7 @@ async def main():
                 "no state change detected in 3s",
             )
 
-            print("\n4. Waiting for the publish to settle (up to 3 min)...")
+            print("\n6. Waiting for the publish to settle (up to 3 min)...")
             settled = False
             for _ in range(36):
                 await page.wait_for_timeout(5000)
@@ -129,8 +129,9 @@ async def main():
                 if any(t in body for t in ["your campaign is live", "campaign published", "paused", "error", "failed", "try again"]):
                     settled = True
                     break
-            await page.screenshot(path=str(SCREENSHOTS / "3_result.png"))
+            await page.screenshot(path=str(SCREENSHOTS / "5_result.png"))
             check("Publish reaches a terminal state (success or visible error)", settled)
+
 
         errors = [c for c in console if c.startswith("[pageerror]") or "[error]" in c]
         check("No uncaught page errors", len(errors) == 0, "; ".join(errors[:3]))
