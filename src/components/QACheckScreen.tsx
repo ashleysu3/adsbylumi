@@ -97,7 +97,9 @@ export function QACheckScreen({
   onBack,
   onProceed,
   onFixIssue,
+  publishing = false,
 }: QACheckScreenProps) {
+
   const navigate = useNavigate();
   const [phase, setPhase] = useState<"running" | "complete">("running");
   const [checks, setChecks] = useState<CheckResult[]>(INITIAL_CHECKS);
