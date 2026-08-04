@@ -393,6 +393,15 @@ Deno.serve(async (req) => {
 
     const brand = workspace.brands;
 
+    // Belt and braces: any workspace seeded by qa-harness (its name is prefixed
+    // with "[QA]") is always treated as a test run, even if the caller forgot to
+    // pass qaTestMode. A QA fixture must never be able to spend money.
+    if (!isQaTestMode && typeof workspace.name === 'string' && workspace.name.startsWith('[QA]')) {
+      isQaTestMode = true;
+      console.log('QA fixture workspace detected — forcing QA test mode (PAUSED)');
+    }
+
+
     // 3. VERIFY OWNERSHIP
     if (brand.user_id !== effectiveUserId) {
       console.error('Access denied: User', user.id, 'does not own workspace', workspaceId);
