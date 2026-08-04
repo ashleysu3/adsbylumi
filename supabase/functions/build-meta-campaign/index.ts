@@ -880,7 +880,8 @@ Deno.serve(async (req) => {
     }
 
     // Determine launch status (ACTIVE or PAUSED)
-    const launchStatus = answers?.launchStatus === 'active' ? 'ACTIVE' : 'PAUSED';
+    // QA test mode always publishes PAUSED, regardless of what the user picked.
+    const launchStatus = !isQaTestMode && answers?.launchStatus === 'active' ? 'ACTIVE' : 'PAUSED';
     console.log('Launch status:', launchStatus);
 
     // Step 2: Create Campaign
