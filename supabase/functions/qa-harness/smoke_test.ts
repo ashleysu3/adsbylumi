@@ -30,15 +30,25 @@ async function callFn(name: string, body: unknown, token?: string) {
   return { status: res.status, json, text };
 }
 
-const CRITICAL_FUNCTIONS = [
+// Functions that read or write user data on the publish path. These MUST
+// refuse an anonymous or forged caller.
+const GUARDED_FUNCTIONS = [
   "build-meta-campaign",
-  "qa-preflight-check",
   "compose-ad",
   "qa-harness",
 ];
 
-Deno.test("critical functions reject requests with no Authorization header", async () => {
-  for (const fn of CRITICAL_FUNCTIONS) {
+// Stateless functions that only score a payload the client already has. They
+// touch no user data, so they are allowed to answer without a session — they
+// just must never crash. (qa-preflight-check does call the AI gateway on the
+// non-pre-approved path; if abuse of that spend ever matters, gate it and move
+// it into GUARDED_FUNCTIONS.)
+const STATELESS_FUNCTIONS = ["qa-preflight-check"];
+
+const CRITICAL_FUNCTIONS = [...GUARDED_FUNCTIONS, ...STATELESS_FUNCTIONS];
+
+Deno.test("guarded functions reject requests with no Authorization header", async () => {
+  for (const fn of GUARDED_FUNCTIONS) {
     const { status, json, text } = await callFn(fn, {});
     assert(
       status === 401 || json?.success === false || json?.error,
@@ -47,8 +57,8 @@ Deno.test("critical functions reject requests with no Authorization header", asy
   }
 });
 
-Deno.test("critical functions reject a garbage bearer token", async () => {
-  for (const fn of CRITICAL_FUNCTIONS) {
+Deno.test("guarded functions reject a garbage bearer token", async () => {
+  for (const fn of GUARDED_FUNCTIONS) {
     const { status, json } = await callFn(fn, {}, "not-a-real-jwt");
     assert(
       status === 401 || json?.success === false || json?.error,
@@ -56,6 +66,14 @@ Deno.test("critical functions reject a garbage bearer token", async () => {
     );
   }
 });
+
+Deno.test("stateless functions stay up without a session", async () => {
+  for (const fn of STATELESS_FUNCTIONS) {
+    const { status } = await callFn(fn, {});
+    assert(status < 500, `${fn} returned ${status} on an anonymous call`);
+  }
+});
+
 
 Deno.test("critical functions answer CORS preflight", async () => {
   for (const fn of CRITICAL_FUNCTIONS) {
