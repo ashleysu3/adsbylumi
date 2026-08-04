@@ -433,6 +433,7 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
               answers={answers}
               onBack={handleBackToConfigure}
               onProceed={handleQAComplete}
+              publishing={publishing}
               onFixIssue={(type) => {
                 if (type === "copy") {
                   goEditCopy();
@@ -568,6 +569,7 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
               answers={answers}
               onBack={handleBackToConfigure}
               onProceed={handleQAComplete}
+              publishing={publishing}
               onFixIssue={(type) => {
                 if (type === "copy") {
                   goEditCopy();
