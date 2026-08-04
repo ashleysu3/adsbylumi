@@ -227,10 +227,10 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
               .eq('id', workspace.brand_id)
               .single();
             if (!brand?.website_url) {
-              toast.error("No destination URL found. Please add a URL to your offer or enter a website URL in your brand settings.");
-              setPublishing(false);
+              abortToQA("No destination URL found. Please add a URL to your offer or enter a website URL in your brand settings.");
               return;
             }
+
           }
         } else {
           // No offer linked — check brand website
