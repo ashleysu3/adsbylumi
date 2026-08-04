@@ -64,7 +64,7 @@ async def main():
 
         print("\n2. Opening the campaign builder...")
         await page.goto(
-            f"{BASE_URL}/campaign-builder?workspace={workspace_id}",
+            f"{BASE_URL}/campaigns/build?workspace={workspace_id}",
             wait_until="domcontentloaded",
         )
         await page.wait_for_timeout(4000)
