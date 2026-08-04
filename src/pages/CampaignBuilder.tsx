@@ -197,7 +197,18 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
 
   const handlePublish = async (launchStatus: 'active' | 'paused' = 'paused') => {
     setPublishing(true);
+    // Show the publishing screen immediately so the click always produces
+    // visible feedback — the pre-flight checks below can take several seconds.
+    setPublishError(null);
+    setStage('publishing');
+    // Any early return must send the user back to the QA screen.
+    const abortToQA = (msg: string) => {
+      toast.error(msg);
+      setPublishing(false);
+      setStage('qa-check');
+    };
     try {
+
       // Pre-flight: ensure a destination URL is resolvable
       const resolvedUrl = answers?.finalUrl || workspace?.offer_url;
       if (!resolvedUrl) {
