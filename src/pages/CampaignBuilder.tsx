@@ -197,7 +197,18 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
 
   const handlePublish = async (launchStatus: 'active' | 'paused' = 'paused') => {
     setPublishing(true);
+    // Show the publishing screen immediately so the click always produces
+    // visible feedback — the pre-flight checks below can take several seconds.
+    setPublishError(null);
+    setStage('publishing');
+    // Any early return must send the user back to the QA screen.
+    const abortToQA = (msg: string) => {
+      toast.error(msg);
+      setPublishing(false);
+      setStage('qa-check');
+    };
     try {
+
       // Pre-flight: ensure a destination URL is resolvable
       const resolvedUrl = answers?.finalUrl || workspace?.offer_url;
       if (!resolvedUrl) {
@@ -216,10 +227,10 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
               .eq('id', workspace.brand_id)
               .single();
             if (!brand?.website_url) {
-              toast.error("No destination URL found. Please add a URL to your offer or enter a website URL in your brand settings.");
-              setPublishing(false);
+              abortToQA("No destination URL found. Please add a URL to your offer or enter a website URL in your brand settings.");
               return;
             }
+
           }
         } else {
           // No offer linked — check brand website
@@ -229,8 +240,7 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
             .eq('id', workspace.brand_id)
             .single();
           if (!brand?.website_url) {
-            toast.error("No destination URL found. Please add a URL to your offer or enter a website URL in your brand settings.");
-            setPublishing(false);
+            abortToQA("No destination URL found. Please add a URL to your offer or enter a website URL in your brand settings.");
             return;
           }
         }
@@ -239,14 +249,19 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
       // Enforce 10 live campaign limit — first refresh statuses from Meta
       // so paused/archived campaigns the user toggled in Meta directly stop
       // counting as live (otherwise stale "active" rows can falsely trip
-      // this limit). Best-effort; ignore sync errors.
+      // this limit). Best-effort: cap at 12s so a slow/hung Meta sync can
+      // never leave the user stuck with nothing happening.
       try {
-        await supabase.functions.invoke('sync-meta-campaigns', {
-          body: { brandId: workspace.brand_id },
-        });
+        await Promise.race([
+          supabase.functions.invoke('sync-meta-campaigns', {
+            body: { brandId: workspace.brand_id },
+          }),
+          new Promise((resolve) => setTimeout(resolve, 12000)),
+        ]);
       } catch (syncErr) {
         console.warn('Pre-publish status refresh failed (continuing):', syncErr);
       }
+
 
       // Count only genuinely-live Meta campaigns for this brand:
       //   - status is the Meta effective_status "active" (or our "live" alias)
@@ -283,14 +298,10 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
 
 
       if (liveCount >= 10) {
-        toast.error(`You've reached the maximum of 10 live campaigns (currently ${liveCount}). Pause or archive an existing campaign before publishing a new one.`);
-        setPublishing(false);
+        abortToQA(`You've reached the maximum of 10 live campaigns (currently ${liveCount}). Pause or archive an existing campaign before publishing a new one.`);
         return;
       }
 
-
-      setPublishError(null); // clear any prior error before retry
-      setStage('publishing');
       const { data, error } = await supabase.functions.invoke('build-meta-campaign', {
         body: {
           workspaceId,
@@ -299,7 +310,9 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
         },
       });
       if (error) throw error;
+      if (!data) throw new Error('No response from the publisher. Please try again.');
       if (data.success) {
+
         const campaignData = { ...data.campaignIds, launchStatus };
         setCampaignIds(campaignData);
         await supabase
@@ -420,6 +433,7 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
               answers={answers}
               onBack={handleBackToConfigure}
               onProceed={handleQAComplete}
+              publishing={publishing}
               onFixIssue={(type) => {
                 if (type === "copy") {
                   goEditCopy();
@@ -555,6 +569,7 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
               answers={answers}
               onBack={handleBackToConfigure}
               onProceed={handleQAComplete}
+              publishing={publishing}
               onFixIssue={(type) => {
                 if (type === "copy") {
                   goEditCopy();
