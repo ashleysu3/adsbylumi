@@ -11,7 +11,9 @@
 // PAUSED by build-meta-campaign (see qaTestMode) and prefixed with [QA].
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { encode as encodeJpeg } from 'npm:jpeg-js@0.4.4';
 import { getCorsHeaders } from '../_shared/cors.ts';
+
 
 const QA_BRAND_NAME = 'LUMI QA';
 const QA_PREFIX = '[QA]';
