@@ -69,7 +69,9 @@ interface QACheckScreenProps {
   onBack: () => void;
   onProceed: () => void;
   onFixIssue?: (issueType: string, issueData: any) => void;
+  publishing?: boolean;
 }
+
 
 const CHECK_ICONS: Record<string, React.ReactNode> = {
   meta: <Link2 className="h-4 w-4" />,
