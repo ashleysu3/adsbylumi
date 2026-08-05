@@ -184,6 +184,62 @@ Deno.serve(async (req) => {
       return json({ success: true, ...(await readStatus()) }, cors);
     }
 
+    // --------------------------------------------------------------- sources
+    // Lists the connected brands the fixture can borrow Meta credentials from,
+    // plus whether each ad account has a usable funding source. Pick one and
+    // pass its id as `sourceBrandId` to seed.
+    if (action === 'sources') {
+      const { data: brands } = await db
+        .from('brands')
+        .select('id, name, meta_account_id, meta_access_token, meta_token_expires_at, page_id, meta_pixel_id')
+        .eq('user_id', user.id)
+        .neq('name', QA_BRAND_NAME)
+        .not('meta_account_id', 'is', null)
+        .not('meta_access_token', 'is', null)
+        .order('meta_token_expires_at', { ascending: false, nullsFirst: false });
+
+      const now = Date.now();
+      const out = [] as any[];
+      for (const b of brands || []) {
+        const expired = !!b.meta_token_expires_at && new Date(b.meta_token_expires_at).getTime() <= now;
+        let funding: string | null = null;
+        let accountStatus: number | null = null;
+        let currency: string | null = null;
+        let error: string | null = null;
+        if (!expired) {
+          try {
+            const res = await fetch(
+              `${GRAPH}/${b.meta_account_id}?fields=account_status,funding_source,currency,name&access_token=${b.meta_access_token}`,
+            );
+            const d = await res.json();
+            if (d?.error) error = d.error.message;
+            else {
+              funding = d.funding_source ?? null;
+              accountStatus = d.account_status ?? null;
+              currency = d.currency ?? null;
+            }
+          } catch (e) {
+            error = (e as Error).message;
+          }
+        }
+        out.push({
+          brandId: b.id,
+          brandName: b.name,
+          metaAccountId: b.meta_account_id,
+          tokenExpired: expired,
+          hasPage: !!b.page_id,
+          hasPixel: !!b.meta_pixel_id,
+          accountStatus,
+          currency,
+          hasFundingSource: !!funding,
+          error,
+          usableForPublish: !expired && !!b.page_id && !!funding && accountStatus === 1,
+        });
+      }
+
+      return json({ success: true, action: 'sources', sources: out }, cors);
+    }
+
     // --------------------------------------------------------------- cleanup
     if (action === 'cleanup') {
       const st = await readStatus();
@@ -282,6 +338,31 @@ Deno.serve(async (req) => {
           cors,
         );
       }
+
+      // A valid token isn't enough — Meta refuses ad creation on an ad account
+      // with no funding source ("No Payment Method"). Fail here with a clear
+      // message instead of letting the publish test die three minutes later.
+      try {
+        const acctRes = await fetch(
+          `${GRAPH}/${source.meta_account_id}?fields=account_status,funding_source&access_token=${source.meta_access_token}`,
+        );
+        const acct = await acctRes.json();
+        if (!acct?.error && !acct?.funding_source) {
+          return json(
+            {
+              success: false,
+              error:
+                `The ad account for "${source.name}" (${source.meta_account_id}) has no payment method on file, so Meta will reject ad creation. ` +
+                'Connect the brand whose ad account has billing set up, then re-run seed with sourceBrandId. Run action "sources" to see the options.',
+            },
+            cors,
+          );
+        }
+      } catch {
+        // Non-fatal: if the funding probe fails we still let the seed proceed.
+      }
+
+
 
 
 

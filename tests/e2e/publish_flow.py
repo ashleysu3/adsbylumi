@@ -77,14 +77,28 @@ async def main():
             return 1
 
         print("\n3. Walking the configure wizard...")
-        for label in ("Continue", "Review Campaign"):
-            btn = page.get_by_role("button", name=label, exact=True)
-            present = await btn.count() > 0
-            check(f"'{label}' step control is present", present)
-            if present:
-                await btn.first.click()
-                await page.wait_for_timeout(2500)
+        # The desktop builder advances with "Continue" on every step (mobile
+        # uses "Review Campaign" on the last one), so accept either label and
+        # keep advancing until the QA screen appears.
+        advanced = 0
+        for _ in range(6):
+            body = (await page.locator("body").inner_text()).lower()
+            if "publish to meta" in body or "running checks" in body:
+                break
+            clicked = False
+            for label in ("Continue", "Review Campaign"):
+                btn = page.get_by_role("button", name=label, exact=True)
+                if await btn.count() > 0 and await btn.first.is_enabled():
+                    await btn.first.click()
+                    await page.wait_for_timeout(2500)
+                    advanced += 1
+                    clicked = True
+                    break
+            if not clicked:
+                break
+        check("Wizard advances to the QA check screen", advanced > 0, f"{advanced} step(s)")
         await page.screenshot(path=str(SCREENSHOTS / "2_qa_check.png"))
+
 
         print("\n4. Waiting for the QA checks to finish (up to 90s)...")
         for _ in range(18):
