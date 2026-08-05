@@ -339,6 +339,31 @@ Deno.serve(async (req) => {
         );
       }
 
+      // A valid token isn't enough — Meta refuses ad creation on an ad account
+      // with no funding source ("No Payment Method"). Fail here with a clear
+      // message instead of letting the publish test die three minutes later.
+      try {
+        const acctRes = await fetch(
+          `${GRAPH}/${source.meta_account_id}?fields=account_status,funding_source&access_token=${source.meta_access_token}`,
+        );
+        const acct = await acctRes.json();
+        if (!acct?.error && !acct?.funding_source) {
+          return json(
+            {
+              success: false,
+              error:
+                `The ad account for "${source.name}" (${source.meta_account_id}) has no payment method on file, so Meta will reject ad creation. ` +
+                'Connect the brand whose ad account has billing set up, then re-run seed with sourceBrandId. Run action "sources" to see the options.',
+            },
+            cors,
+          );
+        }
+      } catch {
+        // Non-fatal: if the funding probe fails we still let the seed proceed.
+      }
+
+
+
 
 
       // Reset any previous fixture (DB only — Meta cleanup is a separate action).
