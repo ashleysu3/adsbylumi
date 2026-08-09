@@ -52,8 +52,18 @@ interface InstagramAccount {
   name: string;
   username?: string;
   profile_picture_url?: string;
-  linked_page_id: string;
+  linked_page_id: string | null;
   linked_page_name: string;
+}
+
+// Instagram accounts discovered via Business Manager or an ad account (rather
+// than a Page's own "Linked Accounts") come back with linked_page_id: null —
+// they're real, usable accounts, just not tied to one specific Page. Treat
+// them as candidates for whichever Page the user picks instead of hiding
+// them, which used to make a correctly-discovered account look "not found."
+function getInstagramCandidates(igs: InstagramAccount[], pageId: string | null | undefined): InstagramAccount[] {
+  if (!pageId) return [];
+  return igs.filter((ig) => ig.linked_page_id === pageId || !ig.linked_page_id);
 }
 
 export function MetaAccountConnect({ 
@@ -83,9 +93,7 @@ export function MetaAccountConnect({
   const [diagnosticLoading, setDiagnosticLoading] = useState(false);
   const [step, setStep] = useState<'connect' | 'select-account' | 'select-page' | 'select-instagram'>('connect');
 
-  const instagramAccountsForSelectedPage = selectedPage
-    ? instagramAccounts.filter((ig) => ig.linked_page_id === selectedPage)
-    : [];
+  const instagramAccountsForSelectedPage = getInstagramCandidates(instagramAccounts, selectedPage);
 
   const runPostOAuthDiagnostic = async (accts: AdAccount[], pgs: FacebookPage[], igs: InstagramAccount[]) => {
     try {
@@ -122,8 +130,8 @@ export function MetaAccountConnect({
 
   useEffect(() => {
     if (!selectedPage || !selectedInstagram) return;
-    const instagramBelongsToPage = instagramAccounts.some(
-      (ig) => ig.id === selectedInstagram && ig.linked_page_id === selectedPage
+    const instagramBelongsToPage = getInstagramCandidates(instagramAccounts, selectedPage).some(
+      (ig) => ig.id === selectedInstagram
     );
     if (!instagramBelongsToPage) {
       setSelectedInstagram("");
@@ -297,7 +305,7 @@ export function MetaAccountConnect({
               if (tokenExpired && currentAccountId && currentPageId) {
                 const prevAccountStillExists = returnedAccounts.some((a: AdAccount) => a.id === currentAccountId);
                 const prevPageStillExists = returnedPages.some((p: FacebookPage) => p.id === currentPageId);
-                const pageInstagramCandidates = returnedInstagram.filter((ig: InstagramAccount) => ig.linked_page_id === currentPageId);
+                const pageInstagramCandidates = getInstagramCandidates(returnedInstagram, currentPageId);
                 const prevIgStillExists = !currentInstagramId || pageInstagramCandidates.some((ig: InstagramAccount) => ig.id === currentInstagramId);
                 const canSafelyAutoSaveInstagram = !currentInstagramId || pageInstagramCandidates.length === 1;
 
@@ -328,7 +336,7 @@ export function MetaAccountConnect({
               // Instagram linked to that Page, we don't need to make the user
               // pick the same assets twice.
               if (accountCount === 1 && pageCount === 1) {
-                const pageScopedInstagram = returnedInstagram.filter((ig: InstagramAccount) => ig.linked_page_id === returnedPages[0].id);
+                const pageScopedInstagram = getInstagramCandidates(returnedInstagram, returnedPages[0].id);
                 const igId = pageScopedInstagram.length === 1 ? pageScopedInstagram[0].id : undefined;
                 if (pageScopedInstagram.length <= 1) {
                   setSelectedAccount(returnedAccounts[0].id);
@@ -501,8 +509,9 @@ export function MetaAccountConnect({
       return;
     }
     
-    // Find Instagram accounts linked to the selected page first, then include others
-    const linkedInstagram = instagramAccounts.filter(ig => ig.linked_page_id === selectedPage);
+    // Find Instagram accounts linked to the selected page, plus any discovered
+    // via Business Manager / ad account that aren't tied to a specific Page.
+    const linkedInstagram = getInstagramCandidates(instagramAccounts, selectedPage);
 
     // Only auto-select when there is exactly ONE candidate Instagram account
     // anywhere — otherwise the user must explicitly pick, since a single
