@@ -1384,6 +1384,15 @@ export function GenerateCreativeDialog() {
     (!needsPhoto || !!selectedPhoto) &&
     copyReady;
 
+  // True when the framing on screen no longer matches what the renders used.
+  const framingStale =
+    images.length > 0 &&
+    !!renderedFraming &&
+    (renderedFraming.focalX !== focalX ||
+      renderedFraming.focalY !== focalY ||
+      renderedFraming.photoZoom !== photoZoom ||
+      renderedFraming.photoId !== selectedPhotoId);
+
   // ---- Step rail helpers -------------------------------------------------
   const stepIndex = step === "style" ? 0 : step === "image-copy" ? 1 : 2;
   const stepLabels = ["Style", "Image & copy", "Render"];
