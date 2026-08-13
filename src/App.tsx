@@ -24,7 +24,6 @@ import Waitlist from "./pages/Waitlist";
 import Auth from "./pages/Auth";
 import Reactivate from "./pages/Reactivate";
 import WelcomeBack from "./pages/WelcomeBack";
-import Onboarding from "./pages/Onboarding";
 import GuidedOnboarding from "./pages/GuidedOnboarding";
 import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
@@ -180,7 +179,6 @@ const App = () => {
                   <Route path="/free-trial" element={<Navigate to="/join" replace />} />
                   <Route path="/welcome" element={<Welcome />} />
                   <Route path="/onboarding" element={<GuidedOnboarding />} />
-                  <Route path="/onboarding-legacy" element={<Onboarding />} />
                   <Route path="/start" element={<Start />} />
                   <Route path="/create" element={<Create />} />
                   <Route path="/recommended-strategy" element={<Navigate to="/create" replace />} />
