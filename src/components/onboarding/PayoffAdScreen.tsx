@@ -425,6 +425,10 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   // logo. Fetched fire-and-forget during boot so it's usually ready by save.
   const avatarUrlRef = useRef<string | undefined>(undefined);
   const photoUrlRef = useRef<string | undefined>(undefined);
+  // A background/texture image from their site for the big area behind the
+  // card — deliberately never the same asset as the portrait in the circle.
+  const backgroundUrlRef = useRef<string | undefined>(undefined);
+
   const templateRef = useRef<PhotoTemplate | "checklist" | "bigtype">("bigtype");
   const socialProofRef = useRef<TestimonialQuote | null>(null);
   const offerPsychologyRef = useRef<Record<string, any> | null>(null);
