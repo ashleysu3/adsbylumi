@@ -41,6 +41,25 @@ export default function Voice() {
   });
   const [newEmoji, setNewEmoji] = useState("");
 
+  // Emoji settings save themselves as you change them — no Save button needed.
+  const { status: emojiSaveStatus } = useAutosaveOnChange<EmojiSettings>(
+    emojiSettings,
+    async (value) => {
+      if (!brand?.id) return;
+      const { error } = await supabase
+        .from("brands")
+        .update({
+          use_emojis: value.use_emojis,
+          brand_emojis: value.brand_emojis,
+          bullet_emoji: value.bullet_emoji,
+        })
+        .eq("id", brand.id);
+      if (error) throw error;
+    },
+    { key: brand?.id ?? null, enabled: !!brand?.id && !loading },
+  );
+
+
   useEffect(() => {
     fetchData();
   }, [contextBrand?.id]);
