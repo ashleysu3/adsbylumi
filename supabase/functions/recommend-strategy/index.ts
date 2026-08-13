@@ -240,8 +240,13 @@ Deno.serve(async (req) => {
       // DM funnels — that's the bug this guards against.
       if (explicitGoal === "dm_leads") return g.includes("dm_leads");
       if (explicitGoal === "grow_social") return g.includes("grow_social");
+      // DM funnels are opt-in ONLY. Unless the user explicitly asked for DMs,
+      // a template tagged dm_leads never counts as aligned — leads must come
+      // from a website/landing page (opt-in, newsletter, waitlist, webinar,
+      // challenge, application), never from a DM ask nobody asked for.
+      if (isDmTemplate(g)) return false;
       if (obj === "OUTCOME_LEADS" || obj === "OUTCOME_ENGAGEMENT") {
-        return g.some((x) => ["get_leads", "book_calls", "dm_leads"].includes(x));
+        return g.some((x) => ["get_leads", "book_calls"].includes(x));
       }
       // Templates are still tagged with the old "awareness" vocabulary — match
       // on the tag we have, even though we no longer BUILD awareness campaigns.
@@ -251,6 +256,27 @@ Deno.serve(async (req) => {
       // OUTCOME_SALES
       return g.some((x) => ["promote_offer", "sales"].includes(x));
     };
+
+    // A template counts as a DM funnel if its only lead-shaped goal is DMs, or
+    // if its identity is clearly conversation/Messenger-based.
+    function isDmTemplate(goals: string[]) {
+      return goals.includes("dm_leads") &&
+        !goals.some((x) => ["get_leads", "book_calls", "promote_offer", "sales"].includes(x));
+    }
+
+    // Hard block: if the AI handed back a DM/conversation template and the user
+    // did not explicitly choose "more DMs", drop it before anything else runs.
+    if (matched && explicitGoal !== "dm_leads") {
+      const g = (matched.primary_goals ?? []).map((x: any) => String(x).toLowerCase());
+      const looksDm = isDmTemplate(g) ||
+        /\bdm\b|messenger|conversation/i.test(`${matched.slug} ${matched.name}`);
+      if (looksDm) {
+        console.log(
+          `Guardrail: rejecting DM template ${matched.slug} — user_goal "${explicitGoal || "(none)"}" is not dm_leads`,
+        );
+        matched = null;
+      }
+    }
 
     if (matched && !goalsAlignWithObjective(matched.primary_goals, detectedObjective)) {
       const better = templates.find((t: any) =>
