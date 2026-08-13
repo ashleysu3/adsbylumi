@@ -452,11 +452,15 @@ export async function renderVideoWithText(opts: RenderOptions): Promise<Blob> {
 
   try {
     onProgress?.({ pct: 0, message: 'Reading video dimensions…' });
-    let { width, height, duration } = await readVideoMetadata(videoUrl);
+    // Private buckets: turn public-style storage links into signed URLs so the
+    // fetch returns the actual MP4 and not a JSON permission error.
+    const playableUrl = await resolvePlayableUrl(videoUrl);
+    let { width, height, duration } = await readVideoMetadata(playableUrl);
 
     onProgress?.({ pct: 0, message: 'Fetching video…' });
-    const videoBytes = await fetchFile(videoUrl);
+    const videoBytes = await fetchFile(playableUrl);
     await ffmpeg.writeFile('input.mp4', videoBytes);
+
 
     // Browser couldn't decode (typically an iPhone HEVC/H.265 clip) — probe with
     // ffmpeg instead of failing the job.
