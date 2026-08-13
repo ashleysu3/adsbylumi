@@ -523,19 +523,22 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
 
       // List add is marketing, not delivery — a Flodesk hiccup must never
       // block the kit email. Fire-and-forget; the kit email itself always
-      // goes out from LUMI via Resend below.
-      supabase.functions
-        .invoke("sync-flodesk", {
-          body: {
-            email: leadEmail.trim(),
-            firstName: leadName.trim().split(" ")[0] || undefined,
-            segment: "ad_kit",
-          },
-        })
-        .then(({ error }) => {
-          if (error) console.warn("[payoff] flodesk sync failed", error);
-        })
-        .catch((e) => console.warn("[payoff] flodesk sync failed", e));
+      // goes out from LUMI via Resend below. Existing account holders are
+      // already customers, so they skip the lead list entirely.
+      if (!hasAccount) {
+        supabase.functions
+          .invoke("sync-flodesk", {
+            body: {
+              email: leadEmail.trim(),
+              firstName: leadName.trim().split(" ")[0] || undefined,
+              segment: "ad_kit",
+            },
+          })
+          .then(({ error }) => {
+            if (error) console.warn("[payoff] flodesk sync failed", error);
+          })
+          .catch((e) => console.warn("[payoff] flodesk sync failed", e));
+      }
 
       const { error: sendErr } = await supabase.functions.invoke("send-ad-pack-email", {
         body: { brand_id: brandId },
@@ -544,19 +547,35 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
 
       setPackState("sent");
       setPackFormOpen(false);
-      trackLumiEvent("Lead");
+      if (!hasAccount) trackLumiEvent("Lead");
       // Save-in-place: the kit stays right here. Stamp the token onto this
       // URL (replace, not push — no back-button trap) so a refresh or a
       // bookmark of THIS page resolves to the permanent kit link, and let
       // the VSL + 50% close unfold below instead of navigating away.
       setSearchParams({ kit: kitToken }, { replace: true });
-      toast.success("Saved — your private link is on its way to your inbox!");
+      toast.success(
+        hasAccount
+          ? "Saved to your account — your brand kit is ready."
+          : "Saved — your private link is on its way to your inbox!",
+      );
     } catch (err: any) {
       console.error("[payoff] send ad kit error", err);
       toast.error(err?.message || "Couldn't save your Ad Kit. Please try again.");
       setPackState("error");
     }
-  }, [brandId, images, leadEmail, leadName, packState, setSearchParams, options, selectedIdx, scriptBeats, strategy]);
+  }, [brandId, images, leadEmail, leadName, packState, setSearchParams, options, selectedIdx, scriptBeats, strategy, hasAccount]);
+
+  // Signed-in users never see the save prompt — as soon as the ad is ready,
+  // the kit gets pulled into their account automatically.
+  useEffect(() => {
+    if (!hasAccount) return;
+    if (packState !== "idle") return;
+    if (phase !== "ready") return;
+    if (!leadEmail.trim() || !images[0]?.base64) return;
+    setPackFormOpen(false);
+    sendAdPack();
+  }, [hasAccount, packState, phase, leadEmail, images, sendAdPack]);
+
 
   const brandSlug = (brand?.name || "lumi-ad").trim().replace(/\s+/g, "-").toLowerCase();
 
