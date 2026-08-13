@@ -385,6 +385,8 @@ serve(async (req) => {
       `${instructionBlock}\n\n` +
       `${realTestimonialRule}` +
       `Hard rule: every option must reference at least one SPECIFIC element from the OFFER PSYCHOLOGY or AUDIENCE PSYCHOLOGY above (a named moment, a real pain, a real hesitation, a concrete before/after). Generic copy that could belong to any brand is an instant fail.\n\n` +
+      `Hard rule: if a CHOSEN CONCEPT block is present, every option executes THAT concept and its hook. Do not fall back to a generic "grow your business" style ad; the concept's specific idea must be recognizable in the headline of every option.\n\n` +
+
       `Output ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
 
 
