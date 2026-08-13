@@ -48,42 +48,56 @@ export function OfferEditDialog({ open, onOpenChange, offer, onSuccess }: OfferE
     }
   }, [offer, open]);
 
+  // Persist a set of offer fields. Shared by autosave and the Done button so
+  // there's exactly one write path.
+  const persist = async (values: typeof formData) => {
+    if (!offer) return;
+    const { error } = await supabase
+      .from("offers")
+      .update({
+        name: values.name,
+        url: values.url || null,
+        description: values.description || null,
+        price_point: values.price_point || null,
+        target_outcome: values.target_outcome || null,
+        use_brand_style_defaults: values.use_brand_style_defaults,
+      } as any)
+      .eq("id", offer.id);
+
+    if (error) throw error;
+
+    // Propagate URL/name/description/price changes to unpublished workspaces referencing this offer
+    const { error: wsError } = await supabase
+      .from("campaign_workspaces")
+      .update({
+        offer_url: values.url || null,
+        offer_name: values.name,
+        offer_description: values.description || null,
+        offer_price: values.price_point || null,
+      })
+      .eq("offer_id", offer.id)
+      .is("published_at", null);
+
+    if (wsError) {
+      console.warn("Failed to propagate offer changes to workspaces:", wsError);
+    }
+  };
+
+  // Autosave every edit so closing the dialog (or navigating away) never loses work.
+  const { status: saveStatus, flush } = useAutosaveOnChange(
+    formData,
+    persist,
+    { key: offer?.id ?? null, enabled: !!offer && open && !!formData.name },
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!offer) return;
     setLoading(true);
 
     try {
-      const { error } = await supabase
-        .from("offers")
-        .update({
-          name: formData.name,
-          url: formData.url || null,
-          description: formData.description || null,
-          price_point: formData.price_point || null,
-          target_outcome: formData.target_outcome || null,
-          use_brand_style_defaults: formData.use_brand_style_defaults,
-        } as any)
-        .eq("id", offer.id);
-
-      if (error) throw error;
-
-      // Propagate URL/name/description/price changes to unpublished workspaces referencing this offer
-      const { error: wsError } = await supabase
-        .from("campaign_workspaces")
-        .update({
-          offer_url: formData.url || null,
-          offer_name: formData.name,
-          offer_description: formData.description || null,
-          offer_price: formData.price_point || null,
-        })
-        .eq("offer_id", offer.id)
-        .is("published_at", null);
-
-      if (wsError) {
-        console.warn("Failed to propagate offer changes to workspaces:", wsError);
-      }
-
+      await flush();
+      await persist(formData);
       toast.success("Offer updated");
       onSuccess();
       onOpenChange(false);
@@ -94,6 +108,7 @@ export function OfferEditDialog({ open, onOpenChange, offer, onSuccess }: OfferE
       setLoading(false);
     }
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
