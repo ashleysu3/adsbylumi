@@ -80,6 +80,20 @@ serve(async (req) => {
 KNOWLEDGE BASE:
 ${kbContext}
 
+=== SOURCE-MATERIAL FIREWALL (ABSOLUTE) ===
+The reference/knowledge material above is generic teaching material about ad craft.
+It is NOT this brand's data. You must NEVER copy from reference material, examples,
+or prior outputs any of the following:
+- person names, student names, client names, or testimonial names
+- prices, dollar amounts, revenue figures, or student-count numbers
+- product/program names, offer names, URLs, or brand names
+- specific results, case studies, or stories
+Every name, number, price, offer and result you write MUST come from THIS brand's
+offer, audience, and psychology data supplied in this prompt. If a needed detail is
+not present in this brand's data, write around it — do not invent or borrow one.
+Mentioning any other brand, offer, or person is an instant fail.
+
+
 Your task is to generate a FRESH, SPECIFIC creative idea for a specific slot in a creative grid. The new idea must be COMPLETELY DIFFERENT from the original while being even MORE compelling.
 
 === CRITICAL RULES ===
