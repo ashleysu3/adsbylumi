@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { CampaignSpine } from "@/components/CampaignSpine";
 import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
 import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -363,7 +362,6 @@ export default function StrategyPlan() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8">
-        <CampaignSpine currentStep={1} compact />
         <div className="flex items-center justify-between mb-6 gap-2">
           <Button
             variant="ghost"
