@@ -374,10 +374,19 @@ export function GenerateCreativeDialog() {
   const [focalX, setFocalX] = useState<number>(50);
   const [focalY, setFocalY] = useState<number>(50);
   const [photoZoom, setPhotoZoom] = useState<number>(1);
+  // The story (9:16) placement crops the same photo differently, so it gets its
+  // own focal point + zoom. Which one the drag/sliders edit depends on the
+  // Feed / Story toggle in the preview.
+  const [previewFrame, setPreviewFrame] = useState<"feed" | "story">("feed");
+  const [storyFocalX, setStoryFocalX] = useState<number>(50);
+  const [storyFocalY, setStoryFocalY] = useState<number>(50);
+  const [storyZoom, setStoryZoom] = useState<number>(1);
   // Framing that the currently shown renders were made with, so we can tell the
   // user when the preview no longer matches what's on screen.
   const [renderedFraming, setRenderedFraming] = useState<{
-    focalX: number; focalY: number; photoZoom: number; photoId: string | null;
+    focalX: number; focalY: number; photoZoom: number;
+    storyFocalX: number; storyFocalY: number; storyZoom: number;
+    photoId: string | null;
   } | null>(null);
   // Readability controls for templates that put text directly on a photo
   // with no card behind it (currently just nativecaption) — the template's
@@ -1120,27 +1129,32 @@ export function GenerateCreativeDialog() {
         ? { url: brandLogoAsset.url, corner: logoCorner }
         : undefined;
       // Apply the focal point / zoom the user set in the preview by pre-cropping
-      // the photo before it goes to the render engine. We crop to the same frame
-      // aspect the preview uses so the render matches what they positioned.
-      let photoUrlForRender = selectedPhoto?.url;
-      const framingChanged = focalX !== 50 || focalY !== 50 || photoZoom !== 1;
-      if (selectedPhoto && framingChanged) {
+      // the photo before it goes to the render engine. Feed (1:1) and story
+      // (9:16) crop differently, so each placement gets its own cropped photo.
+      const cropFor = async (
+        fx: number, fy: number, z: number, frame: "feed" | "story",
+      ): Promise<string | undefined> => {
+        if (!selectedPhoto) return undefined;
+        if (fx === 50 && fy === 50 && z === 1) return selectedPhoto.url;
         try {
           setProgress("Applying image framing…");
-          photoUrlForRender = await cropImageToFocal(
-            selectedPhoto.url,
-            focalX,
-            focalY,
-            photoZoom,
-            photoFrameAspect(template),
-          );
+          return await cropImageToFocal(selectedPhoto.url, fx, fy, z, photoFrameAspect(template, frame));
         } catch {
-          photoUrlForRender = selectedPhoto.url;
+          return selectedPhoto.url;
         }
-      }
-      setRenderedFraming({ focalX, focalY, photoZoom, photoId: selectedPhotoId });
+      };
+      const photoUrlForRender = await cropFor(focalX, focalY, photoZoom, "feed");
+      const storyPhotoUrl = await cropFor(storyFocalX, storyFocalY, storyZoom, "story");
+      setRenderedFraming({
+        focalX, focalY, photoZoom,
+        storyFocalX, storyFocalY, storyZoom,
+        photoId: selectedPhotoId,
+      });
       const photo = selectedPhoto
         ? { url: photoUrlForRender!, removeBackground, focalX, focalY, zoom: photoZoom }
+        : undefined;
+      const storyPhoto = selectedPhoto
+        ? { url: storyPhotoUrl!, removeBackground, focalX: storyFocalX, focalY: storyFocalY, zoom: storyZoom }
         : undefined;
 
       // Collage uses 2–4 photos. Take the most recently uploaded/brand photos.
@@ -1222,17 +1236,29 @@ export function GenerateCreativeDialog() {
         toast.success("Carousel rendered");
       } else {
         setProgress("Rendering feed + story…");
-        const imgs = await callRender({
+        const placements = activeCustom?.placements ?? ["feed", "story"];
+        const base = {
           ...templateField,
           brandKit,
           copy: collapseCopyForFallback(template, sanitizeCopy(editedSingle)),
-          photo,
           ...(collagePhotos && collagePhotos.length >= 2 ? { photos: collagePhotos } : {}),
           logoOverlay,
           style: styleOverrides,
-          placements: activeCustom?.placements ?? ["feed", "story"],
           ...(bgSelectedUrl ? { backgroundUrl: bgSelectedUrl } : {}),
-        });
+        };
+        // Feed and story crop the photo differently, so they render separately
+        // and the results are merged back into one set.
+        const feedPlacements = placements.filter((p: string) => p !== "story");
+        const storyPlacements = placements.filter((p: string) => p === "story");
+        const batches = await Promise.all([
+          feedPlacements.length
+            ? callRender({ ...base, photo, placements: feedPlacements })
+            : Promise.resolve([] as RenderImage[]),
+          storyPlacements.length
+            ? callRender({ ...base, photo: storyPhoto, placements: storyPlacements })
+            : Promise.resolve([] as RenderImage[]),
+        ]);
+        const imgs = [...batches[0], ...batches[1]];
         setImages(imgs);
         setProgress("");
         toast.success("Ad rendered");
@@ -1401,7 +1427,42 @@ export function GenerateCreativeDialog() {
     (renderedFraming.focalX !== focalX ||
       renderedFraming.focalY !== focalY ||
       renderedFraming.photoZoom !== photoZoom ||
+      renderedFraming.storyFocalX !== storyFocalX ||
+      renderedFraming.storyFocalY !== storyFocalY ||
+      renderedFraming.storyZoom !== storyZoom ||
       renderedFraming.photoId !== selectedPhotoId);
+
+  // Whichever placement the user is currently framing.
+  const isStoryFrame = previewFrame === "story";
+  const activeFocalX = isStoryFrame ? storyFocalX : focalX;
+  const activeFocalY = isStoryFrame ? storyFocalY : focalY;
+  const activeZoom = isStoryFrame ? storyZoom : photoZoom;
+  const setActiveFocal = (x: number, y: number) => {
+    if (isStoryFrame) { setStoryFocalX(x); setStoryFocalY(y); }
+    else { setFocalX(x); setFocalY(y); }
+  };
+  const setActiveZoom = (z: number) => (isStoryFrame ? setStoryZoom(z) : setPhotoZoom(z));
+  const resetActiveFraming = () => {
+    if (isStoryFrame) { setStoryFocalX(50); setStoryFocalY(50); setStoryZoom(1); }
+    else { setFocalX(50); setFocalY(50); setPhotoZoom(1); }
+  };
+  const FrameToggle = (
+    <div className="inline-flex rounded-md border bg-background p-0.5 text-[10px]">
+      {(["feed", "story"] as const).map((f) => (
+        <button
+          key={f}
+          type="button"
+          onClick={() => setPreviewFrame(f)}
+          className={cn(
+            "rounded px-2 py-0.5 capitalize transition",
+            previewFrame === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {f === "feed" ? "Feed 1:1" : "Story 9:16"}
+        </button>
+      ))}
+    </div>
+  );
 
   // ---- Step rail helpers -------------------------------------------------
   const stepIndex = step === "style" ? 0 : step === "image-copy" ? 1 : 2;
@@ -1612,39 +1673,43 @@ export function GenerateCreativeDialog() {
 
           {selectedPhoto && (
             <div className="space-y-3 rounded border border-border bg-muted/20 p-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Image framing</p>
-                <button
-                  type="button"
-                  className="text-[10px] text-muted-foreground underline"
-                  onClick={() => { setFocalX(50); setFocalY(50); setPhotoZoom(1); }}
-                >
-                  Reset
-                </button>
+                <div className="flex items-center gap-2">
+                  {FrameToggle}
+                  <button
+                    type="button"
+                    className="text-[10px] text-muted-foreground underline"
+                    onClick={resetActiveFraming}
+                  >
+                    Reset
+                  </button>
+                </div>
               </div>
               <p className="text-[11px] text-muted-foreground">
                 Drag the photo in the preview, or use the sliders, to choose what stays in frame.
+                Feed and story are framed separately — switch above to set each one.
               </p>
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Horizontal</p>
-                  <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(focalX)}%</span>
+                  <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(activeFocalX)}%</span>
                 </div>
-                <Slider min={0} max={100} step={1} value={[focalX]} onValueChange={(v) => setFocalX(v[0])} />
+                <Slider min={0} max={100} step={1} value={[activeFocalX]} onValueChange={(v) => setActiveFocal(v[0], activeFocalY)} />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Vertical</p>
-                  <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(focalY)}%</span>
+                  <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(activeFocalY)}%</span>
                 </div>
-                <Slider min={0} max={100} step={1} value={[focalY]} onValueChange={(v) => setFocalY(v[0])} />
+                <Slider min={0} max={100} step={1} value={[activeFocalY]} onValueChange={(v) => setActiveFocal(activeFocalX, v[0])} />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Zoom</p>
-                  <span className="text-[10px] text-muted-foreground tabular-nums">{photoZoom.toFixed(2)}x</span>
+                  <span className="text-[10px] text-muted-foreground tabular-nums">{activeZoom.toFixed(2)}x</span>
                 </div>
-                <Slider min={1} max={2.5} step={0.05} value={[photoZoom]} onValueChange={(v) => setPhotoZoom(v[0])} />
+                <Slider min={1} max={2.5} step={0.05} value={[activeZoom]} onValueChange={(v) => setActiveZoom(v[0])} />
               </div>
             </div>
           )}
@@ -1708,7 +1773,10 @@ export function GenerateCreativeDialog() {
 
   const previewPane = (
     <aside className="hidden md:flex flex-col gap-3 overflow-y-auto border-l bg-muted/20 px-4 py-5">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Preview</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Preview</p>
+        {FrameToggle}
+      </div>
       <LiveAdPreview
         copy={editedSingle}
         slides={editedSlides}
@@ -1731,10 +1799,11 @@ export function GenerateCreativeDialog() {
         logoUrl={brandLogoAsset?.url}
         showLogo={placeLogo}
         logoCorner={logoCorner}
-        focalX={focalX}
-        focalY={focalY}
-        photoZoom={photoZoom}
-        onFocalChange={(x, y) => { setFocalX(x); setFocalY(y); }}
+        frame={previewFrame}
+        focalX={activeFocalX}
+        focalY={activeFocalY}
+        photoZoom={activeZoom}
+        onFocalChange={setActiveFocal}
       />
       {refinePanel}
     </aside>
@@ -2205,13 +2274,16 @@ export function GenerateCreativeDialog() {
                         <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
                           Reposition the photo — drag it here
                         </p>
-                        <button
-                          type="button"
-                          className="text-[10px] text-muted-foreground underline"
-                          onClick={() => { setFocalX(50); setFocalY(50); setPhotoZoom(1); }}
-                        >
-                          Reset framing
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {FrameToggle}
+                          <button
+                            type="button"
+                            className="text-[10px] text-muted-foreground underline"
+                            onClick={resetActiveFraming}
+                          >
+                            Reset framing
+                          </button>
+                        </div>
                       </div>
                       <div className="max-w-[340px]">
                         <LiveAdPreview
@@ -2236,18 +2308,19 @@ export function GenerateCreativeDialog() {
                           logoUrl={brandLogoAsset?.url}
                           showLogo={placeLogo}
                           logoCorner={logoCorner}
-                          focalX={focalX}
-                          focalY={focalY}
-                          photoZoom={photoZoom}
-                          onFocalChange={(x, y) => { setFocalX(x); setFocalY(y); }}
+                          frame={previewFrame}
+                          focalX={activeFocalX}
+                          focalY={activeFocalY}
+                          photoZoom={activeZoom}
+                          onFocalChange={setActiveFocal}
                         />
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
                           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Zoom</p>
-                          <span className="text-[10px] text-muted-foreground tabular-nums">{photoZoom.toFixed(2)}x</span>
+                          <span className="text-[10px] text-muted-foreground tabular-nums">{activeZoom.toFixed(2)}x</span>
                         </div>
-                        <Slider min={1} max={2.5} step={0.05} value={[photoZoom]} onValueChange={(v) => setPhotoZoom(v[0])} />
+                        <Slider min={1} max={2.5} step={0.05} value={[activeZoom]} onValueChange={(v) => setActiveZoom(v[0])} />
                       </div>
                       {framingStale && (
                         <div className="flex items-center justify-between gap-2 rounded border border-primary/30 bg-primary/5 px-3 py-2">

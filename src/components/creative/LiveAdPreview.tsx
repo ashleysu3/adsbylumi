@@ -111,9 +111,13 @@ const FRAME_ASPECT: Partial<Record<Family, number>> = {
   collage: 1,
 };
 
-export function photoFrameAspect(template?: string): number {
+export function photoFrameAspect(template?: string, frame: "feed" | "story" = "feed"): number {
   const fam: Family = FAMILY[template || ""] || "overlay";
-  return FRAME_ASPECT[fam] ?? 1;
+  const base = FRAME_ASPECT[fam] ?? 1;
+  // Story canvas is 9:16, so every photo slot gets proportionally taller.
+  // The spotlight circle stays square in both placements.
+  if (frame === "story" && fam !== "spotlight") return base * (9 / 16);
+  return base;
 }
 
 
@@ -143,6 +147,7 @@ export function LiveAdPreview({
   focalY = 50,
   photoZoom = 1,
   onFocalChange,
+  frame = "feed",
 }: {
   copy?: Copy;
   slides?: Copy[];
@@ -169,6 +174,7 @@ export function LiveAdPreview({
   focalY?: number;
   photoZoom?: number;
   onFocalChange?: (x: number, y: number) => void;
+  frame?: "feed" | "story";
 }) {
   const [slideIdx, setSlideIdx] = useState(0);
   const total = slides?.length || 0;
@@ -627,7 +633,7 @@ export function LiveAdPreview({
   return (
     <div className="space-y-2">
       <div
-        className="relative aspect-square w-full overflow-hidden rounded-lg border border-border"
+        className={`relative w-full overflow-hidden rounded-lg border border-border ${frame === "story" ? "aspect-[9/16]" : "aspect-square"}`}
         style={{ backgroundColor: colors.bg }}
       >
         {body}
