@@ -11,6 +11,9 @@ import { Loader2, Palette, Upload, Building2, Eye, FileText, Users } from 'lucid
 import { supabase } from '@/integrations/supabase/client';
 import { useBrand } from '@/contexts/BrandContext';
 import { toast } from 'sonner';
+import { useAutosaveOnChange } from '@/hooks/useAutosave';
+import { AutoSaveIndicator } from '@/components/AutoSaveIndicator';
+
 
 interface AgencyBranding {
   id?: string;
