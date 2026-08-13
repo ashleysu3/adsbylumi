@@ -504,7 +504,7 @@ export function LiveAdPreview({
             {T(firstText(active, ["quote", "headline", "body"]))}
           </p>
           <div className="flex items-center gap-2">
-            {bgImage && <img src={bgImage} alt="" className="h-8 w-8 rounded-full object-cover" />}
+            {bgImage && <img src={bgImage} alt="" style={{ objectPosition: `${focalX}% ${focalY}%` }} className="h-8 w-8 rounded-full object-cover" />}
             <div>
               <p className="text-[11px] font-semibold" style={{ color: colors.ink, ...bFont }}>
                 {firstText(active, ["attribution", "name", "sub"])}
