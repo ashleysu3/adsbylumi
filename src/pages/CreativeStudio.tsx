@@ -1844,7 +1844,10 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
 
           <TabsContent value="build">
             <ProductionManager
+              onUploadOwnAds={() => { setShowBYOUploader(true); setActiveTab("angles"); }}
+              onOpenCreativeBrief={() => setShowBrief(true)}
               workspace={workspace}
+
               productionItems={productionItems}
               angles={availableAngles}
               selectedAngleIds={selectedAngleIds}
