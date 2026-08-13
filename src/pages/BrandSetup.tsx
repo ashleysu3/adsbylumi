@@ -43,23 +43,89 @@ const Swatch = ({ color, active, onClick }: { color: string; active?: boolean; o
   />
 );
 
+const DRAFT_KEY = "lumi:brand-setup-draft";
+
+type Draft = {
+  url: string;
+  data: ExtractResponse | null;
+  bg: string;
+  ink: string;
+  accent: string;
+  pop: string;
+  highlight: string;
+  cream: string;
+  displayUrl: string;
+  logoUrl: string;
+};
+
+const loadDraft = (): Partial<Draft> => {
+  try {
+    return JSON.parse(localStorage.getItem(DRAFT_KEY) || "{}");
+  } catch {
+    return {};
+  }
+};
+
 export default function BrandSetup() {
   const navigate = useNavigate();
   const { activeBrand } = useBrand();
-  const [url, setUrl] = useState("");
+  const initial = loadDraft();
+  const [url, setUrl] = useState(initial.url || "");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [data, setData] = useState<ExtractResponse | null>(null);
+  const [data, setData] = useState<ExtractResponse | null>(initial.data || null);
 
-  const [bg, setBg] = useState("");
-  const [ink, setInk] = useState("");
-  const [accent, setAccent] = useState("");
-  const [pop, setPop] = useState("");
-  const [highlight, setHighlight] = useState("");
-  const [cream, setCream] = useState("");
-  const [displayUrl, setDisplayUrl] = useState("");
-  const [logoUrl, setLogoUrl] = useState("");
+  const [bg, setBg] = useState(initial.bg || "");
+  const [ink, setInk] = useState(initial.ink || "");
+  const [accent, setAccent] = useState(initial.accent || "");
+  const [pop, setPop] = useState(initial.pop || "");
+  const [highlight, setHighlight] = useState(initial.highlight || "");
+  const [cream, setCream] = useState(initial.cream || "");
+  const [displayUrl, setDisplayUrl] = useState(initial.displayUrl || "");
+  const [logoUrl, setLogoUrl] = useState(initial.logoUrl || "");
   const [logoUploading, setLogoUploading] = useState(false);
+
+  const draft: Draft = { url, data, bg, ink, accent, pop, highlight, cream, displayUrl, logoUrl };
+
+  // Everything on this screen persists as you edit: the local draft survives a
+  // page refresh, and (once a brand is active) the kit is written to the
+  // database too, so leaving and coming back never loses the picks.
+  const { status: saveStatus } = useAutosaveOnChange<Draft>(
+    draft,
+    async (value) => {
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(value));
+      } catch {
+        // ignore quota errors
+      }
+      const { data: userRes } = await supabase.auth.getUser();
+      const userId = userRes.user?.id;
+      if (!userId || !activeBrand?.id || !value.data) return;
+      const { error } = await supabase.from("brand_kits").upsert(
+        {
+          user_id: userId,
+          brand_id: activeBrand.id,
+          source_url: value.url.trim(),
+          colors: {
+            bg: value.bg,
+            ink: value.ink,
+            accent: value.accent,
+            pop: value.pop,
+            highlight: value.highlight,
+            cream: value.cream,
+          },
+          fonts: { displayUrl: value.displayUrl, displayItalicUrl: value.displayUrl },
+          voice: value.data?.suggested?.voice || {},
+          logo_url: value.logoUrl || null,
+          status: "draft",
+        },
+        { onConflict: "user_id,brand_id" },
+      );
+      if (error) throw error;
+    },
+    { key: activeBrand?.id ?? "no-brand" },
+  );
+
 
   const handlePull = async () => {
     if (!url.trim()) {
