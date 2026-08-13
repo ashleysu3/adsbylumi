@@ -222,7 +222,9 @@ export function VideoTextPreview({
   trimEnd,
 }: VideoTextPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const playableUrl = usePlayableUrl(videoUrl);
   const containerRef = useRef<HTMLDivElement>(null);
+
   const [, setCurrentTime] = useState(0);
   const [timelineTime, setTimelineTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
