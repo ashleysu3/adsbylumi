@@ -77,7 +77,7 @@ serve(async (req) => {
     results.push(checkSchedule(answers));
     const landingPageResult = await checkLandingPage(resolvedUrl, brand);
     results.push(landingPageResult);
-    results.push(checkEventTracking(brand, template, landingPageResult));
+    results.push(checkEventTracking(brand, template, landingPageResult, trackingSetup));
     if (copyPreApproved) {
       results.push({ id: 'spelling', name: 'Spelling & Grammar', status: 'passed', message: 'Approved copy — skipped', details: 'Copy was already reviewed and approved.' });
       results.push({ id: 'ad_policy', name: 'Ad Policy', status: 'passed', message: 'Approved copy — skipped', details: 'Copy was already reviewed and approved.' });
