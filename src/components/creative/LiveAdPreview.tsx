@@ -151,6 +151,33 @@ export function LiveAdPreview({
   }[logoCorner];
 
   const T = (s: string) => applyCase(s, textCase);
+
+  // Readability helpers: where the copy sits + an optional color box/scrim behind it.
+  const justifyClass =
+    textPosition === "top" ? "justify-start" : textPosition === "middle" ? "justify-center" : "justify-end";
+  const alignItemsClass =
+    textAlign === "center" ? "items-center text-center" : textAlign === "right" ? "items-end text-right" : "items-start text-left";
+  const boxColor = textBoxColor || colors.bg;
+  const boxStyle: React.CSSProperties =
+    textBoxStyle === "box"
+      ? { backgroundColor: boxColor, opacity: 1, borderRadius: "0.5rem", padding: "0.85rem 1rem" }
+      : textBoxStyle === "scrim"
+        ? { backgroundColor: boxColor, borderRadius: "0.75rem", padding: "0.85rem 1rem" }
+        : {};
+  const TextStack = ({ children }: { children: React.ReactNode }) => (
+    <div
+      className={`flex w-fit max-w-full flex-col gap-2 ${alignItemsClass}`}
+      style={
+        textBoxStyle === "none"
+          ? undefined
+          : textBoxStyle === "scrim"
+            ? { ...boxStyle, backgroundColor: hexWithAlpha(boxColor, textBoxOpacity * 0.7) }
+            : { ...boxStyle, backgroundColor: hexWithAlpha(boxColor, textBoxOpacity) }
+      }
+    >
+      {children}
+    </div>
+  );
   const hFont = { fontFamily: displayFamily || undefined };
   const bFont = { fontFamily: bodyFamily || undefined };
   const hSize = (rem: number) => ({ fontSize: `${rem * headlineScale}rem` });
