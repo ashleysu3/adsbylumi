@@ -288,7 +288,7 @@ export function GenerateCreativeDialog() {
   const [template, setTemplate] = useState<string>("bigtype");
 
   // Two-step UX: pick a style, then provide image + copy.
-  const [step, setStep] = useState<"style" | "image-copy">("style");
+  const [step, setStep] = useState<"style" | "image-copy" | "render">("style");
   const [imageSource, setImageSource] = useState<"uploads" | "brand">("uploads");
 
   // Primary flow: remix a single real ad. Falls back to the template flow.
