@@ -791,6 +791,19 @@ Deno.serve(async (req) => {
     const budgetString = String(answers?.budget || '20').replace(/[$,\s]/g, '');
     const dailyBudgetCents = Math.round((parseInt(budgetString) || 20) * 100);
 
+    // Warm retargeting launches a SECOND ad set. It must be carved out of the
+    // budget the user already confirmed, not added on top of it — otherwise
+    // someone who confirmed "$X/day" gets a cold ad set at $X AND a warm ad
+    // set at another 0.5x on top, i.e. real daily spend is 1.5x what they
+    // set. Total across both ad sets always equals dailyBudgetCents.
+    const includesWarmRetargeting = Boolean(answers?.warmRetargeting);
+    const coldAdSetBudgetCents = includesWarmRetargeting
+      ? Math.round(dailyBudgetCents * 0.7)
+      : dailyBudgetCents;
+    const warmAdSetBudgetCents = includesWarmRetargeting
+      ? dailyBudgetCents - coldAdSetBudgetCents
+      : 0;
+
     // Step 1: Upload all assets to Meta — run in parallel with bounded
     // concurrency so 4+ video uploads don't serialize past the edge runtime
     // wall clock. Each sub-call gets its own timeout so a single hung upload
@@ -1112,7 +1125,7 @@ Deno.serve(async (req) => {
       optimization_goal: optimizationGoal,
       billing_event: 'IMPRESSIONS',
       bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
-      daily_budget: dailyBudgetCents.toString(),
+      daily_budget: coldAdSetBudgetCents.toString(),
       targeting: JSON.stringify(targeting),
       status: launchStatus,
       access_token: metaAccessToken
@@ -1198,7 +1211,7 @@ Deno.serve(async (req) => {
         optimization_goal: optimizationGoal,
         billing_event: 'IMPRESSIONS',
         bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
-        daily_budget: Math.round(dailyBudgetCents * 0.5).toString(),
+        daily_budget: warmAdSetBudgetCents.toString(),
         targeting: JSON.stringify(warmTargeting),
         status: launchStatus,
         access_token: metaAccessToken
