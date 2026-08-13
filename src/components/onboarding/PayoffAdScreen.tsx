@@ -613,8 +613,15 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       if (sendErr) throw sendErr;
 
       setPackState("sent");
-      setPackFormOpen(false);
-      if (!hasAccount) trackLumiEvent("Lead");
+      // Signed-in users are done. Leads stay in the dialog for the 50% offer,
+      // which replaces the old "ready to launch this now?" text link.
+      if (hasAccount) {
+        setPackFormOpen(false);
+      } else {
+        setPackStep("offer");
+        setPackFormOpen(true);
+        trackLumiEvent("Lead");
+      }
       // Save-in-place: the kit stays right here. Stamp the token onto this
       // URL (replace, not push — no back-button trap) so a refresh or a
       // bookmark of THIS page resolves to the permanent kit link, and let
