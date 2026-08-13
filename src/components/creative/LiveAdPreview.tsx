@@ -102,6 +102,11 @@ export function LiveAdPreview({
   textCase = "original",
   headlineScale = 1,
   bodyScale = 1,
+  textBoxStyle = "none",
+  textBoxColor,
+  textBoxOpacity = 0.85,
+  textPosition = "bottom",
+  textAlign = "left",
   logoUrl,
   showLogo,
   logoCorner = "br",
@@ -119,6 +124,11 @@ export function LiveAdPreview({
   textCase?: "original" | "upper" | "lower" | "title";
   headlineScale?: number;
   bodyScale?: number;
+  textBoxStyle?: "none" | "box" | "scrim";
+  textBoxColor?: string;
+  textBoxOpacity?: number;
+  textPosition?: "top" | "middle" | "bottom";
+  textAlign?: "left" | "center" | "right";
   logoUrl?: string;
   showLogo?: boolean;
   logoCorner?: "tl" | "tr" | "bl" | "br";
