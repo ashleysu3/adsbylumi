@@ -155,7 +155,7 @@ export default function Settings() {
   
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   
-  const { isLoading: subLoading, isSubscribed, tier, isAnnual, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription, isCodeBased, isTrial, status, discount, amountPaid, billingInterval } = useSubscription();
+  const { isLoading: subLoading, isSubscribed, tier, isAnnual, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription, isCodeBased, isTrial, status, discount, amountPaid, billingInterval, paymentMethod } = useSubscription();
 
   useEffect(() => {
     fetchData();
@@ -839,13 +839,23 @@ export default function Settings() {
                       {!isCodeBased && (
                         <div>
                           <p className="text-sm text-muted-foreground">Payment Method</p>
+                          <p className="text-lg font-medium capitalize">
+                            {paymentMethod
+                              ? `${paymentMethod.brand} •••• ${paymentMethod.last4}`
+                              : 'No card on file'}
+                          </p>
+                          {paymentMethod && (
+                            <p className="text-xs text-muted-foreground">
+                              Expires {String(paymentMethod.exp_month).padStart(2, '0')}/{String(paymentMethod.exp_year).slice(-2)}
+                            </p>
+                          )}
                           <Button 
                             variant="link" 
                             className="h-auto p-0 text-primary font-medium"
                             onClick={handleManageSubscription}
                             disabled={portalLoading}
                           >
-                            {portalLoading ? 'Loading...' : 'Update Card →'}
+                            {portalLoading ? 'Loading...' : paymentMethod ? 'Change card →' : 'Add a card →'}
                           </Button>
                         </div>
                       )}
@@ -879,6 +889,27 @@ export default function Settings() {
                       <CardDescription>Manage your payment methods and billing information</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                      <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 p-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <CreditCard className="h-5 w-5 text-primary flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium capitalize truncate">
+                              {paymentMethod
+                                ? `${paymentMethod.brand} ending in ${paymentMethod.last4}`
+                                : 'No card on file'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {paymentMethod
+                                ? `Expires ${String(paymentMethod.exp_month).padStart(2, '0')}/${String(paymentMethod.exp_year).slice(-2)}`
+                                : 'Add a card to keep your plan active'}
+                            </p>
+                          </div>
+                        </div>
+                        <Button size="sm" onClick={handleManageSubscription} disabled={portalLoading} variant="lumi" className="gap-2 flex-shrink-0">
+                          {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                          {paymentMethod ? 'Change card' : 'Add card'}
+                        </Button>
+                      </div>
                       <div className="grid gap-3 sm:grid-cols-2">
                         <Button onClick={handleManageSubscription} disabled={portalLoading} variant="lumi" className="gap-2">
                           {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
