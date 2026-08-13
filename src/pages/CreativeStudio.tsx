@@ -250,6 +250,35 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
   });
   const [contentIdeas, setContentIdeas] = useState<any[]>([]);
   const [brandId, setBrandId] = useState<string>("");
+
+  // ── Brand/offer isolation guard ────────────────────────────────────────────
+  // Generation calls are async. If the user switches brand or campaign while a
+  // request is in flight, the late response must NOT be written into state or
+  // saved — that's how another brand's concepts leaked into this brand's grid.
+  const genScopeRef = useRef<{ brandId?: string; workspaceId?: string; offerId?: string }>({});
+  useEffect(() => {
+    genScopeRef.current = {
+      brandId: activeBrand?.id,
+      workspaceId: workspace?.id,
+      offerId: workspace?.offer_id,
+    };
+  });
+  const captureScope = () => ({
+    brandId: activeBrand?.id,
+    workspaceId: workspace?.id,
+    offerId: workspace?.offer_id,
+  });
+  const isStaleScope = (s: { brandId?: string; workspaceId?: string; offerId?: string }) => {
+    const now = genScopeRef.current;
+    const stale =
+      now.brandId !== s.brandId || now.workspaceId !== s.workspaceId || now.offerId !== s.offerId;
+    if (stale) {
+      console.warn("[CreativeStudio] Discarding stale generation result", { was: s, now });
+    }
+    return stale;
+  };
+
+
   
   const [availableAngles, setAvailableAngles] = useState<CreativeAngle[]>([]);
   const [selectedAngleIds, setSelectedAngleIds] = useState<string[]>([]);
