@@ -205,12 +205,34 @@ export function LiveAdPreview({
       </p>
     ) : null;
 
-  const Headline = ({ size = 1.5, color = colors.ink, className = "" }: { size?: number; color?: string; className?: string }) =>
-    headline ? (
+  // The render engine draws headlinePre / headlineHL / headlinePost as three
+  // separately-colored runs (the HL run picks up the highlight color). The
+  // preview has to do the same or it reads as a different design entirely.
+  const hasSegments = Boolean(
+    (active.headlinePre && active.headlinePre.trim()) ||
+    (active.headlineHL && active.headlineHL.trim()) ||
+    (active.headlinePost && active.headlinePost.trim())
+  );
+
+  const Headline = ({ size = 1.5, color = colors.ink, className = "" }: { size?: number; color?: string; className?: string }) => {
+    if (hasSegments) {
+      return (
+        <p className={`font-bold leading-[1.06] ${className}`} style={{ color, ...hFont, ...hSize(size) }}>
+          {active.headlinePre?.trim() && <span>{T(active.headlinePre.trim())} </span>}
+          {active.headlineHL?.trim() && (
+            <span style={{ color: colors.accent }}>{T(active.headlineHL.trim())} </span>
+          )}
+          {active.headlinePost?.trim() && <span>{T(active.headlinePost.trim())}</span>}
+        </p>
+      );
+    }
+    return headline ? (
       <p className={`font-bold leading-[1.06] ${className}`} style={{ color, ...hFont, ...hSize(size) }}>
         {T(headline)}
       </p>
     ) : null;
+  };
+
 
   const Sub = ({ color = colors.ink, className = "" }: { color?: string; className?: string }) =>
     sub ? (
@@ -254,20 +276,28 @@ export function LiveAdPreview({
       break;
 
     case "framed":
+      // Engine layout: photo fills the left half, copy panel on the right in
+      // the background color, with a thin accent frame inset over the whole
+      // canvas and the CTA pill sitting under the headline.
       body = (
-        <div className="h-full p-3">
-          <div className="flex h-full flex-col gap-2 border p-3" style={{ borderColor: colors.ink }}>
-            <Eyebrow />
-            <Headline size={1.3} />
-            <Photo className="min-h-0 w-full flex-1 rounded-sm" />
-            <div className="flex items-center justify-between gap-2">
-              <Sub className="flex-1" />
-              <Cta />
+        <>
+          <div className="grid h-full grid-cols-[45%_1fr]">
+            <Photo className="h-full w-full" />
+            <div className="flex flex-col justify-center gap-2 px-4 py-5" style={{ backgroundColor: colors.bg }}>
+              <Eyebrow />
+              <Headline size={1.15} />
+              <Sub />
+              <Cta className="mt-2" />
             </div>
           </div>
-        </div>
+          <div
+            className="pointer-events-none absolute inset-3 border"
+            style={{ borderColor: colors.accent }}
+          />
+        </>
       );
       break;
+
 
     case "spotlight":
       body = (
