@@ -983,10 +983,10 @@ export function CreativeChecklistCard({
                                 // Tell them AND get them there in one click — a text-only
                                 // message still leaves the user to go find "My Brand" > "Style"
                                 // on their own.
-                                toast.info("Upload b-roll clips in My Brand first, then come back here — Lumi will pick the best one for this ad.", {
+                                toast.info("You don't have b-roll clips yet — add a few right here.", {
                                   action: {
                                     label: "Upload b-roll",
-                                    onClick: () => navigate("/style"),
+                                    onClick: () => setBrollFixOpen(true),
                                   },
                                 });
                               } else {
@@ -1109,12 +1109,12 @@ export function CreativeChecklistCard({
                               <Alert>
                                 <Info className="h-4 w-4" />
                                 <AlertDescription className="text-xs flex items-center justify-between gap-2">
-                                  <span>Upload b-roll clips in My Brand to see Lumi-matched previews here.</span>
+                                  <span>Upload b-roll clips to see Lumi-matched previews here.</span>
                                   <Button
                                     variant="outline"
                                     size="sm"
                                     className="h-6 text-[11px] shrink-0"
-                                    onClick={() => navigate("/style")}
+                                    onClick={() => setBrollFixOpen(true)}
                                   >
                                     Upload b-roll
                                   </Button>
