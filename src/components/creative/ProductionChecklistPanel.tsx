@@ -537,9 +537,25 @@ export function ProductionChecklistPanel({
                                   onClick={() => {
                                     window.dispatchEvent(
                                       new CustomEvent("creative-brief:generate", {
-                                        detail: { itemId: item.id, brief: item.brief },
+                                        detail: {
+                                          itemId: item.id,
+                                          brief: {
+                                            ...(item.brief as any),
+                                            conceptDetail: {
+                                              hook: item.hook || null,
+                                              angleName: item.angleName || null,
+                                              guidance: item.guidance || null,
+                                              psychologyTrigger: (item as any).psychology_trigger || null,
+                                              whyThisWorks: (item as any).why_this_works || null,
+                                              textOverlays: Array.isArray((item as any).text_overlays)
+                                                ? (item as any).text_overlays
+                                                : null,
+                                            },
+                                          },
+                                        },
                                       })
                                     );
+
                                     toast.success("Brief queued for the generator");
                                   }}
                                 >
