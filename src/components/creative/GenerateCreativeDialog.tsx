@@ -12,6 +12,8 @@ import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { LiveAdPreview } from "./LiveAdPreview";
 import { HexColorPicker } from "react-colorful";
 import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff, Info, ImagePlus, Star, Compass } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -286,7 +288,7 @@ export function GenerateCreativeDialog() {
   const [template, setTemplate] = useState<string>("bigtype");
 
   // Two-step UX: pick a style, then provide image + copy.
-  const [step, setStep] = useState<"style" | "image-copy">("style");
+  const [step, setStep] = useState<"style" | "image-copy" | "render">("style");
   const [imageSource, setImageSource] = useState<"uploads" | "brand">("uploads");
 
   // Primary flow: remix a single real ad. Falls back to the template flow.
@@ -334,33 +336,41 @@ export function GenerateCreativeDialog() {
   // "Show me what to do" tour steps for whichever internal screen is
   // currently showing.
   const dialogTourSteps: TourStep[] = (() => {
-    if (mode === "remix") {
-      return [{
-        targetSelector: '[data-help-target="remix-this-ad"]',
-        title: "Remix a real ad",
-        description: "Pick a board, then click an image to select it — the button at the bottom lights up once you have. Lumi matches the layout and rewrites the copy for your offer.",
-      }];
-    }
     if (step === "style") {
+      if (mode === "remix") {
+        return [{
+          targetSelector: '[data-help-target="remix-this-ad"]',
+          title: "Remix a real ad",
+          description: "Pick a board, then click an image to select it — the button at the bottom lights up once you have. Lumi matches the layout and rewrites the copy for your offer.",
+        }];
+      }
       return [{
         targetSelector: '[data-help-target="style-next"]',
         title: "Choose a style",
         description: "Click any template to select it — you can change it later. Once you've picked one, hit Next to move on to the photo and copy.",
       }];
     }
-    if (images.length === 0) {
+    if (step === "image-copy") {
       return [{
         targetSelector: '[data-help-target="render-creative"]',
         title: "Image & copy",
-        description: "Pick a photo, tweak the copy if you want, then render — that's the button at the bottom.",
+        description: "Pick a photo and tweak the copy — the preview on the right updates as you type. Then hit Render.",
+      }];
+    }
+    if (images.length === 0) {
+      return [{
+        targetSelector: '[data-help-target="render-creative"]',
+        title: "Render",
+        description: "Hit Render to build your ad. Nothing saves until you approve it.",
       }];
     }
     return [{
       targetSelector: '[data-help-target="approve-creative"]',
-      title: "Image & copy",
-      description: "Renders are ready. Approve them below to save this creative — that closes this dialog for you.",
+      title: "Approve your renders",
+      description: "Renders are ready. Approve them to save this creative — that closes this dialog for you.",
     }];
   })();
+
 
   // Copy feedback dialog
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -1309,279 +1319,437 @@ export function GenerateCreativeDialog() {
     (!needsPhoto || !!selectedPhoto) &&
     copyReady;
 
+  // ---- Step rail helpers -------------------------------------------------
+  const stepIndex = step === "style" ? 0 : step === "image-copy" ? 1 : 2;
+  const stepLabels = ["Style", "Image & copy", "Render"];
+  const goToStep = (i: number) => {
+    if (i > stepIndex) return;
+    setStep(i === 0 ? "style" : i === 1 ? "image-copy" : "render");
+  };
+
+  // The refine controls live collapsed next to the preview and pop open after
+  // the first successful render, when tweaking is what you actually want.
+  const [refineValue, setRefineValue] = useState<string[]>([]);
+  useEffect(() => {
+    if (images.length > 0) setRefineValue(["refine"]);
+  }, [images.length]);
+
+  const briefStrip = brief ? (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border bg-muted/30 px-3 py-2 text-xs">
+      <Badge variant="outline" className="text-[10px] uppercase">{brief.format}</Badge>
+      <Badge variant="secondary" className="text-[10px] uppercase">
+        {activeCustom ? activeCustom.name : (BUILT_IN_LABELS[template] || template)}
+      </Badge>
+      {brief.styleHint && <Badge variant="outline" className="text-[10px]">{brief.styleHint}</Badge>}
+      {brief.angle && <Badge variant="outline" className="text-[10px]">{brief.angle}</Badge>}
+      <span className="text-muted-foreground truncate">{brief.keyMessage}</span>
+    </div>
+  ) : null;
+
+  const refinePanel = (
+    <Accordion type="multiple" value={refineValue} onValueChange={setRefineValue}>
+      <AccordionItem value="refine" className="border rounded-lg bg-background px-3">
+        <AccordionTrigger className="py-2.5 text-xs font-medium hover:no-underline">
+          Refine look &amp; feel
+        </AccordionTrigger>
+        <AccordionContent className="space-y-4 pb-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Colors</p>
+            <div className="grid grid-cols-6 gap-1.5">
+              {(Object.keys(colors) as Array<keyof Colors>).map((k) => (
+                <Popover key={k}>
+                  <PopoverTrigger asChild>
+                    <button type="button" className="group flex flex-col items-center gap-1" aria-label={`Edit ${k} color`}>
+                      <span
+                        className="h-8 w-full rounded-md border border-border shadow-sm transition group-hover:scale-[1.03]"
+                        style={{ backgroundColor: colors[k] }}
+                      />
+                      <span className="text-[9px] text-muted-foreground capitalize">{k}</span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-3" align="start">
+                    <HexColorPicker
+                      color={colors[k]}
+                      onChange={(v) => setColors((prev) => ({ ...prev, [k]: v }))}
+                    />
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-[10px] uppercase text-muted-foreground capitalize">{k}</span>
+                      <Input
+                        value={colors[k]}
+                        onChange={(e) => setColors((prev) => ({ ...prev, [k]: e.target.value }))}
+                        className="h-7 text-xs font-mono"
+                      />
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Text case</p>
+            <ToggleGroup
+              type="single"
+              size="sm"
+              value={textCase}
+              onValueChange={(v) => v && setTextCase(v as typeof textCase)}
+              className="justify-start"
+            >
+              <ToggleGroupItem value="original" className="text-xs">Original</ToggleGroupItem>
+              <ToggleGroupItem value="upper" className="text-xs">UPPER</ToggleGroupItem>
+              <ToggleGroupItem value="lower" className="text-xs">lower</ToggleGroupItem>
+              <ToggleGroupItem value="title" className="text-xs">Title</ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+
+          {template === "nativecaption" && (
+            <div className="space-y-3 rounded border border-border bg-muted/20 p-3">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Text readability</p>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Text color</p>
+                <ToggleGroup
+                  type="single"
+                  size="sm"
+                  value={textColor}
+                  onValueChange={(v) => v && setTextColor(v as typeof textColor)}
+                  className="justify-start"
+                >
+                  <ToggleGroupItem value="auto" className="text-xs">Auto</ToggleGroupItem>
+                  <ToggleGroupItem value="light" className="text-xs">Light</ToggleGroupItem>
+                  <ToggleGroupItem value="dark" className="text-xs">Dark</ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-medium">Background behind the text</p>
+                  <p className="text-[11px] text-muted-foreground">Helps text stand out over a busy photo.</p>
+                </div>
+                <Switch checked={textBackdrop} onCheckedChange={setTextBackdrop} />
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Headline size</p>
+                <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(headlineScale * 100)}%</span>
+              </div>
+              <Slider min={0.6} max={1.6} step={0.05} value={[headlineScale]} onValueChange={(v) => setHeadlineScale(v[0])} />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Body size</p>
+                <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(bodyScale * 100)}%</span>
+              </div>
+              <Slider min={0.6} max={1.6} step={0.05} value={[bodyScale]} onValueChange={(v) => setBodyScale(v[0])} />
+            </div>
+          </div>
+
+          {needsPhoto && (
+            <div className="flex items-center justify-between gap-2 rounded border border-border bg-muted/20 px-3 py-2">
+              <div>
+                <p className="text-xs font-medium">
+                  {removeBackground ? "Background removed" : "Original background"}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {removeBackground ? "We'll cut your subject out." : "Keep the photo as-is."}
+                </p>
+              </div>
+              <Switch checked={removeBackground} onCheckedChange={setRemoveBackground} />
+            </div>
+          )}
+
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              className="text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+              onClick={() => { setTextCase("original"); setHeadlineScale(1); setBodyScale(1); }}
+            >
+              Reset tweaks
+            </button>
+            {images.length > 0 && (
+              <Button size="sm" variant="outline" onClick={generate} disabled={generating || !canRender}>
+                {generating ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Rendering…</> : <><Sparkles className="h-3 w-3 mr-1" /> Re-render</>}
+              </Button>
+            )}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+
+  const previewPane = (
+    <aside className="hidden md:flex flex-col gap-3 overflow-y-auto border-l bg-muted/20 px-4 py-5">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Preview</p>
+      <LiveAdPreview
+        copy={editedSingle}
+        slides={editedSlides}
+        isCarousel={isCarousel}
+        colors={colors}
+        displayFamily={displayFamily}
+        bodyFamily={bodyFamily}
+        photoUrl={selectedPhoto?.url}
+        backgroundUrl={bgSelectedUrl || undefined}
+        textCase={textCase}
+        headlineScale={headlineScale}
+        bodyScale={bodyScale}
+        logoUrl={brandLogoAsset?.url}
+        showLogo={placeLogo}
+        logoCorner={logoCorner}
+      />
+      {refinePanel}
+    </aside>
+  );
+
   return (
     <>
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Wand2 className="h-5 w-5 text-primary" />
-            Generate this creative (beta)
-          </DialogTitle>
-          <DialogDescription>
-            {brief?.concept || "Generate copy + render using your brand kit."}
-          </DialogDescription>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-            <span>Brand kit:</span>
-            <span className="font-medium text-foreground">{activeBrand?.name || "—"}</span>
-            <div className="flex items-center gap-1">
-              {(Object.keys(colors) as Array<keyof Colors>).map((k) => (
-                <span
-                  key={k}
-                  title={`${k}: ${colors[k]}`}
-                  className="h-3 w-3 rounded border border-border"
-                  style={{ backgroundColor: colors[k] }}
-                />
-              ))}
+      <DialogContent className="max-w-6xl max-h-[92vh] flex flex-col gap-0 p-0 overflow-hidden">
+        <DialogHeader className="space-y-3 border-b px-6 pb-4 pt-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <DialogTitle className="flex items-center gap-2">
+                <Wand2 className="h-5 w-5 text-primary" />
+                Generate this creative
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                {brief?.concept || "Write copy and render this ad in your brand kit."}
+              </DialogDescription>
             </div>
-            <span className="ml-1 opacity-70">If this isn't right, switch brands in the sidebar.</span>
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <Badge
+                variant="outline"
+                className="text-[10px] uppercase"
+                title="This generator is in beta — bugs are expected. If you hit one, send us a screenshot!"
+              >
+                Beta
+              </Badge>
+              <span
+                className="flex items-center gap-1.5"
+                title="Switch brands in the sidebar if this isn't the right brand kit."
+              >
+                Brand kit:
+                <span className="font-medium text-foreground">{activeBrand?.name || "—"}</span>
+                <span className="flex items-center gap-0.5">
+                  {(Object.keys(colors) as Array<keyof Colors>).map((k) => (
+                    <span
+                      key={k}
+                      title={`${k}: ${colors[k]}`}
+                      className="h-3 w-3 rounded border border-border"
+                      style={{ backgroundColor: colors[k] }}
+                    />
+                  ))}
+                </span>
+              </span>
+              <button
+                type="button"
+                className="relative overflow-hidden flex items-center gap-1 text-[11px] font-medium text-white bg-gradient-lumi rounded-full px-2.5 py-1 shadow-lumi hover:shadow-glow transition-shadow disabled:opacity-50 disabled:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent before:animate-shimmer"
+                onClick={() => setTourOpen(true)}
+                disabled={dialogTourSteps.length === 0}
+              >
+                <Compass className="h-3 w-3" />
+                Show me what to do
+              </button>
+            </div>
+          </div>
+
+          {/* Step rail — identical in both modes */}
+          <div className="flex items-center gap-2">
+            {stepLabels.map((label, i) => (
+              <div key={label} className="flex items-center gap-2">
+                {i > 0 && <span className="h-px w-6 bg-border" />}
+                <button
+                  type="button"
+                  onClick={() => goToStep(i)}
+                  disabled={i > stepIndex}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition",
+                    i === stepIndex
+                      ? "bg-primary text-primary-foreground"
+                      : i < stepIndex
+                        ? "bg-muted text-foreground hover:bg-muted/70"
+                        : "text-muted-foreground",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex h-4 w-4 items-center justify-center rounded-full text-[9px]",
+                      i === stepIndex ? "bg-primary-foreground/20" : "bg-border/60",
+                    )}
+                  >
+                    {i + 1}
+                  </span>
+                  {label}
+                </button>
+              </div>
+            ))}
           </div>
         </DialogHeader>
-
-        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-start gap-2 text-sm">
-          <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium text-foreground">Beta feature</p>
-            <p className="text-muted-foreground text-xs">
-              This generator is in beta — bugs are expected. If you run into one, please send us screenshots and bug reports!
-            </p>
-          </div>
-        </div>
-
-        {/* Mode toggle + step indicator */}
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-1 rounded bg-primary text-primary-foreground">
-              {mode === "remix" ? "Remix a real ad" : (step === "style" ? "1. Style" : "2. Image & copy")}
-            </span>
-            {mode === "template" && (
-              <>
-                <span className="text-muted-foreground">→</span>
-                <span
-                  className={`px-2 py-1 rounded ${step === "image-copy" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
-                >
-                  2. Image &amp; copy
-                </span>
-              </>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="relative overflow-hidden flex items-center gap-1 text-[11px] font-medium text-white bg-gradient-lumi rounded-full px-2.5 py-1 shadow-lumi hover:shadow-glow transition-shadow disabled:opacity-50 disabled:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent before:animate-shimmer"
-              onClick={() => setTourOpen(true)}
-              disabled={dialogTourSteps.length === 0}
-            >
-              <Compass className="h-3 w-3" />
-              Show me what to do
-            </button>
-            <button
-              type="button"
-              className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
-              onClick={() => {
-                if (mode === "remix") {
-                  setMode("template");
-                  setStep("style");
-                } else {
-                  setMode("remix");
-                  setReferenceAnalysis(null);
-                }
-              }}
-            >
-              {mode === "remix" ? "Use a template instead" : "Remix a real ad instead"}
-            </button>
-          </div>
-        </div>
 
         {tourOpen && dialogTourSteps.length > 0 && (
           <GuidedTour steps={dialogTourSteps} onClose={() => setTourOpen(false)} />
         )}
 
-        <div className="flex-1 overflow-y-auto -mx-6 px-6">
-          {brief && (
-            <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 my-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="outline" className="text-[10px] uppercase">{brief.format}</Badge>
-                <Badge variant="secondary" className="text-[10px] uppercase">
-                  {activeCustom ? activeCustom.name : (BUILT_IN_LABELS[template] || template)}
-                </Badge>
-                {brief.styleHint && <Badge variant="outline" className="text-[10px]">{brief.styleHint}</Badge>}
-                {brief.angle && <Badge variant="outline" className="text-[10px]">{brief.angle}</Badge>}
-              </div>
-              <p className="text-xs text-muted-foreground"><b>Key message:</b> {brief.keyMessage}</p>
-              {brief.offer && <p className="text-xs text-muted-foreground"><b>Offer:</b> {brief.offer}</p>}
-            </div>
-          )}
+        {/* ---------------- BODY ---------------- */}
+        {step === "style" ? (
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+            {briefStrip}
 
-          {mode === "remix" ? (
-            /* ---------- REMIX A REAL AD FLOW (default) ---------- */
-            <div className="space-y-4 py-2 relative">
-              <div>
-                <Label className="text-sm font-medium flex items-center gap-2">
-                  <ImagePlus className="h-4 w-4 text-primary" />
-                  Pick one ad to remix
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Choose a real ad you like — LUMI matches its layout and typographic feel, then writes copy for your offer and renders it in your brand colors.
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => { setMode("template"); setReferenceAnalysis(null); }}
+                className={cn(
+                  "rounded-xl border-2 p-4 text-left transition",
+                  mode === "template" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground",
+                )}
+              >
+                <p className="flex items-center gap-2 text-sm font-medium">
+                  <Sparkles className="h-4 w-4 text-primary" /> Use a template
                 </p>
-              </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Pick a layout we've already designed. Fastest way to a finished ad.
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode("remix"); setReferenceAnalysis(null); }}
+                className={cn(
+                  "rounded-xl border-2 p-4 text-left transition",
+                  mode === "remix" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground",
+                )}
+              >
+                <p className="flex items-center gap-2 text-sm font-medium">
+                  <ImagePlus className="h-4 w-4 text-primary" /> Remix a real ad
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Choose an ad you saved to a board — Lumi matches its layout for your offer.
+                </p>
+              </button>
+            </div>
 
-              {boardsLoading ? (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Loading your boards…
-                </div>
-              ) : boards.length === 0 ? (
-                <div className="rounded border border-dashed p-6 text-sm text-muted-foreground space-y-2">
-                  <p>You don't have any inspiration boards yet.</p>
-                  <Button size="sm" variant="outline" onClick={() => { setOpen(false); navigate("/boards"); }}>
-                    Go to Inspiration
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs uppercase text-muted-foreground">Board</Label>
-                    <Select
-                      value={selectedBoardId}
-                      onValueChange={(v) => { setSelectedBoardId(v); setSelectedRemixImageId(""); setReferenceAnalysis(null); }}
-                    >
-                      <SelectTrigger className="h-8 text-sm w-72">
-                        <SelectValue placeholder="Choose a board" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {boards.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+            {mode === "remix" ? (
+              /* ---------- Remix picker ---------- */
+              <div className="space-y-4">
+                {boardsLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Loading your boards…
                   </div>
-
-                  {boardImagesLoading ? (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="h-3 w-3 animate-spin" /> Loading images…
-                    </div>
-                  ) : boardImages.length === 0 ? (
-                    <div className="rounded border border-dashed p-6 text-sm text-muted-foreground space-y-2">
-                      <p>This board has no images yet. Add at least 1 ad to this board first.</p>
-                      <Button size="sm" variant="outline" onClick={() => { setOpen(false); navigate(`/boards/${selectedBoardId}`); }}>
-                        Open board
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                      {boardImages.map((img) => {
-                        const active = selectedRemixImageId === img.id;
-                        return (
-                          <button
-                            key={img.id}
-                            type="button"
-                            onClick={() => { setSelectedRemixImageId(img.id); setReferenceAnalysis(null); }}
-                            className={`relative aspect-square rounded border-2 overflow-hidden transition ${
-                              active ? "border-primary ring-2 ring-primary/30" : "border-border hover:border-muted-foreground"
-                            }`}
-                          >
-                            <img src={img.url} alt="" className="w-full h-full object-cover" />
-                            {active && (
-                              <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-semibold rounded-full h-5 w-5 flex items-center justify-center">
-                                ✓
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-end pt-2">
-                    <Button
-                      data-help-target="remix-this-ad"
-                      size="lg"
-                      onClick={runAnalyzeReference}
-                      disabled={analyzingReference || !selectedRemixImageId}
-                    >
-                      {analyzingReference ? (
-                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analyzing this ad…</>
-                      ) : (
-                        <><Wand2 className="h-4 w-4 mr-2" /> Remix this ad</>
-                      )}
+                ) : boards.length === 0 ? (
+                  <div className="rounded border border-dashed p-6 text-sm text-muted-foreground space-y-2">
+                    <p>You don't have any inspiration boards yet.</p>
+                    <Button size="sm" variant="outline" onClick={() => { setOpen(false); navigate("/boards"); }}>
+                      Go to Inspiration
                     </Button>
                   </div>
-                </>
-              )}
-            </div>
-          ) : step === "style" ? (
-            /* ---------- SCREEN 1: Choose a style ---------- */
-            <div className="space-y-4 py-2 relative">
-              <div>
-                <Label className="text-sm font-medium">Choose a style</Label>
-                <p className="text-xs text-muted-foreground">
-                  Pick the layout for this ad. You can change it later.
-                </p>
-              </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs uppercase text-muted-foreground">Board</Label>
+                      <Select
+                        value={selectedBoardId}
+                        onValueChange={(v) => { setSelectedBoardId(v); setSelectedRemixImageId(""); setReferenceAnalysis(null); }}
+                      >
+                        <SelectTrigger className="h-8 text-sm w-72">
+                          <SelectValue placeholder="Choose a board" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {boards.map((b) => (
+                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-              {brandBackgroundAssets.length === 0 && (
-                <div className="rounded-md border border-dashed bg-muted/30 p-2.5 text-[11px] text-muted-foreground">
-                  ✨ Tip: add background or texture examples in <b>Brand Assets</b> for more on-brand AI backgrounds.
+                    {boardImagesLoading ? (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Loading images…
+                      </div>
+                    ) : boardImages.length === 0 ? (
+                      <div className="rounded border border-dashed p-6 text-sm text-muted-foreground space-y-2">
+                        <p>This board has no images yet. Add at least 1 ad to this board first.</p>
+                        <Button size="sm" variant="outline" onClick={() => { setOpen(false); navigate(`/boards/${selectedBoardId}`); }}>
+                          Open board
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                        {boardImages.map((img) => {
+                          const active = selectedRemixImageId === img.id;
+                          return (
+                            <button
+                              key={img.id}
+                              type="button"
+                              onClick={() => { setSelectedRemixImageId(img.id); setReferenceAnalysis(null); }}
+                              className={`relative aspect-square rounded border-2 overflow-hidden transition ${
+                                active ? "border-primary ring-2 ring-primary/30" : "border-border hover:border-muted-foreground"
+                              }`}
+                            >
+                              <img src={img.url} alt="" className="w-full h-full object-cover" />
+                              {active && (
+                                <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-semibold rounded-full h-5 w-5 flex items-center justify-center">
+                                  ✓
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            ) : (
+              /* ---------- Template picker ---------- */
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-sm font-medium">Choose a style</Label>
+                  <p className="text-xs text-muted-foreground">Pick the layout for this ad. You can change it later.</p>
                 </div>
-              )}
-
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {styleCards.map((card) => {
-                  const active = card.key === activeStyleKey;
-                  return (
-                    <button
-                      key={card.key}
-                      type="button"
-                      onClick={() => pickStyle(card)}
-                      className={`group relative rounded-lg border-2 overflow-hidden text-left transition ${
-                        active ? "border-primary shadow-sm" : "border-border hover:border-muted-foreground"
-                      }`}
-                    >
-                      <div className="aspect-square bg-muted/40 flex items-center justify-center overflow-hidden">
-                        {card.thumb ? (
-                          <img
-                            src={card.thumb}
-                            alt={card.label}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.currentTarget as HTMLImageElement).style.display = "none";
-                            }}
-                          />
-                        ) : card.builtIn ? (
-                          <TemplatePreview kind={card.builtIn} />
-                        ) : (
-                          <span className="text-[10px] uppercase text-muted-foreground">No preview</span>
-                        )}
-                      </div>
-                      <div className="px-2 py-1.5 text-xs flex items-center justify-between gap-2">
-                        <span className="truncate">{card.label}</span>
-                        {card.isCustom && (
-                          <Badge variant="outline" className="text-[9px] uppercase shrink-0">Custom</Badge>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                  {styleCards.map((card) => {
+                    const active = card.key === activeStyleKey;
+                    return (
+                      <button
+                        key={card.key}
+                        type="button"
+                        onClick={() => pickStyle(card)}
+                        className={`group relative rounded-lg border-2 overflow-hidden text-left transition ${
+                          active ? "border-primary shadow-sm" : "border-border hover:border-muted-foreground"
+                        }`}
+                      >
+                        <div className="aspect-square bg-muted/40 flex items-center justify-center overflow-hidden">
+                          {card.thumb ? (
+                            <img
+                              src={card.thumb}
+                              alt={card.label}
+                              className="w-full h-full object-cover"
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                            />
+                          ) : card.builtIn ? (
+                            <TemplatePreview kind={card.builtIn} />
+                          ) : (
+                            <span className="text-[10px] uppercase text-muted-foreground">No preview</span>
+                          )}
+                        </div>
+                        <div className="px-2 py-1.5 text-xs flex items-center justify-between gap-2">
+                          <span className="truncate">{card.label}</span>
+                          {card.isCustom && (
+                            <Badge variant="outline" className="text-[9px] uppercase shrink-0">Custom</Badge>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-
-              <div className="flex items-center justify-end pt-2">
-                <Button
-                  data-help-target="style-next"
-                  size="lg"
-                  onClick={() => setStep("image-copy")}
-                  disabled={!activeStyleKey}
-                >
-                  Next →
-                </Button>
-              </div>
-            </div>
-          ) : (
-            /* ---------- SCREEN 2: Image & copy ---------- */
-            <div className="space-y-4 py-2 relative">
-              <Button variant="ghost" size="sm" onClick={() => setStep("style")} className="-ml-2">
-                ← Back to styles
-              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="grid flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_360px] overflow-hidden">
+            <div className="overflow-y-auto px-6 py-5 space-y-5">
+              {briefStrip}
 
               {referenceAnalysis && (
                 <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs space-y-1">
@@ -1597,72 +1765,13 @@ export function GenerateCreativeDialog() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr,1.1fr] gap-6">
-                <div className="space-y-5">
-                  {/* Brand background generator (beta) */}
-                  <div className="rounded border border-primary/30 bg-primary/5 p-3 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <Label className="text-xs uppercase text-primary flex items-center gap-1">
-                          <Sparkles className="h-3 w-3" /> Brand background (beta)
-                        </Label>
-                        <p className="text-[11px] text-muted-foreground">
-                          Generate a clean on-brand background — no faces. Your headshot, copy &amp; logo layer on top.
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant={bgOptions.length ? "outline" : "default"}
-                        onClick={runBrandBackground}
-                        disabled={bgGenerating}
-                      >
-                        {bgGenerating ? (
-                          <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Generating…</>
-                        ) : bgOptions.length ? (
-                          <><RefreshCw className="h-3 w-3 mr-1" /> Regenerate</>
-                        ) : (
-                          <>Generate</>
-                        )}
-                      </Button>
-                    </div>
-                    {brandBackgroundAssets.length === 0 && (
-                      <p className="text-[11px] text-muted-foreground">
-                        Tip: add background or texture examples in <b>Brand Assets</b> for more on-brand results.
-                      </p>
-                    )}
-                    {bgOptions.length > 0 && (
-                      <div className="grid grid-cols-4 gap-2 pt-1">
-                        {bgOptions.map((o) => (
-                          <button
-                            key={o.path}
-                            type="button"
-                            onClick={() => setBgSelectedUrl(o.url === bgSelectedUrl ? "" : o.url)}
-                            className={`relative aspect-square rounded border-2 overflow-hidden transition ${
-                              bgSelectedUrl === o.url ? "border-primary" : "border-border hover:border-muted-foreground"
-                            }`}
-                            title={`Background ${o.aspect}`}
-                          >
-                            <img src={o.url} alt="" className="w-full h-full object-cover" />
-                            <span className="absolute bottom-0 left-0 right-0 text-[9px] uppercase text-white bg-black/55 py-0.5 text-center leading-none">
-                              {o.aspect}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {bgSelectedUrl && (
-                      <p className="text-[11px] text-primary">✓ Will be sent as <code>backgroundUrl</code> to the renderer.</p>
-                    )}
-                  </div>
-
-                  {/* Image source */}
+              {step === "image-copy" ? (
+                <>
+                  {/* Image */}
                   {needsPhoto && (
                     <div className="space-y-2">
-                      <Label className="text-xs uppercase text-muted-foreground">Image source</Label>
-                      <Tabs
-                        value={imageSource}
-                        onValueChange={(v) => setImageSource(v as "uploads" | "brand")}
-                      >
+                      <Label className="text-xs uppercase text-muted-foreground">Your image</Label>
+                      <Tabs value={imageSource} onValueChange={(v) => setImageSource(v as "uploads" | "brand")}>
                         <TabsList className="w-full">
                           <TabsTrigger value="uploads" className="flex-1">Your uploads</TabsTrigger>
                           <TabsTrigger value="brand" className="flex-1">Brand library</TabsTrigger>
@@ -1716,7 +1825,6 @@ export function GenerateCreativeDialog() {
                         </div>
                       )}
 
-
                       {brandLogoAsset && (
                         <div className="rounded border bg-muted/30 p-2 space-y-2 mt-2">
                           <label className="flex items-center gap-2 text-xs">
@@ -1741,251 +1849,136 @@ export function GenerateCreativeDialog() {
                           )}
                         </div>
                       )}
+
+                      {/* AI brand background (optional) */}
+                      <Accordion type="single" collapsible>
+                        <AccordionItem value="bg" className="border rounded-lg px-3">
+                          <AccordionTrigger className="py-2.5 text-xs font-medium hover:no-underline">
+                            <span className="flex items-center gap-1.5">
+                              <Sparkles className="h-3 w-3 text-primary" /> Generate a brand background (optional)
+                            </span>
+                          </AccordionTrigger>
+                          <AccordionContent className="space-y-2 pb-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-[11px] text-muted-foreground">
+                                A clean on-brand background — no faces. Your photo, copy &amp; logo layer on top.
+                              </p>
+                              <Button
+                                size="sm"
+                                variant={bgOptions.length ? "outline" : "default"}
+                                onClick={runBrandBackground}
+                                disabled={bgGenerating}
+                              >
+                                {bgGenerating ? (
+                                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Generating…</>
+                                ) : bgOptions.length ? (
+                                  <><RefreshCw className="h-3 w-3 mr-1" /> Regenerate</>
+                                ) : (
+                                  <>Generate</>
+                                )}
+                              </Button>
+                            </div>
+                            {brandBackgroundAssets.length === 0 && (
+                              <p className="text-[11px] text-muted-foreground">
+                                Tip: add background or texture examples in <b>Brand Assets</b> for more on-brand results.
+                              </p>
+                            )}
+                            {bgOptions.length > 0 && (
+                              <div className="grid grid-cols-4 gap-2 pt-1">
+                                {bgOptions.map((o) => (
+                                  <button
+                                    key={o.path}
+                                    type="button"
+                                    onClick={() => setBgSelectedUrl(o.url === bgSelectedUrl ? "" : o.url)}
+                                    className={`relative aspect-square rounded border-2 overflow-hidden transition ${
+                                      bgSelectedUrl === o.url ? "border-primary" : "border-border hover:border-muted-foreground"
+                                    }`}
+                                    title={`Background ${o.aspect}`}
+                                  >
+                                    <img src={o.url} alt="" className="w-full h-full object-cover" />
+                                    <span className="absolute bottom-0 left-0 right-0 text-[9px] uppercase text-white bg-black/55 py-0.5 text-center leading-none">
+                                      {o.aspect}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {bgSelectedUrl && (
+                              <p className="text-[11px] text-primary">✓ This background will sit behind your layout.</p>
+                            )}
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
                     </div>
                   )}
 
                   {/* Copy */}
-                  {(
-
-                    <div className="space-y-2">
-                      <Label className="text-xs uppercase text-muted-foreground">Copy</Label>
-                      {composing ? (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
-                          <Loader2 className="h-4 w-4 animate-spin" /> Writing copy in your brand voice…
-                        </div>
-                      ) : !activeCustom && !isCarousel && singleOptions.length === 0 ? (
-                        <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
-                          <p>We couldn't write copy for this concept. Want to try again?</p>
-                          <Button size="sm" variant="outline" onClick={() => compose()}>
-                            <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
-                          </Button>
-                        </div>
-                      ) : !activeCustom && isCarousel && carouselOptions.length === 0 ? (
-                        <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
-                          <p>We couldn't write carousel copy for this concept. Want to try again?</p>
-                          <Button size="sm" variant="outline" onClick={() => compose()}>
-                            <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
-                          </Button>
-                        </div>
-
-                      ) : isCarousel ? (
-                        <CarouselEditor
-                          options={carouselOptions}
-                          selectedIdx={selectedOptionIdx}
-                          setSelectedIdx={setSelectedOptionIdx}
-                          slides={editedSlides}
-                          setSlides={(s) => {
-                            setEditedSlides(s);
-                            setCarouselOptions((prev) => {
-                              const next = [...prev];
-                              if (next[selectedOptionIdx]) {
-                                next[selectedOptionIdx] = { ...next[selectedOptionIdx], slides: s };
-                              }
-                              return next;
-                            });
-                          }}
-                          editing={editingCopy}
-                          setEditing={setEditingCopy}
-                          onRegenerate={() => setFeedbackOpen(true)}
-                          slideCount={slideCount}
-                          setSlideCount={(n) => setSlideCount(Math.max(1, Math.min(10, n)))}
-                        />
-                      ) : (
-                        <SingleEditor
-                          options={singleOptions}
-                          selectedIdx={selectedOptionIdx}
-                          setSelectedIdx={setSelectedOptionIdx}
-                          edited={editedSingle}
-                          setEdited={(c) => {
-                            setEditedSingle(c);
-                            setSingleOptions((prev) => {
-                              const next = [...prev];
-                              next[selectedOptionIdx] = c;
-                              return next;
-                            });
-                          }}
-                          editing={editingCopy}
-                          setEditing={setEditingCopy}
-                          onRegenerate={() => setFeedbackOpen(true)}
-                        />
-                      )}
-                    </div>
-                  )}
-
-                  <Button
-                    data-help-target="render-creative"
-                    size="lg"
-                    className="w-full"
-                    onClick={generate}
-                    disabled={!canRender}
-                  >
-                    {generating ? (
-                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {progress || "Generating…"}</>
-                    ) : (
-                      <><Sparkles className="h-4 w-4 mr-2" />
-                        {isCarousel ? `Render ${editedSlides.length || "carousel"} slides` : "Use this · render feed + story"}
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label className="text-xs uppercase text-muted-foreground">Results</Label>
-                  </div>
-                  {images.length > 0 && !generating && (
-                    <div className="rounded border bg-muted/20 p-3 space-y-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <p className="text-xs font-medium">Tweak &amp; re-render</p>
-                          <p className="text-[11px] text-muted-foreground">Drag colors, resize text, switch case, then re-render.</p>
-                        </div>
-                        <Button size="sm" onClick={generate} disabled={generating || !canRender}>
-                          {generating ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Rendering…</> : <><Sparkles className="h-3 w-3 mr-1" /> Re-render</>}
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase text-muted-foreground">Your copy</Label>
+                    {composing ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Writing copy in your brand voice…
+                      </div>
+                    ) : !activeCustom && !isCarousel && singleOptions.length === 0 ? (
+                      <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
+                        <p>We couldn't write copy for this concept. Want to try again?</p>
+                        <Button size="sm" variant="outline" onClick={() => compose()}>
+                          <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
                         </Button>
                       </div>
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Colors</p>
-                        <div className="grid grid-cols-6 gap-2">
-                          {(Object.keys(colors) as Array<keyof Colors>).map((k) => (
-                            <Popover key={k}>
-                              <PopoverTrigger asChild>
-                                <button
-                                  type="button"
-                                  className="group flex flex-col items-center gap-1"
-                                  aria-label={`Edit ${k} color`}
-                                >
-                                  <span
-                                    className="h-9 w-full rounded-md border border-border shadow-sm transition group-hover:scale-[1.03]"
-                                    style={{ backgroundColor: colors[k] }}
-                                  />
-                                  <span className="text-[10px] text-muted-foreground capitalize">{k}</span>
-                                </button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-3" align="start">
-                                <HexColorPicker
-                                  color={colors[k]}
-                                  onChange={(v) => setColors((prev) => ({ ...prev, [k]: v }))}
-                                />
-                                <div className="mt-2 flex items-center gap-2">
-                                  <span className="text-[10px] uppercase text-muted-foreground capitalize">{k}</span>
-                                  <Input
-                                    value={colors[k]}
-                                    onChange={(e) => setColors((prev) => ({ ...prev, [k]: e.target.value }))}
-                                    className="h-7 text-xs font-mono"
-                                  />
-                                </div>
-                              </PopoverContent>
-                            </Popover>
-                          ))}
-                        </div>
+                    ) : !activeCustom && isCarousel && carouselOptions.length === 0 ? (
+                      <div className="rounded border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2">
+                        <p>We couldn't write carousel copy for this concept. Want to try again?</p>
+                        <Button size="sm" variant="outline" onClick={() => compose()}>
+                          <RefreshCw className="h-3 w-3 mr-1" /> Retry copy
+                        </Button>
                       </div>
-
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Text case</p>
-                        <ToggleGroup
-                          type="single"
-                          size="sm"
-                          value={textCase}
-                          onValueChange={(v) => v && setTextCase(v as typeof textCase)}
-                          className="justify-start"
-                        >
-                          <ToggleGroupItem value="original" className="text-xs">Original</ToggleGroupItem>
-                          <ToggleGroupItem value="upper" className="text-xs">UPPER</ToggleGroupItem>
-                          <ToggleGroupItem value="lower" className="text-xs">lower</ToggleGroupItem>
-                          <ToggleGroupItem value="title" className="text-xs">Title</ToggleGroupItem>
-                        </ToggleGroup>
-                      </div>
-
-                      {template === "nativecaption" && (
-                        <div className="space-y-3 rounded border border-border bg-background p-3">
-                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                            Text readability
-                          </p>
-                          <div>
-                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Text color</p>
-                            <ToggleGroup
-                              type="single"
-                              size="sm"
-                              value={textColor}
-                              onValueChange={(v) => v && setTextColor(v as typeof textColor)}
-                              className="justify-start"
-                            >
-                              <ToggleGroupItem value="auto" className="text-xs">Auto</ToggleGroupItem>
-                              <ToggleGroupItem value="light" className="text-xs">Light</ToggleGroupItem>
-                              <ToggleGroupItem value="dark" className="text-xs">Dark</ToggleGroupItem>
-                            </ToggleGroup>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs font-medium">Add a background behind the text</p>
-                              <p className="text-[11px] text-muted-foreground">
-                                Helps text stand out over a busy photo.
-                              </p>
-                            </div>
-                            <Switch checked={textBackdrop} onCheckedChange={setTextBackdrop} />
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Headline size</p>
-                            <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(headlineScale * 100)}%</span>
-                          </div>
-                          <Slider
-                            min={0.6}
-                            max={1.6}
-                            step={0.05}
-                            value={[headlineScale]}
-                            onValueChange={(v) => setHeadlineScale(v[0])}
-                          />
-                        </div>
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Body size</p>
-                            <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(bodyScale * 100)}%</span>
-                          </div>
-                          <Slider
-                            min={0.6}
-                            max={1.6}
-                            step={0.05}
-                            value={[bodyScale]}
-                            onValueChange={(v) => setBodyScale(v[0])}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between rounded border border-border bg-background px-3 py-2">
-                        <div>
-                          <p className="text-xs font-medium">
-                            {removeBackground ? "Background removed" : "Original background"}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {removeBackground ? "We'll cut your subject out." : "Keep the photo as-is."}
-                          </p>
-                        </div>
-                        <Switch checked={removeBackground} onCheckedChange={setRemoveBackground} />
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <button
-                          type="button"
-                          className="text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
-                          onClick={() => {
-                            setTextCase("original");
-                            setHeadlineScale(1);
-                            setBodyScale(1);
-                          }}
-                        >
-                          Reset tweaks
-                        </button>
-                        <span className="text-[10px] text-muted-foreground">Changes apply on re-render</span>
-                      </div>
-                    </div>
-                  )}
-
+                    ) : isCarousel ? (
+                      <CarouselEditor
+                        options={carouselOptions}
+                        selectedIdx={selectedOptionIdx}
+                        setSelectedIdx={setSelectedOptionIdx}
+                        slides={editedSlides}
+                        setSlides={(s) => {
+                          setEditedSlides(s);
+                          setCarouselOptions((prev) => {
+                            const next = [...prev];
+                            if (next[selectedOptionIdx]) {
+                              next[selectedOptionIdx] = { ...next[selectedOptionIdx], slides: s };
+                            }
+                            return next;
+                          });
+                        }}
+                        editing={editingCopy}
+                        setEditing={setEditingCopy}
+                        onRegenerate={() => setFeedbackOpen(true)}
+                        slideCount={slideCount}
+                        setSlideCount={(n) => setSlideCount(Math.max(1, Math.min(10, n)))}
+                      />
+                    ) : (
+                      <SingleEditor
+                        options={singleOptions}
+                        selectedIdx={selectedOptionIdx}
+                        setSelectedIdx={setSelectedOptionIdx}
+                        edited={editedSingle}
+                        setEdited={(c) => {
+                          setEditedSingle(c);
+                          setSingleOptions((prev) => {
+                            const next = [...prev];
+                            next[selectedOptionIdx] = c;
+                            return next;
+                          });
+                        }}
+                        editing={editingCopy}
+                        setEditing={setEditingCopy}
+                        onRegenerate={() => setFeedbackOpen(true)}
+                      />
+                    )}
+                  </div>
+                </>
+              ) : (
+                /* ---------- SCREEN 3: Render & results ---------- */
+                <div className="space-y-4">
                   {generating && images.length === 0 && (
                     <div className="rounded border border-dashed p-10 text-center text-sm text-muted-foreground">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
@@ -1993,8 +1986,11 @@ export function GenerateCreativeDialog() {
                     </div>
                   )}
                   {!generating && images.length === 0 && (
-                    <div className="rounded border border-dashed p-10 text-center text-sm text-muted-foreground">
-                      Your renders will appear here.
+                    <div className="rounded border border-dashed p-10 text-center text-sm text-muted-foreground space-y-3">
+                      <p>Nothing rendered yet.</p>
+                      <Button size="sm" onClick={generate} disabled={!canRender}>
+                        <Sparkles className="h-3 w-3 mr-1" /> Render now
+                      </Button>
                     </div>
                   )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2016,31 +2012,88 @@ export function GenerateCreativeDialog() {
                       );
                     })}
                   </div>
-
-                  {itemId && images.length > 0 && !generating && (
-                    <Button
-                      data-help-target="approve-creative"
-                      size="lg"
-                      className={cn(
-                        "w-full",
-                        approvedIdxs.size < images.length && "animate-pulse",
-                      )}
-                      variant={approvedIdxs.size >= images.length ? "secondary" : "default"}
-                      disabled={approvingIdx !== null || approvedIdxs.size >= images.length}
-                      onClick={approveAllAndClose}
-                    >
-                      {approvingIdx !== null ? (
-                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Approving…</>
-                      ) : approvedIdxs.size >= images.length ? (
-                        "Approved ✓"
-                      ) : (
-                        `Approve ${images.length > 1 ? `all ${images.length}` : ""}`.trim()
-                      )}
-                    </Button>
-                  )}
                 </div>
-              </div>
+              )}
             </div>
+
+            {previewPane}
+          </div>
+        )}
+
+        {/* ---------------- FOOTER ---------------- */}
+        <div className="flex items-center justify-between gap-3 border-t px-6 py-3">
+          <div className="min-w-0">
+            {stepIndex > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => goToStep(stepIndex - 1)}>
+                ← Back
+              </Button>
+            )}
+          </div>
+
+          {step === "style" ? (
+            mode === "remix" ? (
+              <Button
+                data-help-target="remix-this-ad"
+                size="lg"
+                onClick={runAnalyzeReference}
+                disabled={analyzingReference || !selectedRemixImageId}
+              >
+                {analyzingReference ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analyzing this ad…</>
+                ) : (
+                  <><Wand2 className="h-4 w-4 mr-2" /> Remix this ad</>
+                )}
+              </Button>
+            ) : (
+              <Button
+                data-help-target="style-next"
+                size="lg"
+                onClick={() => setStep("image-copy")}
+                disabled={!activeStyleKey}
+              >
+                Next: image &amp; copy →
+              </Button>
+            )
+          ) : step === "image-copy" ? (
+            <Button
+              data-help-target="render-creative"
+              size="lg"
+              onClick={() => { setStep("render"); generate(); }}
+              disabled={!canRender}
+            >
+              {composing ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Writing copy…</>
+              ) : (
+                <><Sparkles className="h-4 w-4 mr-2" />
+                  {isCarousel ? `Render ${editedSlides.length || ""} slides`.replace("  ", " ") : "Render feed + story"}
+                </>
+              )}
+            </Button>
+          ) : itemId && images.length > 0 && !generating ? (
+            <Button
+              data-help-target="approve-creative"
+              size="lg"
+              className={cn(approvedIdxs.size < images.length && "animate-pulse")}
+              variant={approvedIdxs.size >= images.length ? "secondary" : "default"}
+              disabled={approvingIdx !== null || approvedIdxs.size >= images.length}
+              onClick={approveAllAndClose}
+            >
+              {approvingIdx !== null ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Approving…</>
+              ) : approvedIdxs.size >= images.length ? (
+                "Approved ✓"
+              ) : (
+                `Approve ${images.length > 1 ? `all ${images.length}` : ""}`.trim()
+              )}
+            </Button>
+          ) : (
+            <Button size="lg" onClick={generate} disabled={!canRender}>
+              {generating ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {progress || "Rendering…"}</>
+              ) : (
+                <><Sparkles className="h-4 w-4 mr-2" /> Render</>
+              )}
+            </Button>
           )}
         </div>
       </DialogContent>
