@@ -319,13 +319,19 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const { brief = {}, brandVoice = {}, count = 3, slideCount, feedback = null, positioningBrief = null, customSlots = null, customType = null } = body;
-    const template = brief.template || mapStyle(brief.styleHint, brief.format);
     // Custom (admin-authored) templates carry their own slot keys.
     const customKeys: string[] = Array.isArray(customSlots)
       ? customSlots.filter((k: any) => typeof k === "string" && k.trim())
       : [];
     const isCustom = customKeys.length > 0;
     const customIsCarousel = customType === "carousel";
+    // `format` is the output contract. A reference/style analysis may suggest
+    // a single-image template such as nativebubbles for a carousel brief; if
+    // that suggestion wins here, the model returns flat objects instead of
+    // {slides:[...]}, and the carousel editor has no copy to display.
+    const template = !isCustom && brief.format === "carousel"
+      ? "carousel"
+      : brief.template || mapStyle(brief.styleHint, brief.format);
     const feedbackBlock = feedback && (feedback.quickSelections?.length || feedback.additionalNotes)
       ? `\n\nUSER FEEDBACK ON PREVIOUS COPY — apply these changes in this rewrite:\n- Issues: ${(feedback.quickSelections || []).join(", ") || "(none)"}\n- Notes: ${feedback.additionalNotes || "(none)"}\n`
       : "";

@@ -794,7 +794,16 @@ export function GenerateCreativeDialog() {
         return;
       }
 
-      const briefWithTemplate = { ...b, template };
+      // A reference analysis can suggest a single-image visual template (for
+      // example nativebubbles) even when the creative brief is a carousel.
+      // compose-ad then returns flat options, while this editor correctly
+      // looks for option.slides — producing five visually blank slides. Keep
+      // the carousel data contract authoritative whenever the brief says it
+      // is a carousel. Custom templates use their own explicit contract.
+      const briefWithTemplate = {
+        ...b,
+        template: !activeCustom && b.format === "carousel" ? "carousel" : template,
+      };
 
 
       // Pull rich context so copy actually sounds like THIS brand for THIS offer.
