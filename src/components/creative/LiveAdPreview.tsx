@@ -220,7 +220,7 @@ export function LiveAdPreview({
         <p className={`font-bold leading-[1.06] ${className}`} style={{ color, ...hFont, ...hSize(size) }}>
           {active.headlinePre?.trim() && <span>{T(active.headlinePre.trim())} </span>}
           {active.headlineHL?.trim() && (
-            <span style={{ color: colors.highlight || colors.accent }}>{T(active.headlineHL.trim())} </span>
+            <span style={{ color: colors.accent }}>{T(active.headlineHL.trim())} </span>
           )}
           {active.headlinePost?.trim() && <span>{T(active.headlinePost.trim())}</span>}
         </p>
