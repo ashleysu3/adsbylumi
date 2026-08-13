@@ -26,8 +26,10 @@ import {
   rankPhotoCandidates,
   bestCopyIndex,
   guardPalette,
+  readableTextOn,
   normalizeDemoDomain,
 } from "@/lib/ad-quality";
+
 
 // Coerce however brand_kits.colors is shaped (array of hexes from extract-brand,
 // or the {bg, ink, accent, pop, highlight, cream} object the Style page saves)
@@ -423,6 +425,10 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   // logo. Fetched fire-and-forget during boot so it's usually ready by save.
   const avatarUrlRef = useRef<string | undefined>(undefined);
   const photoUrlRef = useRef<string | undefined>(undefined);
+  // A background/texture image from their site for the big area behind the
+  // card — deliberately never the same asset as the portrait in the circle.
+  const backgroundUrlRef = useRef<string | undefined>(undefined);
+
   const templateRef = useRef<PhotoTemplate | "checklist" | "bigtype">("bigtype");
   const socialProofRef = useRef<TestimonialQuote | null>(null);
   const offerPsychologyRef = useRef<Record<string, any> | null>(null);
@@ -707,12 +713,24 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
 
   const callRender = useCallback(async (copy: any): Promise<RenderImage[]> => {
     const colors = engineColorsRef.current;
+    // Every label the engine paints onto a chip/card gets a text color derived
+    // from what's UNDER it, never from `bg` — that's how white-on-cream copy
+    // shipped. Card surface = cream, so headline/body tokens use ink.
+    const onAccent = readableTextOn(colors.accent);
+    const onCard = readableTextOn(colors.cream);
     const colorsForEngine = {
       ...colors,
       primary: colors.accent, secondary: colors.pop,
-      cta: colors.accent, ctaBg: colors.accent, ctaText: colors.bg,
-      button: colors.accent, buttonBg: colors.accent, buttonText: colors.bg,
-      badge: colors.accent, badgeBg: colors.accent, badgeText: colors.bg,
+      cta: colors.accent, ctaBg: colors.accent, ctaText: onAccent,
+      button: colors.accent, buttonBg: colors.accent, buttonText: onAccent,
+      badge: colors.accent, badgeBg: colors.accent, badgeText: onAccent,
+      // Text tokens — whichever name the engine reaches for, it reads.
+      text: onCard, textPrimary: onCard, textSecondary: onCard,
+      heading: onCard, headline: onCard, title: onCard, body: onCard,
+      subhead: onCard, sub: onCard, eyebrow: colors.accent,
+      card: colors.cream, cardBg: colors.cream, cardText: onCard,
+      surface: colors.cream, surfaceText: onCard,
+      onBg: readableTextOn(colors.bg),
     };
     const brandKit = {
       colors: colorsForEngine,
@@ -732,6 +750,18 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       style: {},
     };
     if (photo) body.photo = photo;
+    // The big image behind the card must never be the same shot as the little
+    // circle portrait. Prefer a real background/texture from their site, then
+    // a different photo of theirs, and otherwise fall back to their accent
+    // color rather than duplicating the portrait.
+    const bgUrl = backgroundUrlRef.current;
+    if (bgUrl && bgUrl !== photoUrlRef.current) {
+      body.backgroundUrl = bgUrl;
+    } else {
+      body.style = { ...(body.style || {}), backgroundColor: colors.accent };
+      body.backgroundColor = colors.accent;
+    }
+
     // One silent retry — a single flaky render should never become the error
     // screen a first-time visitor (or a demo audience) sees.
     let lastErr: any = null;
@@ -1076,6 +1106,23 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             for (const r of kept) if (r.role === p && !ranked.includes(r)) ranked.push(r);
           }
           for (const r of kept) if (PHOTO_ROLES.has(r.role) && !ranked.includes(r)) ranked.push(r);
+
+          // Background/texture pick — a real background asset if they have one,
+          // otherwise nothing (the render falls back to their accent color).
+          const BG_ROLES = ["background", "texture", "pattern", "banner", "hero"];
+          const bgRow = kept.find((r) => BG_ROLES.includes(String(r.role || "")));
+          if (bgRow?.url) {
+            const bp = pathFromUrl(bgRow.url);
+            if (bp) {
+              const { data: bs } = await supabase.storage
+                .from("brand-assets")
+                .createSignedUrl(bp, 60 * 60);
+              backgroundUrlRef.current = bs?.signedUrl || bgRow.url;
+            } else {
+              backgroundUrlRef.current = bgRow.url;
+            }
+          }
+
           for (const r of ranked.slice(0, 8)) {
             const p = pathFromUrl(r.url);
             if (p) {
