@@ -28,34 +28,34 @@ import GuidedOnboarding from "./pages/GuidedOnboarding";
 import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
 import Start from "./pages/Start";
-import Create from "./pages/Create";
-import AdPerformance from "./pages/Data";
+const Create = lazy(() => import("./pages/Create"));
+const AdPerformance = lazy(() => import("./pages/Data"));
 import WorkspaceRedirect from "./pages/WorkspaceRedirect";
 import CampaignBuilder from "./pages/CampaignBuilder";
 
 import Campaigns from "./pages/Campaigns";
 import MetaOAuthCallback from "./pages/MetaOAuthCallback";
-import AdminKnowledge from "./pages/admin/Knowledge";
-import AdminAnalytics from "./pages/admin/Analytics";
-import AdminTemplates from "./pages/admin/Templates";
-import AdminMagicTemplates from "./pages/admin/MagicTemplates";
-import AdminCreativeToolkit from "./pages/admin/CreativeToolkit";
-import AdminSubscriptions from "./pages/admin/Subscriptions";
-import AdminBugReports from "./pages/admin/BugReports";
-import AdminUsers from "./pages/admin/Users";
-import AdminSettings from "./pages/admin/Settings";
-import AdminTeam from "./pages/admin/Team";
-import AdminStripe from "./pages/admin/Stripe";
-import AdminCoupons from "./pages/admin/Coupons";
-import AdminUpdates from "./pages/admin/Updates";
-import AdminUpdatesResults from "./pages/admin/UpdatesResults";
-import AdminFeatures from "./pages/admin/Features";
-import AdminInspiration from "./pages/admin/Inspiration";
+const AdminKnowledge = lazy(() => import("./pages/admin/Knowledge"));
+const AdminAnalytics = lazy(() => import("./pages/admin/Analytics"));
+const AdminTemplates = lazy(() => import("./pages/admin/Templates"));
+const AdminMagicTemplates = lazy(() => import("./pages/admin/MagicTemplates"));
+const AdminCreativeToolkit = lazy(() => import("./pages/admin/CreativeToolkit"));
+const AdminSubscriptions = lazy(() => import("./pages/admin/Subscriptions"));
+const AdminBugReports = lazy(() => import("./pages/admin/BugReports"));
+const AdminUsers = lazy(() => import("./pages/admin/Users"));
+const AdminSettings = lazy(() => import("./pages/admin/Settings"));
+const AdminTeam = lazy(() => import("./pages/admin/Team"));
+const AdminStripe = lazy(() => import("./pages/admin/Stripe"));
+const AdminCoupons = lazy(() => import("./pages/admin/Coupons"));
+const AdminUpdates = lazy(() => import("./pages/admin/Updates"));
+const AdminUpdatesResults = lazy(() => import("./pages/admin/UpdatesResults"));
+const AdminFeatures = lazy(() => import("./pages/admin/Features"));
+const AdminInspiration = lazy(() => import("./pages/admin/Inspiration"));
 import Inspiration from "./pages/Inspiration";
-import AdminStockBroll from "./pages/admin/StockBroll";
+const AdminStockBroll = lazy(() => import("./pages/admin/StockBroll"));
 import Boards from "./pages/Boards";
 import BoardDetail from "./pages/BoardDetail";
-import AdminApprovals from "./pages/admin/Approvals";
+const AdminApprovals = lazy(() => import("./pages/admin/Approvals"));
 import { useReferralCapture } from "./hooks/useReferralCapture";
 
 function ReferralCaptureMount() {
@@ -70,7 +70,7 @@ import WeeklyDigestPreview from "./pages/WeeklyDigestPreview";
 import Offers from "./pages/Offers";
 import Style from "./pages/Style";
 import ContentLibrary from "./pages/ContentLibrary";
-import CreativeStudio from "./pages/CreativeStudio";
+const CreativeStudio = lazy(() => import("./pages/CreativeStudio"));
 import Glossary from "./pages/Glossary";
 import NotFound from "./pages/NotFound";
 import AdvancedBuild from "./pages/AdvancedBuild";
@@ -80,15 +80,15 @@ import Refer from "./pages/Refer";
 import PartnerDashboard from "./pages/PartnerDashboard";
 import CreativeToolkit from "./pages/CreativeToolkit";
 import TrendTranslator from "./pages/TrendTranslator";
-import AdminAffiliates from "./pages/admin/Affiliates";
-import AdminPayouts from "./pages/admin/Payouts";
-import AdminPartners from "./pages/admin/Partners";
-import AdminPartnerApplications from "./pages/admin/PartnerApplications";
-import AdminEmailLogs from "./pages/admin/EmailLogs";
-import AdminEmails from "./pages/admin/Emails";
-import AdminTestReports from "./pages/admin/TestReports";
-import AdminCancellations from "./pages/admin/Cancellations";
-import AdminDisputeEvidence from "./pages/admin/DisputeEvidence";
+const AdminAffiliates = lazy(() => import("./pages/admin/Affiliates"));
+const AdminPayouts = lazy(() => import("./pages/admin/Payouts"));
+const AdminPartners = lazy(() => import("./pages/admin/Partners"));
+const AdminPartnerApplications = lazy(() => import("./pages/admin/PartnerApplications"));
+const AdminEmailLogs = lazy(() => import("./pages/admin/EmailLogs"));
+const AdminEmails = lazy(() => import("./pages/admin/Emails"));
+const AdminTestReports = lazy(() => import("./pages/admin/TestReports"));
+const AdminCancellations = lazy(() => import("./pages/admin/Cancellations"));
+const AdminDisputeEvidence = lazy(() => import("./pages/admin/DisputeEvidence"));
 import ClientPortal from "./pages/ClientPortal";
 import SharedReport from "./pages/SharedReport";
 import AgencySettings from "./pages/AgencySettings";
@@ -97,9 +97,9 @@ import Pricing from "./pages/Pricing";
 import AdsManager from "./pages/AdsManager";
 import AdsManagerClient from "./pages/AdsManagerClient";
 import SubmitReview from "./pages/SubmitReview";
-import AdminReviews from "./pages/admin/Reviews";
-import AdminMetaDebug from "./pages/admin/MetaDebug";
-import AdminOverlayTemplates from "./pages/admin/OverlayTemplates";
+const AdminReviews = lazy(() => import("./pages/admin/Reviews"));
+const AdminMetaDebug = lazy(() => import("./pages/admin/MetaDebug"));
+const AdminOverlayTemplates = lazy(() => import("./pages/admin/OverlayTemplates"));
 import FreeTrial from "./pages/FreeTrial";
 import AdPackReveal from "./pages/AdPackReveal";
 import Welcome from "./pages/Welcome";
@@ -109,14 +109,14 @@ import RecommendedStrategy from "./pages/RecommendedStrategy";
 import StrategyPlan from "./pages/StrategyPlan";
 import Strategy from "./pages/Strategy";
 import AdStrategy from "./pages/AdStrategy";
-import AdminStrategies from "./pages/admin/Strategies";
+const AdminStrategies = lazy(() => import("./pages/admin/Strategies"));
 import OfficeHours from "./pages/OfficeHours";
 import PartnerPortal from "./pages/PartnerPortal";
 import AdGenerator from "./pages/AdGenerator";
 import BrandSetup from "./pages/BrandSetup";
 import Photos from "./pages/Photos";
-import Creative from "./pages/Creative";
-import MyCreatives from "./pages/MyCreatives";
+const Creative = lazy(() => import("./pages/Creative"));
+const MyCreatives = lazy(() => import("./pages/MyCreatives"));
 import Launch from "./pages/Launch";
 import Performance from "./pages/Performance";
 import CloserLook from "./pages/CloserLook";
@@ -166,6 +166,7 @@ const App = () => {
                   <WhatsNewModal />
                   
                   
+                <Suspense fallback={<div className="min-h-screen" />}>
                 <Routes>
                   <Route path="/" element={<Sales />} />
                   <Route path="/waitlist" element={<Waitlist />} />
@@ -282,6 +283,7 @@ const App = () => {
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+                </Suspense>
               </LumiAssistantProvider>
             </BrowserRouter>
               </CampaignDraftProvider>
