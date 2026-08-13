@@ -71,7 +71,7 @@ Rules:
   • promote_offer — sell a specific paid offer (course, product, service)
   • get_leads — collect emails / signups / opt-ins
   • book_calls — get discovery / sales calls booked
-  • dm_leads — start Instagram or Messenger DM conversations
+  • dm_leads — start Instagram or Messenger DM conversations. ONLY use this id when the user explicitly asks for DMs/messages ("I want people to DM me", "message me on Instagram"). NEVER infer it from a general "I want leads" — if they want leads, choose get_leads (or book_calls) and route those leads through a website/landing page: opt-in, newsletter, waitlist, webinar, challenge, or application.
   • grow_social — gain followers / engagement on social
   • local — get foot traffic or local customers in a specific area
   • event_location — promote an in-person event tied to a location
