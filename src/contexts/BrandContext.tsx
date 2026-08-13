@@ -34,13 +34,25 @@ export function BrandProvider({ children }: { children: ReactNode }) {
 
   const [authReady, setAuthReady] = useState(false);
 
+  const [ownerUserId, setOwnerUserId] = useState<string | null>(null);
+
+  const clearBrandState = useCallback(() => {
+    setBrands([]);
+    setActiveBrandState(null);
+    setBrandId(null);
+    setOwnerUserId(null);
+  }, [setBrandId]);
+
   const fetchBrands = useCallback(async () => {
     try {
       const effectiveUserId = await getEffectiveUserId();
       if (!effectiveUserId) {
+        clearBrandState();
         setLoading(false);
         return;
       }
+
+      setOwnerUserId(effectiveUserId);
 
       // Check if user is an agency user
       const { data: profileData } = await supabase
@@ -64,23 +76,28 @@ export function BrandProvider({ children }: { children: ReactNode }) {
       const fetchedBrands = brandsData || [];
       setBrands(fetchedBrands);
 
-      // Set active brand from localStorage or first brand
+      // Set active brand from this user's saved brand or their first brand.
+      // Never keep a brand belonging to a previously loaded account.
       if (fetchedBrands.length > 0) {
-        const savedBrandId = localStorage.getItem('activeBrandId');
-        const savedBrand = savedBrandId 
-          ? fetchedBrands.find(b => b.id === savedBrandId) 
+        const savedBrandId = localStorage.getItem(`activeBrandId:${effectiveUserId}`);
+        const savedBrand = savedBrandId
+          ? fetchedBrands.find(b => b.id === savedBrandId)
           : null;
-        
+
         const brandToSet = savedBrand || fetchedBrands[0];
         setActiveBrandState(brandToSet);
         setBrandId(brandToSet.id);
+      } else {
+        setActiveBrandState(null);
+        setBrandId(null);
       }
     } catch (error) {
       console.error('Error fetching brands:', error);
     } finally {
       setLoading(false);
     }
-  }, [getEffectiveUserId, setBrandId]);
+  }, [getEffectiveUserId, setBrandId, clearBrandState]);
+
 
   // Single initialization path: get session once, then listen for changes
   useEffect(() => {
