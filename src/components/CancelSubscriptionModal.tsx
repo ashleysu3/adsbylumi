@@ -28,7 +28,6 @@ interface CancelSubscriptionModalProps {
   onOpenChange: (open: boolean) => void;
   subscriptionEnd: string | null;
   isCodeBased: boolean;
-  isTrial: boolean;
   tierName: string;
   onCancelled: () => void;
 }
@@ -38,7 +37,6 @@ export function CancelSubscriptionModal({
   onOpenChange,
   subscriptionEnd,
   isCodeBased,
-  isTrial,
   tierName,
   onCancelled,
 }: CancelSubscriptionModalProps) {
@@ -146,7 +144,7 @@ export function CancelSubscriptionModal({
         period_end: sub?.current_period_end || subscriptionEnd,
       } as any);
 
-      toast.success("Your subscription has been cancelled. You'll retain access until " + endDateFormatted + ".");
+      toast.success("Your account has been cancelled and your active ads were paused. You'll retain access until " + endDateFormatted + ".");
       onCancelled();
       onOpenChange(false);
     } catch (error: any) {
@@ -163,14 +161,24 @@ export function CancelSubscriptionModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-5 w-5" />
-            {isTrial ? "Cancel Trial" : "Cancel Subscription"}
+            Cancel Account
           </DialogTitle>
           <DialogDescription className="text-left space-y-3 pt-2">
             <p>
               Your access will continue through{" "}
               <strong className="text-foreground">{endDateFormatted}</strong>. After that, your
-              account will be deactivated and active ads will be paused.
+              account will be deactivated.
             </p>
+
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-sm text-foreground font-medium">
+                All of your active ads will be paused when you cancel.
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Pausing is required to cancel — Lumi can't keep managing ads for a closed account.
+                You can turn them back on any time yourself in Meta Ads Manager.
+              </p>
+            </div>
 
             <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
               <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">
@@ -205,7 +213,7 @@ export function CancelSubscriptionModal({
             className="w-full"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            Yes, cancel my subscription
+            Yes, cancel my account and pause my ads
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full">
             Never mind, keep my plan
