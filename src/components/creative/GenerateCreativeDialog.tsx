@@ -2284,62 +2284,20 @@ export function GenerateCreativeDialog() {
         )}
 
         {/* ---------------- FOOTER ---------------- */}
-        <div className="flex items-center justify-between gap-3 border-t px-6 py-3">
-          <div className="min-w-0">
-            {stepIndex > 0 && (
-              <Button variant="ghost" size="sm" onClick={() => goToStep(stepIndex - 1)}>
-                ← Back
-              </Button>
-            )}
-          </div>
-
-          {step === "style" ? (
-            mode === "remix" ? (
-              <Button
-                data-help-target="remix-this-ad"
-                size="lg"
-                onClick={runAnalyzeReference}
-                disabled={analyzingReference || !selectedRemixImageId}
-              >
-                {analyzingReference ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analyzing this ad…</>
-                ) : (
-                  <><Wand2 className="h-4 w-4 mr-2" /> Remix this ad</>
-                )}
-              </Button>
-            ) : (
-              <Button
-                data-help-target="style-next"
-                size="lg"
-                onClick={() => setStep("image-copy")}
-                disabled={!activeStyleKey}
-              >
-                Next: image &amp; copy →
-              </Button>
-            )
-          ) : step === "image-copy" ? (
-            <Button
-              data-help-target="render-creative"
-              size="lg"
-              onClick={() => { setStep("render"); generate(); }}
-              disabled={!canRender}
-            >
-              {composing ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Writing copy…</>
-              ) : (
-                <><Sparkles className="h-4 w-4 mr-2" />
-                  {isCarousel ? `Render ${editedSlides.length || ""} slides`.replace("  ", " ") : "Render feed + story"}
-                </>
+        {step === "render" && itemId && images.length > 0 && !generating ? (
+          <div className="border-t px-6 py-3 space-y-3">
+            <div className="min-w-0">
+              {stepIndex > 0 && (
+                <Button variant="ghost" size="sm" onClick={() => goToStep(stepIndex - 1)}>
+                  ← Back
+                </Button>
               )}
-            </Button>
-          ) : itemId && images.length > 0 && !generating ? (
+            </div>
             <Button
               data-help-target="approve-creative"
+              variant="lumi"
               size="lg"
-              className={cn(
-                approvedIdxs.size < images.length && "lumi-outline-gradient"
-              )}
-              variant={approvedIdxs.size >= images.length ? "secondary" : "default"}
+              className="w-full"
               disabled={approvingIdx !== null || approvedIdxs.size >= images.length}
               onClick={approveAllAndClose}
             >
@@ -2351,16 +2309,67 @@ export function GenerateCreativeDialog() {
                 `Approve ${images.length > 1 ? `all ${images.length}` : ""}`.trim()
               )}
             </Button>
-          ) : (
-            <Button size="lg" onClick={generate} disabled={!canRender}>
-              {generating ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {progress || "Rendering…"}</>
-              ) : (
-                <><Sparkles className="h-4 w-4 mr-2" /> Render</>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-3 border-t px-6 py-3">
+            <div className="min-w-0">
+              {stepIndex > 0 && (
+                <Button variant="ghost" size="sm" onClick={() => goToStep(stepIndex - 1)}>
+                  ← Back
+                </Button>
               )}
-            </Button>
-          )}
-        </div>
+            </div>
+
+            {step === "style" ? (
+              mode === "remix" ? (
+                <Button
+                  data-help-target="remix-this-ad"
+                  size="lg"
+                  onClick={runAnalyzeReference}
+                  disabled={analyzingReference || !selectedRemixImageId}
+                >
+                  {analyzingReference ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analyzing this ad…</>
+                  ) : (
+                    <><Wand2 className="h-4 w-4 mr-2" /> Remix this ad</>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  data-help-target="style-next"
+                  size="lg"
+                  onClick={() => setStep("image-copy")}
+                  disabled={!activeStyleKey}
+                >
+                  Next: image &amp; copy →
+                </Button>
+              )
+            ) : step === "image-copy" ? (
+              <Button
+                data-help-target="render-creative"
+                size="lg"
+                onClick={() => { setStep("render"); generate(); }}
+                disabled={!canRender}
+              >
+                {composing ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Writing copy…</>
+                ) : (
+                  <><Sparkles className="h-4 w-4 mr-2" />
+                    {isCarousel ? `Render ${editedSlides.length || ""} slides`.replace("  ", " ") : "Render feed + story"}
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button size="lg" onClick={generate} disabled={!canRender}>
+                {generating ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {progress || "Rendering…"}</>
+                ) : (
+                  <><Sparkles className="h-4 w-4 mr-2" /> Render</>
+                )}
+              </Button>
+            )}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
     <CopyRegenerateDialog
