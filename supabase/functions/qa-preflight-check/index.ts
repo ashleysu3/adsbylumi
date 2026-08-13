@@ -478,8 +478,14 @@ async function checkLandingPage(url: string | undefined, brand: any): Promise<Ch
 
 
 
-function checkEventTracking(brand: any, template: any, lp?: CheckResult): CheckResult {
+function checkEventTracking(
+  brand: any,
+  template: any,
+  lp?: CheckResult,
+  trackingSetup?: { verified?: boolean; conversionUrl?: string | null } | null,
+): CheckResult {
   const objective = template?.objective?.toLowerCase() || '';
+
   const optimizationEvent = template?.optimization_event || '';
 
   let requiredEvent = '';
