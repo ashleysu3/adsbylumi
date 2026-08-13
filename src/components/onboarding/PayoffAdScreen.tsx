@@ -931,7 +931,10 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           if (hasAnyColors(kit?.colors)) break;
         }
         if (cancelled) return;
-        engineColorsRef.current = toEngineColors(kit?.colors);
+        // Extraction can hand back an unusable pair (white ink on white bg, a
+        // washed-out accent). guardPalette keeps it on-brand where it can and
+        // only falls back where the render would otherwise be unreadable.
+        engineColorsRef.current = guardPalette(toEngineColors(kit?.colors));
         fontsRef.current = toFontsPayload(kit?.fonts);
         logoUrlRef.current = kit?.logo_url || undefined;
         setUsedRealColors(hasVividColors(kit?.colors));
