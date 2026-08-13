@@ -323,6 +323,25 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const [leadName, setLeadName] = useState("");
   const [leadEmail, setLeadEmail] = useState("");
   const [packState, setPackState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  // Signed-in (non-anonymous) users already have an account — their kit gets
+  // pulled straight into it instead of asking them for an email to save it.
+  const [hasAccount, setHasAccount] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const user = data?.user;
+      if (cancelled || !user || (user as any).is_anonymous || !user.email) return;
+      setHasAccount(true);
+      setLeadEmail((prev) => prev || user.email || "");
+      const metaName =
+        (user.user_metadata as any)?.full_name || (user.user_metadata as any)?.name || "";
+      if (metaName) setLeadName((prev) => prev || metaName);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
 
   // The quiet "ready to launch now?" path for hot buyers — same shared
   // checkout the kit page uses. Buying otherwise lives AFTER the save.
@@ -504,19 +523,22 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
 
       // List add is marketing, not delivery — a Flodesk hiccup must never
       // block the kit email. Fire-and-forget; the kit email itself always
-      // goes out from LUMI via Resend below.
-      supabase.functions
-        .invoke("sync-flodesk", {
-          body: {
-            email: leadEmail.trim(),
-            firstName: leadName.trim().split(" ")[0] || undefined,
-            segment: "ad_kit",
-          },
-        })
-        .then(({ error }) => {
-          if (error) console.warn("[payoff] flodesk sync failed", error);
-        })
-        .catch((e) => console.warn("[payoff] flodesk sync failed", e));
+      // goes out from LUMI via Resend below. Existing account holders are
+      // already customers, so they skip the lead list entirely.
+      if (!hasAccount) {
+        supabase.functions
+          .invoke("sync-flodesk", {
+            body: {
+              email: leadEmail.trim(),
+              firstName: leadName.trim().split(" ")[0] || undefined,
+              segment: "ad_kit",
+            },
+          })
+          .then(({ error }) => {
+            if (error) console.warn("[payoff] flodesk sync failed", error);
+          })
+          .catch((e) => console.warn("[payoff] flodesk sync failed", e));
+      }
 
       const { error: sendErr } = await supabase.functions.invoke("send-ad-pack-email", {
         body: { brand_id: brandId },
@@ -525,19 +547,35 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
 
       setPackState("sent");
       setPackFormOpen(false);
-      trackLumiEvent("Lead");
+      if (!hasAccount) trackLumiEvent("Lead");
       // Save-in-place: the kit stays right here. Stamp the token onto this
       // URL (replace, not push — no back-button trap) so a refresh or a
       // bookmark of THIS page resolves to the permanent kit link, and let
       // the VSL + 50% close unfold below instead of navigating away.
       setSearchParams({ kit: kitToken }, { replace: true });
-      toast.success("Saved — your private link is on its way to your inbox!");
+      toast.success(
+        hasAccount
+          ? "Saved to your account — your brand kit is ready."
+          : "Saved — your private link is on its way to your inbox!",
+      );
     } catch (err: any) {
       console.error("[payoff] send ad kit error", err);
       toast.error(err?.message || "Couldn't save your Ad Kit. Please try again.");
       setPackState("error");
     }
-  }, [brandId, images, leadEmail, leadName, packState, setSearchParams, options, selectedIdx, scriptBeats, strategy]);
+  }, [brandId, images, leadEmail, leadName, packState, setSearchParams, options, selectedIdx, scriptBeats, strategy, hasAccount]);
+
+  // Signed-in users never see the save prompt — as soon as the ad is ready,
+  // the kit gets pulled into their account automatically.
+  useEffect(() => {
+    if (!hasAccount) return;
+    if (packState !== "idle") return;
+    if (phase !== "ready") return;
+    if (!leadEmail.trim() || !images[0]?.base64) return;
+    setPackFormOpen(false);
+    sendAdPack();
+  }, [hasAccount, packState, phase, leadEmail, images, sendAdPack]);
+
 
   const brandSlug = (brand?.name || "lumi-ad").trim().replace(/\s+/g, "-").toLowerCase();
 
@@ -1634,7 +1672,16 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             </Button>
             {packState === "sent" ? (
               <span className="inline-flex items-center justify-center gap-1.5 h-12 px-4 text-sm font-medium text-primary">
-                <Check className="h-4 w-4" /> Saved — link emailed to {leadEmail}
+                <Check className="h-4 w-4" />
+                {hasAccount ? "Saved to your account" : `Saved — link emailed to ${leadEmail}`}
+              </span>
+            ) : hasAccount ? (
+              <span className="inline-flex items-center justify-center gap-1.5 h-12 px-4 text-sm font-medium text-muted-foreground">
+                {packState === "sending" ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Adding to your account…</>
+                ) : (
+                  "Saving to your account…"
+                )}
               </span>
             ) : (
               <Button
@@ -1645,6 +1692,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
                 Save my Ad Kit <ArrowRight className="h-5 w-5 ml-2" />
               </Button>
             )}
+
           </div>
           )}
         </div>
@@ -1690,7 +1738,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
 
         {/* Save dialog — the honest framing: the kit stays here, the email is
             the private link that survives this anonymous session. */}
-        <Dialog open={packFormOpen && packState !== "sent"} onOpenChange={setPackFormOpen}>
+        <Dialog open={packFormOpen && packState !== "sent" && !hasAccount} onOpenChange={setPackFormOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Save my Ad Kit</DialogTitle>
