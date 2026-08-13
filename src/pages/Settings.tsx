@@ -8,6 +8,8 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { useEffect, useState } from 'react';
+import { useAutosaveOnChange } from '@/hooks/useAutosave';
+import { AutoSaveIndicator } from '@/components/AutoSaveIndicator';
 import { supabase } from '@/integrations/supabase/client';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { toast } from 'sonner';
@@ -234,6 +236,49 @@ export default function Settings() {
       console.error(error);
     }
   };
+
+  // Preferences persist as they're toggled — nothing here needs a Save button.
+  const { status: prefsSaveStatus } = useAutosaveOnChange<NotificationPrefs>(
+    notificationPrefs,
+    async (value) => {
+      if (!brand?.id) return;
+      const { error } = await supabase
+        .from('brands')
+        .update({ notification_preferences: value as any })
+        .eq('id', brand.id);
+      if (error) throw error;
+    },
+    { key: brand?.id ?? null, enabled: !!brand?.id && !loading },
+  );
+
+  const { status: thresholdsSaveStatus } = useAutosaveOnChange<AlertThresholds>(
+    alertThresholds,
+    async (value) => {
+      if (!brand?.id) return;
+      const { error } = await supabase
+        .from('brands')
+        .update({ alert_thresholds: value as any })
+        .eq('id', brand.id);
+      if (error) throw error;
+    },
+    { key: brand?.id ?? null, enabled: !!brand?.id && !loading },
+  );
+
+  const { status: automationSaveStatus } = useAutosaveOnChange(
+    creativeAutomation,
+    async (value) => {
+      if (!brand?.id) return;
+      const currentPrefs = (brand.notification_preferences as any) || {};
+      const { error } = await supabase
+        .from('brands')
+        .update({
+          notification_preferences: { ...currentPrefs, creative_automation: value } as any,
+        })
+        .eq('id', brand.id);
+      if (error) throw error;
+    },
+    { key: brand?.id ?? null, enabled: !!brand?.id && !loading },
+  );
 
   const handleSaveNotificationPrefs = async () => {
     if (!brand) return;
