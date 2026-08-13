@@ -12,10 +12,8 @@ import {
   ChevronRight, CheckCircle2, Circle, Loader2,
   Sparkles, ArrowRight, Video, Film, Image, Trash2,
   X, Check, FileDown, Printer, BarChart3, RefreshCw, Upload, MessageSquare,
-  Send, Wrench, Palette
+  Send
 } from "lucide-react";
-import AdGenerator from "@/pages/AdGenerator";
-import CreativeToolkit from "@/pages/CreativeToolkit";
 import ContentLibrary from "@/pages/ContentLibrary";
 import { printCreativeBrief } from "@/lib/print-creative-brief";
 import { toast } from "sonner";
@@ -1893,125 +1891,98 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
           </TabsContent>
 
           <TabsContent value="build">
-            <Tabs defaultValue="checklist" className="w-full">
-              <TabsList className="mb-4">
-                <TabsTrigger value="checklist" className="gap-1.5">
-                  <Rocket className="h-4 w-4" />
-                  Production checklist
-                </TabsTrigger>
-                <TabsTrigger value="design" className="gap-1.5">
-                  <Palette className="h-4 w-4" />
-                  Design (Ad Generator)
-                </TabsTrigger>
-                <TabsTrigger value="toolkit" className="gap-1.5">
-                  <Wrench className="h-4 w-4" />
-                  Toolkit
-                </TabsTrigger>
-              </TabsList>
+            <ProductionManager
+              workspace={workspace}
+              productionItems={productionItems}
+              angles={availableAngles}
+              selectedAngleIds={selectedAngleIds}
+              onRemoveItem={removeFromChecklist}
+              onBuildCampaign={handleBuildCampaign}
+              onUpdateWorkspace={(updates) => {
+                // If angle_copy changed, sync it to the angleCopy state (source of truth) and persist
+                const incomingAngleCopy = (updates as any)?.creative_json?.angle_copy;
+                if (incomingAngleCopy) {
+                  setAngleCopy(incomingAngleCopy);
+                  const merged = { ...creativeJsonRef.current, angle_copy: incomingAngleCopy };
+                  creativeJsonRef.current = merged;
+                  supabase
+                    .from("campaign_workspaces")
+                    .update({ creative_json: merged, updated_at: new Date().toISOString() })
+                    .eq("id", workspace!.id)
+                    .then(() => {
+                      setWorkspace((prev: any) => prev ? { ...prev, creative_json: merged } : prev);
+                    });
+                }
 
-              <TabsContent value="checklist">
-                <ProductionManager
-                  workspace={workspace}
-                  productionItems={productionItems}
-                  angles={availableAngles}
-                  selectedAngleIds={selectedAngleIds}
-                  onRemoveItem={removeFromChecklist}
-                  onBuildCampaign={handleBuildCampaign}
-                  onUpdateWorkspace={(updates) => {
-                    // If angle_copy changed, sync it to the angleCopy state (source of truth) and persist
-                    const incomingAngleCopy = (updates as any)?.creative_json?.angle_copy;
-                    if (incomingAngleCopy) {
-                      setAngleCopy(incomingAngleCopy);
-                      const merged = { ...creativeJsonRef.current, angle_copy: incomingAngleCopy };
-                      creativeJsonRef.current = merged;
-                      supabase
-                        .from("campaign_workspaces")
-                        .update({ creative_json: merged, updated_at: new Date().toISOString() })
-                        .eq("id", workspace!.id)
-                        .then(() => {
-                          setWorkspace((prev: any) => prev ? { ...prev, creative_json: merged } : prev);
-                        });
-                    }
-
-                    const incomingProductionItems = (updates as any)?.production_items;
-                    if (incomingProductionItems && Array.isArray(incomingProductionItems)) {
-                      setProductionItems(incomingProductionItems as ProductionItem[]);
-                      if (workspace?.id) {
-                        supabase
-                          .from("campaign_workspaces")
-                          .update({
-                            production_items: incomingProductionItems as unknown as Json,
-                            updated_at: new Date().toISOString(),
-                          })
-                          .eq("id", workspace.id)
-                          .then(({ error }) => {
-                            if (error) console.error("Failed to persist production_items:", error);
-                          });
-                      }
-                    }
-
-                    setWorkspace((prev: any) => ({ ...prev, ...updates }));
-                  }}
-                  onSaveToLibrary={saveItemToLibrary}
-                  brandId={brandId}
-                  brand={effectiveBrand(workspace?.brands, useBrandStyleDefaults)}
-                  angleCopy={angleCopy}
-                  onRefineScript={refineScript}
-                  currentRound={(workspace?.creative_json as Record<string, any>)?.currentRound}
-                  onArchivePrevious={async () => {
-                    const currentRound = (workspace?.creative_json as Record<string, any>)?.currentRound;
-                    if (!currentRound) return;
-                    const previousItems = productionItems.filter(i => !i.round || i.round !== currentRound);
-                    const currentItems = productionItems.filter(i => i.round === currentRound);
-                    const cur = (workspace?.creative_json || {}) as Record<string, any>;
-                    const archived = [...(cur.archivedProductionItems || []), ...previousItems];
-                    await supabase.from("campaign_workspaces").update({
-                      creative_json: { ...cur, archivedProductionItems: archived },
-                      production_items: currentItems as unknown as Json,
-                      updated_at: new Date().toISOString(),
-                    }).eq("id", workspace.id);
-                    setProductionItems(currentItems);
-                    setWorkspace((prev: any) => ({
-                      ...prev,
-                      creative_json: { ...prev?.creative_json, archivedProductionItems: archived },
-                    }));
-                    toast.success(`Archived ${previousItems.length} items from previous rounds`);
-                  }}
-                  onClearAll={async () => {
-                    const cur = (workspace?.creative_json || {}) as Record<string, any>;
-                    const archived = [...(cur.archivedProductionItems || []), ...productionItems];
-                    await supabase.from("campaign_workspaces").update({
-                      creative_json: { ...cur, archivedProductionItems: archived },
-                      production_items: [] as unknown as Json,
-                      updated_at: new Date().toISOString(),
-                    }).eq("id", workspace.id);
-                    setProductionItems([]);
-                    setWorkspace((prev: any) => ({
-                      ...prev,
-                      creative_json: { ...prev?.creative_json, archivedProductionItems: archived },
-                    }));
-                    toast.success("Checklist cleared — all items archived");
-                  }}
-                  onUrlChange={async (newUrl) => {
-                    if (!workspace) return;
-                    await supabase
+                const incomingProductionItems = (updates as any)?.production_items;
+                if (incomingProductionItems && Array.isArray(incomingProductionItems)) {
+                  setProductionItems(incomingProductionItems as ProductionItem[]);
+                  if (workspace?.id) {
+                    supabase
                       .from("campaign_workspaces")
-                      .update({ offer_url: newUrl, updated_at: new Date().toISOString() })
-                      .eq("id", workspace.id);
-                    setWorkspace((prev: any) => prev ? { ...prev, offer_url: newUrl } : prev);
-                    toast.success("Destination URL updated!");
-                  }}
-                />
-              </TabsContent>
+                      .update({
+                        production_items: incomingProductionItems as unknown as Json,
+                        updated_at: new Date().toISOString(),
+                      })
+                      .eq("id", workspace.id)
+                      .then(({ error }) => {
+                        if (error) console.error("Failed to persist production_items:", error);
+                      });
+                  }
+                }
 
-              <TabsContent value="design">
-                <AdGenerator />
-              </TabsContent>
-
-              <TabsContent value="toolkit">
-                <CreativeToolkit embedded />
-              </TabsContent>
-            </Tabs>
+                setWorkspace((prev: any) => ({ ...prev, ...updates }));
+              }}
+              onSaveToLibrary={saveItemToLibrary}
+              brandId={brandId}
+              brand={effectiveBrand(workspace?.brands, useBrandStyleDefaults)}
+              angleCopy={angleCopy}
+              onRefineScript={refineScript}
+              currentRound={(workspace?.creative_json as Record<string, any>)?.currentRound}
+              onArchivePrevious={async () => {
+                const currentRound = (workspace?.creative_json as Record<string, any>)?.currentRound;
+                if (!currentRound) return;
+                const previousItems = productionItems.filter(i => !i.round || i.round !== currentRound);
+                const currentItems = productionItems.filter(i => i.round === currentRound);
+                const cur = (workspace?.creative_json || {}) as Record<string, any>;
+                const archived = [...(cur.archivedProductionItems || []), ...previousItems];
+                await supabase.from("campaign_workspaces").update({
+                  creative_json: { ...cur, archivedProductionItems: archived },
+                  production_items: currentItems as unknown as Json,
+                  updated_at: new Date().toISOString(),
+                }).eq("id", workspace.id);
+                setProductionItems(currentItems);
+                setWorkspace((prev: any) => ({
+                  ...prev,
+                  creative_json: { ...prev?.creative_json, archivedProductionItems: archived },
+                }));
+                toast.success(`Archived ${previousItems.length} items from previous rounds`);
+              }}
+              onClearAll={async () => {
+                const cur = (workspace?.creative_json || {}) as Record<string, any>;
+                const archived = [...(cur.archivedProductionItems || []), ...productionItems];
+                await supabase.from("campaign_workspaces").update({
+                  creative_json: { ...cur, archivedProductionItems: archived },
+                  production_items: [] as unknown as Json,
+                  updated_at: new Date().toISOString(),
+                }).eq("id", workspace.id);
+                setProductionItems([]);
+                setWorkspace((prev: any) => ({
+                  ...prev,
+                  creative_json: { ...prev?.creative_json, archivedProductionItems: archived },
+                }));
+                toast.success("Checklist cleared — all items archived");
+              }}
+              onUrlChange={async (newUrl) => {
+                if (!workspace) return;
+                await supabase
+                  .from("campaign_workspaces")
+                  .update({ offer_url: newUrl, updated_at: new Date().toISOString() })
+                  .eq("id", workspace.id);
+                setWorkspace((prev: any) => prev ? { ...prev, offer_url: newUrl } : prev);
+                toast.success("Destination URL updated!");
+              }}
+            />
           </TabsContent>
         </Tabs>
       </div>
