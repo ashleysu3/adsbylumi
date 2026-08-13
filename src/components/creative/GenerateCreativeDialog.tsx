@@ -1150,7 +1150,12 @@ export function GenerateCreativeDialog() {
         bodyScale,
         textCase: textCase === "original" ? undefined : textCase,
         textColor: textColor === "auto" ? undefined : textColor,
-        textBackdrop: textBackdrop || undefined,
+        textBackdrop: textBackdrop || textBoxStyle !== "none" || undefined,
+        textBoxStyle: textBoxStyle === "none" ? undefined : textBoxStyle,
+        textBoxColor: textBoxStyle === "none" ? undefined : (textBoxColor || colors.bg),
+        textBoxOpacity: textBoxStyle === "none" ? undefined : textBoxOpacity,
+        textPosition,
+        textAlign,
       };
 
       if (isCarousel) {
