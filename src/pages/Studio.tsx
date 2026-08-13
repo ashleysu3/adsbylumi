@@ -138,7 +138,7 @@ export default function Studio() {
       <DashboardLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
           <h1 className="text-3xl font-display font-bold tracking-tight">
-            The <span className="text-gradient-lumi">Studio</span>
+            Ad <span className="text-gradient-lumi">Dashboard</span>
           </h1>
           <GridShimmer count={4} className="grid-cols-1 md:grid-cols-2" />
         </div>
@@ -164,7 +164,7 @@ export default function Studio() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <h1 className="text-3xl font-display font-bold tracking-tight">
-                The <span className="text-gradient-lumi">Studio</span>
+                Ad <span className="text-gradient-lumi">Dashboard</span>
               </h1>
               <p className="text-muted-foreground mt-2">Select an ad to add new creative to.</p>
             </div>
@@ -194,7 +194,7 @@ export default function Studio() {
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-3xl font-display font-bold tracking-tight">
-              The <span className="text-gradient-lumi">Studio</span>
+              Ad <span className="text-gradient-lumi">Dashboard</span>
             </h1>
             <p className="text-muted-foreground mt-2">
               Everything you're running, and everything you're building.
