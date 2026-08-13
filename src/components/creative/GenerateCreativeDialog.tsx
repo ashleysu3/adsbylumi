@@ -1105,20 +1105,29 @@ export function GenerateCreativeDialog() {
         ? { url: brandLogoAsset.url, corner: logoCorner }
         : undefined;
       // Apply the focal point / zoom the user set in the preview by pre-cropping
-      // the photo before it goes to the render engine.
+      // the photo before it goes to the render engine. We crop to the same frame
+      // aspect the preview uses so the render matches what they positioned.
       let photoUrlForRender = selectedPhoto?.url;
       const framingChanged = focalX !== 50 || focalY !== 50 || photoZoom !== 1;
       if (selectedPhoto && framingChanged) {
         try {
           setProgress("Applying image framing…");
-          photoUrlForRender = await cropImageToFocal(selectedPhoto.url, focalX, focalY, photoZoom);
+          photoUrlForRender = await cropImageToFocal(
+            selectedPhoto.url,
+            focalX,
+            focalY,
+            photoZoom,
+            photoFrameAspect(template),
+          );
         } catch {
           photoUrlForRender = selectedPhoto.url;
         }
       }
+      setRenderedFraming({ focalX, focalY, photoZoom, photoId: selectedPhotoId });
       const photo = selectedPhoto
         ? { url: photoUrlForRender!, removeBackground, focalX, focalY, zoom: photoZoom }
         : undefined;
+
       // Collage uses 2–4 photos. Take the most recently uploaded/brand photos.
       const collagePool = [...photos, ...brandPhotoAssets].filter((p) => !!p.url);
       const collagePhotos = template === "collage"
