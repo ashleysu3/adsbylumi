@@ -281,7 +281,7 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
                 className="group relative w-full overflow-hidden rounded-lg bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-sm transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-ring px-3 py-2.5 flex items-center gap-2"
               >
                 <Plus className="h-4 w-4" />
-                <span className="text-sm font-semibold tracking-tight">Create New</span>
+                <span className="text-sm font-semibold tracking-tight">Create a New Ad</span>
               </button>
               <button
                 type="button"
