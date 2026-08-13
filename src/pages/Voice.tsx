@@ -17,6 +17,9 @@ import { ContentAssetsEditor } from "@/components/ContentAssetsEditor";
 import { Building2, Smile, X, Loader2, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAutosaveOnChange } from "@/hooks/useAutosave";
+import { AutoSaveIndicator } from "@/components/AutoSaveIndicator";
+
 
 interface EmojiSettings {
   use_emojis: boolean;
