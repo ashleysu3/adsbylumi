@@ -17,6 +17,13 @@ interface DiscountInfo {
   duration_in_months: number | null;
 }
 
+export interface PaymentMethodInfo {
+  brand: string;
+  last4: string;
+  exp_month: number;
+  exp_year: number;
+}
+
 interface SubscriptionState {
   isLoading: boolean;
   isSubscribed: boolean;
@@ -32,6 +39,7 @@ interface SubscriptionState {
   discount: DiscountInfo | null;
   amountPaid: number | null;
   billingInterval: string | null;
+  paymentMethod: PaymentMethodInfo | null;
 }
 
 interface SubscriptionContextType extends SubscriptionState {
@@ -72,6 +80,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     discount: null,
     amountPaid: null,
     billingInterval: null,
+    paymentMethod: null,
   });
 
   const checkSubscription = useCallback(async () => {
@@ -107,6 +116,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             discount: null,
             amountPaid: null,
             billingInterval: null,
+          paymentMethod: null,
           });
         } else {
           // Check if impersonated user has a Stripe subscription via edge function with actAsUserId
@@ -137,6 +147,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
               discount: data.discount || null,
               amountPaid: data.amount_paid ?? null,
               billingInterval: data.billing_interval || null,
+        paymentMethod: data.payment_method || null,
             });
           } else {
             setState(prev => ({ ...prev, isLoading: false, isSubscribed: false, tier: null }));
@@ -202,6 +213,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         discount: data.discount || null,
         amountPaid: data.amount_paid ?? null,
         billingInterval: data.billing_interval || null,
+        paymentMethod: data.payment_method || null,
       });
     } catch (err) {
       console.error('Error in checkSubscription:', err);
@@ -248,6 +260,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           discount: null,
           amountPaid: null,
           billingInterval: null,
+          paymentMethod: null,
         });
       }
     });

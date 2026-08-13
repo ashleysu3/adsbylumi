@@ -179,6 +179,28 @@ Deno.serve(async (req) => {
           const unitAmount = priceObj.unit_amount ? priceObj.unit_amount / 100 : null; // cents → dollars
           const interval = priceObj.recurring?.interval || 'month';
 
+          // Card on file — so the UI can show "Visa ending 4242" without a
+          // round-trip to the billing portal.
+          let paymentMethod: any = null;
+          try {
+            const pms = await stripe.paymentMethods.list({
+              customer: customerId,
+              type: "card",
+              limit: 1,
+            });
+            const card = pms.data[0]?.card;
+            if (card) {
+              paymentMethod = {
+                brand: card.brand,
+                last4: card.last4,
+                exp_month: card.exp_month,
+                exp_year: card.exp_year,
+              };
+            }
+          } catch (pmErr) {
+            logStep("Could not load payment method", { error: String(pmErr) });
+          }
+
           logStep("Active Stripe subscription found", { 
             subscriptionId: subscription.id, 
             productId, priceId, discount, unitAmount, interval
@@ -197,6 +219,7 @@ Deno.serve(async (req) => {
             discount,
             amount_paid: unitAmount,
             billing_interval: interval,
+            payment_method: paymentMethod,
           }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 200,
