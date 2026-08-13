@@ -391,7 +391,7 @@ serve(async (req) => {
     // returns a single slide regardless of the "EXACTLY N slides" instruction,
     // which ships a "carousel" that's really just slide 1. Re-prompt once for
     // the right count, then trim any option that still overshoots.
-    if (template === "carousel" && options.length > 0) {
+    if ((template === "carousel" || customIsCarousel) && options.length > 0) {
       const targetN = Math.max(1, Math.min(10, Number(slideCount ?? (brief as any)?.slideCount) || 5));
       const countIsWrong = (opts: any[]) =>
         opts.some((o) => !Array.isArray(o?.slides) || o.slides.length !== targetN);
