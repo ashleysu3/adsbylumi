@@ -46,7 +46,9 @@ serve(async (req) => {
       selectedCopy,
       template,
       approvedCopySignature,
+      trackingSetup,
     } = await req.json();
+
 
     console.log('QA Preflight Check started');
     console.log('productionItems count:', productionItems?.length || 0);
