@@ -114,6 +114,17 @@ export function QACheckScreen({
   const [trackingSaving, setTrackingSaving] = useState(false);
   const [trackingCheck, setTrackingCheck] = useState<CheckResult | null>(null);
 
+  // ---- Inline copy editor (policy / spelling fixes without leaving QA) ----
+  const [wsCopy, setWsCopy] = useState<{ selected_copy: any; production_items: any[] }>({
+    selected_copy: workspace.selected_copy || null,
+    production_items: Array.isArray(workspace.production_items) ? workspace.production_items : [],
+  });
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [copyCheck, setCopyCheck] = useState<CheckResult | null>(null);
+  const [copyDrafts, setCopyDrafts] = useState<CopyDraft[]>([]);
+  const [copySaving, setCopySaving] = useState(false);
+
+
   // ---- Landing page URL (editable at publish) ----
   const initialLandingUrl: string =
     workspace.offer_url ||
