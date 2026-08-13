@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { LumiEducationCard } from '@/components/LumiEducationCard';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import DashboardLayout from '@/DashboardLayout';
+import DashboardLayout from '@/components/DashboardLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
