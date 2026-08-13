@@ -69,14 +69,45 @@ type BrandFonts = {
   bodyFamily?: string;
 };
 
-const COLOR_FIELDS: { key: keyof BrandColors; label: string }[] = [
-  { key: "bg", label: "Background" },
-  { key: "ink", label: "Ink / text" },
-  { key: "accent", label: "Accent" },
-  { key: "pop", label: "Pop" },
-  { key: "highlight", label: "Highlight" },
-  { key: "cream", label: "Cream" },
+// The palette is streamlined to four decisions: one light, one dark, two
+// accents. Under the hood we still write the legacy keys the ad renderer
+// reads (cream mirrors light, highlight mirrors accent 2) so nothing
+// downstream has to change.
+type SlotKey = "light" | "dark" | "accent" | "accent2";
+
+const COLOR_SLOTS: { key: SlotKey; label: string; hint: string }[] = [
+  { key: "light", label: "Light", hint: "Backgrounds and open space" },
+  { key: "dark", label: "Dark", hint: "Text and high-contrast blocks" },
+  { key: "accent", label: "Accent 1", hint: "Your main brand color" },
+  { key: "accent2", label: "Accent 2", hint: "Secondary pops and highlights" },
 ];
+
+function readSlot(colors: BrandColors, key: SlotKey): string {
+  switch (key) {
+    case "light":
+      return colors.bg || colors.cream || "";
+    case "dark":
+      return colors.ink || "";
+    case "accent":
+      return colors.accent || "";
+    case "accent2":
+      return colors.pop || colors.highlight || "";
+  }
+}
+
+function writeSlot(colors: BrandColors, key: SlotKey, value: string): BrandColors {
+  switch (key) {
+    case "light":
+      return { ...colors, bg: value, cream: value };
+    case "dark":
+      return { ...colors, ink: value };
+    case "accent":
+      return { ...colors, accent: value };
+    case "accent2":
+      return { ...colors, pop: value, highlight: value };
+  }
+}
+
 
 interface Props {
   brandId?: string | null;
