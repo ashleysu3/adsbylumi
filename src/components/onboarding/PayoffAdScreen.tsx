@@ -823,12 +823,24 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       if (!mountedRef.current) return;
       if (!returned.length) throw new Error("No copy options returned");
       setOptions(returned);
-      setSelectedIdx(0);
+      // Default to the strongest option instead of always option 0 — the
+      // model returns them unordered and option 0 is often the weakest.
+      const bestIdx = bestCopyIndex(template, returned, {
+        brandName: brand?.name,
+        offerText: offerHint || offerRowFull?.description || undefined,
+      });
+      setSelectedIdx(bestIdx);
 
       setStatusLine("🖼️ Rendering your first ad…");
-      const imgs = await callRender(returned[0]);
+      const imgs = await callRender(returned[bestIdx]);
       if (!mountedRef.current) return;
-      setImages(imgs);
+      liveImagesRef.current = imgs;
+      const pinned = pinnedRef.current;
+      const reveal = pinned?.images?.length ? pinned.images : imgs;
+      setPinnedActive(!!pinned?.images?.length);
+      await waitForDecode(reveal[0]);
+      if (!mountedRef.current) return;
+      setImages(reveal);
       setPhase("ready");
       // Once per brand per browser session — the payoff moment is the
       // key retargeting signal (people who saw their ad and left).
@@ -836,6 +848,13 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
     } catch (e: any) {
       if (!mountedRef.current) return;
       console.error("[payoff-ad] build failed", e);
+      // A pinned demo ad exists — never show the error screen on stage.
+      if (pinnedRef.current?.images?.length) {
+        setPinnedActive(true);
+        setImages(pinnedRef.current.images);
+        setPhase("ready");
+        return;
+      }
       setRenderErr(e?.message || "Something didn't line up");
       setPhase("error");
     }
