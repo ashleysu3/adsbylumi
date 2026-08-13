@@ -1738,7 +1738,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
 
         {/* Save dialog — the honest framing: the kit stays here, the email is
             the private link that survives this anonymous session. */}
-        <Dialog open={packFormOpen && packState !== "sent"} onOpenChange={setPackFormOpen}>
+        <Dialog open={packFormOpen && packState !== "sent" && !hasAccount} onOpenChange={setPackFormOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Save my Ad Kit</DialogTitle>
