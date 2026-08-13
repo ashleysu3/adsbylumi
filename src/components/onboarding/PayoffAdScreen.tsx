@@ -370,6 +370,41 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
     return () => { cancelled = true; };
   }, []);
 
+  // Admins get the demo controls: pin the ad on screen, toggle pinned vs live.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const user = data?.user;
+      if (!user || (user as any).is_anonymous) return;
+      const { data: role } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      if (!cancelled && role) setIsAdminViewer(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // "D" flips between the pinned demo ad and the live render (admins only).
+  useEffect(() => {
+    if (!isAdminViewer) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "d" && e.key !== "D") return;
+      const t = e.target as HTMLElement | null;
+      if (t && /^(INPUT|TEXTAREA)$/.test(t.tagName)) return;
+      if (!pinnedRef.current?.images?.length || !liveImagesRef.current.length) return;
+      setPinnedActive((wasPinned) => {
+        setImages(wasPinned ? liveImagesRef.current : pinnedRef.current!.images);
+        return !wasPinned;
+      });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isAdminViewer]);
+
 
   // The quiet "ready to launch now?" path for hot buyers — same shared
   // checkout the kit page uses. Buying otherwise lives AFTER the save.
