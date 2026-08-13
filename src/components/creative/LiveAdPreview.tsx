@@ -147,6 +147,7 @@ export function LiveAdPreview({
   focalY = 50,
   photoZoom = 1,
   onFocalChange,
+  frame = "feed",
 }: {
   copy?: Copy;
   slides?: Copy[];
@@ -173,6 +174,7 @@ export function LiveAdPreview({
   focalY?: number;
   photoZoom?: number;
   onFocalChange?: (x: number, y: number) => void;
+  frame?: "feed" | "story";
 }) {
   const [slideIdx, setSlideIdx] = useState(0);
   const total = slides?.length || 0;
@@ -631,7 +633,7 @@ export function LiveAdPreview({
   return (
     <div className="space-y-2">
       <div
-        className="relative aspect-square w-full overflow-hidden rounded-lg border border-border"
+        className={`relative w-full overflow-hidden rounded-lg border border-border ${frame === "story" ? "aspect-[9/16]" : "aspect-square"}`}
         style={{ backgroundColor: colors.bg }}
       >
         {body}
