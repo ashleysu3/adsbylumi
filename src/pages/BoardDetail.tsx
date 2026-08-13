@@ -46,7 +46,6 @@ export default function BoardDetail() {
   const [noteItem, setNoteItem] = useState<BoardItem | null>(null);
   const [noteValue, setNoteValue] = useState("");
 
-  // Generate-from-board (Recraft) state
   const { activeBrand } = useBrand();
   const { addConcept } = useCampaignDraft();
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
