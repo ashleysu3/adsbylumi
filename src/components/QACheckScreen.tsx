@@ -1052,6 +1052,113 @@ fbq('track', 'PageView');
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Inline copy editor — fix policy/spelling issues without leaving QA */}
+      <Dialog open={copyDialogOpen} onOpenChange={setCopyDialogOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-primary" />
+              Edit your ad copy
+            </DialogTitle>
+            <DialogDescription>
+              {copyCheck?.id === "ad_policy"
+                ? "Meta flagged wording that may break ad policy. Tweak it here and we'll re-check instantly."
+                : "Fix the flagged wording here and we'll re-check instantly."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 pt-2">
+            {(copyCheck?.issues || []).length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs uppercase text-muted-foreground">Flagged</p>
+                {(copyCheck?.issues || []).map((issue, i) => (
+                  <div
+                    key={i}
+                    className="p-3 rounded-lg bg-muted/50 border border-amber-500/20 flex items-start justify-between gap-3"
+                  >
+                    <div className="space-y-1 min-w-0">
+                      <p className="text-sm break-words">
+                        <span className="text-muted-foreground line-through">{issue.text}</span>
+                        {issue.suggestion && (
+                          <>
+                            {" → "}
+                            <span className="font-medium text-green-600">{issue.suggestion}</span>
+                          </>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{issue.reason}</p>
+                    </div>
+                    {issue.suggestion && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="shrink-0"
+                        onClick={() => applySuggestion(issue)}
+                      >
+                        Use this
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-5">
+              {copyDrafts.map((d) => (
+                <div key={d.key} className="space-y-3 rounded-xl border p-4">
+                  <p className="text-sm font-medium">{d.label}</p>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Headline</Label>
+                    <Input
+                      value={d.headline}
+                      onChange={(e) => updateDraft(d.key, "headline", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Primary text</Label>
+                    <Textarea
+                      rows={4}
+                      value={d.primary_text}
+                      onChange={(e) => updateDraft(d.key, "primary_text", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Description</Label>
+                    <Input
+                      value={d.description}
+                      onChange={(e) => updateDraft(d.key, "description", e.target.value)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button onClick={saveCopyEdits} disabled={copySaving} className="flex-1 gap-2">
+                {copySaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                Save & re-check
+              </Button>
+              <Button variant="ghost" onClick={() => setCopyDialogOpen(false)} disabled={copySaving}>
+                Cancel
+              </Button>
+            </div>
+            {onFixIssue && (
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground underline"
+                onClick={() => {
+                  setCopyDialogOpen(false);
+                  onFixIssue("copy", { check: copyCheck?.id, issues: copyCheck?.issues });
+                }}
+              >
+                Open the full copy editor instead
+              </button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
