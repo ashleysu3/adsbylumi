@@ -69,14 +69,45 @@ type BrandFonts = {
   bodyFamily?: string;
 };
 
-const COLOR_FIELDS: { key: keyof BrandColors; label: string }[] = [
-  { key: "bg", label: "Background" },
-  { key: "ink", label: "Ink / text" },
-  { key: "accent", label: "Accent" },
-  { key: "pop", label: "Pop" },
-  { key: "highlight", label: "Highlight" },
-  { key: "cream", label: "Cream" },
+// The palette is streamlined to four decisions: one light, one dark, two
+// accents. Under the hood we still write the legacy keys the ad renderer
+// reads (cream mirrors light, highlight mirrors accent 2) so nothing
+// downstream has to change.
+type SlotKey = "light" | "dark" | "accent" | "accent2";
+
+const COLOR_SLOTS: { key: SlotKey; label: string; hint: string }[] = [
+  { key: "light", label: "Light", hint: "Backgrounds and open space" },
+  { key: "dark", label: "Dark", hint: "Text and high-contrast blocks" },
+  { key: "accent", label: "Accent 1", hint: "Your main brand color" },
+  { key: "accent2", label: "Accent 2", hint: "Secondary pops and highlights" },
 ];
+
+function readSlot(colors: BrandColors, key: SlotKey): string {
+  switch (key) {
+    case "light":
+      return colors.bg || colors.cream || "";
+    case "dark":
+      return colors.ink || "";
+    case "accent":
+      return colors.accent || "";
+    case "accent2":
+      return colors.pop || colors.highlight || "";
+  }
+}
+
+function writeSlot(colors: BrandColors, key: SlotKey, value: string): BrandColors {
+  switch (key) {
+    case "light":
+      return { ...colors, bg: value, cream: value };
+    case "dark":
+      return { ...colors, ink: value };
+    case "accent":
+      return { ...colors, accent: value };
+    case "accent2":
+      return { ...colors, pop: value, highlight: value };
+  }
+}
+
 
 interface Props {
   brandId?: string | null;
@@ -157,14 +188,18 @@ export default function BrandColorsAndFonts({ brandId, websiteUrl }: Props) {
       // Replace the whole palette/fonts from what the extractor returned.
       // Do NOT fall back to previously loaded values — otherwise switching
       // brands and re-pulling leaves stale colors from the prior site.
+      // Collapse whatever the extractor returned into the four slots.
+      const light = s.colors?.bg || s.colors?.cream || "";
+      const accent2 = s.colors?.pop || s.colors?.highlight || "";
       setColors({
-        bg: s.colors?.bg || "",
+        bg: light,
+        cream: light,
         ink: s.colors?.ink || "",
         accent: s.colors?.accent || "",
-        pop: s.colors?.pop || "",
-        highlight: s.colors?.highlight || "",
-        cream: s.colors?.cream || "",
+        pop: accent2,
+        highlight: accent2,
       });
+
       setFonts({
         displayItalicUrl: s.fonts?.display?.url || "",
         displayFamily: s.fonts?.display?.family || "",
@@ -267,25 +302,30 @@ export default function BrandColorsAndFonts({ brandId, websiteUrl }: Props) {
 
             <div>
               <Label className="text-base">Colors</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Four colors run every ad: one light, one dark, and two accents.
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
-                {COLOR_FIELDS.map(({ key, label }) => {
-                  const value = colors[key] || "";
+                {COLOR_SLOTS.map(({ key, label, hint }) => {
+                  const value = readSlot(colors, key);
                   return (
                     <div key={key} className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">{label}</Label>
+                      <Label className="text-xs text-muted-foreground">
+                        {label} <span className="opacity-70">· {hint}</span>
+                      </Label>
                       <div className="flex items-center gap-2">
                         <label className="relative h-10 w-12 cursor-pointer overflow-hidden rounded border border-border bg-muted flex items-center justify-center text-xs text-muted-foreground">
                           {value ? <span className="absolute inset-0" style={{ backgroundColor: value }} /> : "—"}
                           <input
                             type="color"
                             value={value || "#ffffff"}
-                            onChange={(e) => setColors((prev) => ({ ...prev, [key]: e.target.value }))}
+                            onChange={(e) => setColors((prev) => writeSlot(prev, key, e.target.value))}
                             className="absolute inset-0 cursor-pointer opacity-0"
                           />
                         </label>
                         <Input
                           value={value}
-                          onChange={(e) => setColors((prev) => ({ ...prev, [key]: e.target.value }))}
+                          onChange={(e) => setColors((prev) => writeSlot(prev, key, e.target.value))}
                           placeholder="No color set"
                           className="font-mono"
                         />
@@ -295,6 +335,7 @@ export default function BrandColorsAndFonts({ brandId, websiteUrl }: Props) {
                 })}
               </div>
             </div>
+
 
             <Separator />
 
