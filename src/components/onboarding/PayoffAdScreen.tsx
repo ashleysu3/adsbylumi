@@ -323,6 +323,25 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const [leadName, setLeadName] = useState("");
   const [leadEmail, setLeadEmail] = useState("");
   const [packState, setPackState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  // Signed-in (non-anonymous) users already have an account — their kit gets
+  // pulled straight into it instead of asking them for an email to save it.
+  const [hasAccount, setHasAccount] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const user = data?.user;
+      if (cancelled || !user || (user as any).is_anonymous || !user.email) return;
+      setHasAccount(true);
+      setLeadEmail((prev) => prev || user.email || "");
+      const metaName =
+        (user.user_metadata as any)?.full_name || (user.user_metadata as any)?.name || "";
+      if (metaName) setLeadName((prev) => prev || metaName);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
 
   // The quiet "ready to launch now?" path for hot buyers — same shared
   // checkout the kit page uses. Buying otherwise lives AFTER the save.
