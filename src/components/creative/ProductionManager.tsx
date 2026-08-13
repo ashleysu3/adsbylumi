@@ -1441,7 +1441,7 @@ export function ProductionManager({
                       the actions someone actually needs on every visit (rank, filter,
                       push to ad). Previously 4-5 same-weight outline buttons cluttered
                       this header with no hierarchy. */}
-                  {(productionItems.length > 0 || previousRoundItems.length > 0 || onClearAll) && (
+                  {(productionItems.length > 0 || previousRoundItems.length > 0 || onClearAll || onUploadOwnAds) && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm" className="gap-1">
@@ -1450,7 +1450,20 @@ export function ProductionManager({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {onUploadOwnAds && (
+                          <DropdownMenuItem onClick={onUploadOwnAds} className="gap-2">
+                            <Upload className="h-3.5 w-3.5" />
+                            Upload My Own Ads
+                          </DropdownMenuItem>
+                        )}
+                        {onOpenCreativeBrief && (
+                          <DropdownMenuItem onClick={onOpenCreativeBrief} className="gap-2">
+                            <FileDown className="h-3.5 w-3.5" />
+                            Creative Brief
+                          </DropdownMenuItem>
+                        )}
                         {productionItems.length > 0 && (
+
                           <DropdownMenuItem onClick={() => setShareDialogOpen(true)} className="gap-2">
                             <Share2 className="h-3.5 w-3.5" />
                             Share with Client
