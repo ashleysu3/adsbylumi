@@ -71,6 +71,35 @@ const DEFAULT_COLORS: Colors = {
   pop: "#22c55e", highlight: "#f59e0b", cream: "#f5f5f5",
 };
 
+// The brand kit is authored as four decisions; the engine still wants six
+// slots, so light mirrors into cream and accent 2 mirrors into pop/highlight.
+type ColorSlot = "light" | "dark" | "accent" | "accent2";
+const COLOR_SLOTS: Array<{ key: ColorSlot; label: string }> = [
+  { key: "light", label: "Light" },
+  { key: "dark", label: "Dark" },
+  { key: "accent", label: "Accent 1" },
+  { key: "accent2", label: "Accent 2" },
+];
+
+function readSlotColor(c: Colors, key: ColorSlot): string {
+  switch (key) {
+    case "light": return c.bg || c.cream;
+    case "dark": return c.ink;
+    case "accent": return c.accent;
+    case "accent2": return c.pop || c.highlight;
+  }
+}
+
+function writeSlotColor(c: Colors, key: ColorSlot, v: string): Colors {
+  switch (key) {
+    case "light": return { ...c, bg: v, cream: v };
+    case "dark": return { ...c, ink: v };
+    case "accent": return { ...c, accent: v };
+    case "accent2": return { ...c, pop: v, highlight: v };
+  }
+}
+
+
 type SingleOption = Record<string, string>;
 type Slide = Record<string, string>;
 type CarouselOption = { slides: Slide[] };
