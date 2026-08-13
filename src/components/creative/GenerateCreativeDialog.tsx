@@ -2191,7 +2191,9 @@ export function GenerateCreativeDialog() {
             <Button
               data-help-target="approve-creative"
               size="lg"
-              className={cn(approvedIdxs.size < images.length && "animate-pulse")}
+              className={cn(
+                approvedIdxs.size < images.length && "lumi-outline-gradient"
+              )}
               variant={approvedIdxs.size >= images.length ? "secondary" : "default"}
               disabled={approvingIdx !== null || approvedIdxs.size >= images.length}
               onClick={approveAllAndClose}
