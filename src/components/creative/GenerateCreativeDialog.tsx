@@ -1532,6 +1532,11 @@ export function GenerateCreativeDialog() {
         textCase={textCase}
         headlineScale={headlineScale}
         bodyScale={bodyScale}
+        textBoxStyle={textBoxStyle}
+        textBoxColor={textBoxColor || colors.bg}
+        textBoxOpacity={textBoxOpacity}
+        textPosition={textPosition}
+        textAlign={textAlign}
         logoUrl={brandLogoAsset?.url}
         showLogo={placeLogo}
         logoCorner={logoCorner}
