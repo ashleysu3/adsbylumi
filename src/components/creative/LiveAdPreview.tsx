@@ -148,6 +148,10 @@ export function LiveAdPreview({
   logoUrl?: string;
   showLogo?: boolean;
   logoCorner?: "tl" | "tr" | "bl" | "br";
+  focalX?: number;
+  focalY?: number;
+  photoZoom?: number;
+  onFocalChange?: (x: number, y: number) => void;
 }) {
   const [slideIdx, setSlideIdx] = useState(0);
   const total = slides?.length || 0;
