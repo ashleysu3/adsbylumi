@@ -824,15 +824,31 @@ fbq('track', 'PageView');
                 {check.id === "ad_policy" && " (Meta ad policy)"}
               </p>
             )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-2"
-              onClick={() => openCopyDialog(check)}
-            >
-              <SpellCheck className="h-3.5 w-3.5" />
-              Fix copy here
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-2"
+                onClick={() => openCopyDialog(check)}
+              >
+                <SpellCheck className="h-3.5 w-3.5" />
+                Fix copy here
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="gap-2 text-muted-foreground"
+                disabled={copySaving}
+                onClick={() => acknowledgeCopyCheck(check)}
+              >
+                Keep as-is
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Keeping it as-is publishes this copy unchanged — Meta still reviews every ad.
+            </p>
+
+
 
           </div>
         )}
