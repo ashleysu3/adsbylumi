@@ -246,7 +246,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         />
       )}
       <CreateAdModal open={createAdModalOpen} onOpenChange={setCreateAdModalOpen} />
+      <TasksTray />
       <ReturnToWorkButton />
+
     </SidebarProvider>
   );
 }
