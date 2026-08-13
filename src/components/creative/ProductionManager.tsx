@@ -10,7 +10,7 @@ import {
   Video, Film, Image, Eye, FolderOpen, Maximize2,
   Sparkles, Loader2, Filter, Library, Info, Download,
   Archive, Trash2, ChevronDown, Star, Printer, CheckSquare, Square, XCircle,
-  Share2, Repeat, FastForward, MoreHorizontal
+  Share2, Repeat, FastForward, MoreHorizontal, FileDown
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -51,7 +51,10 @@ interface ProductionManagerProps {
   onArchivePrevious?: () => Promise<void>;
   onClearAll?: () => Promise<void>;
   onUrlChange?: (url: string) => void;
+  onUploadOwnAds?: () => void;
+  onOpenCreativeBrief?: () => void;
   brand?: any;
+
 }
 
 function parseOverlayTiming(raw?: string): { start: number; end: number } | null {
@@ -91,7 +94,10 @@ export function ProductionManager({
   onArchivePrevious,
   onClearAll,
   onUrlChange,
+  onUploadOwnAds,
+  onOpenCreativeBrief,
   brand,
+
 }: ProductionManagerProps) {
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const [uploadingVerticalItemId, setUploadingVerticalItemId] = useState<string | null>(null);
@@ -1435,7 +1441,7 @@ export function ProductionManager({
                       the actions someone actually needs on every visit (rank, filter,
                       push to ad). Previously 4-5 same-weight outline buttons cluttered
                       this header with no hierarchy. */}
-                  {(productionItems.length > 0 || previousRoundItems.length > 0 || onClearAll) && (
+                  {(productionItems.length > 0 || previousRoundItems.length > 0 || onClearAll || onUploadOwnAds) && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm" className="gap-1">
@@ -1444,7 +1450,20 @@ export function ProductionManager({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {onUploadOwnAds && (
+                          <DropdownMenuItem onClick={onUploadOwnAds} className="gap-2">
+                            <Upload className="h-3.5 w-3.5" />
+                            Upload My Own Ads
+                          </DropdownMenuItem>
+                        )}
+                        {onOpenCreativeBrief && (
+                          <DropdownMenuItem onClick={onOpenCreativeBrief} className="gap-2">
+                            <FileDown className="h-3.5 w-3.5" />
+                            Creative Brief
+                          </DropdownMenuItem>
+                        )}
                         {productionItems.length > 0 && (
+
                           <DropdownMenuItem onClick={() => setShareDialogOpen(true)} className="gap-2">
                             <Share2 className="h-3.5 w-3.5" />
                             Share with Client
