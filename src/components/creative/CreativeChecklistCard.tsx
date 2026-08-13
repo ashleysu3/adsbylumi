@@ -1441,12 +1441,33 @@ export function CreativeChecklistCard({
                             ],
                         }
                       : synth;
-                    console.log("[creative-brief:generate]", { itemId: item.id, format: (finalBrief as any).format, slideCount: (finalBrief as any).slideCount });
+                    // The concept the user actually picked lives on the item,
+                    // not always in the saved brief — carry it through so the
+                    // copywriter writes THIS concept instead of generic copy.
+                    const conceptDetail = {
+                      hook: item.hook || null,
+                      angleName: item.angleName || null,
+                      guidance: item.guidance || null,
+                      psychologyTrigger: (item as any).psychology_trigger || null,
+                      whyThisWorks: (item as any).why_this_works || null,
+                      textOverlays: Array.isArray((item as any).text_overlays)
+                        ? (item as any).text_overlays
+                        : null,
+                      designDirection: (item as any).design_direction || null,
+                    };
+                    const briefWithConcept = {
+                      ...(finalBrief as any),
+                      concept: (finalBrief as any).concept || item.guidance || item.hook,
+                      keyMessage: (finalBrief as any).keyMessage || item.hook,
+                      conceptDetail,
+                    };
+                    console.log("[creative-brief:generate]", { itemId: item.id, format: (briefWithConcept as any).format, slideCount: (briefWithConcept as any).slideCount });
                     window.dispatchEvent(
                       new CustomEvent("creative-brief:generate", {
-                        detail: { itemId: item.id, brief: finalBrief },
+                        detail: { itemId: item.id, brief: briefWithConcept },
                       }),
                     );
+
                   }}
                 >
                   <Wand2 className="h-3.5 w-3.5" />
