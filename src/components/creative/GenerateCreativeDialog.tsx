@@ -368,6 +368,11 @@ export function GenerateCreativeDialog() {
   const [textBoxOpacity, setTextBoxOpacity] = useState<number>(0.85);
   const [textPosition, setTextPosition] = useState<"top" | "middle" | "bottom">("bottom");
   const [textAlign, setTextAlign] = useState<"left" | "center" | "right">("left");
+  // Image framing: focal point + zoom so the user controls what stays visible
+  // inside the template frame.
+  const [focalX, setFocalX] = useState<number>(50);
+  const [focalY, setFocalY] = useState<number>(50);
+  const [photoZoom, setPhotoZoom] = useState<number>(1);
   // Readability controls for templates that put text directly on a photo
   // with no card behind it (currently just nativecaption) — the template's
   // own white text + shadow isn't always enough contrast against every photo.
