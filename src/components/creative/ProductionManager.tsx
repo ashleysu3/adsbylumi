@@ -1448,7 +1448,7 @@ export function ProductionManager({
                         size="sm"
                         onClick={handleRankConcepts}
                         disabled={isRanking}
-                        className="gap-2 w-full"
+                        className="gap-2 flex-1 min-w-0"
                       >
                         {isRanking ? (
                           <Loader2 className="h-3 w-3 animate-spin" />
