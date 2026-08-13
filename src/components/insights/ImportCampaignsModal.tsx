@@ -12,9 +12,18 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Download, Loader2, CheckCircle2, Sparkles, ArrowRight, Package } from 'lucide-react';
+import { Download, Loader2, CheckCircle2, Sparkles, ArrowRight, ArrowLeft, Package } from 'lucide-react';
 
 interface MetaCampaign {
   id: string;
@@ -32,6 +41,112 @@ interface ImportedCampaign {
   name: string;
   workspaceId: string;
 }
+
+// ── What LUMI needs to grade an imported campaign ──────────────────────────
+// Each goal maps onto the same KPI vocabulary the performance engine already
+// uses for LUMI-built campaigns, so imported ads get identical status logic,
+// weekly reports, and next-step recommendations.
+type GoalKey = 'leads' | 'sales' | 'calls' | 'traffic' | 'awareness';
+
+const GOAL_CONFIG: Record<
+  GoalKey,
+  {
+    label: string;
+    kpi: string;
+    kpiLabel: string;
+    goalType: 'less_than' | 'greater_than';
+    targetLabel: string;
+    targetHint: string;
+    defaultThreshold: number;
+    prefix?: string;
+    suffix?: string;
+  }
+> = {
+  leads: {
+    label: 'Leads / signups',
+    kpi: 'cpl',
+    kpiLabel: 'Cost per Lead',
+    goalType: 'less_than',
+    targetLabel: 'A good cost per lead is under',
+    targetHint: "What you're happy to pay for one lead.",
+    defaultThreshold: 20,
+    prefix: '$',
+  },
+  sales: {
+    label: 'Sales / purchases',
+    kpi: 'roas',
+    kpiLabel: 'Return on Ad Spend',
+    goalType: 'greater_than',
+    targetLabel: 'A good return on ad spend is at least',
+    targetHint: 'Revenue per $1 spent. 2 means $2 back for every $1 in.',
+    defaultThreshold: 2,
+    suffix: 'x',
+  },
+  calls: {
+    label: 'Booked calls',
+    kpi: 'cpl',
+    kpiLabel: 'Cost per Booked Call',
+    goalType: 'less_than',
+    targetLabel: 'A good cost per booked call is under',
+    targetHint: "What one call on your calendar is worth to you.",
+    defaultThreshold: 60,
+    prefix: '$',
+  },
+  traffic: {
+    label: 'Traffic to my page',
+    kpi: 'cpc',
+    kpiLabel: 'Cost per Click',
+    goalType: 'less_than',
+    targetLabel: 'A good cost per click is under',
+    targetHint: 'Most brands land between $0.50 and $2.00.',
+    defaultThreshold: 1.5,
+    prefix: '$',
+  },
+  awareness: {
+    label: 'Awareness / reach',
+    kpi: 'cpm',
+    kpiLabel: 'Cost per 1000 Impressions',
+    goalType: 'less_than',
+    targetLabel: 'A good cost per 1,000 impressions is under',
+    targetHint: 'Typical range is $8 to $25 depending on audience.',
+    defaultThreshold: 20,
+    prefix: '$',
+  },
+};
+
+type FunnelStage = 'cold' | 'warm' | 'retargeting';
+
+interface GoalAnswers {
+  goal: GoalKey;
+  landingUrl: string;
+  threshold: string;
+  funnelStage: FunnelStage;
+  dailyBudget: string;
+}
+
+const guessGoal = (objective?: string): GoalKey => {
+  const o = (objective || '').toUpperCase();
+  if (o.includes('LEAD')) return 'leads';
+  if (o.includes('SALES') || o.includes('CONVERSION') || o.includes('CATALOG')) return 'sales';
+  if (o.includes('TRAFFIC') || o.includes('LINK_CLICKS')) return 'traffic';
+  if (o.includes('AWARENESS') || o.includes('REACH') || o.includes('VIDEO') || o.includes('ENGAGEMENT'))
+    return 'awareness';
+  return 'leads';
+};
+
+const guessFunnelStage = (objective?: string): FunnelStage => {
+  const o = (objective || '').toUpperCase();
+  if (o.includes('AWARENESS') || o.includes('REACH') || o.includes('VIDEO')) return 'cold';
+  if (o.includes('SALES') || o.includes('CONVERSION')) return 'warm';
+  return 'cold';
+};
+
+// Meta reports budgets in minor units (cents)
+const centsToDollars = (v?: string) => {
+  const n = Number(v);
+  if (!v || !Number.isFinite(n) || n <= 0) return '';
+  return String(Math.round(n / 100));
+};
 
 interface ImportCampaignsModalProps {
   open: boolean;
@@ -58,13 +173,18 @@ export function ImportCampaignsModal({
   const [campaigns, setCampaigns] = useState<MetaCampaign[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
-  
+
+  // Two-step flow: pick campaigns → tell LUMI what "good" looks like
+  const [step, setStep] = useState<1 | 2>(1);
+  const [answers, setAnswers] = useState<Record<string, GoalAnswers>>({});
+
   // Post-import state
   const [importedCampaigns, setImportedCampaigns] = useState<ImportedCampaign[]>([]);
   const [showSuccessView, setShowSuccessView] = useState(false);
 
   useEffect(() => {
     if (open) {
+      setStep(1);
       fetchCampaigns();
     }
   }, [open, brandId, metaAccountId, dateRangeStart, dateRangeEnd]);
@@ -138,6 +258,89 @@ export function ImportCampaignsModal({
     setSelectedIds(new Set());
   };
 
+  const selectedCampaigns = campaigns.filter((c) => selectedIds.has(c.id));
+
+  // Prefill the questions from what Meta already tells us about the campaign.
+  const goToQuestions = () => {
+    setAnswers((prev) => {
+      const next = { ...prev };
+      for (const c of selectedCampaigns) {
+        if (next[c.id]) continue;
+        const goal = guessGoal(c.objective);
+        next[c.id] = {
+          goal,
+          landingUrl: '',
+          threshold: String(GOAL_CONFIG[goal].defaultThreshold),
+          funnelStage: guessFunnelStage(c.objective),
+          dailyBudget: centsToDollars(c.dailyBudget),
+        };
+      }
+      return next;
+    });
+    setStep(2);
+  };
+
+  const updateAnswer = (id: string, patch: Partial<GoalAnswers>) => {
+    setAnswers((prev) => {
+      const current = prev[id];
+      if (!current) return prev;
+      const merged = { ...current, ...patch };
+      // Switching the goal resets the target to that goal's sensible default
+      if (patch.goal && patch.goal !== current.goal) {
+        merged.threshold = String(GOAL_CONFIG[patch.goal].defaultThreshold);
+      }
+      return { ...prev, [id]: merged };
+    });
+  };
+
+  // Persist the answers as real campaign goals so the performance engine grades
+  // imported campaigns exactly like LUMI-built ones.
+  const saveGoals = async (imported: ImportedCampaign[]) => {
+    const { data: auth } = await supabase.auth.getUser();
+    const userId = auth.user?.id;
+    if (!userId) return;
+
+    for (const c of imported) {
+      const a = answers[c.id];
+      if (!a || !c.workspaceId) continue;
+      const cfg = GOAL_CONFIG[a.goal];
+      const threshold = Number(a.threshold);
+
+      try {
+        await supabase.from('campaign_goals').insert({
+          workspace_id: c.workspaceId,
+          brand_id: brandId,
+          created_by: userId,
+          primary_kpi: cfg.kpi,
+          primary_kpi_label: cfg.kpiLabel,
+          primary_kpi_goal_type: cfg.goalType,
+          primary_kpi_threshold: Number.isFinite(threshold) ? threshold : cfg.defaultThreshold,
+          auto_suggested: false,
+        });
+
+        const patch: Record<string, any> = {
+          final_answers: {
+            imported_from_meta: true,
+            goal: a.goal,
+            funnel_stage: a.funnelStage,
+            daily_budget: a.dailyBudget ? Number(a.dailyBudget) : null,
+            landing_url: a.landingUrl || null,
+          },
+        };
+        if (a.landingUrl) patch.offer_url = a.landingUrl;
+
+        await supabase.from('campaign_workspaces').update(patch).eq('id', c.workspaceId);
+
+        // Pull numbers right away so the card isn't empty on arrival
+        supabase.functions
+          .invoke('fetch-meta-performance', { body: { workspaceId: c.workspaceId } })
+          .catch(() => {});
+      } catch (e) {
+        console.warn('[ImportCampaignsModal] failed to save goal for', c.workspaceId, e);
+      }
+    }
+  };
+
   const handleImport = async () => {
     if (selectedIds.size === 0) return;
 
@@ -171,10 +374,12 @@ export function ImportCampaignsModal({
         name: c.name,
         workspaceId: c.workspaceId,
       }));
-      
+
+      await saveGoals(imported);
+
       setImportedCampaigns(imported);
       setShowSuccessView(true);
-      
+
       toast.success(`Successfully imported ${data.synced} campaign${data.synced !== 1 ? 's' : ''}`);
     } catch (err: any) {
       console.error('Error importing campaigns:', err);
@@ -206,6 +411,7 @@ export function ImportCampaignsModal({
     setTimeout(() => {
       setShowSuccessView(false);
       setImportedCampaigns([]);
+      setStep(1);
     }, 300);
     onImportComplete();
   };
@@ -237,7 +443,7 @@ export function ImportCampaignsModal({
                 Campaigns Imported! 🎉
               </h2>
               <p className="text-muted-foreground text-sm">
-                {importedCampaigns.length} campaign{importedCampaigns.length !== 1 ? 's' : ''} successfully imported
+                {importedCampaigns.length} campaign{importedCampaigns.length !== 1 ? 's' : ''} successfully imported — LUMI is pulling their numbers now.
               </p>
             </div>
 
@@ -294,6 +500,130 @@ export function ImportCampaignsModal({
     );
   }
 
+  // ── STEP 2 — what does "good" look like for each campaign ────────────────
+  if (step === 2) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Tell LUMI what "good" looks like
+            </DialogTitle>
+            <DialogDescription>
+              A few quick answers per campaign so LUMI can judge performance instead of just reporting it.
+            </DialogDescription>
+          </DialogHeader>
+
+          <ScrollArea className="flex-1 -mx-6 px-6">
+            <div className="space-y-4 py-2">
+              {selectedCampaigns.map((c) => {
+                const a = answers[c.id];
+                if (!a) return null;
+                const cfg = GOAL_CONFIG[a.goal];
+                return (
+                  <div key={c.id} className="rounded-xl border bg-card/60 p-4 space-y-3">
+                    <p className="font-medium text-sm truncate">{c.name}</p>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">What is this campaign for?</Label>
+                        <Select value={a.goal} onValueChange={(v) => updateAnswer(c.id, { goal: v as GoalKey })}>
+                          <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {(Object.keys(GOAL_CONFIG) as GoalKey[]).map((k) => (
+                              <SelectItem key={k} value={k}>{GOAL_CONFIG[k].label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Who is it reaching?</Label>
+                        <Select
+                          value={a.funnelStage}
+                          onValueChange={(v) => updateAnswer(c.id, { funnelStage: v as FunnelStage })}
+                        >
+                          <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="cold">Cold — brand new people</SelectItem>
+                            <SelectItem value="warm">Warm — already engaged</SelectItem>
+                            <SelectItem value="retargeting">Retargeting — visited or clicked</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">{cfg.targetLabel}</Label>
+                      <div className="flex items-center gap-2">
+                        {cfg.prefix && <span className="text-sm text-muted-foreground">{cfg.prefix}</span>}
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          className="h-9 w-32"
+                          value={a.threshold}
+                          onChange={(e) => updateAnswer(c.id, { threshold: e.target.value })}
+                        />
+                        {cfg.suffix && <span className="text-sm text-muted-foreground">{cfg.suffix}</span>}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">{cfg.targetHint}</p>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Where does it send people?</Label>
+                        <Input
+                          className="h-9"
+                          placeholder="yourbrand.com/offer"
+                          value={a.landingUrl}
+                          onChange={(e) => updateAnswer(c.id, { landingUrl: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Daily budget</Label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">$</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            className="h-9"
+                            placeholder="25"
+                            value={a.dailyBudget}
+                            onChange={(e) => updateAnswer(c.id, { dailyBudget: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+
+          <div className="flex items-center justify-between pt-4 border-t">
+            <Button variant="ghost" onClick={() => setStep(1)} disabled={importing}>
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+            <Button onClick={handleImport} disabled={importing}>
+              {importing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                `Import ${selectedIds.size} campaign${selectedIds.size !== 1 ? 's' : ''}`
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // ── STEP 1 — pick campaigns ──────────────────────────────────────────────
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
@@ -399,18 +729,9 @@ export function ImportCampaignsModal({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            onClick={handleImport}
-            disabled={selectedIds.size === 0 || importing}
-          >
-            {importing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Importing...
-              </>
-            ) : (
-              `Import ${selectedIds.size} Campaign${selectedIds.size !== 1 ? 's' : ''}`
-            )}
+          <Button onClick={goToQuestions} disabled={selectedIds.size === 0}>
+            Next
+            <ArrowRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
       </DialogContent>
