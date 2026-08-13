@@ -374,6 +374,11 @@ export function GenerateCreativeDialog() {
   const [focalX, setFocalX] = useState<number>(50);
   const [focalY, setFocalY] = useState<number>(50);
   const [photoZoom, setPhotoZoom] = useState<number>(1);
+  // Framing that the currently shown renders were made with, so we can tell the
+  // user when the preview no longer matches what's on screen.
+  const [renderedFraming, setRenderedFraming] = useState<{
+    focalX: number; focalY: number; photoZoom: number; photoId: string | null;
+  } | null>(null);
   // Readability controls for templates that put text directly on a photo
   // with no card behind it (currently just nativecaption) — the template's
   // own white text + shadow isn't always enough contrast against every photo.
