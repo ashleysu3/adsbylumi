@@ -17,6 +17,7 @@ import {
 import { Loader2, Plus, Trash2, Tag, Copy, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { formatInvokeError } from "@/lib/formatInvokeError";
 
 interface PromotionCode {
   id: string;
@@ -61,7 +62,21 @@ export default function AdminCoupons() {
 
   const callApi = useCallback(async (body: Record<string, any>) => {
     const { data, error } = await supabase.functions.invoke("stripe-admin", { body });
-    if (error) throw new Error(error.message || "Request failed");
+    if (error) {
+      // The SDK collapses any non-2xx into "Edge Function returned a non-2xx
+      // status code" — dig the real Stripe message out of the response body.
+      let message = formatInvokeError(error);
+      const ctxBody = (error as any)?.context?.body;
+      if (ctxBody && typeof ctxBody !== "string") {
+        try {
+          const parsed = await (error as any).context.clone().json();
+          if (parsed?.error) message = String(parsed.error);
+        } catch {
+          // keep the formatted fallback
+        }
+      }
+      throw new Error(message);
+    }
     if (data?.error) throw new Error(data.error);
     return data;
   }, []);

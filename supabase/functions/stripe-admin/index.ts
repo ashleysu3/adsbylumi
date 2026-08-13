@@ -608,21 +608,40 @@ Deno.serve(async (req) => {
           if (!isNaN(ts)) couponParams.redeem_by = ts;
         }
 
+        const desiredPromoCode =
+          typeof p.promo_code === "string" && p.promo_code.trim()
+            ? p.promo_code.trim().toUpperCase()
+            : null;
+
+        // Check the promo code up-front. Stripe rejects duplicates, and doing this
+        // after coupon creation used to leave an orphaned coupon behind.
+        if (desiredPromoCode) {
+          const existing = await stripe.promotionCodes.list({ code: desiredPromoCode, limit: 1 });
+          if (existing.data.length > 0) {
+            throw new Error(
+              `The promo code "${desiredPromoCode}" already exists in Stripe. Pick a different code, or deactivate the existing one first.`,
+            );
+          }
+        }
+
         const coupon = await stripe.coupons.create(couponParams);
 
         // Optionally create a customer-facing promotion code
         let promoCode: any = null;
-        if (p.promo_code && typeof p.promo_code === "string" && p.promo_code.trim()) {
-          const promoParams: any = {
-            coupon: coupon.id,
-            code: p.promo_code.trim().toUpperCase(),
-          };
+        if (desiredPromoCode) {
+          const promoParams: any = { coupon: coupon.id, code: desiredPromoCode };
           if (p.max_redemptions) promoParams.max_redemptions = Math.round(Number(p.max_redemptions));
           if (p.redeem_by) {
             const ts = Math.floor(new Date(p.redeem_by).getTime() / 1000);
             if (!isNaN(ts)) promoParams.expires_at = ts;
           }
-          promoCode = await stripe.promotionCodes.create(promoParams);
+          try {
+            promoCode = await stripe.promotionCodes.create(promoParams);
+          } catch (promoErr: any) {
+            // Roll the coupon back so a failed promo code doesn't litter Stripe.
+            try { await stripe.coupons.del(coupon.id); } catch { /* best effort */ }
+            throw new Error(promoErr?.message || "Could not create the promo code");
+          }
         }
 
         result = { success: true, coupon, promotion_code: promoCode };
