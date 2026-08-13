@@ -393,6 +393,13 @@ export default function AdStrategy() {
 
   return (
     <DashboardLayout>
+      <QuickFixDialog
+        open={offerFixOpen}
+        onOpenChange={setOfferFixOpen}
+        kind="offer"
+        brandId={activeBrand?.id}
+        onDone={() => setReloadKey((k) => k + 1)}
+      />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         <header className="space-y-1">
           <div className="flex items-center gap-2">
