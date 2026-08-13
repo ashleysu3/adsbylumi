@@ -280,71 +280,8 @@ export default function Settings() {
     { key: brand?.id ?? null, enabled: !!brand?.id && !loading },
   );
 
-  const handleSaveNotificationPrefs = async () => {
-    if (!brand) return;
-    
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from('brands')
-        .update({ notification_preferences: notificationPrefs as any })
-        .eq('id', brand.id);
 
-      if (error) throw error;
-      toast.success('Notification preferences saved');
-    } catch (error) {
-      console.error('Error saving preferences:', error);
-      toast.error('Failed to save preferences');
-    } finally {
-      setSaving(false);
-    }
-  };
 
-  const handleSaveAlertThresholds = async () => {
-    if (!brand) return;
-    
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from('brands')
-        .update({ alert_thresholds: alertThresholds as any })
-        .eq('id', brand.id);
-
-      if (error) throw error;
-      toast.success('Alert thresholds saved');
-    } catch (error) {
-      console.error('Error saving thresholds:', error);
-      toast.error('Failed to save thresholds');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSaveCreativeAutomation = async () => {
-    if (!brand) return;
-    
-    setSaving(true);
-    try {
-      const currentPrefs = (brand.notification_preferences as any) || {};
-      const { error } = await supabase
-        .from('brands')
-        .update({ 
-          notification_preferences: {
-            ...currentPrefs,
-            creative_automation: creativeAutomation,
-          } as any 
-        })
-        .eq('id', brand.id);
-
-      if (error) throw error;
-      toast.success('Creative automation settings saved');
-    } catch (error) {
-      console.error('Error saving creative automation:', error);
-      toast.error('Failed to save settings');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleManageSubscription = async () => {
     try {
