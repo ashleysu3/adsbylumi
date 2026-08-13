@@ -76,6 +76,24 @@ function mapStyle(styleHint?: string, format?: string): string {
   return (styleHint && m[styleHint]) || "bigtype";
 }
 
+// Copy instructions for a custom (admin-authored) template: its slot keys come
+// from the template row, so we describe them generically instead of using the
+// built-in SLOTS map. Without this, custom templates got no copy at all.
+function customInstruction(keys: string[], count: number, isCarousel: boolean, slideCount?: number): string {
+  const keyList = keys.map((k) => `"${k}"`).join(", ");
+  const rules =
+    `Slot naming tells you the job: keys containing "headline"/"hook"/"title" = <=8 punchy words; ` +
+    `"eyebrow"/"label"/"tag"/"badge" = <=4 words; "sub"/"body"/"desc"/"quote"/"item"/"msg" = one sentence <=18 words; ` +
+    `"cta"/"button" = <=4 words matching the brief's offer (never "Learn more"/"Sign up"/"Get started"); ` +
+    `anything numeric-sounding ("stat", "num", "price") = a short number or figure. ` +
+    `Never leave a slot blank unless it truly cannot apply — write real copy for every key.`;
+  if (isCarousel) {
+    const n = Math.max(2, Math.min(10, Number(slideCount) || 5));
+    return `Return ${count} option(s). Each option is {"slides":[...]} with EXACTLY ${n} slide(s) — no more, no fewer. Each slide is a JSON object with EXACTLY these keys: ${keyList}. Slide 1 = the hook; middle slides deliver payoff/proof/steps; the final slide carries the CTA (leave CTA-ish slots "" on earlier slides). ${rules}`;
+  }
+  return `Return ${count} DISTINCT option(s) (different angles). Each option is a JSON object with EXACTLY these keys: ${keyList}. ${rules}`;
+}
+
 function instruction(template: string, count: number, slideCount?: number): string {
   if (template === "carousel") {
     const n = Math.max(1, Math.min(10, Number(slideCount) || 5));
@@ -83,6 +101,7 @@ function instruction(template: string, count: number, slideCount?: number): stri
   }
   return `Return ${count} DISTINCT option(s) (different angles). For template "${template}", each option is a JSON object with EXACTLY these keys: ${SLOTS[template] || SLOTS.bigtype}. Use "" for any optional field you skip. Full headline reads as one natural line, <=8 words.`;
 }
+
 
 function truncate(v: unknown, max = 1400): string {
   if (v == null) return "";
