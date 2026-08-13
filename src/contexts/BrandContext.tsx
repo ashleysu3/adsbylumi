@@ -34,13 +34,27 @@ export function BrandProvider({ children }: { children: ReactNode }) {
 
   const [authReady, setAuthReady] = useState(false);
 
+  const [ownerUserId, setOwnerUserId] = useState<string | null>(null);
+
+  const clearBrandState = useCallback(() => {
+    setBrands([]);
+    setActiveBrandState(null);
+    setBrandId(null);
+    setOwnerUserId(null);
+    localStorage.removeItem('activeBrandId'); // legacy shared key
+  }, [setBrandId]);
+
+
   const fetchBrands = useCallback(async () => {
     try {
       const effectiveUserId = await getEffectiveUserId();
       if (!effectiveUserId) {
+        clearBrandState();
         setLoading(false);
         return;
       }
+
+      setOwnerUserId(effectiveUserId);
 
       // Check if user is an agency user
       const { data: profileData } = await supabase
@@ -64,23 +78,28 @@ export function BrandProvider({ children }: { children: ReactNode }) {
       const fetchedBrands = brandsData || [];
       setBrands(fetchedBrands);
 
-      // Set active brand from localStorage or first brand
+      // Set active brand from this user's saved brand or their first brand.
+      // Never keep a brand belonging to a previously loaded account.
       if (fetchedBrands.length > 0) {
-        const savedBrandId = localStorage.getItem('activeBrandId');
-        const savedBrand = savedBrandId 
-          ? fetchedBrands.find(b => b.id === savedBrandId) 
+        const savedBrandId = localStorage.getItem(`activeBrandId:${effectiveUserId}`);
+        const savedBrand = savedBrandId
+          ? fetchedBrands.find(b => b.id === savedBrandId)
           : null;
-        
+
         const brandToSet = savedBrand || fetchedBrands[0];
         setActiveBrandState(brandToSet);
         setBrandId(brandToSet.id);
+      } else {
+        setActiveBrandState(null);
+        setBrandId(null);
       }
     } catch (error) {
       console.error('Error fetching brands:', error);
     } finally {
       setLoading(false);
     }
-  }, [getEffectiveUserId, setBrandId]);
+  }, [getEffectiveUserId, setBrandId, clearBrandState]);
+
 
   // Single initialization path: get session once, then listen for changes
   useEffect(() => {
@@ -94,6 +113,7 @@ export function BrandProvider({ children }: { children: ReactNode }) {
           if (mounted) setAuthReady(true);
         });
       } else {
+        clearBrandState();
         setLoading(false);
         setAuthReady(true);
       }
@@ -105,8 +125,10 @@ export function BrandProvider({ children }: { children: ReactNode }) {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         fetchBrands();
       } else if (event === 'SIGNED_OUT') {
-        setBrands([]);
-        setActiveBrandState(null);
+        // Drop every trace of the previous account so the next user can't
+        // inherit their brand (and Lumi's brand-scoped chat history).
+        clearBrandState();
+        setIsAgencyUser(false);
         setLoading(false);
       }
     });
@@ -115,13 +137,14 @@ export function BrandProvider({ children }: { children: ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchBrands]);
+  }, [fetchBrands, clearBrandState]);
 
   const setActiveBrand = useCallback((brand: Brand) => {
     setActiveBrandState(brand);
     setBrandId(brand.id);
-    localStorage.setItem('activeBrandId', brand.id);
-  }, [setBrandId]);
+    if (ownerUserId) localStorage.setItem(`activeBrandId:${ownerUserId}`, brand.id);
+  }, [setBrandId, ownerUserId]);
+
 
   const addBrand = useCallback((brand: Brand) => {
     setBrands(prev => [brand, ...prev]);
