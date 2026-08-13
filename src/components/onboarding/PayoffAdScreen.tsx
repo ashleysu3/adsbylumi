@@ -26,8 +26,10 @@ import {
   rankPhotoCandidates,
   bestCopyIndex,
   guardPalette,
+  readableTextOn,
   normalizeDemoDomain,
 } from "@/lib/ad-quality";
+
 
 // Coerce however brand_kits.colors is shaped (array of hexes from extract-brand,
 // or the {bg, ink, accent, pop, highlight, cream} object the Style page saves)
