@@ -144,11 +144,12 @@ Deno.serve(async (req) => {
                 "- A webinar / free training / masterclass / workshop offer → webinar funnel.\n" +
                 "- A free download / guide / checklist / PDF / quiz / lead magnet → lead-magnet funnel.\n" +
                 "- A low-ticket paid challenge / bootcamp / $27–$97 sprint → paid-challenge funnel.\n" +
-                "- A high-ticket coaching / consulting / 1:1 / mastermind / application offer → DM / conversation funnel.\n" +
+                "- A high-ticket coaching / consulting / 1:1 / mastermind / application offer → application / call-booking funnel that sends people to a landing page or application form (NOT a DM funnel).\n" +
                 "- A podcast / show / clip-based growth play → podcast-grow funnel.\n" +
                 "- A standard paid product or course with a sales page (no webinar, no challenge) → the matching sales funnel (e.g. coach-course-creator-3step).\n" +
                 "- A local in-person service → local-service funnel.\n" +
-                "Use the offer name, description, price, page_goal, and the user_goal to decide. If there is no offer yet, brandSnapshot.offer_hint is the user's own words on what they're actually offering (e.g. 'a free discovery call', 'a free guide on X', 'my $997 program') — treat it as equally authoritative as a real offer's description/page_goal for picking the funnel type. A 'get_leads' goal with a call-shaped offer_hint should match a call/DM funnel, not a generic lead-magnet template, and vice versa. If user_goal is EXACTLY 'dm_leads', the user explicitly chose \"more DMs\" in onboarding — match a DM/conversation funnel, full stop, regardless of offer details. If user_goal is EXACTLY 'grow_social', the user explicitly chose \"more followers/engagement\" — match a growth/awareness funnel, never a lead or DM funnel. Only return no_match if literally none of the templates fit the offer type.\n\n" +
+                "HARD RULE ON DM / CONVERSATION FUNNELS: NEVER pick a DM / Messenger / \"conversations\" funnel unless user_goal is EXACTLY 'dm_leads' (the user explicitly asked for DMs). Wanting leads is NOT a reason to recommend DMs. When someone wants leads, the leads must come from a website or landing page — an opt-in, newsletter signup, waitlist, webinar/masterclass registration, challenge signup, application, or lead form. If the only close match is a DM funnel and user_goal is not 'dm_leads', pick the closest landing-page lead funnel instead, or return no_match.\n" +
+                "Use the offer name, description, price, page_goal, and the user_goal to decide. If there is no offer yet, brandSnapshot.offer_hint is the user's own words on what they're actually offering (e.g. 'a free discovery call', 'a free guide on X', 'my $997 program') — treat it as equally authoritative as a real offer's description/page_goal for picking the funnel type. A 'get_leads' goal with a call-shaped offer_hint should match a call-booking / application funnel that runs through a landing page. If user_goal is EXACTLY 'dm_leads', the user explicitly chose \"more DMs\" in onboarding — match a DM/conversation funnel, full stop, regardless of offer details. If user_goal is EXACTLY 'grow_social', the user explicitly chose \"more followers/engagement\" — match a growth/awareness funnel, never a lead or DM funnel. Only return no_match if literally none of the templates fit the offer type.\n\n" +
                 "IMPORTANT — the template you match was AUTHORED once as a generic funnel shape, often using an illustrative example industry in its stored name/description (e.g. a template literally named 'Wedding Pros — Grow + Leads' really just means \"2-campaign lead-gen funnel\" and has nothing to do with weddings). NEVER let that stored name/description reach the user as-is. Always write a personalized_title and personalized_intro grounded in THIS brand's actual name, industry, and offer_hint/offer (e.g. 'Free Guide → Booked Calls for Acme Coaching', not a generic label) — never mention the template's original example industry unless it's genuinely this brand's industry too. Respond ONLY with JSON.",
             },
             {
@@ -239,8 +240,13 @@ Deno.serve(async (req) => {
       // DM funnels — that's the bug this guards against.
       if (explicitGoal === "dm_leads") return g.includes("dm_leads");
       if (explicitGoal === "grow_social") return g.includes("grow_social");
+      // DM funnels are opt-in ONLY. Unless the user explicitly asked for DMs,
+      // a template tagged dm_leads never counts as aligned — leads must come
+      // from a website/landing page (opt-in, newsletter, waitlist, webinar,
+      // challenge, application), never from a DM ask nobody asked for.
+      if (isDmTemplate(g)) return false;
       if (obj === "OUTCOME_LEADS" || obj === "OUTCOME_ENGAGEMENT") {
-        return g.some((x) => ["get_leads", "book_calls", "dm_leads"].includes(x));
+        return g.some((x) => ["get_leads", "book_calls"].includes(x));
       }
       // Templates are still tagged with the old "awareness" vocabulary — match
       // on the tag we have, even though we no longer BUILD awareness campaigns.
@@ -250,6 +256,27 @@ Deno.serve(async (req) => {
       // OUTCOME_SALES
       return g.some((x) => ["promote_offer", "sales"].includes(x));
     };
+
+    // A template counts as a DM funnel if its only lead-shaped goal is DMs, or
+    // if its identity is clearly conversation/Messenger-based.
+    function isDmTemplate(goals: string[]) {
+      return goals.includes("dm_leads") &&
+        !goals.some((x) => ["get_leads", "book_calls", "promote_offer", "sales"].includes(x));
+    }
+
+    // Hard block: if the AI handed back a DM/conversation template and the user
+    // did not explicitly choose "more DMs", drop it before anything else runs.
+    if (matched && explicitGoal !== "dm_leads") {
+      const g = (matched.primary_goals ?? []).map((x: any) => String(x).toLowerCase());
+      const looksDm = isDmTemplate(g) ||
+        /\bdm\b|messenger|conversation/i.test(`${matched.slug} ${matched.name}`);
+      if (looksDm) {
+        console.log(
+          `Guardrail: rejecting DM template ${matched.slug} — user_goal "${explicitGoal || "(none)"}" is not dm_leads`,
+        );
+        matched = null;
+      }
+    }
 
     if (matched && !goalsAlignWithObjective(matched.primary_goals, detectedObjective)) {
       const better = templates.find((t: any) =>
