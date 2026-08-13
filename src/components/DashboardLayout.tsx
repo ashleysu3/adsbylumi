@@ -13,8 +13,7 @@ import { MobileHeader } from "@/components/MobileHeader";
 import { MobileOnboardingTour, useMobileOnboardingTour } from "@/components/MobileOnboardingTour";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLumiAssistant } from "@/components/LumiAssistant";
-import { AppSidebar } from "@/components/AppSidebar";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppTopBar } from "@/components/AppTopBar";
 import { ArrowRight, X, Sparkles, Shield, Briefcase, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SubscriptionBanner } from "@/components/SubscriptionGate";
@@ -187,51 +186,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
-  // Desktop layout — sidebar + slim top bar
+  // Desktop layout — top bar navigation (no sidebar)
   return (
-    <SidebarProvider defaultOpen={localStorage.getItem("sidebar:state") !== "false"}>
-      <div className="min-h-screen flex w-full">
-        <AppSidebar isAdmin={isAdmin} brandId={brand?.id} />
+    <div className="min-h-screen flex flex-col w-full bg-background">
+      <AppTopBar isAdmin={isAdmin} />
 
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Slim top bar */}
-          <header className="h-12 flex items-center justify-between border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40 px-4">
-            <SidebarTrigger />
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground hidden sm:block truncate max-w-[200px]">
-                {location.pathname.startsWith('/admin')
-                  ? 'Admin'
-                  : location.pathname === '/ads-manager' && isAgencyUser
-                  ? (agencyName || profile?.full_name || 'Agency')
-                  : isAgencyUser && activeBrand ? activeBrand.name : (profile?.full_name || user?.email)}
-              </span>
-              <button
-                type="button"
-                aria-label="Sign out"
-                title="Sign out"
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  sonnerToast.success("Signed out");
-                  navigate("/auth");
-                }}
-                className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            </div>
-          </header>
-
-
-
+      <div className="flex-1 flex flex-col min-w-0">
           <SubscriptionBanner />
           <PartnerPortalBanner />
           
           
-          <main className="flex-1 container mx-auto px-4 md:px-6 py-4 md:py-6">
+          <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 md:px-8 py-4 md:py-6">
             {children}
           </main>
           <DashboardFooter />
-        </div>
       </div>
 
       {walkthroughOpen && (
@@ -250,7 +218,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <CreateAdModal open={createAdModalOpen} onOpenChange={setCreateAdModalOpen} />
       <TasksTray />
       <ReturnToWorkButton />
-
-    </SidebarProvider>
+    </div>
   );
 }
