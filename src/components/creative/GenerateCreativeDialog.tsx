@@ -1949,65 +1949,7 @@ export function GenerateCreativeDialog() {
                         </div>
                       )}
 
-                      {/* AI brand background (optional) */}
-                      <Accordion type="single" collapsible>
-                        <AccordionItem value="bg" className="border rounded-lg px-3">
-                          <AccordionTrigger className="py-2.5 text-xs font-medium hover:no-underline">
-                            <span className="flex items-center gap-1.5">
-                              <Sparkles className="h-3 w-3 text-primary" /> Generate a brand background (optional)
-                            </span>
-                          </AccordionTrigger>
-                          <AccordionContent className="space-y-2 pb-3">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="text-[11px] text-muted-foreground">
-                                A clean on-brand background — no faces. Your photo, copy &amp; logo layer on top.
-                              </p>
-                              <Button
-                                size="sm"
-                                variant={bgOptions.length ? "outline" : "default"}
-                                onClick={runBrandBackground}
-                                disabled={bgGenerating}
-                              >
-                                {bgGenerating ? (
-                                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Generating…</>
-                                ) : bgOptions.length ? (
-                                  <><RefreshCw className="h-3 w-3 mr-1" /> Regenerate</>
-                                ) : (
-                                  <>Generate</>
-                                )}
-                              </Button>
-                            </div>
-                            {brandBackgroundAssets.length === 0 && (
-                              <p className="text-[11px] text-muted-foreground">
-                                Tip: add background or texture examples in <b>Brand Assets</b> for more on-brand results.
-                              </p>
-                            )}
-                            {bgOptions.length > 0 && (
-                              <div className="grid grid-cols-4 gap-2 pt-1">
-                                {bgOptions.map((o) => (
-                                  <button
-                                    key={o.path}
-                                    type="button"
-                                    onClick={() => setBgSelectedUrl(o.url === bgSelectedUrl ? "" : o.url)}
-                                    className={`relative aspect-square rounded border-2 overflow-hidden transition ${
-                                      bgSelectedUrl === o.url ? "border-primary" : "border-border hover:border-muted-foreground"
-                                    }`}
-                                    title={`Background ${o.aspect}`}
-                                  >
-                                    <img src={o.url} alt="" className="w-full h-full object-cover" />
-                                    <span className="absolute bottom-0 left-0 right-0 text-[9px] uppercase text-white bg-black/55 py-0.5 text-center leading-none">
-                                      {o.aspect}
-                                    </span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                            {bgSelectedUrl && (
-                              <p className="text-[11px] text-primary">✓ This background will sit behind your layout.</p>
-                            )}
-                          </AccordionContent>
-                        </AccordionItem>
-                      </Accordion>
+
                     </div>
                   )}
 
