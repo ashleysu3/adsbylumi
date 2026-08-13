@@ -1439,32 +1439,50 @@ export function ProductionManager({
                   {itemsWithAssets}/{productionItems.length} uploaded
                 </Badge>
               </div>
-              {canRank && !hasRankedItems && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="lumi"
-                        size="sm"
-                        onClick={handleRankConcepts}
-                        disabled={isRanking}
-                        className="gap-2 w-full"
-                      >
-                        {isRanking ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Sparkles className="h-3 w-3" />
-                        )}
-                        Get Lumi's Top 5
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Lumi will rank your {productionItems.length} concepts and pick the top 5</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-              <div className="flex items-center justify-end flex-wrap gap-2">
+              <div className="flex items-center flex-wrap gap-2">
+                {canRank && !hasRankedItems && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="lumi"
+                          size="sm"
+                          onClick={handleRankConcepts}
+                          disabled={isRanking}
+                          className="gap-2 flex-1 min-w-0"
+                        >
+                          {isRanking ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-3 w-3" />
+                          )}
+                          Get Lumi's Top 5
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Lumi will rank your {productionItems.length} concepts and pick the top 5</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                {onSaveToLibrary && (
+                  <Button
+                    variant={bulkSelectMode ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      if (bulkSelectMode) {
+                        setBulkSelectMode(false);
+                        setSelectedIds(new Set());
+                      } else {
+                        setBulkSelectMode(true);
+                      }
+                    }}
+                    className="gap-1"
+                  >
+                    <Library className="h-3 w-3" />
+                    {bulkSelectMode ? "Cancel" : "Move to Concept Library"}
+                  </Button>
+                )}
                 {(productionItems.length > 0 || previousRoundItems.length > 0 || onClearAll || onUploadOwnAds) && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -1531,25 +1549,6 @@ export function ProductionManager({
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                )}
-                {/* Move to Concept Library */}
-                {onSaveToLibrary && (
-                  <Button
-                    variant={bulkSelectMode ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      if (bulkSelectMode) {
-                        setBulkSelectMode(false);
-                        setSelectedIds(new Set());
-                      } else {
-                        setBulkSelectMode(true);
-                      }
-                    }}
-                    className="gap-1"
-                  >
-                    <Library className="h-3 w-3" />
-                    {bulkSelectMode ? "Cancel" : "Move to Concept Library"}
-                  </Button>
                 )}
                 {hasRankedItems && (
                   <>
