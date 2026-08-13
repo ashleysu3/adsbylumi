@@ -1673,39 +1673,43 @@ export function GenerateCreativeDialog() {
 
           {selectedPhoto && (
             <div className="space-y-3 rounded border border-border bg-muted/20 p-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Image framing</p>
-                <button
-                  type="button"
-                  className="text-[10px] text-muted-foreground underline"
-                  onClick={() => { setFocalX(50); setFocalY(50); setPhotoZoom(1); }}
-                >
-                  Reset
-                </button>
+                <div className="flex items-center gap-2">
+                  {FrameToggle}
+                  <button
+                    type="button"
+                    className="text-[10px] text-muted-foreground underline"
+                    onClick={resetActiveFraming}
+                  >
+                    Reset
+                  </button>
+                </div>
               </div>
               <p className="text-[11px] text-muted-foreground">
                 Drag the photo in the preview, or use the sliders, to choose what stays in frame.
+                Feed and story are framed separately — switch above to set each one.
               </p>
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Horizontal</p>
-                  <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(focalX)}%</span>
+                  <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(activeFocalX)}%</span>
                 </div>
-                <Slider min={0} max={100} step={1} value={[focalX]} onValueChange={(v) => setFocalX(v[0])} />
+                <Slider min={0} max={100} step={1} value={[activeFocalX]} onValueChange={(v) => setActiveFocal(v[0], activeFocalY)} />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Vertical</p>
-                  <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(focalY)}%</span>
+                  <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(activeFocalY)}%</span>
                 </div>
-                <Slider min={0} max={100} step={1} value={[focalY]} onValueChange={(v) => setFocalY(v[0])} />
+                <Slider min={0} max={100} step={1} value={[activeFocalY]} onValueChange={(v) => setActiveFocal(activeFocalX, v[0])} />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Zoom</p>
-                  <span className="text-[10px] text-muted-foreground tabular-nums">{photoZoom.toFixed(2)}x</span>
+                  <span className="text-[10px] text-muted-foreground tabular-nums">{activeZoom.toFixed(2)}x</span>
                 </div>
-                <Slider min={1} max={2.5} step={0.05} value={[photoZoom]} onValueChange={(v) => setPhotoZoom(v[0])} />
+                <Slider min={1} max={2.5} step={0.05} value={[activeZoom]} onValueChange={(v) => setActiveZoom(v[0])} />
               </div>
             </div>
           )}
