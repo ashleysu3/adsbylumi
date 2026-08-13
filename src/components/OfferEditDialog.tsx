@@ -8,6 +8,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { getHighTicketGuidance } from "@/lib/high-ticket";
+import { useAutosaveOnChange } from "@/hooks/useAutosave";
+import { AutoSaveIndicator } from "@/components/AutoSaveIndicator";
+
 
 interface OfferEditDialogProps {
   open: boolean;
