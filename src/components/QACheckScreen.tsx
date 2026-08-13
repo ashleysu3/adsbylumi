@@ -39,6 +39,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { computeCopySignature } from "@/lib/copy-signature";
+
 
 interface Issue {
   field: string;
@@ -47,6 +50,17 @@ interface Issue {
   reason: string;
   location?: string;
 }
+
+type CopyDraft = {
+  key: string;
+  label: string;
+  source: "shared" | "item";
+  index: number;
+  headline: string;
+  primary_text: string;
+  description: string;
+};
+
 
 interface CheckResult {
   id: string;
@@ -114,6 +128,17 @@ export function QACheckScreen({
   const [trackingSaving, setTrackingSaving] = useState(false);
   const [trackingCheck, setTrackingCheck] = useState<CheckResult | null>(null);
 
+  // ---- Inline copy editor (policy / spelling fixes without leaving QA) ----
+  const [wsCopy, setWsCopy] = useState<{ selected_copy: any; production_items: any[] }>({
+    selected_copy: workspace.selected_copy || null,
+    production_items: Array.isArray(workspace.production_items) ? workspace.production_items : [],
+  });
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [copyCheck, setCopyCheck] = useState<CheckResult | null>(null);
+  const [copyDrafts, setCopyDrafts] = useState<CopyDraft[]>([]);
+  const [copySaving, setCopySaving] = useState(false);
+
+
   // ---- Landing page URL (editable at publish) ----
   const initialLandingUrl: string =
     workspace.offer_url ||
@@ -137,7 +162,10 @@ export function QACheckScreen({
     runChecks();
   }, []);
 
-  const runChecks = async (overrideUrl?: string) => {
+  const runChecks = async (
+    overrideUrl?: string,
+    overrideCopy?: { selected_copy: any; production_items: any[]; signature?: string },
+  ) => {
     for (let i = 0; i < INITIAL_CHECKS.length; i++) {
       setCurrentCheckIndex(i);
       setChecks((prev) =>
@@ -148,19 +176,22 @@ export function QACheckScreen({
 
     try {
       const template = workspace.campaign_templates || workspace.template || null;
+      const copySource = overrideCopy || wsCopy;
 
       const { data, error } = await supabase.functions.invoke("qa-preflight-check", {
         body: {
           brand: workspace.brands,
           answers,
           creativeJson: workspace.creative_json,
-          productionItems: workspace.production_items,
+          productionItems: copySource.production_items,
           offerUrl: overrideUrl || landingUrl || null,
-          selectedCopy: workspace.selected_copy || null,
+          selectedCopy: copySource.selected_copy || null,
           template,
-          approvedCopySignature: workspace.approved_copy_signature || null,
+          approvedCopySignature:
+            overrideCopy?.signature ?? workspace.approved_copy_signature ?? null,
         },
       });
+
 
       if (error) throw error;
 
@@ -254,6 +285,156 @@ export function QACheckScreen({
       return next;
     });
   };
+
+  // ---- Inline copy editing ------------------------------------------------
+  const buildCopyDrafts = (): CopyDraft[] => {
+    const drafts: CopyDraft[] = [];
+    const shared = Array.isArray(wsCopy.selected_copy?.shared_variations)
+      ? wsCopy.selected_copy.shared_variations
+      : [];
+    shared.forEach((v: any, i: number) => {
+      drafts.push({
+        key: `shared-${i}`,
+        label: shared.length > 1 ? `Ad copy ${i + 1}` : "Ad copy",
+        source: "shared",
+        index: i,
+        headline: v?.headline || "",
+        primary_text: v?.primary_text || v?.primaryText || "",
+        description: v?.description || "",
+      });
+    });
+    (wsCopy.production_items || []).forEach((item: any, i: number) => {
+      const fc = item?.finalCopy || item?.final_copy;
+      if (!fc) return;
+      drafts.push({
+        key: `item-${i}`,
+        label: item?.concept_name || item?.name || `Creative ${i + 1}`,
+        source: "item",
+        index: i,
+        headline: fc.headline || "",
+        primary_text: fc.primary_text || fc.primaryText || "",
+        description: fc.description || "",
+      });
+    });
+    return drafts;
+  };
+
+  const openCopyDialog = (check: CheckResult) => {
+    const drafts = buildCopyDrafts();
+    if (drafts.length === 0) {
+      // Nothing editable here — fall back to the full copy step.
+      onFixIssue?.("copy", { check: check.id, issues: check.issues });
+      return;
+    }
+    setCopyCheck(check);
+    setCopyDrafts(drafts);
+    setCopyDialogOpen(true);
+  };
+
+  const updateDraft = (key: string, field: "headline" | "primary_text" | "description", value: string) => {
+    setCopyDrafts((prev) => prev.map((d) => (d.key === key ? { ...d, [field]: value } : d)));
+  };
+
+  const applySuggestion = (issue: Issue) => {
+    if (!issue.text || !issue.suggestion) return;
+    setCopyDrafts((prev) =>
+      prev.map((d) => ({
+        ...d,
+        headline: d.headline.split(issue.text).join(issue.suggestion),
+        primary_text: d.primary_text.split(issue.text).join(issue.suggestion),
+        description: d.description.split(issue.text).join(issue.suggestion),
+      })),
+    );
+    toast.success("Suggestion applied");
+  };
+
+  const saveCopyEdits = async () => {
+    setCopySaving(true);
+    try {
+      const nextSelected = wsCopy.selected_copy
+        ? JSON.parse(JSON.stringify(wsCopy.selected_copy))
+        : null;
+      const nextItems = JSON.parse(JSON.stringify(wsCopy.production_items || []));
+
+      for (const d of copyDrafts) {
+        if (d.source === "shared" && Array.isArray(nextSelected?.shared_variations)) {
+          const v = nextSelected.shared_variations[d.index] || {};
+          nextSelected.shared_variations[d.index] = {
+            ...v,
+            headline: d.headline,
+            primary_text: d.primary_text,
+            primaryText: d.primary_text,
+            description: d.description,
+          };
+        } else if (d.source === "item" && nextItems[d.index]) {
+          const item = nextItems[d.index];
+          const key = item.finalCopy ? "finalCopy" : "final_copy";
+          item[key] = {
+            ...(item[key] || {}),
+            headline: d.headline,
+            primary_text: d.primary_text,
+            primaryText: d.primary_text,
+            description: d.description,
+          };
+        }
+      }
+
+      // The user just reviewed and approved this copy inline, so re-sign it —
+      // otherwise the signature mismatch would block publish downstream.
+      const variations: any[] = [];
+      if (Array.isArray(nextSelected?.shared_variations)) variations.push(...nextSelected.shared_variations);
+      for (const item of nextItems) {
+        const fc = item?.finalCopy || item?.final_copy;
+        if (fc) {
+          variations.push({
+            headline: fc.headline,
+            primary_text: fc.primary_text || fc.primaryText,
+            description: fc.description,
+          });
+        }
+      }
+      const signature = await computeCopySignature(variations);
+
+      const { error } = await supabase
+        .from("campaign_workspaces")
+        .update({
+          selected_copy: nextSelected,
+          production_items: nextItems,
+          approved_copy_signature: signature,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", workspace.id);
+      if (error) throw error;
+
+      // Keep the in-memory workspace in sync so publish uses the new copy.
+      workspace.selected_copy = nextSelected;
+      workspace.production_items = nextItems;
+      workspace.approved_copy_signature = signature;
+      setWsCopy({ selected_copy: nextSelected, production_items: nextItems });
+      setCopyDialogOpen(false);
+
+      setChecks((prev) =>
+        prev.map((c) =>
+          c.id === "spelling" || c.id === "ad_policy"
+            ? { id: c.id, name: c.name, status: "running" as const, message: "Re-checking…" }
+            : c,
+        ),
+      );
+      setPhase("running");
+      toast.success("Copy updated — re-running checks");
+      await runChecks(undefined, {
+        selected_copy: nextSelected,
+        production_items: nextItems,
+        signature,
+      });
+    } catch (err: any) {
+      console.error("Failed to save copy edits:", err);
+      toast.error(err?.message || "Couldn't save your copy");
+    } finally {
+      setCopySaving(false);
+    }
+  };
+
 
   const openTrackingDialog = (check: CheckResult) => {
     setTrackingCheck(check);
@@ -579,17 +760,16 @@ fbq('track', 'PageView');
                 {check.id === "ad_policy" && " (Meta ad policy)"}
               </p>
             )}
-            {onFixIssue && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-2"
-                onClick={() => onFixIssue("copy", { check: check.id, issues: check.issues })}
-              >
-                <SpellCheck className="h-3.5 w-3.5" />
-                Edit copy
-              </Button>
-            )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2"
+              onClick={() => openCopyDialog(check)}
+            >
+              <SpellCheck className="h-3.5 w-3.5" />
+              Fix copy here
+            </Button>
+
           </div>
         )}
         {check.issues && check.issues.length > 0 && (
@@ -872,6 +1052,113 @@ fbq('track', 'PageView');
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Inline copy editor — fix policy/spelling issues without leaving QA */}
+      <Dialog open={copyDialogOpen} onOpenChange={setCopyDialogOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-primary" />
+              Edit your ad copy
+            </DialogTitle>
+            <DialogDescription>
+              {copyCheck?.id === "ad_policy"
+                ? "Meta flagged wording that may break ad policy. Tweak it here and we'll re-check instantly."
+                : "Fix the flagged wording here and we'll re-check instantly."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 pt-2">
+            {(copyCheck?.issues || []).length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs uppercase text-muted-foreground">Flagged</p>
+                {(copyCheck?.issues || []).map((issue, i) => (
+                  <div
+                    key={i}
+                    className="p-3 rounded-lg bg-muted/50 border border-amber-500/20 flex items-start justify-between gap-3"
+                  >
+                    <div className="space-y-1 min-w-0">
+                      <p className="text-sm break-words">
+                        <span className="text-muted-foreground line-through">{issue.text}</span>
+                        {issue.suggestion && (
+                          <>
+                            {" → "}
+                            <span className="font-medium text-green-600">{issue.suggestion}</span>
+                          </>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{issue.reason}</p>
+                    </div>
+                    {issue.suggestion && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="shrink-0"
+                        onClick={() => applySuggestion(issue)}
+                      >
+                        Use this
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-5">
+              {copyDrafts.map((d) => (
+                <div key={d.key} className="space-y-3 rounded-xl border p-4">
+                  <p className="text-sm font-medium">{d.label}</p>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Headline</Label>
+                    <Input
+                      value={d.headline}
+                      onChange={(e) => updateDraft(d.key, "headline", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Primary text</Label>
+                    <Textarea
+                      rows={4}
+                      value={d.primary_text}
+                      onChange={(e) => updateDraft(d.key, "primary_text", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Description</Label>
+                    <Input
+                      value={d.description}
+                      onChange={(e) => updateDraft(d.key, "description", e.target.value)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button onClick={saveCopyEdits} disabled={copySaving} className="flex-1 gap-2">
+                {copySaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                Save & re-check
+              </Button>
+              <Button variant="ghost" onClick={() => setCopyDialogOpen(false)} disabled={copySaving}>
+                Cancel
+              </Button>
+            </div>
+            {onFixIssue && (
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground underline"
+                onClick={() => {
+                  setCopyDialogOpen(false);
+                  onFixIssue("copy", { check: copyCheck?.id, issues: copyCheck?.issues });
+                }}
+              >
+                Open the full copy editor instead
+              </button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
