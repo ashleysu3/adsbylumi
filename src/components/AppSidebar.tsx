@@ -76,8 +76,8 @@ type NavGroup = {
 // buttons in the header; collapsed, they fall back to icon rows so they stay
 // reachable in icon mode. Home lives on the LUMI logo.
 const topActions: NavItem[] = [
-  { label: "Create New", to: "/create", icon: Plus },
-  { label: "My Ads", to: "/my-ads", icon: Activity },
+  { label: "Create a New Ad", to: "/create", icon: Plus },
+  { label: "See My Ads", to: "/my-ads", icon: Activity },
 ];
 
 // Two collapsible folders for the deeper work.
