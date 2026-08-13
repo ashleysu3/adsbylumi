@@ -83,6 +83,18 @@ const topActions: NavItem[] = [
 // Two collapsible folders for the deeper work.
 const groups: NavGroup[] = [
   {
+    key: "creative",
+    label: "Creative",
+    icon: Palette,
+    emoji: "🎨",
+    items: [
+      { label: "Inspiration", to: "/boards", icon: Lightbulb },
+      { label: "The Lab", to: "/creative-studio?mode=lab", icon: Sparkles },
+      { label: "My Creatives", to: "/my-creatives", icon: Images },
+      { label: "Tools & Resources", to: "/creative-toolkit", icon: Wrench },
+    ],
+  },
+  {
     key: "brand",
     label: "My Brand",
     icon: Tag,
@@ -93,18 +105,6 @@ const groups: NavGroup[] = [
       { label: "Voice + Examples", to: "/voice", icon: Mic },
       { label: "Audience", to: "/audience", icon: Users },
       { label: "Offers", to: "/offers", icon: Package },
-    ],
-  },
-  {
-    key: "creative",
-    label: "Creative",
-    icon: Palette,
-    emoji: "🎨",
-    items: [
-      { label: "Inspiration", to: "/boards", icon: Lightbulb },
-      { label: "The Lab", to: "/creative-studio?mode=lab", icon: Sparkles },
-      { label: "My Creatives", to: "/my-creatives", icon: Images },
-      { label: "Tools & Resources", to: "/creative-toolkit", icon: Wrench },
     ],
   },
 ];
