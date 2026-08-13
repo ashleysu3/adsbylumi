@@ -336,6 +336,13 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const [palette, setPalette] = useState<EngineColors | null>(null);
   const [paletteDirty, setPaletteDirty] = useState(false);
   const [savingPalette, setSavingPalette] = useState(false);
+  // Demo safety net: when the entered website matches a pinned demo domain we
+  // reveal the hand-approved ad instead of whatever the live run produced.
+  // The live run still happens in the background — press "D" to toggle.
+  const pinnedRef = useRef<{ images: RenderImage[]; copy?: any; template?: string } | null>(null);
+  const [pinnedActive, setPinnedActive] = useState(false);
+  const liveImagesRef = useRef<RenderImage[]>([]);
+  const [isAdminViewer, setIsAdminViewer] = useState(false);
 
   // Save-in-place: the kit stays on this page. Saving emails the private
   // /your-ad-pack?kit= link and stamps ?kit= onto THIS url (no navigation —
