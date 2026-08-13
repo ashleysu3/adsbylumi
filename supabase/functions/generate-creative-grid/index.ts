@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireAuthedUser } from "../_shared/check-subscription.ts";
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { assertBrandOfferAccess } from '../_shared/access.ts';
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -34,6 +35,22 @@ Deno.serve(async (req) => {
         creativeBrief,
         campaignName,
      } = await req.json();
+
+    // TENANCY GUARD: never generate concepts with another brand's / another
+    // brand's offer's context, even if the client sends mismatched ids.
+    {
+      const guardClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const access = await assertBrandOfferAccess(guardClient, gate.userId, brandId, offerId);
+      if (!access.ok) {
+        return new Response(JSON.stringify({ error: access.error }), {
+          status: access.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     // Derive the campaign INTENT so we constrain CTAs + angle behaviour.
     // The strategy plan tells us the actual Meta objective for THIS campaign
@@ -226,6 +243,20 @@ No historical performance data available. Generate a balanced mix across all for
 
 KNOWLEDGE BASE:
 ${kbContext}
+
+=== SOURCE-MATERIAL FIREWALL (ABSOLUTE) ===
+The reference/knowledge material above is generic teaching material about ad craft.
+It is NOT this brand's data. You must NEVER copy from reference material, examples,
+or prior outputs any of the following:
+- person names, student names, client names, or testimonial names
+- prices, dollar amounts, revenue figures, or student-count numbers
+- product/program names, offer names, URLs, or brand names
+- specific results, case studies, or stories
+Every name, number, price, offer and result you write MUST come from THIS brand's
+offer, audience, and psychology data supplied in this prompt. If a needed detail is
+not present in this brand's data, write around it — do not invent or borrow one.
+Mentioning any other brand, offer, or person is an instant fail.
+
  ${contentAssetsContext}
 
 === CRITICAL RULES: SPECIFICITY IS EVERYTHING ===

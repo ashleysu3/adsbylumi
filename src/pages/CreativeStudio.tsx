@@ -250,6 +250,35 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
   });
   const [contentIdeas, setContentIdeas] = useState<any[]>([]);
   const [brandId, setBrandId] = useState<string>("");
+
+  // ── Brand/offer isolation guard ────────────────────────────────────────────
+  // Generation calls are async. If the user switches brand or campaign while a
+  // request is in flight, the late response must NOT be written into state or
+  // saved — that's how another brand's concepts leaked into this brand's grid.
+  const genScopeRef = useRef<{ brandId?: string; workspaceId?: string; offerId?: string }>({});
+  useEffect(() => {
+    genScopeRef.current = {
+      brandId: activeBrand?.id,
+      workspaceId: workspace?.id,
+      offerId: workspace?.offer_id,
+    };
+  });
+  const captureScope = () => ({
+    brandId: activeBrand?.id,
+    workspaceId: workspace?.id,
+    offerId: workspace?.offer_id,
+  });
+  const isStaleScope = (s: { brandId?: string; workspaceId?: string; offerId?: string }) => {
+    const now = genScopeRef.current;
+    const stale =
+      now.brandId !== s.brandId || now.workspaceId !== s.workspaceId || now.offerId !== s.offerId;
+    if (stale) {
+      console.warn("[CreativeStudio] Discarding stale generation result", { was: s, now });
+    }
+    return stale;
+  };
+
+
   
   const [availableAngles, setAvailableAngles] = useState<CreativeAngle[]>([]);
   const [selectedAngleIds, setSelectedAngleIds] = useState<string[]>([]);
@@ -901,6 +930,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
     const newRound = new Date().toISOString();
     
     setGenerating(true); setGeneratingPhase("angles");
+    const scope = captureScope();
     try {
       // Fetch intelligence in parallel with setting up
       const intelligence = await fetchCreativeIntelligence();
@@ -1033,6 +1063,8 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
         setAngleCopy(preservedCopy);
       }
       
+      if (isStaleScope(scope)) return;
+
       setAvailableAngles(allAngles);
       setSelectedAngleIds([]);
       setGridData([]);
@@ -1054,6 +1086,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
   const generateCreativeGrid = async () => {
     if (!selectedAngleIds.length) { toast.error("Select angles first"); return; }
     setGenerating(true); setGeneratingPhase("grid");
+    const scope = captureScope();
     try {
       const angles = availableAngles.filter(a => selectedAngleIds.includes(a.id));
       
@@ -1108,6 +1141,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
          }
       });
       if (error) throw error;
+      if (isStaleScope(scope)) return;
       setGridData(data.grid);
       setActiveAngleId(selectedAngleIds[0]);
       await saveCreativeState({ angles: availableAngles, selectedAngleIds, gridData: data.grid });
@@ -1126,6 +1160,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
     if (!angle) return;
 
     setRegeneratingCellId(cellId);
+    const scope = captureScope();
     try {
       let messagingGuidelines = null;
       let productPsychology = null;
@@ -1154,6 +1189,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
         }
       });
       if (error) throw error;
+      if (isStaleScope(scope)) return;
       const updatedCell = data.cell;
       const updatedGrid = gridData.map(c => c.id === cellId ? { ...c, ...updatedCell, id: cellId, angleId: cell.angleId, row: cell.row } : c);
       setGridData(updatedGrid);
@@ -1172,6 +1208,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
     if (!existingAngle || !workspace) return;
 
     setRegeneratingAngleId(angleId);
+    const scope = captureScope();
     try {
       const otherAngleNames = availableAngles
         .filter(a => a.id !== angleId)
@@ -1192,6 +1229,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
         }
       });
       if (error) throw error;
+      if (isStaleScope(scope)) return;
       const newAngle = data.angles?.[0];
       if (!newAngle) throw new Error("No angle returned");
 

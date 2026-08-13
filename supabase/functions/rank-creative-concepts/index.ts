@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAuthedUser } from "../_shared/check-subscription.ts";
+import { assertBrandOfferAccess } from "../_shared/access.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,13 +28,8 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const gate = await requireAuthedUser(req, corsHeaders);
+    if (gate.blocked) return gate.blocked;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -45,6 +42,15 @@ serve(async (req) => {
         JSON.stringify({ error: "Need at least 6 items to rank" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // TENANCY GUARD: only rank concepts for a brand this caller can access.
+    const access = await assertBrandOfferAccess(supabase, gate.userId, brandId);
+    if (!access.ok) {
+      return new Response(JSON.stringify({ error: access.error }), {
+        status: access.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     console.log(`Ranking ${items.length} creative concepts for brand ${brandId}`);

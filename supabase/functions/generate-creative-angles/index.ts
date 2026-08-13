@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { fetchOfferPageLanguageBlock } from "../_shared/offer-page-language.ts";
 import { requireAuthedUser } from "../_shared/check-subscription.ts";
 import { buildPositioningBriefBlock } from "../_shared/positioning-brief.ts";
+import { assertBrandOfferAccess } from "../_shared/access.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,6 +21,21 @@ Deno.serve(async (req) => {
 
     const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext, creativeIntelligence, previouslyUsedAngles, neverUseWords, singleAngleReplacement, maxAngles, campaignObjective, creativeBrief, campaignName, positioningBrief } = await req.json();
     const positioningBlock = buildPositioningBriefBlock(positioningBrief);
+
+    // TENANCY GUARD: the brand + offer must belong together and to this caller.
+    {
+      const guardClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const access = await assertBrandOfferAccess(guardClient, gate.userId, brandId, offerId);
+      if (!access.ok) {
+        return new Response(JSON.stringify({ error: access.error }), {
+          status: access.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     // Map the campaign's Meta objective to an angle-shaping intent. Keeps
     // top-of-funnel awareness campaigns from generating webinar-registration
@@ -350,6 +366,20 @@ HARD RULE — you are writing marketing copy FOR a brand's own product or servic
 
 KNOWLEDGE BASE:
 ${kbContext}
+
+=== SOURCE-MATERIAL FIREWALL (ABSOLUTE) ===
+The reference/knowledge material above is generic teaching material about ad craft.
+It is NOT this brand's data. You must NEVER copy from reference material, examples,
+or prior outputs any of the following:
+- person names, student names, client names, or testimonial names
+- prices, dollar amounts, revenue figures, or student-count numbers
+- product/program names, offer names, URLs, or brand names
+- specific results, case studies, or stories
+Every name, number, price, offer and result you write MUST come from THIS brand's
+offer, audience, and psychology data supplied in this prompt. If a needed detail is
+not present in this brand's data, write around it — do not invent or borrow one.
+Mentioning any other brand, offer, or person is an instant fail.
+
 ${contentAssetsContext}
 ${socialProofContext}
 ${insightsContext}
