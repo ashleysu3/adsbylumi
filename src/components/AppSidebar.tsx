@@ -185,21 +185,18 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
     return () => window.removeEventListener("open-bug-report", handler);
   }, []);
 
-  const brandWithVip = useMemo<NavGroup>(() => {
-    return groups.find((g) => g.key === "brand")!;
-  }, []);
-
   const allGroups: NavGroup[] = [
-    ...groups.map((g) => (g.key === "brand" ? brandWithVip : g)),
+    ...groups,
     ...(isAgencyUser ? [agencyGroup] : []),
-    supportGroup,
+    helpGroup,
   ];
 
   // Auto-expand the group containing the active route.
   const isItemActive = (item: NavItem) =>
     "to" in item && location.pathname === item.to;
   const activeGroupKey =
-    allGroups.find((g) => g.items.some(isItemActive))?.key ?? "ads";
+    allGroups.find((g) => g.items.some(isItemActive))?.key ?? "";
+
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
     [activeGroupKey]: true,
