@@ -8,7 +8,6 @@ import {
   LifeBuoy,
   ChevronDown,
   Activity,
-  Loader2,
   Plus,
   Lightbulb,
   Images,
