@@ -44,6 +44,7 @@ import collageThumb from "@/assets/template-thumbs/collage.jpg";
 import notesappThumb from "@/assets/template-thumbs/notesapp.jpg";
 import textthreadThumb from "@/assets/template-thumbs/textthread.jpg";
 import nativecaptionThumb from "@/assets/template-thumbs/nativecaption.jpg";
+import { cropImageToFocal } from "@/lib/crop-image";
 
 const BUILT_IN_THUMBS: Record<string, string> = {
   spotlight: spotlightThumb,
@@ -368,6 +369,11 @@ export function GenerateCreativeDialog() {
   const [textBoxOpacity, setTextBoxOpacity] = useState<number>(0.85);
   const [textPosition, setTextPosition] = useState<"top" | "middle" | "bottom">("bottom");
   const [textAlign, setTextAlign] = useState<"left" | "center" | "right">("left");
+  // Image framing: focal point + zoom so the user controls what stays visible
+  // inside the template frame.
+  const [focalX, setFocalX] = useState<number>(50);
+  const [focalY, setFocalY] = useState<number>(50);
+  const [photoZoom, setPhotoZoom] = useState<number>(1);
   // Readability controls for templates that put text directly on a photo
   // with no card behind it (currently just nativecaption) — the template's
   // own white text + shadow isn't always enough contrast against every photo.
@@ -1098,7 +1104,21 @@ export function GenerateCreativeDialog() {
       const logoOverlay = placeLogo && brandLogoAsset?.url
         ? { url: brandLogoAsset.url, corner: logoCorner }
         : undefined;
-      const photo = selectedPhoto ? { url: selectedPhoto.url, removeBackground } : undefined;
+      // Apply the focal point / zoom the user set in the preview by pre-cropping
+      // the photo before it goes to the render engine.
+      let photoUrlForRender = selectedPhoto?.url;
+      const framingChanged = focalX !== 50 || focalY !== 50 || photoZoom !== 1;
+      if (selectedPhoto && framingChanged) {
+        try {
+          setProgress("Applying image framing…");
+          photoUrlForRender = await cropImageToFocal(selectedPhoto.url, focalX, focalY, photoZoom);
+        } catch {
+          photoUrlForRender = selectedPhoto.url;
+        }
+      }
+      const photo = selectedPhoto
+        ? { url: photoUrlForRender!, removeBackground, focalX, focalY, zoom: photoZoom }
+        : undefined;
       // Collage uses 2–4 photos. Take the most recently uploaded/brand photos.
       const collagePool = [...photos, ...brandPhotoAssets].filter((p) => !!p.url);
       const collagePhotos = template === "collage"
@@ -1557,6 +1577,47 @@ export function GenerateCreativeDialog() {
             </div>
           </div>
 
+          {selectedPhoto && (
+            <div className="space-y-3 rounded border border-border bg-muted/20 p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Image framing</p>
+                <button
+                  type="button"
+                  className="text-[10px] text-muted-foreground underline"
+                  onClick={() => { setFocalX(50); setFocalY(50); setPhotoZoom(1); }}
+                >
+                  Reset
+                </button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Drag the photo in the preview, or use the sliders, to choose what stays in frame.
+              </p>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Horizontal</p>
+                  <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(focalX)}%</span>
+                </div>
+                <Slider min={0} max={100} step={1} value={[focalX]} onValueChange={(v) => setFocalX(v[0])} />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Vertical</p>
+                  <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(focalY)}%</span>
+                </div>
+                <Slider min={0} max={100} step={1} value={[focalY]} onValueChange={(v) => setFocalY(v[0])} />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Zoom</p>
+                  <span className="text-[10px] text-muted-foreground tabular-nums">{photoZoom.toFixed(2)}x</span>
+                </div>
+                <Slider min={1} max={2.5} step={0.05} value={[photoZoom]} onValueChange={(v) => setPhotoZoom(v[0])} />
+              </div>
+            </div>
+          )}
+
+
+
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -1637,6 +1698,10 @@ export function GenerateCreativeDialog() {
         logoUrl={brandLogoAsset?.url}
         showLogo={placeLogo}
         logoCorner={logoCorner}
+        focalX={focalX}
+        focalY={focalY}
+        photoZoom={photoZoom}
+        onFocalChange={(x, y) => { setFocalX(x); setFocalY(y); }}
       />
       {refinePanel}
     </aside>

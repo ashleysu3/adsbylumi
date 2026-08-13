@@ -150,14 +150,30 @@ Deno.serve(async (req) => {
     // Normalize photo URLs: the external renderer only accepts URLs from the
     // ad-photos bucket. Brand library images, external URLs, and generated
     // assets are downloaded and re-hosted there before rendering.
+    // Data URLs come from client-side focal-point cropping — decode and host
+    // them in the ad-photos bucket so the engine can fetch them.
+    const uploadDataUrl = async (dataUrl: string) => {
+      const match = dataUrl.match(/^data:([^;,]+);base64,(.*)$/);
+      if (!match) throw new Error("Unsupported image data URL");
+      const contentType = match[1];
+      if (!contentType.startsWith("image/")) throw new Error("Cropped file is not an image");
+      const binary = atob(match[2]);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      if (bytes.byteLength > MAX_IMAGE_BYTES) throw new Error("Image is too large. Please use an image under 8MB.");
+      return await uploadPublicEngineImage(bytes, contentType);
+    };
+
     const normalizeUrl = async (url: string, force = false) => {
-      if (typeof url !== "string" || !url.startsWith("http")) return url;
+      if (typeof url !== "string") return url;
+      if (url.startsWith("data:")) return await uploadDataUrl(url);
+      if (!url.startsWith("http")) return url;
       if (!force && isAdPhotoUrl(url)) return url;
       const { bytes, contentType } = await fetchImage(url);
       return await uploadPublicEngineImage(bytes, contentType);
     };
 
-    if (typeof photoUrl === "string" && photoUrl.startsWith("http")) {
+    if (typeof photoUrl === "string" && (photoUrl.startsWith("http") || photoUrl.startsWith("data:"))) {
       body.photo = { ...body.photo, url: await normalizeUrl(photoUrl, shouldRemoveBackground) };
     }
 

@@ -122,6 +122,10 @@ export function LiveAdPreview({
   logoUrl,
   showLogo,
   logoCorner = "br",
+  focalX = 50,
+  focalY = 50,
+  photoZoom = 1,
+  onFocalChange,
 }: {
   copy?: Copy;
   slides?: Copy[];
@@ -144,6 +148,10 @@ export function LiveAdPreview({
   logoUrl?: string;
   showLogo?: boolean;
   logoCorner?: "tl" | "tr" | "bl" | "br";
+  focalX?: number;
+  focalY?: number;
+  photoZoom?: number;
+  onFocalChange?: (x: number, y: number) => void;
 }) {
   const [slideIdx, setSlideIdx] = useState(0);
   const total = slides?.length || 0;
@@ -251,8 +259,48 @@ export function LiveAdPreview({
       </span>
     ) : null;
 
+  // Image framing: focal point (what stays visible when the photo is cropped
+  // into the template frame) + zoom. Drag the photo in the preview to move it.
+  const photoStyle: React.CSSProperties = {
+    objectPosition: `${focalX}% ${focalY}%`,
+    transform: photoZoom !== 1 ? `scale(${photoZoom})` : undefined,
+    transformOrigin: `${focalX}% ${focalY}%`,
+  };
+
+  const startFocalDrag = (e: React.PointerEvent<HTMLImageElement>) => {
+    if (!onFocalChange) return;
+    const el = e.currentTarget;
+    const rect = el.getBoundingClientRect();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const baseX = focalX;
+    const baseY = focalY;
+    el.setPointerCapture(e.pointerId);
+    const move = (ev: PointerEvent) => {
+      const dx = ((ev.clientX - startX) / Math.max(1, rect.width)) * 100;
+      const dy = ((ev.clientY - startY) / Math.max(1, rect.height)) * 100;
+      const clamp = (n: number) => Math.min(100, Math.max(0, n));
+      onFocalChange(clamp(baseX - dx), clamp(baseY - dy));
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
   const Photo = ({ className = "" }: { className?: string }) =>
-    bgImage ? <img src={bgImage} alt="" className={`object-cover ${className}`} /> : (
+    bgImage ? (
+      <img
+        src={bgImage}
+        alt=""
+        draggable={false}
+        onPointerDown={startFocalDrag}
+        style={photoStyle}
+        className={`object-cover ${onFocalChange ? "cursor-move select-none" : ""} ${className}`}
+      />
+    ) : (
       <div className={`${className}`} style={{ backgroundColor: `${colors.accent}33` }} />
     );
 
@@ -456,7 +504,7 @@ export function LiveAdPreview({
             {T(firstText(active, ["quote", "headline", "body"]))}
           </p>
           <div className="flex items-center gap-2">
-            {bgImage && <img src={bgImage} alt="" className="h-8 w-8 rounded-full object-cover" />}
+            {bgImage && <img src={bgImage} alt="" style={{ objectPosition: `${focalX}% ${focalY}%` }} className="h-8 w-8 rounded-full object-cover" />}
             <div>
               <p className="text-[11px] font-semibold" style={{ color: colors.ink, ...bFont }}>
                 {firstText(active, ["attribution", "name", "sub"])}
@@ -540,7 +588,7 @@ export function LiveAdPreview({
     default:
       body = (
         <>
-          {bgImage && <img src={bgImage} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+          {bgImage && <Photo className="absolute inset-0 h-full w-full" />}
           {bgImage && textBoxStyle === "none" && (
             <div
               className="absolute inset-0"
