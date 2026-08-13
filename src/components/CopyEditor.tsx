@@ -14,7 +14,7 @@ import {
 import { Sparkle, FileText, Sparkles, Loader2, Shuffle, Crop, Upload } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { CopyVariations } from "./CopyVariations";
 import { SmartCropSuggestions } from "./SmartCropSuggestions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
