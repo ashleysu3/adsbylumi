@@ -111,6 +111,7 @@ export function BrandProvider({ children }: { children: ReactNode }) {
           if (mounted) setAuthReady(true);
         });
       } else {
+        clearBrandState();
         setLoading(false);
         setAuthReady(true);
       }
@@ -122,8 +123,10 @@ export function BrandProvider({ children }: { children: ReactNode }) {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         fetchBrands();
       } else if (event === 'SIGNED_OUT') {
-        setBrands([]);
-        setActiveBrandState(null);
+        // Drop every trace of the previous account so the next user can't
+        // inherit their brand (and Lumi's brand-scoped chat history).
+        clearBrandState();
+        setIsAgencyUser(false);
         setLoading(false);
       }
     });
@@ -132,13 +135,14 @@ export function BrandProvider({ children }: { children: ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchBrands]);
+  }, [fetchBrands, clearBrandState]);
 
   const setActiveBrand = useCallback((brand: Brand) => {
     setActiveBrandState(brand);
     setBrandId(brand.id);
-    localStorage.setItem('activeBrandId', brand.id);
-  }, [setBrandId]);
+    if (ownerUserId) localStorage.setItem(`activeBrandId:${ownerUserId}`, brand.id);
+  }, [setBrandId, ownerUserId]);
+
 
   const addBrand = useCallback((brand: Brand) => {
     setBrands(prev => [brand, ...prev]);
