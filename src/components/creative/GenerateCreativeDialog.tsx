@@ -268,7 +268,60 @@ export function GenerateCreativeDialog() {
   const [placeLogo, setPlaceLogo] = useState(false);
   const [logoCorner, setLogoCorner] = useState<LogoCorner>("br");
   const [photosLoading, setPhotosLoading] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [selectedPhotoId, setSelectedPhotoId] = useState<string>("");
+
+  // Quick inline upload: lets someone drop in their own image right here
+  // instead of leaving the dialog to go to My Photos.
+  const uploadOwnPhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    if (!activeBrand?.id) {
+      toast.error("Choose a brand before uploading photos");
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) throw new Error("You must be signed in.");
+      const added: Photo[] = [];
+      for (const file of files) {
+        const safe = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+        const path = `${userId}/${activeBrand.id}/${Date.now()}-${safe}`;
+        const { error: upErr } = await supabase.storage
+          .from("ad-photos")
+          .upload(path, file, { cacheControl: "3600", upsert: false });
+        if (upErr) throw upErr;
+        const { data: row, error: insErr } = await supabase
+          .from("user_assets" as any)
+          .insert({ original_url: path, kind: "photo", brand_id: activeBrand.id })
+          .select("id")
+          .single();
+        if (insErr) throw insErr;
+        const { data: signed } = await supabase.storage
+          .from("ad-photos")
+          .createSignedUrl(path, 60 * 60);
+        added.push({
+          id: (row as any)?.id as string,
+          path,
+          url: signed?.signedUrl || "",
+          source: "upload",
+        });
+      }
+      setPhotos((prev) => [...added, ...prev]);
+      setImageSource("uploads");
+      if (added[0]) setSelectedPhotoId(added[0].id);
+      toast.success(`Uploaded ${added.length} image${added.length > 1 ? "s" : ""}`);
+    } catch (err: any) {
+      toast.error(err?.message || "Upload failed");
+    } finally {
+      setUploadingPhoto(false);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  };
+
   const [removeBackground, setRemoveBackground] = useState(true);
   // Beta: AI-generated brand background composited behind the layout.
   const [bgBetaOpen, setBgBetaOpen] = useState(false);
