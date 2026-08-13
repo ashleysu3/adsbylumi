@@ -773,7 +773,7 @@ export default function Create() {
       setShowSocialGrowthFlow(false);
     } else {
       // The goal picker is the first step now — Back exits /create.
-      navigate("/home");
+      navigate("/studio");
     }
   };
 

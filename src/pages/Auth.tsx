@@ -79,7 +79,7 @@ export default function Auth() {
         if (inviteToken) {
           await acceptInvite(inviteToken);
         }
-        navigate(safeReturnTo || "/home", { replace: true });
+        navigate(safeReturnTo || "/studio", { replace: true });
       }
     });
   }, [navigate, safeReturnTo, inviteToken]);
@@ -142,7 +142,7 @@ export default function Auth() {
         
         toast.success("Welcome back!");
         if (inviteToken) await acceptInvite(inviteToken);
-        navigate(safeReturnTo || "/home");
+        navigate(safeReturnTo || "/studio");
       } else {
         // If the current session is anonymous (ad-first onboarding), upgrade
         // it in place with updateUser so the user keeps their brand row and
@@ -314,7 +314,7 @@ export default function Auth() {
                   return;
                 }
                 if (result.redirected) return;
-                navigate(safeReturnTo || "/home", { replace: true });
+                navigate(safeReturnTo || "/studio", { replace: true });
               } catch (e: any) {
                 toast.error(e?.message || "Google sign-in failed");
                 setLoading(false);

@@ -26,7 +26,6 @@ import Reactivate from "./pages/Reactivate";
 import WelcomeBack from "./pages/WelcomeBack";
 import GuidedOnboarding from "./pages/GuidedOnboarding";
 import Dashboard from "./pages/Dashboard";
-import Home from "./pages/Home";
 import Start from "./pages/Start";
 const Create = lazy(() => import("./pages/Create"));
 const AdPerformance = lazy(() => import("./pages/Data"));
@@ -126,7 +125,6 @@ import {
   TroubleshootingPlaceholder,
   CloserLookPlaceholder,
 } from "./pages/Placeholder";
-import Tasks from "./pages/Tasks";
 import Voice from "./pages/Voice";
 import Audience from "./pages/Audience";
 import InitialSetup from "./pages/InitialSetup";
