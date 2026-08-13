@@ -8,6 +8,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { getHighTicketGuidance } from "@/lib/high-ticket";
+import { useAutosaveOnChange } from "@/hooks/useAutosave";
+import { AutoSaveIndicator } from "@/components/AutoSaveIndicator";
+
 
 interface OfferEditDialogProps {
   open: boolean;
@@ -48,42 +51,56 @@ export function OfferEditDialog({ open, onOpenChange, offer, onSuccess }: OfferE
     }
   }, [offer, open]);
 
+  // Persist a set of offer fields. Shared by autosave and the Done button so
+  // there's exactly one write path.
+  const persist = async (values: typeof formData) => {
+    if (!offer) return;
+    const { error } = await supabase
+      .from("offers")
+      .update({
+        name: values.name,
+        url: values.url || null,
+        description: values.description || null,
+        price_point: values.price_point || null,
+        target_outcome: values.target_outcome || null,
+        use_brand_style_defaults: values.use_brand_style_defaults,
+      } as any)
+      .eq("id", offer.id);
+
+    if (error) throw error;
+
+    // Propagate URL/name/description/price changes to unpublished workspaces referencing this offer
+    const { error: wsError } = await supabase
+      .from("campaign_workspaces")
+      .update({
+        offer_url: values.url || null,
+        offer_name: values.name,
+        offer_description: values.description || null,
+        offer_price: values.price_point || null,
+      })
+      .eq("offer_id", offer.id)
+      .is("published_at", null);
+
+    if (wsError) {
+      console.warn("Failed to propagate offer changes to workspaces:", wsError);
+    }
+  };
+
+  // Autosave every edit so closing the dialog (or navigating away) never loses work.
+  const { status: saveStatus, flush } = useAutosaveOnChange(
+    formData,
+    persist,
+    { key: offer?.id ?? null, enabled: !!offer && open && !!formData.name },
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!offer) return;
     setLoading(true);
 
     try {
-      const { error } = await supabase
-        .from("offers")
-        .update({
-          name: formData.name,
-          url: formData.url || null,
-          description: formData.description || null,
-          price_point: formData.price_point || null,
-          target_outcome: formData.target_outcome || null,
-          use_brand_style_defaults: formData.use_brand_style_defaults,
-        } as any)
-        .eq("id", offer.id);
-
-      if (error) throw error;
-
-      // Propagate URL/name/description/price changes to unpublished workspaces referencing this offer
-      const { error: wsError } = await supabase
-        .from("campaign_workspaces")
-        .update({
-          offer_url: formData.url || null,
-          offer_name: formData.name,
-          offer_description: formData.description || null,
-          offer_price: formData.price_point || null,
-        })
-        .eq("offer_id", offer.id)
-        .is("published_at", null);
-
-      if (wsError) {
-        console.warn("Failed to propagate offer changes to workspaces:", wsError);
-      }
-
+      await flush();
+      await persist(formData);
       toast.success("Offer updated");
       onSuccess();
       onOpenChange(false);
@@ -94,6 +111,7 @@ export function OfferEditDialog({ open, onOpenChange, offer, onSuccess }: OfferE
       setLoading(false);
     }
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -189,21 +207,28 @@ export function OfferEditDialog({ open, onOpenChange, offer, onSuccess }: OfferE
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading || !formData.name}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Changes"
-              )}
-            </Button>
+          <div className="flex justify-between items-center gap-2 pt-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Saves automatically</span>
+              <AutoSaveIndicator status={saveStatus} showLabel={false} />
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={async () => { await flush(); onSuccess(); onOpenChange(false); }}>
+                Close
+              </Button>
+              <Button type="submit" disabled={loading || !formData.name}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Done"
+                )}
+              </Button>
+            </div>
           </div>
+
         </form>
       </DialogContent>
     </Dialog>

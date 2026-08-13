@@ -17,6 +17,9 @@ import { ContentAssetsEditor } from "@/components/ContentAssetsEditor";
 import { Building2, Smile, X, Loader2, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAutosaveOnChange } from "@/hooks/useAutosave";
+import { AutoSaveIndicator } from "@/components/AutoSaveIndicator";
+
 
 interface EmojiSettings {
   use_emojis: boolean;
@@ -40,6 +43,25 @@ export default function Voice() {
     bullet_emoji: "✅",
   });
   const [newEmoji, setNewEmoji] = useState("");
+
+  // Emoji settings save themselves as you change them — no Save button needed.
+  const { status: emojiSaveStatus } = useAutosaveOnChange<EmojiSettings>(
+    emojiSettings,
+    async (value) => {
+      if (!brand?.id) return;
+      const { error } = await supabase
+        .from("brands")
+        .update({
+          use_emojis: value.use_emojis,
+          brand_emojis: value.brand_emojis,
+          bullet_emoji: value.bullet_emoji,
+        })
+        .eq("id", brand.id);
+      if (error) throw error;
+    },
+    { key: brand?.id ?? null, enabled: !!brand?.id && !loading },
+  );
+
 
   useEffect(() => {
     fetchData();
@@ -103,26 +125,8 @@ export default function Voice() {
     }
   };
 
-  const handleSaveEmojiSettings = async () => {
-    if (!brand) return;
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from("brands")
-        .update({
-          use_emojis: emojiSettings.use_emojis,
-          brand_emojis: emojiSettings.brand_emojis,
-          bullet_emoji: emojiSettings.bullet_emoji,
-        })
-        .eq("id", brand.id);
-      if (error) throw error;
-      toast.success("Emoji settings saved");
-    } catch {
-      toast.error("Failed to save emoji settings");
-    } finally {
-      setSaving(false);
-    }
-  };
+
+
 
   const addEmoji = () => {
     if (!newEmoji.trim()) return;
@@ -333,12 +337,11 @@ export default function Voice() {
                 </>
               )}
 
-              <div className="pt-4">
-                <Button onClick={handleSaveEmojiSettings} disabled={saving} variant="lumi">
-                  {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  Save Emoji Settings
-                </Button>
+              <div className="pt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Changes save automatically.</span>
+                <AutoSaveIndicator status={emojiSaveStatus} />
               </div>
+
             </CardContent>
           </Card>
 

@@ -11,6 +11,9 @@ import { Loader2, Palette, Upload, Building2, Eye, FileText, Users } from 'lucid
 import { supabase } from '@/integrations/supabase/client';
 import { useBrand } from '@/contexts/BrandContext';
 import { toast } from 'sonner';
+import { useAutosaveOnChange } from '@/hooks/useAutosave';
+import { AutoSaveIndicator } from '@/components/AutoSaveIndicator';
+
 
 interface AgencyBranding {
   id?: string;
@@ -69,28 +72,31 @@ export default function AgencySettings() {
     }
   };
 
-  const handleSave = async () => {
-    if (!activeBrand?.id) return;
-    setSaving(true);
-    try {
+  // Agency branding persists itself as the user edits — no Save button.
+  const { status: brandingSaveStatus } = useAutosaveOnChange<AgencyBranding>(
+    branding,
+    async (value) => {
+      if (!activeBrand?.id) return;
       const payload = {
         brand_id: activeBrand.id,
-        logo_url: branding.logo_url,
-        primary_color: branding.primary_color,
-        secondary_color: branding.secondary_color,
-        accent_color: branding.accent_color,
-        company_name: branding.company_name,
-        white_label_reports: branding.white_label_reports,
-        white_label_portal: branding.white_label_portal,
-        custom_footer_text: branding.custom_footer_text,
+        logo_url: value.logo_url,
+        primary_color: value.primary_color,
+        secondary_color: value.secondary_color,
+        accent_color: value.accent_color,
+        company_name: value.company_name,
+        white_label_reports: value.white_label_reports,
+        white_label_portal: value.white_label_portal,
+        custom_footer_text: value.custom_footer_text,
         updated_at: new Date().toISOString(),
       };
 
-      if (branding.id) {
+      if (value.id) {
         const { error } = await supabase
           .from('agency_branding')
           .update(payload)
-          .eq('id', branding.id);
+          .eq('id', value.id)
+          .select()
+          .single();
         if (error) throw error;
       } else {
         const { data, error } = await supabase
@@ -99,15 +105,12 @@ export default function AgencySettings() {
           .select()
           .single();
         if (error) throw error;
-        if (data) setBranding(data as unknown as AgencyBranding);
+        if (data) setBranding(prev => ({ ...prev, id: (data as any).id }));
       }
-      toast.success('Agency branding saved!');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to save branding');
-    } finally {
-      setSaving(false);
-    }
-  };
+    },
+    { key: activeBrand?.id ?? null, enabled: !!activeBrand?.id && !loading },
+  );
+
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -347,12 +350,11 @@ export default function AgencySettings() {
               </CardContent>
             </Card>
 
-            <div className="flex justify-end">
-              <Button onClick={handleSave} disabled={saving} className="rounded-xl px-8">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Save Agency Settings
-              </Button>
+            <div className="flex justify-end items-center gap-2 text-sm text-muted-foreground">
+              <span>Changes save automatically.</span>
+              <AutoSaveIndicator status={brandingSaveStatus} />
             </div>
+
           </>
         )}
       </div>

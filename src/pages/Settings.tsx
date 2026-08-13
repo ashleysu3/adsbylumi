@@ -8,6 +8,8 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { useEffect, useState } from 'react';
+import { useAutosaveOnChange } from '@/hooks/useAutosave';
+import { AutoSaveIndicator } from '@/components/AutoSaveIndicator';
 import { supabase } from '@/integrations/supabase/client';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { toast } from 'sonner';
@@ -235,71 +237,51 @@ export default function Settings() {
     }
   };
 
-  const handleSaveNotificationPrefs = async () => {
-    if (!brand) return;
-    
-    setSaving(true);
-    try {
+  // Preferences persist as they're toggled — nothing here needs a Save button.
+  const { status: prefsSaveStatus } = useAutosaveOnChange<NotificationPrefs>(
+    notificationPrefs,
+    async (value) => {
+      if (!brand?.id) return;
       const { error } = await supabase
         .from('brands')
-        .update({ notification_preferences: notificationPrefs as any })
+        .update({ notification_preferences: value as any })
         .eq('id', brand.id);
-
       if (error) throw error;
-      toast.success('Notification preferences saved');
-    } catch (error) {
-      console.error('Error saving preferences:', error);
-      toast.error('Failed to save preferences');
-    } finally {
-      setSaving(false);
-    }
-  };
+    },
+    { key: brand?.id ?? null, enabled: !!brand?.id && !loading },
+  );
 
-  const handleSaveAlertThresholds = async () => {
-    if (!brand) return;
-    
-    setSaving(true);
-    try {
+  const { status: thresholdsSaveStatus } = useAutosaveOnChange<AlertThresholds>(
+    alertThresholds,
+    async (value) => {
+      if (!brand?.id) return;
       const { error } = await supabase
         .from('brands')
-        .update({ alert_thresholds: alertThresholds as any })
+        .update({ alert_thresholds: value as any })
         .eq('id', brand.id);
-
       if (error) throw error;
-      toast.success('Alert thresholds saved');
-    } catch (error) {
-      console.error('Error saving thresholds:', error);
-      toast.error('Failed to save thresholds');
-    } finally {
-      setSaving(false);
-    }
-  };
+    },
+    { key: brand?.id ?? null, enabled: !!brand?.id && !loading },
+  );
 
-  const handleSaveCreativeAutomation = async () => {
-    if (!brand) return;
-    
-    setSaving(true);
-    try {
+  const { status: automationSaveStatus } = useAutosaveOnChange(
+    creativeAutomation,
+    async (value) => {
+      if (!brand?.id) return;
       const currentPrefs = (brand.notification_preferences as any) || {};
       const { error } = await supabase
         .from('brands')
-        .update({ 
-          notification_preferences: {
-            ...currentPrefs,
-            creative_automation: creativeAutomation,
-          } as any 
+        .update({
+          notification_preferences: { ...currentPrefs, creative_automation: value } as any,
         })
         .eq('id', brand.id);
-
       if (error) throw error;
-      toast.success('Creative automation settings saved');
-    } catch (error) {
-      console.error('Error saving creative automation:', error);
-      toast.error('Failed to save settings');
-    } finally {
-      setSaving(false);
-    }
-  };
+    },
+    { key: brand?.id ?? null, enabled: !!brand?.id && !loading },
+  );
+
+
+
 
   const handleManageSubscription = async () => {
     try {
@@ -497,10 +479,10 @@ export default function Settings() {
                 </div>
 
                 <div className="pt-4 flex gap-3">
-                  <Button onClick={handleSaveNotificationPrefs} disabled={saving} variant="lumi">
-                    {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Save Preferences
-                  </Button>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>Changes save automatically.</span>
+                    <AutoSaveIndicator status={prefsSaveStatus} />
+                  </div>
                   <Button onClick={() => navigate('/settings/digest-preview')} variant="outline" className="gap-2">
                     <Eye className="h-4 w-4" />
                     Preview Performance Report
@@ -632,10 +614,10 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <Button onClick={handleSaveAlertThresholds} disabled={saving} variant="lumi" className="mt-4">
-                  {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  Save Thresholds
-                </Button>
+                <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>Changes save automatically.</span>
+                  <AutoSaveIndicator status={thresholdsSaveStatus} />
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -733,10 +715,10 @@ export default function Settings() {
                 </div>
 
                 <div className="pt-4">
-                  <Button onClick={handleSaveCreativeAutomation} disabled={saving} variant="lumi">
-                    {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Save Automation Settings
-                  </Button>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>Changes save automatically.</span>
+                    <AutoSaveIndicator status={automationSaveStatus} />
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -139,3 +139,51 @@ export function useAutosave<T>(saver: Saver<T>, options: Options = {}) {
 
   return { status, schedule, flush };
 }
+
+/**
+ * Change-driven autosave: give it a value and a saver, and every user edit is
+ * persisted automatically (debounced). The first render after a record loads
+ * establishes the baseline, so hydrating a form never triggers a write.
+ *
+ * Pass `key` (e.g. the record id) so switching records re-baselines instead of
+ * saving the newly-loaded record's values over the previous one.
+ */
+export function useAutosaveOnChange<T>(
+  value: T,
+  saver: Saver<T>,
+  options: Options & { enabled?: boolean; key?: string | null } = {},
+) {
+  const { enabled = true, key = null, ...rest } = options;
+  const { status, schedule, flush } = useAutosave<T>(saver, rest);
+
+  const primedRef = useRef(false);
+  const baselineRef = useRef<string>("");
+  const keyRef = useRef<string | null>(key);
+
+  // Re-baseline when the edited record changes.
+  useEffect(() => {
+    if (keyRef.current !== key) {
+      keyRef.current = key;
+      primedRef.current = false;
+    }
+  }, [key]);
+
+  const serialized = JSON.stringify(value ?? null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    if (!primedRef.current) {
+      primedRef.current = true;
+      baselineRef.current = serialized;
+      return;
+    }
+    if (serialized === baselineRef.current) return;
+    baselineRef.current = serialized;
+    schedule(value);
+    // `value` intentionally tracked through its serialization
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serialized, enabled, schedule]);
+
+  return { status, flush };
+}
+

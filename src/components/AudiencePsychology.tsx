@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { formatInvokeError } from "@/lib/formatInvokeError";
 import { Brain, ChevronDown, RefreshCw, Loader2, Users, Heart, AlertCircle, Zap, CheckCircle2, Pencil, Sparkles, FileText } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAutosaveOnChange } from "@/hooks/useAutosave";
+import { AutoSaveIndicator } from "@/components/AutoSaveIndicator";
 
 // Custom loading copy for psychology generation
 const PSYCHOLOGY_LOADING_COPY = [
@@ -145,10 +147,26 @@ export function AudiencePsychology({
     }
   };
 
+  // Autosave every edit in the dialog so closing it (or navigating away) keeps
+  // the changes.
+  const { status: editSaveStatus, flush: flushEdits } = useAutosaveOnChange<any>(
+    editedPsychology,
+    async (value) => {
+      if (!value) return;
+      const { error } = await supabase
+        .from('brands')
+        .update({ audience_psychology: value, psychology_status: 'completed' })
+        .eq('id', brandId);
+      if (error) throw error;
+    },
+    { key: brandId, enabled: editDialogOpen && !!editedPsychology },
+  );
+
   const updateArrayField = (field: string, value: string) => {
     const items = value.split('\n').filter(item => item.trim());
     setEditedPsychology((prev: any) => ({ ...prev, [field]: items }));
   };
+
 
   const getStatusBadge = () => {
     switch (status) {
@@ -463,13 +481,21 @@ export function AudiencePsychology({
             </div>
           )}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveEdits} disabled={saving}>
+          <DialogFooter className="sm:justify-between items-center gap-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Saves automatically</span>
+              <AutoSaveIndicator status={editSaveStatus} showLabel={false} />
+            </div>
+            <Button
+              onClick={async () => {
+                await flushEdits();
+                setEditDialogOpen(false);
+                onUpdate();
+              }}
+              disabled={saving}
+            >
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Save Changes
+              Done
             </Button>
           </DialogFooter>
         </DialogContent>
