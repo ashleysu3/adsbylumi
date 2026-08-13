@@ -374,10 +374,19 @@ export function GenerateCreativeDialog() {
   const [focalX, setFocalX] = useState<number>(50);
   const [focalY, setFocalY] = useState<number>(50);
   const [photoZoom, setPhotoZoom] = useState<number>(1);
+  // The story (9:16) placement crops the same photo differently, so it gets its
+  // own focal point + zoom. Which one the drag/sliders edit depends on the
+  // Feed / Story toggle in the preview.
+  const [previewFrame, setPreviewFrame] = useState<"feed" | "story">("feed");
+  const [storyFocalX, setStoryFocalX] = useState<number>(50);
+  const [storyFocalY, setStoryFocalY] = useState<number>(50);
+  const [storyZoom, setStoryZoom] = useState<number>(1);
   // Framing that the currently shown renders were made with, so we can tell the
   // user when the preview no longer matches what's on screen.
   const [renderedFraming, setRenderedFraming] = useState<{
-    focalX: number; focalY: number; photoZoom: number; photoId: string | null;
+    focalX: number; focalY: number; photoZoom: number;
+    storyFocalX: number; storyFocalY: number; storyZoom: number;
+    photoId: string | null;
   } | null>(null);
   // Readability controls for templates that put text directly on a photo
   // with no card behind it (currently just nativecaption) — the template's
@@ -1401,7 +1410,42 @@ export function GenerateCreativeDialog() {
     (renderedFraming.focalX !== focalX ||
       renderedFraming.focalY !== focalY ||
       renderedFraming.photoZoom !== photoZoom ||
+      renderedFraming.storyFocalX !== storyFocalX ||
+      renderedFraming.storyFocalY !== storyFocalY ||
+      renderedFraming.storyZoom !== storyZoom ||
       renderedFraming.photoId !== selectedPhotoId);
+
+  // Whichever placement the user is currently framing.
+  const isStoryFrame = previewFrame === "story";
+  const activeFocalX = isStoryFrame ? storyFocalX : focalX;
+  const activeFocalY = isStoryFrame ? storyFocalY : focalY;
+  const activeZoom = isStoryFrame ? storyZoom : photoZoom;
+  const setActiveFocal = (x: number, y: number) => {
+    if (isStoryFrame) { setStoryFocalX(x); setStoryFocalY(y); }
+    else { setFocalX(x); setFocalY(y); }
+  };
+  const setActiveZoom = (z: number) => (isStoryFrame ? setStoryZoom(z) : setPhotoZoom(z));
+  const resetActiveFraming = () => {
+    if (isStoryFrame) { setStoryFocalX(50); setStoryFocalY(50); setStoryZoom(1); }
+    else { setFocalX(50); setFocalY(50); setPhotoZoom(1); }
+  };
+  const FrameToggle = (
+    <div className="inline-flex rounded-md border bg-background p-0.5 text-[10px]">
+      {(["feed", "story"] as const).map((f) => (
+        <button
+          key={f}
+          type="button"
+          onClick={() => setPreviewFrame(f)}
+          className={cn(
+            "rounded px-2 py-0.5 capitalize transition",
+            previewFrame === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {f === "feed" ? "Feed 1:1" : "Story 9:16"}
+        </button>
+      ))}
+    </div>
+  );
 
   // ---- Step rail helpers -------------------------------------------------
   const stepIndex = step === "style" ? 0 : step === "image-copy" ? 1 : 2;
