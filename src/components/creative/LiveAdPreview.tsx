@@ -259,8 +259,48 @@ export function LiveAdPreview({
       </span>
     ) : null;
 
+  // Image framing: focal point (what stays visible when the photo is cropped
+  // into the template frame) + zoom. Drag the photo in the preview to move it.
+  const photoStyle: React.CSSProperties = {
+    objectPosition: `${focalX}% ${focalY}%`,
+    transform: photoZoom !== 1 ? `scale(${photoZoom})` : undefined,
+    transformOrigin: `${focalX}% ${focalY}%`,
+  };
+
+  const startFocalDrag = (e: React.PointerEvent<HTMLImageElement>) => {
+    if (!onFocalChange) return;
+    const el = e.currentTarget;
+    const rect = el.getBoundingClientRect();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const baseX = focalX;
+    const baseY = focalY;
+    el.setPointerCapture(e.pointerId);
+    const move = (ev: PointerEvent) => {
+      const dx = ((ev.clientX - startX) / Math.max(1, rect.width)) * 100;
+      const dy = ((ev.clientY - startY) / Math.max(1, rect.height)) * 100;
+      const clamp = (n: number) => Math.min(100, Math.max(0, n));
+      onFocalChange(clamp(baseX - dx), clamp(baseY - dy));
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
   const Photo = ({ className = "" }: { className?: string }) =>
-    bgImage ? <img src={bgImage} alt="" className={`object-cover ${className}`} /> : (
+    bgImage ? (
+      <img
+        src={bgImage}
+        alt=""
+        draggable={false}
+        onPointerDown={startFocalDrag}
+        style={photoStyle}
+        className={`object-cover ${onFocalChange ? "cursor-move select-none" : ""} ${className}`}
+      />
+    ) : (
       <div className={`${className}`} style={{ backgroundColor: `${colors.accent}33` }} />
     );
 
