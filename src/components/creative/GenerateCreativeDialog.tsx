@@ -334,6 +334,12 @@ export function GenerateCreativeDialog() {
   const [textCase, setTextCase] = useState<"original" | "upper" | "lower" | "title">("original");
   const [headlineScale, setHeadlineScale] = useState<number>(1);
   const [bodyScale, setBodyScale] = useState<number>(1);
+  // Readability controls: a color box/scrim behind the copy + where the copy sits.
+  const [textBoxStyle, setTextBoxStyle] = useState<"none" | "box" | "scrim">("none");
+  const [textBoxColor, setTextBoxColor] = useState<string>("");
+  const [textBoxOpacity, setTextBoxOpacity] = useState<number>(0.85);
+  const [textPosition, setTextPosition] = useState<"top" | "middle" | "bottom">("bottom");
+  const [textAlign, setTextAlign] = useState<"left" | "center" | "right">("left");
   // Readability controls for templates that put text directly on a photo
   // with no card behind it (currently just nativecaption) — the template's
   // own white text + shadow isn't always enough contrast against every photo.
@@ -1144,7 +1150,12 @@ export function GenerateCreativeDialog() {
         bodyScale,
         textCase: textCase === "original" ? undefined : textCase,
         textColor: textColor === "auto" ? undefined : textColor,
-        textBackdrop: textBackdrop || undefined,
+        textBackdrop: textBackdrop || textBoxStyle !== "none" || undefined,
+        textBoxStyle: textBoxStyle === "none" ? undefined : textBoxStyle,
+        textBoxColor: textBoxStyle === "none" ? undefined : (textBoxColor || colors.bg),
+        textBoxOpacity: textBoxStyle === "none" ? undefined : textBoxOpacity,
+        textPosition,
+        textAlign,
       };
 
       if (isCarousel) {
@@ -1454,6 +1465,96 @@ export function GenerateCreativeDialog() {
             </div>
           )}
 
+          <div className="space-y-3 rounded border border-border bg-muted/20 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Readability</p>
+
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Box behind text</p>
+              <ToggleGroup
+                type="single"
+                size="sm"
+                value={textBoxStyle}
+                onValueChange={(v) => v && setTextBoxStyle(v as typeof textBoxStyle)}
+                className="justify-start"
+              >
+                <ToggleGroupItem value="none" className="text-xs">None</ToggleGroupItem>
+                <ToggleGroupItem value="scrim" className="text-xs">Soft</ToggleGroupItem>
+                <ToggleGroupItem value="box" className="text-xs">Solid box</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+
+            {textBoxStyle !== "none" && (
+              <div className="grid grid-cols-2 items-end gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Box color</p>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Edit text box color"
+                        className="h-8 w-full rounded-md border border-border shadow-sm"
+                        style={{ backgroundColor: textBoxColor || colors.bg }}
+                      />
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-3" align="start">
+                      <HexColorPicker color={textBoxColor || colors.bg} onChange={setTextBoxColor} />
+                      <Input
+                        value={textBoxColor || colors.bg}
+                        onChange={(e) => setTextBoxColor(e.target.value)}
+                        className="mt-2 h-7 text-xs font-mono"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Box opacity</p>
+                    <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(textBoxOpacity * 100)}%</span>
+                  </div>
+                  <Slider
+                    min={0.2}
+                    max={1}
+                    step={0.05}
+                    value={[textBoxOpacity]}
+                    onValueChange={(v) => setTextBoxOpacity(v[0])}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Text position</p>
+                <ToggleGroup
+                  type="single"
+                  size="sm"
+                  value={textPosition}
+                  onValueChange={(v) => v && setTextPosition(v as typeof textPosition)}
+                  className="justify-start"
+                >
+                  <ToggleGroupItem value="top" className="text-xs">Top</ToggleGroupItem>
+                  <ToggleGroupItem value="middle" className="text-xs">Middle</ToggleGroupItem>
+                  <ToggleGroupItem value="bottom" className="text-xs">Bottom</ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Text align</p>
+                <ToggleGroup
+                  type="single"
+                  size="sm"
+                  value={textAlign}
+                  onValueChange={(v) => v && setTextAlign(v as typeof textAlign)}
+                  className="justify-start"
+                >
+                  <ToggleGroupItem value="left" className="text-xs">Left</ToggleGroupItem>
+                  <ToggleGroupItem value="center" className="text-xs">Center</ToggleGroupItem>
+                  <ToggleGroupItem value="right" className="text-xs">Right</ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+            </div>
+          </div>
+
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -1489,7 +1590,11 @@ export function GenerateCreativeDialog() {
             <button
               type="button"
               className="text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
-              onClick={() => { setTextCase("original"); setHeadlineScale(1); setBodyScale(1); }}
+              onClick={() => {
+                setTextCase("original"); setHeadlineScale(1); setBodyScale(1);
+                setTextBoxStyle("none"); setTextBoxColor(""); setTextBoxOpacity(0.85);
+                setTextPosition("bottom"); setTextAlign("left");
+              }}
             >
               Reset tweaks
             </button>
@@ -1521,6 +1626,11 @@ export function GenerateCreativeDialog() {
         textCase={textCase}
         headlineScale={headlineScale}
         bodyScale={bodyScale}
+        textBoxStyle={textBoxStyle}
+        textBoxColor={textBoxColor || colors.bg}
+        textBoxOpacity={textBoxOpacity}
+        textPosition={textPosition}
+        textAlign={textAlign}
         logoUrl={brandLogoAsset?.url}
         showLogo={placeLogo}
         logoCorner={logoCorner}

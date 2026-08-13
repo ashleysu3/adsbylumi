@@ -48,6 +48,18 @@ function linesFor(copy: Copy) {
   return { headline, sub, eyebrow, cta };
 }
 
+// Turn a hex color into rgba() so the text box can be dialed in with opacity.
+function hexWithAlpha(hex: string, alpha: number) {
+  const h = (hex || "").replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  if (full.length < 6) return hex;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alpha))})`;
+}
+
+
 // Pull an ordered list of repeated slots (item1..item6, stat1Num/stat1Label, msg1..)
 const listOf = (copy: Copy, prefix: string, max = 6) =>
   Array.from({ length: max }, (_, i) => copy[`${prefix}${i + 1}`])
@@ -102,6 +114,11 @@ export function LiveAdPreview({
   textCase = "original",
   headlineScale = 1,
   bodyScale = 1,
+  textBoxStyle = "none",
+  textBoxColor,
+  textBoxOpacity = 0.85,
+  textPosition = "bottom",
+  textAlign = "left",
   logoUrl,
   showLogo,
   logoCorner = "br",
@@ -119,6 +136,11 @@ export function LiveAdPreview({
   textCase?: "original" | "upper" | "lower" | "title";
   headlineScale?: number;
   bodyScale?: number;
+  textBoxStyle?: "none" | "box" | "scrim";
+  textBoxColor?: string;
+  textBoxOpacity?: number;
+  textPosition?: "top" | "middle" | "bottom";
+  textAlign?: "left" | "center" | "right";
   logoUrl?: string;
   showLogo?: boolean;
   logoCorner?: "tl" | "tr" | "bl" | "br";
@@ -141,6 +163,33 @@ export function LiveAdPreview({
   }[logoCorner];
 
   const T = (s: string) => applyCase(s, textCase);
+
+  // Readability helpers: where the copy sits + an optional color box/scrim behind it.
+  const justifyClass =
+    textPosition === "top" ? "justify-start" : textPosition === "middle" ? "justify-center" : "justify-end";
+  const alignItemsClass =
+    textAlign === "center" ? "items-center text-center" : textAlign === "right" ? "items-end text-right" : "items-start text-left";
+  const boxColor = textBoxColor || colors.bg;
+  const boxStyle: React.CSSProperties =
+    textBoxStyle === "box"
+      ? { backgroundColor: boxColor, opacity: 1, borderRadius: "0.5rem", padding: "0.85rem 1rem" }
+      : textBoxStyle === "scrim"
+        ? { backgroundColor: boxColor, borderRadius: "0.75rem", padding: "0.85rem 1rem" }
+        : {};
+  const TextStack = ({ children }: { children: React.ReactNode }) => (
+    <div
+      className={`flex w-fit max-w-full flex-col gap-2 ${alignItemsClass}`}
+      style={
+        textBoxStyle === "none"
+          ? undefined
+          : textBoxStyle === "scrim"
+            ? { ...boxStyle, backgroundColor: hexWithAlpha(boxColor, textBoxOpacity * 0.7) }
+            : { ...boxStyle, backgroundColor: hexWithAlpha(boxColor, textBoxOpacity) }
+      }
+    >
+      {children}
+    </div>
+  );
   const hFont = { fontFamily: displayFamily || undefined };
   const bFont = { fontFamily: bodyFamily || undefined };
   const hSize = (rem: number) => ({ fontSize: `${rem * headlineScale}rem` });
@@ -192,11 +241,13 @@ export function LiveAdPreview({
       body = (
         <div className="grid h-full grid-cols-2">
           <Photo className="h-full w-full" />
-          <div className="flex flex-col justify-center gap-2 p-4">
-            <Eyebrow />
-            <Headline size={1.25} />
-            <Sub />
-            <Cta className="mt-1" />
+          <div className={`flex flex-col gap-2 p-4 ${justifyClass} ${alignItemsClass}`}>
+            <TextStack>
+              <Eyebrow />
+              <Headline size={1.25} />
+              <Sub />
+              <Cta className="mt-1" />
+            </TextStack>
           </div>
         </div>
       );
@@ -270,11 +321,13 @@ export function LiveAdPreview({
 
     case "bigtype":
       body = (
-        <div className="flex h-full flex-col justify-center gap-3 p-6">
-          <Eyebrow />
-          <Headline size={2.1} />
-          <Sub />
-          <Cta className="mt-1" />
+        <div className={`flex h-full flex-col gap-3 p-6 ${justifyClass} ${alignItemsClass}`}>
+          <TextStack>
+            <Eyebrow />
+            <Headline size={2.1} />
+            <Sub />
+            <Cta className="mt-1" />
+          </TextStack>
         </div>
       );
       break;
@@ -458,17 +511,19 @@ export function LiveAdPreview({
       body = (
         <>
           {bgImage && <img src={bgImage} alt="" className="absolute inset-0 h-full w-full object-cover" />}
-          {bgImage && (
+          {bgImage && textBoxStyle === "none" && (
             <div
               className="absolute inset-0"
               style={{ background: `linear-gradient(to top, ${colors.bg}f2 12%, ${colors.bg}66 55%, transparent 100%)` }}
             />
           )}
-          <div className="relative flex h-full flex-col justify-end gap-2 p-5">
-            <Eyebrow />
-            <Headline />
-            <Sub />
-            <Cta className="mt-1" />
+          <div className={`relative flex h-full flex-col gap-2 p-5 ${justifyClass} ${alignItemsClass}`}>
+            <TextStack>
+              <Eyebrow />
+              <Headline />
+              <Sub />
+              <Cta className="mt-1" />
+            </TextStack>
           </div>
         </>
       );
