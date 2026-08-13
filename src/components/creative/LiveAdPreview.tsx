@@ -205,12 +205,34 @@ export function LiveAdPreview({
       </p>
     ) : null;
 
-  const Headline = ({ size = 1.5, color = colors.ink, className = "" }: { size?: number; color?: string; className?: string }) =>
-    headline ? (
+  // The render engine draws headlinePre / headlineHL / headlinePost as three
+  // separately-colored runs (the HL run picks up the highlight color). The
+  // preview has to do the same or it reads as a different design entirely.
+  const hasSegments = Boolean(
+    (active.headlinePre && active.headlinePre.trim()) ||
+    (active.headlineHL && active.headlineHL.trim()) ||
+    (active.headlinePost && active.headlinePost.trim())
+  );
+
+  const Headline = ({ size = 1.5, color = colors.ink, className = "" }: { size?: number; color?: string; className?: string }) => {
+    if (hasSegments) {
+      return (
+        <p className={`font-bold leading-[1.06] ${className}`} style={{ color, ...hFont, ...hSize(size) }}>
+          {active.headlinePre?.trim() && <span>{T(active.headlinePre.trim())} </span>}
+          {active.headlineHL?.trim() && (
+            <span style={{ color: colors.highlight || colors.accent }}>{T(active.headlineHL.trim())} </span>
+          )}
+          {active.headlinePost?.trim() && <span>{T(active.headlinePost.trim())}</span>}
+        </p>
+      );
+    }
+    return headline ? (
       <p className={`font-bold leading-[1.06] ${className}`} style={{ color, ...hFont, ...hSize(size) }}>
         {T(headline)}
       </p>
     ) : null;
+  };
+
 
   const Sub = ({ color = colors.ink, className = "" }: { color?: string; className?: string }) =>
     sub ? (
