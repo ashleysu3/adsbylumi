@@ -2480,6 +2480,8 @@ export type Database = {
           messaging_guidelines: Json | null
           name: string
           offer_audience_psychology: Json | null
+          page_excerpt: string | null
+          page_extracted_at: string | null
           page_goal: string | null
           price_point: string | null
           product_psychology: Json | null
@@ -2508,6 +2510,8 @@ export type Database = {
           messaging_guidelines?: Json | null
           name: string
           offer_audience_psychology?: Json | null
+          page_excerpt?: string | null
+          page_extracted_at?: string | null
           page_goal?: string | null
           price_point?: string | null
           product_psychology?: Json | null
@@ -2536,6 +2540,8 @@ export type Database = {
           messaging_guidelines?: Json | null
           name?: string
           offer_audience_psychology?: Json | null
+          page_excerpt?: string | null
+          page_extracted_at?: string | null
           page_goal?: string | null
           price_point?: string | null
           product_psychology?: Json | null
