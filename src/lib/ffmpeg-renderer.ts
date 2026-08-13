@@ -481,10 +481,15 @@ async function ensureFontLoaded(family: string, weightCss: string): Promise<void
   try {
     if (typeof document === 'undefined' || !('fonts' in document)) return;
     await (document as any).fonts.load(`${weightCss} 48px "${family}"`);
+    // Metrics measured before the face is actually ready come back with
+    // fallback widths, which is how wrapped lines ended up wider than the
+    // frame once the real (condensed) face painted.
+    await (document as any).fonts.ready;
   } catch {
     /* non-fatal */
   }
 }
+
 
 export async function renderVideoWithText(opts: RenderOptions): Promise<Blob> {
   const { videoUrl, overlays, style, loopVideo = false, trimStart, trimEnd, onProgress } = opts;
