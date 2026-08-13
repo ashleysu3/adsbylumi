@@ -44,6 +44,7 @@ import collageThumb from "@/assets/template-thumbs/collage.jpg";
 import notesappThumb from "@/assets/template-thumbs/notesapp.jpg";
 import textthreadThumb from "@/assets/template-thumbs/textthread.jpg";
 import nativecaptionThumb from "@/assets/template-thumbs/nativecaption.jpg";
+import { cropImageToFocal } from "@/lib/crop-image";
 
 const BUILT_IN_THUMBS: Record<string, string> = {
   spotlight: spotlightThumb,
