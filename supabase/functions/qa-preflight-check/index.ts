@@ -514,6 +514,18 @@ function checkEventTracking(
   const foundPixelId = lp?.foundPixelId || null;
   const base = { id: 'tracking', name: 'Event Tracking', requiredEvent, pixelId, campaignGoal, pixelState } as const;
 
+  // The user already set up the conversion with a thank-you page URL — keep it
+  // green so it survives leaving and coming back to the publish screen.
+  if (trackingSetup?.verified && trackingSetup?.conversionUrl) {
+    return {
+      ...base, status: 'passed',
+      message: 'Confirmation page URL set',
+      details: `Meta will track conversions when someone lands on: ${trackingSetup.conversionUrl}`,
+    };
+  }
+
+
+
   // 1. No pixel on the ad account at all — that IS "no pixel connected".
   if (!pixelId) {
     return {
