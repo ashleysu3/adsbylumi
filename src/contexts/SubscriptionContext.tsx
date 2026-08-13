@@ -117,8 +117,6 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             amountPaid: null,
             billingInterval: null,
           paymentMethod: null,
-    paymentMethod: null,
-            paymentMethod: null,
           });
         } else {
           // Check if impersonated user has a Stripe subscription via edge function with actAsUserId
@@ -150,7 +148,6 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
               amountPaid: data.amount_paid ?? null,
               billingInterval: data.billing_interval || null,
         paymentMethod: data.payment_method || null,
-              paymentMethod: data.payment_method || null,
             });
           } else {
             setState(prev => ({ ...prev, isLoading: false, isSubscribed: false, tier: null }));
@@ -264,7 +261,6 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           amountPaid: null,
           billingInterval: null,
           paymentMethod: null,
-    paymentMethod: null,
         });
       }
     });
