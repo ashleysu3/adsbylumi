@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { ProductionItem } from "./ProductionChecklistPanel";
 import { VideoTextPreview, DEFAULT_OVERLAY_STYLE } from "@/components/VideoTextPreview";
 import type { OverlayStyle, TextOverlay } from "@/components/VideoTextPreview";
+import { PlayableVideo } from "@/components/PlayableVideo";
 
 const formatIcons = { talking_head: Video, broll: Film, graphic: Image, carousel: Image };
 const formatLabels = { talking_head: "Talking Head", broll: "B-Roll", graphic: "Graphic", carousel: "Carousel" };
@@ -1073,7 +1074,7 @@ export function CreativeChecklistCard({
                                             trimEnd={getLastOverlayEnd(tOverlays)}
                                           />
                                         ) : (
-                                          <video
+                                          <PlayableVideo
                                             src={clip.file_url}
                                             className="w-full aspect-[9/16] object-contain rounded-lg bg-black"
                                             controls muted playsInline preload="metadata"

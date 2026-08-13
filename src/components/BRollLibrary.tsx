@@ -27,6 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { BRollTextEditor } from "@/components/BRollTextEditor";
 import type { OverlayStyle } from "@/components/VideoTextPreview";
+import { PlayableVideo } from "@/components/PlayableVideo";
 
 export interface BRollClip {
   id: string;
@@ -648,7 +649,7 @@ export function BRollLibrary({
               key={clip.id}
               className="relative group rounded-lg overflow-hidden border bg-muted/30"
             >
-              <video
+              <PlayableVideo
                 src={clip.file_url}
                 className="w-full aspect-[9/16] object-contain bg-black"
                 muted
