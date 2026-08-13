@@ -461,17 +461,8 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
             )}
             <span className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/3 -skew-x-12 bg-white/20 blur-md opacity-0 group-hover:opacity-100 group-hover:translate-x-[300%] transition-all duration-700" />
           </button>
-          {isAdmin && !collapsed && (
-            <button
-              type="button"
-              onClick={() => navigate("/admin/users")}
-              className="w-full rounded-lg border border-amber-300/40 bg-amber-50/40 text-amber-700/80 dark:bg-amber-500/5 dark:text-amber-300/80 hover:bg-amber-100/60 dark:hover:bg-amber-500/15 transition-colors px-2.5 py-1.5 flex items-center justify-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-ring text-[11px] font-medium tracking-tight"
-            >
-              <Shield className="h-3 w-3" />
-              Admin Dashboard
-            </button>
-          )}
         </SidebarFooter>
+
 
 
       </Sidebar>
