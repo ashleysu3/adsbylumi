@@ -1590,7 +1590,11 @@ export function GenerateCreativeDialog() {
             <button
               type="button"
               className="text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
-              onClick={() => { setTextCase("original"); setHeadlineScale(1); setBodyScale(1); }}
+              onClick={() => {
+                setTextCase("original"); setHeadlineScale(1); setBodyScale(1);
+                setTextBoxStyle("none"); setTextBoxColor(""); setTextBoxOpacity(0.85);
+                setTextPosition("bottom"); setTextAlign("left");
+              }}
             >
               Reset tweaks
             </button>
