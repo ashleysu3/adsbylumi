@@ -870,6 +870,29 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       try {
         setPhase("loading");
 
+        // 0a) Pinned demo ad for this domain, if one exists. Fetched first so
+        // it's in hand before the live run finishes (or fails).
+        try {
+          const domain = normalizeDemoDomain((brand as any)?.website_url);
+          if (domain) {
+            const { data: pin } = await supabase
+              .from("demo_pinned_ads" as any)
+              .select("images, copy, template")
+              .eq("domain", domain)
+              .eq("active", true)
+              .maybeSingle();
+            const pinImgs = ((pin as any)?.images || []) as RenderImage[];
+            if (!cancelled && Array.isArray(pinImgs) && pinImgs.length) {
+              pinnedRef.current = {
+                images: pinImgs,
+                copy: (pin as any)?.copy || null,
+                template: (pin as any)?.template || undefined,
+              };
+            }
+          }
+        } catch { /* pinned ads are a safety net, never a gate */ }
+
+
         // 0) Instagram avatar for the feed-post mock — kicked off first and
         // never awaited, so the 2–4s scrape/re-host overlaps the whole build
         // and is usually ready by the time they save. Falls back to the logo
