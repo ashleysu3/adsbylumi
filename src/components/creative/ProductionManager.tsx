@@ -1439,31 +1439,6 @@ export function ProductionManager({
                   {itemsWithAssets}/{productionItems.length} uploaded
                 </Badge>
               </div>
-              {canRank && !hasRankedItems && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="lumi"
-                        size="sm"
-                        onClick={handleRankConcepts}
-                        disabled={isRanking}
-                        className="gap-2 flex-1 min-w-0"
-                      >
-                        {isRanking ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Sparkles className="h-3 w-3" />
-                        )}
-                        Get Lumi's Top 5
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Lumi will rank your {productionItems.length} concepts and pick the top 5</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
               <div className="flex items-center justify-end flex-wrap gap-2">
                 {(productionItems.length > 0 || previousRoundItems.length > 0 || onClearAll || onUploadOwnAds) && (
                   <DropdownMenu>
