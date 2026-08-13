@@ -8,7 +8,6 @@ import {
   Lightbulb,
   Layers,
   Film,
-  Image as ImageIcon,
   TrendingUp,
   ArrowLeft,
   Beaker,
@@ -19,10 +18,9 @@ import { LabCopy } from "./LabCopy";
 import { LabAngles } from "./LabAngles";
 import { LabConcepts } from "./LabConcepts";
 import { LabBRoll } from "./LabBRoll";
-import { LabGraphics } from "./LabGraphics";
 import { LabTrends } from "./LabTrends";
 
-type ToolKey = "copy" | "angles" | "concepts" | "broll" | "graphics" | "trends";
+type ToolKey = "copy" | "angles" | "concepts" | "broll" | "trends";
 
 const TOOLS: Array<{
   key: ToolKey;
@@ -59,14 +57,6 @@ const TOOLS: Array<{
     desc: "Shot ideas and clips you can save and reuse.",
     icon: Film,
     accent: "from-rose-500/15 to-rose-500/0 text-rose-600",
-  },
-  {
-    key: "graphics",
-    title: "Graphics",
-    desc: "Generate static and carousel visuals on-brand.",
-    icon: ImageIcon,
-    accent: "from-emerald-500/15 to-emerald-500/0 text-emerald-600",
-    comingSoon: true,
   },
   {
     key: "trends",
@@ -127,7 +117,6 @@ export function TheLab() {
             {active === "angles" && <LabAngles seedId={seed} />}
             {active === "concepts" && <LabConcepts seedId={seed} />}
             {active === "broll" && <LabBRoll seedId={seed} />}
-            {active === "graphics" && <LabGraphics seedId={seed} />}
             {active === "trends" && <LabTrends seedId={seed} />}
           </CardContent>
         </Card>
