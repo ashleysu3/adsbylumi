@@ -1951,7 +1951,11 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             {packState === "sent" ? (
               <span className="inline-flex items-center justify-center gap-1.5 h-12 px-4 text-sm font-medium text-primary">
                 <Check className="h-4 w-4" />
-                {hasAccount ? "Saved to your account" : `Saved — link emailed to ${leadEmail}`}
+                {hasAccount
+                  ? leadEmail
+                    ? `Saved to ${leadEmail}`
+                    : "Saved to your account"
+                  : `Saved — link emailed to ${leadEmail}`}
               </span>
             ) : hasAccount ? (
               <span className="inline-flex items-center justify-center gap-1.5 h-12 px-4 text-sm font-medium text-muted-foreground">
