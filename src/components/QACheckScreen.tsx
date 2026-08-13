@@ -283,6 +283,156 @@ export function QACheckScreen({
     });
   };
 
+  // ---- Inline copy editing ------------------------------------------------
+  const buildCopyDrafts = (): CopyDraft[] => {
+    const drafts: CopyDraft[] = [];
+    const shared = Array.isArray(wsCopy.selected_copy?.shared_variations)
+      ? wsCopy.selected_copy.shared_variations
+      : [];
+    shared.forEach((v: any, i: number) => {
+      drafts.push({
+        key: `shared-${i}`,
+        label: shared.length > 1 ? `Ad copy ${i + 1}` : "Ad copy",
+        source: "shared",
+        index: i,
+        headline: v?.headline || "",
+        primary_text: v?.primary_text || v?.primaryText || "",
+        description: v?.description || "",
+      });
+    });
+    (wsCopy.production_items || []).forEach((item: any, i: number) => {
+      const fc = item?.finalCopy || item?.final_copy;
+      if (!fc) return;
+      drafts.push({
+        key: `item-${i}`,
+        label: item?.concept_name || item?.name || `Creative ${i + 1}`,
+        source: "item",
+        index: i,
+        headline: fc.headline || "",
+        primary_text: fc.primary_text || fc.primaryText || "",
+        description: fc.description || "",
+      });
+    });
+    return drafts;
+  };
+
+  const openCopyDialog = (check: CheckResult) => {
+    const drafts = buildCopyDrafts();
+    if (drafts.length === 0) {
+      // Nothing editable here — fall back to the full copy step.
+      onFixIssue?.("copy", { check: check.id, issues: check.issues });
+      return;
+    }
+    setCopyCheck(check);
+    setCopyDrafts(drafts);
+    setCopyDialogOpen(true);
+  };
+
+  const updateDraft = (key: string, field: "headline" | "primary_text" | "description", value: string) => {
+    setCopyDrafts((prev) => prev.map((d) => (d.key === key ? { ...d, [field]: value } : d)));
+  };
+
+  const applySuggestion = (issue: Issue) => {
+    if (!issue.text || !issue.suggestion) return;
+    setCopyDrafts((prev) =>
+      prev.map((d) => ({
+        ...d,
+        headline: d.headline.split(issue.text).join(issue.suggestion),
+        primary_text: d.primary_text.split(issue.text).join(issue.suggestion),
+        description: d.description.split(issue.text).join(issue.suggestion),
+      })),
+    );
+    toast.success("Suggestion applied");
+  };
+
+  const saveCopyEdits = async () => {
+    setCopySaving(true);
+    try {
+      const nextSelected = wsCopy.selected_copy
+        ? JSON.parse(JSON.stringify(wsCopy.selected_copy))
+        : null;
+      const nextItems = JSON.parse(JSON.stringify(wsCopy.production_items || []));
+
+      for (const d of copyDrafts) {
+        if (d.source === "shared" && Array.isArray(nextSelected?.shared_variations)) {
+          const v = nextSelected.shared_variations[d.index] || {};
+          nextSelected.shared_variations[d.index] = {
+            ...v,
+            headline: d.headline,
+            primary_text: d.primary_text,
+            primaryText: d.primary_text,
+            description: d.description,
+          };
+        } else if (d.source === "item" && nextItems[d.index]) {
+          const item = nextItems[d.index];
+          const key = item.finalCopy ? "finalCopy" : "final_copy";
+          item[key] = {
+            ...(item[key] || {}),
+            headline: d.headline,
+            primary_text: d.primary_text,
+            primaryText: d.primary_text,
+            description: d.description,
+          };
+        }
+      }
+
+      // The user just reviewed and approved this copy inline, so re-sign it —
+      // otherwise the signature mismatch would block publish downstream.
+      const variations: any[] = [];
+      if (Array.isArray(nextSelected?.shared_variations)) variations.push(...nextSelected.shared_variations);
+      for (const item of nextItems) {
+        const fc = item?.finalCopy || item?.final_copy;
+        if (fc) {
+          variations.push({
+            headline: fc.headline,
+            primary_text: fc.primary_text || fc.primaryText,
+            description: fc.description,
+          });
+        }
+      }
+      const signature = await computeCopySignature(variations);
+
+      const { error } = await supabase
+        .from("campaign_workspaces")
+        .update({
+          selected_copy: nextSelected,
+          production_items: nextItems,
+          approved_copy_signature: signature,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", workspace.id);
+      if (error) throw error;
+
+      // Keep the in-memory workspace in sync so publish uses the new copy.
+      workspace.selected_copy = nextSelected;
+      workspace.production_items = nextItems;
+      workspace.approved_copy_signature = signature;
+      setWsCopy({ selected_copy: nextSelected, production_items: nextItems });
+      setCopyDialogOpen(false);
+
+      setChecks((prev) =>
+        prev.map((c) =>
+          c.id === "spelling" || c.id === "ad_policy"
+            ? { id: c.id, name: c.name, status: "running" as const, message: "Re-checking…" }
+            : c,
+        ),
+      );
+      setPhase("running");
+      toast.success("Copy updated — re-running checks");
+      await runChecks(undefined, {
+        selected_copy: nextSelected,
+        production_items: nextItems,
+        signature,
+      });
+    } catch (err: any) {
+      console.error("Failed to save copy edits:", err);
+      toast.error(err?.message || "Couldn't save your copy");
+    } finally {
+      setCopySaving(false);
+    }
+  };
+
+
   const openTrackingDialog = (check: CheckResult) => {
     setTrackingCheck(check);
     setTrackingDialogOpen(true);
