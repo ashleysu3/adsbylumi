@@ -12,6 +12,8 @@
 
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { resolvePlayableUrl } from '@/lib/storage-url';
+
 
 export type OverlayType = 'hook' | 'pain' | 'insight' | 'transition' | 'proof' | 'cta';
 export type EmphasisStyle = 'bold' | 'upper' | 'bold-upper';
