@@ -1511,7 +1511,7 @@ export function GenerateCreativeDialog() {
         copy={editedSingle}
         slides={editedSlides}
         isCarousel={isCarousel}
-        template={activeCustom ? (activeCustom.base_template || template) : template}
+        template={template}
         templateLabel={activeCustom ? activeCustom.name : (BUILT_IN_LABELS[template] || template)}
         colors={colors}
         displayFamily={displayFamily}
