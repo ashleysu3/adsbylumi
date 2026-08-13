@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SetupPrompt } from "@/components/SetupPrompt";
+import { QuickFixDialog } from "@/components/QuickFixDialog";
 import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
 import { computeStrategyBudget } from "@/lib/strategy-budget";
@@ -136,6 +137,9 @@ export default function AdStrategy() {
   const [workspaces, setWorkspaces] = useState<WorkspaceRow[]>([]);
   const [goals, setGoals] = useState<GoalRow[]>([]);
   const [evals, setEvals] = useState<Record<string, EvalResult>>({});
+  // Add a missing offer right here instead of sending the user to /offers.
+  const [offerFixOpen, setOfferFixOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (brandLoading) return;
@@ -230,7 +234,7 @@ export default function AdStrategy() {
     return () => {
       cancelled = true;
     };
-  }, [activeBrand?.id, brandLoading]);
+  }, [activeBrand?.id, brandLoading, reloadKey]);
 
   // Group campaigns by offer (= funnel)
   const funnels = useMemo(() => {
@@ -458,7 +462,7 @@ export default function AdStrategy() {
                   title="No offers yet"
                   description="Add an offer to start mapping how your ads grow your business."
                   ctaLabel="Add offer"
-                  onCta={() => navigate("/offers")}
+                  onCta={() => setOfferFixOpen(true)}
                 />
               ) : (
                 <div className="space-y-4">
