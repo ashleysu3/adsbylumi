@@ -760,17 +760,16 @@ fbq('track', 'PageView');
                 {check.id === "ad_policy" && " (Meta ad policy)"}
               </p>
             )}
-            {onFixIssue && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-2"
-                onClick={() => onFixIssue("copy", { check: check.id, issues: check.issues })}
-              >
-                <SpellCheck className="h-3.5 w-3.5" />
-                Edit copy
-              </Button>
-            )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2"
+              onClick={() => openCopyDialog(check)}
+            >
+              <SpellCheck className="h-3.5 w-3.5" />
+              Fix copy here
+            </Button>
+
           </div>
         )}
         {check.issues && check.issues.length > 0 && (
