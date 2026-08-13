@@ -1060,7 +1060,7 @@ export default function GuidedOnboarding() {
         items.push({ title: typeof it === "string" ? it : (it.title || it.label || "Strategy step") });
       }
     }
-    await Promise.all(items.map((it) => seedDeferredTask({ ...it, link_to: "/strategy", brand_id: brandId })));
+    await Promise.all(items.map((it) => seedDeferredTask({ ...it, link_to: "/create", brand_id: brandId })));
   };
 
   // ---------- finish helpers ----------
@@ -1106,7 +1106,7 @@ export default function GuidedOnboarding() {
     await seedFirstCampaignTasks(brandId);
     await seedDeferredTask({
       title: "Pick your first campaign strategy",
-      link_to: "/strategy",
+      link_to: "/create",
       brand_id: brandId,
     });
     await completeAndGoHome();
