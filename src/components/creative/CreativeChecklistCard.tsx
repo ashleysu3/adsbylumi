@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { QuickFixDialog } from "@/components/QuickFixDialog";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -195,6 +196,8 @@ export function CreativeChecklistCard({
   const [customBrollUrl, setCustomBrollUrl] = useState<string | null>(null);
   const [customBrollName, setCustomBrollName] = useState<string | null>(null);
   const [uploadingBroll, setUploadingBroll] = useState(false);
+  // Missing b-roll gets fixed in a modal on this screen — no navigating away.
+  const [brollFixOpen, setBrollFixOpen] = useState(false);
   // Render queue for "Queue Render" — user clicks, we enqueue the job,
   // they keep working. Toast + bell icon + email notify on completion.
   const { enqueue, jobs } = useRenderQueue();
@@ -258,6 +261,12 @@ export function CreativeChecklistCard({
   
   return (
     <TooltipProvider>
+    <QuickFixDialog
+      open={brollFixOpen}
+      onOpenChange={setBrollFixOpen}
+      kind="broll"
+      brandId={(brand as any)?.id}
+    />
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card className={cn(
         "transition-all border-l-4",
@@ -983,10 +992,10 @@ export function CreativeChecklistCard({
                                 // Tell them AND get them there in one click — a text-only
                                 // message still leaves the user to go find "My Brand" > "Style"
                                 // on their own.
-                                toast.info("Upload b-roll clips in My Brand first, then come back here — Lumi will pick the best one for this ad.", {
+                                toast.info("You don't have b-roll clips yet — add a few right here.", {
                                   action: {
                                     label: "Upload b-roll",
-                                    onClick: () => navigate("/style"),
+                                    onClick: () => setBrollFixOpen(true),
                                   },
                                 });
                               } else {
@@ -1109,12 +1118,12 @@ export function CreativeChecklistCard({
                               <Alert>
                                 <Info className="h-4 w-4" />
                                 <AlertDescription className="text-xs flex items-center justify-between gap-2">
-                                  <span>Upload b-roll clips in My Brand to see Lumi-matched previews here.</span>
+                                  <span>Upload b-roll clips to see Lumi-matched previews here.</span>
                                   <Button
                                     variant="outline"
                                     size="sm"
                                     className="h-6 text-[11px] shrink-0"
-                                    onClick={() => navigate("/style")}
+                                    onClick={() => setBrollFixOpen(true)}
                                   >
                                     Upload b-roll
                                   </Button>

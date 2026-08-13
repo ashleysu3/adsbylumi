@@ -18,6 +18,7 @@ import { HexColorPicker } from "react-colorful";
 import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff, Info, ImagePlus, Star, Compass } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
+import { QuickFixDialog } from "@/components/QuickFixDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { CreativeBrief } from "./ProductionChecklistPanel";
@@ -247,6 +248,10 @@ export function GenerateCreativeDialog() {
   const navigate = useNavigate();
   const { activeBrand, loading: brandsLoading } = useBrand();
   const [open, setOpen] = useState(false);
+  // Inline "fix the missing brand kit" modal — we never navigate the user
+  // away from a half-finished creative just to collect brand colors/fonts.
+  const [quickFixOpen, setQuickFixOpen] = useState(false);
+  const [kitReloadKey, setKitReloadKey] = useState(0);
   const [brief, setBrief] = useState<CreativeBrief | null>(null);
   const [itemId, setItemId] = useState<string>("");
   const [approvingIdx, setApprovingIdx] = useState<number | null>(null);
@@ -545,8 +550,7 @@ export function GenerateCreativeDialog() {
 
         if (!data || !hasAnyColor || !hasAnyFont) {
           toast.error("Pick your brand colors & fonts first — these go on every ad we generate.");
-          setOpen(false);
-          navigate("/style");
+          setQuickFixOpen(true);
           return;
         }
 
@@ -695,7 +699,7 @@ export function GenerateCreativeDialog() {
       }
     })();
     return () => { cancelled = true; };
-  }, [open, activeBrand?.id, brandsLoading, navigate]);
+  }, [open, activeBrand?.id, brandsLoading, navigate, kitReloadKey]);
 
   // Load images for the currently selected board.
   useEffect(() => {
@@ -1557,6 +1561,13 @@ export function GenerateCreativeDialog() {
 
   return (
     <>
+    <QuickFixDialog
+      open={quickFixOpen}
+      onOpenChange={setQuickFixOpen}
+      kind="style"
+      brandId={activeBrand?.id}
+      onDone={() => setKitReloadKey((k) => k + 1)}
+    />
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-6xl max-h-[92vh] flex flex-col gap-0 p-0 overflow-hidden">
         <DialogHeader className="space-y-3 border-b px-6 pb-4 pt-6">

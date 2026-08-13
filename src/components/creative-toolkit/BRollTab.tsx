@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Sparkles, Film, ExternalLink, RefreshCw, Upload, Loader2 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
+import { QuickFixDialog } from "@/components/QuickFixDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -130,12 +131,16 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
   const stockSources = brollSources && brollSources.length > 0 ? brollSources : STOCK_SOURCES;
   const shotListData = shotLists && shotLists.length > 0 ? shotLists : SHOT_LISTS;
   const { activeBrand } = useBrand();
+  // Missing b-roll is fixed inline — never bounce the user to another page.
+  const [brollFixOpen, setBrollFixOpen] = useState(false);
   const navigate = useNavigate();
   const [ideas, setIdeas] = useState<BRollIdea[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [brandDetails, setBrandDetails] = useState<BrandDetails | null>(null);
   const [libraryClips, setLibraryClips] = useState<Array<{ file_name: string; tags?: string[] }>>([]);
+
+  const [libraryReloadKey, setLibraryReloadKey] = useState(0);
 
   // Fetch extra brand fields + uploaded b-roll library
   useEffect(() => {
@@ -154,7 +159,7 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
         const lib = (data as any).broll_library;
         setLibraryClips(Array.isArray(lib) ? lib : []);
       });
-  }, [activeBrand?.id]);
+  }, [activeBrand?.id, libraryReloadKey]);
 
   const generateIdeas = async () => {
     if (!activeBrand) return;
@@ -190,6 +195,13 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
 
   return (
     <div className="space-y-10">
+      <QuickFixDialog
+        open={brollFixOpen}
+        onOpenChange={setBrollFixOpen}
+        kind="broll"
+        brandId={activeBrand?.id}
+        onDone={() => setLibraryReloadKey((k) => k + 1)}
+      />
       {/* Section 1: AI B-Roll Idea Generator */}
       <section className="space-y-4">
         <Card className="border-2 border-transparent bg-gradient-to-r from-primary/5 via-secondary/5 to-accent/5 relative overflow-hidden">
@@ -260,8 +272,8 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
                     <p className="text-xs text-muted-foreground">
                       Upload a few B-roll clips to your library so LUMI can build ideas around footage you already have.
                     </p>
-                    <Button variant="outline" size="sm" onClick={() => navigate("/style")}>
-                      <Upload className="h-3.5 w-3.5 mr-1.5" /> Go to B-Roll Library
+                    <Button variant="outline" size="sm" onClick={() => setBrollFixOpen(true)}>
+                      <Upload className="h-3.5 w-3.5 mr-1.5" /> Upload B-roll
                     </Button>
                   </>
                 ) : (
