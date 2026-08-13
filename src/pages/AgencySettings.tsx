@@ -347,12 +347,11 @@ export default function AgencySettings() {
               </CardContent>
             </Card>
 
-            <div className="flex justify-end">
-              <Button onClick={handleSave} disabled={saving} className="rounded-xl px-8">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Save Agency Settings
-              </Button>
+            <div className="flex justify-end items-center gap-2 text-sm text-muted-foreground">
+              <span>Changes save automatically.</span>
+              <AutoSaveIndicator status={brandingSaveStatus} />
             </div>
+
           </>
         )}
       </div>
