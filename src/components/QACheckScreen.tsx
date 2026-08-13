@@ -124,9 +124,18 @@ export function QACheckScreen({
 
   // Tracking dialog state
   const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
-  const [confirmationUrl, setConfirmationUrl] = useState("");
+  // Prefill from what was already saved so returning to this screen (e.g. after
+  // editing copy) shows the thank-you page URL the user entered earlier.
+  const [confirmationUrl, setConfirmationUrl] = useState<string>(
+    workspace.custom_conversion_id || "",
+  );
+  const [trackingSetup, setTrackingSetup] = useState<{ verified: boolean; conversionUrl: string | null }>({
+    verified: !!workspace.tracking_verified && !!workspace.custom_conversion_id,
+    conversionUrl: workspace.custom_conversion_id || null,
+  });
   const [trackingSaving, setTrackingSaving] = useState(false);
   const [trackingCheck, setTrackingCheck] = useState<CheckResult | null>(null);
+
 
   // ---- Inline copy editor (policy / spelling fixes without leaving QA) ----
   const [wsCopy, setWsCopy] = useState<{ selected_copy: any; production_items: any[] }>({
