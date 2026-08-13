@@ -76,33 +76,16 @@ type NavGroup = {
   items: NavItem[];
 };
 
-// NOTE: route mapping uses the EXISTING pages today.
-// Items without a dedicated page link to a placeholder (// TODO).
+// Flat top-level actions — always visible, no folder.
+const topActions: NavItem[] = [
+  { label: "Home", to: "/home", icon: LayoutGrid },
+  { label: "Create New", to: "/create", icon: Plus },
+  { label: "My Ads", to: "/ad-performance", icon: Activity },
+  { label: "Campaigns", to: "/campaigns", icon: Loader2 },
+];
+
+// Two collapsible folders for the deeper work.
 const groups: NavGroup[] = [
-  {
-    key: "ads",
-    label: "Ad Management",
-    icon: Target,
-    emoji: "🎯",
-    items: [
-      { label: "Strategy", to: "/strategy", icon: Sparkles },
-      { label: "Live Ads", to: "/ad-performance", icon: Activity },
-      { label: "Campaigns", to: "/campaigns", icon: Loader2 },
-      { label: "Create New", to: "/create", icon: Plus },
-    ],
-  },
-  {
-    key: "creative",
-    label: "Creative Studio",
-    icon: Palette,
-    emoji: "🎨",
-    items: [
-      { label: "Inspiration", to: "/boards", icon: Lightbulb },
-      { label: "The Lab", to: "/creative-studio?mode=lab", icon: Sparkles },
-      { label: "My Creatives", to: "/my-creatives", icon: Images },
-      { label: "Tools & Resources", to: "/creative-toolkit", icon: Wrench },
-    ],
-  },
   {
     key: "brand",
     label: "My Brand",
@@ -111,22 +94,21 @@ const groups: NavGroup[] = [
     items: [
       { label: "Initial Setup", to: "/initial-setup", icon: PenLine },
       { label: "Style", to: "/style", icon: Paintbrush },
-      // TODO: dedicated voice page — currently routes to placeholder.
       { label: "Voice + Examples", to: "/voice", icon: Mic },
-      // TODO: dedicated audience page.
       { label: "Audience", to: "/audience", icon: Users },
       { label: "Offers", to: "/offers", icon: Package },
     ],
   },
   {
-    key: "tech",
-    label: "Tech + Data",
-    icon: Plug,
-    emoji: "🔌",
+    key: "creative",
+    label: "Creative",
+    icon: Palette,
+    emoji: "🎨",
     items: [
-      { label: "Meta Connection", to: "/meta-settings", icon: Link2 },
-      { label: "Tracking", to: "/tracking-setup", icon: Activity },
-      { label: "Ad Glossary", to: "/glossary", icon: BookOpen },
+      { label: "Inspiration", to: "/boards", icon: Lightbulb },
+      { label: "The Lab", to: "/creative-studio?mode=lab", icon: Sparkles },
+      { label: "My Creatives", to: "/my-creatives", icon: Images },
+      { label: "Tools & Resources", to: "/creative-toolkit", icon: Wrench },
     ],
   },
 ];
@@ -142,18 +124,23 @@ const agencyGroup: NavGroup = {
   ],
 };
 
-const supportGroup: NavGroup = {
-  key: "support",
-  label: "Support",
+// Everything technical / supportive lives in one quiet area at the bottom.
+const helpGroup: NavGroup = {
+  key: "help",
+  label: "Help & Settings",
   icon: LifeBuoy,
   emoji: "🆘",
   items: [
-    { label: "Report a bug", action: "bug-report", icon: LadybugIcon },
-    // TODO: dedicated troubleshooting page.
+    { label: "Meta Connection", to: "/meta-settings", icon: Link2 },
+    { label: "Tracking", to: "/tracking-setup", icon: Activity },
+    { label: "Settings", to: "/settings", icon: SettingsIcon },
+    { label: "Ad Glossary", to: "/glossary", icon: BookOpen },
     { label: "Troubleshooting", to: "/troubleshooting", icon: HelpCircle },
     { label: "Human Help", to: "/office-hours", icon: Users },
+    { label: "Report a bug", action: "bug-report", icon: LadybugIcon },
   ],
 };
+
 
 interface AppSidebarProps {
   isAdmin: boolean;
