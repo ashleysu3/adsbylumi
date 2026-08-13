@@ -639,6 +639,39 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
     }
   }, [brandId, images, leadEmail, leadName, packState, setSearchParams, options, selectedIdx, scriptBeats, strategy, hasAccount]);
 
+  // Step 1 of the save dialog: does this email already have a LUMI account?
+  // If it does, we don't email them a lead-magnet link — we send them to log
+  // in and pull the kit straight into their account.
+  const handleSaveSubmit = useCallback(async () => {
+    const email = leadEmail.trim();
+    if (!email || !email.includes("@")) {
+      toast.error("Enter a valid email");
+      return;
+    }
+    setCheckingAccount(true);
+    try {
+      const { data } = await supabase.functions.invoke("check-account-exists", {
+        body: { email },
+      });
+      if (data?.exists) {
+        setPackStep("login");
+        return;
+      }
+    } catch (e) {
+      console.warn("[payoff] account check failed, continuing as lead", e);
+    } finally {
+      setCheckingAccount(false);
+    }
+    await sendAdPack();
+  }, [leadEmail, sendAdPack]);
+
+  // Log in, land back on this exact kit — the signed-in auto-save effect above
+  // then pulls everything into their account.
+  const goLogin = useCallback(() => {
+    const returnTo = `${window.location.pathname}${window.location.search}`;
+    window.location.href = `/auth?returnTo=${encodeURIComponent(returnTo)}&email=${encodeURIComponent(leadEmail.trim())}`;
+  }, [leadEmail]);
+
   // Signed-in users never see the save prompt — as soon as the ad is ready,
   // the kit gets pulled into their account automatically.
   useEffect(() => {
