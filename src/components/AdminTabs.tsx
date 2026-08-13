@@ -4,8 +4,8 @@ import {
   BookOpen, LayoutTemplate, BarChart3, CreditCard, Bug, Users, Settings,
   Shield, Gift, DollarSign, Mail, XCircle, FileWarning, Star, Monitor, Wrench,
   ChevronDown, Palette, Tag, Inbox, Sparkles, Image as ImageIcon, CheckSquare,
-  Video,
-, Pin } from "lucide-react";
+  Video, Pin,
+} from "lucide-react";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 
