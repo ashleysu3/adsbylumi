@@ -15,7 +15,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { LiveAdPreview } from "./LiveAdPreview";
 import { HexColorPicker } from "react-colorful";
-import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff, Info, ImagePlus, Star, Compass } from "lucide-react";
+import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff, Info, ImagePlus, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import { QuickFixDialog } from "@/components/QuickFixDialog";
@@ -24,7 +24,6 @@ import { cn } from "@/lib/utils";
 import type { CreativeBrief } from "./ProductionChecklistPanel";
 import { TemplatePreview } from "./TemplatePreview";
 import { CopyRegenerateDialog, type CopyFeedback } from "./CopyRegenerateDialog";
-import { GuidedTour, type TourStep } from "@/components/GuidedTour";
 // Real engine renders with clean sample copy — replaced the old AI-generated
 // mockup images, which rendered garbled/unreadable placeholder text (a known
 // limitation of image models asked to draw text) instead of a real preview.
@@ -355,7 +354,6 @@ export function GenerateCreativeDialog() {
 
   // Primary flow: remix a single real ad. Falls back to the template flow.
   const [mode, setMode] = useState<"remix" | "template">("remix");
-  const [tourOpen, setTourOpen] = useState(false);
 
   type BoardRow = { id: string; name: string };
   type BoardImg = { id: string; url: string; rawSrc: string };
@@ -394,45 +392,6 @@ export function GenerateCreativeDialog() {
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState<string>("");
   const [images, setImages] = useState<RenderImage[]>([]);
-
-  // "Show me what to do" tour steps for whichever internal screen is
-  // currently showing.
-  const dialogTourSteps: TourStep[] = (() => {
-    if (step === "style") {
-      if (mode === "remix") {
-        return [{
-          targetSelector: '[data-help-target="remix-this-ad"]',
-          title: "Remix a real ad",
-          description: "Pick a board, then click an image to select it — the button at the bottom lights up once you have. Lumi matches the layout and rewrites the copy for your offer.",
-        }];
-      }
-      return [{
-        targetSelector: '[data-help-target="style-next"]',
-        title: "Choose a style",
-        description: "Click any template to select it — you can change it later. Once you've picked one, hit Next to move on to the photo and copy.",
-      }];
-    }
-    if (step === "image-copy") {
-      return [{
-        targetSelector: '[data-help-target="render-creative"]',
-        title: "Image & copy",
-        description: "Pick a photo and tweak the copy — the preview on the right updates as you type. Then hit Render.",
-      }];
-    }
-    if (images.length === 0) {
-      return [{
-        targetSelector: '[data-help-target="render-creative"]',
-        title: "Render",
-        description: "Hit Render to build your ad. Nothing saves until you approve it.",
-      }];
-    }
-    return [{
-      targetSelector: '[data-help-target="approve-creative"]',
-      title: "Approve your renders",
-      description: "Renders are ready. Approve them to save this creative — that closes this dialog for you.",
-    }];
-  })();
-
 
   // Copy feedback dialog
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -1686,15 +1645,6 @@ export function GenerateCreativeDialog() {
                   ))}
                 </span>
               </span>
-              <button
-                type="button"
-                className="relative overflow-hidden flex items-center gap-1 text-[11px] font-medium text-white bg-gradient-lumi rounded-full px-2.5 py-1 shadow-lumi hover:shadow-glow transition-shadow disabled:opacity-50 disabled:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent before:animate-shimmer"
-                onClick={() => setTourOpen(true)}
-                disabled={dialogTourSteps.length === 0}
-              >
-                <Compass className="h-3 w-3" />
-                Show me what to do
-              </button>
             </div>
           </div>
 
@@ -1730,10 +1680,6 @@ export function GenerateCreativeDialog() {
             ))}
           </div>
         </DialogHeader>
-
-        {tourOpen && dialogTourSteps.length > 0 && (
-          <GuidedTour steps={dialogTourSteps} onClose={() => setTourOpen(false)} />
-        )}
 
         {/* ---------------- BODY ---------------- */}
         {step === "style" ? (
