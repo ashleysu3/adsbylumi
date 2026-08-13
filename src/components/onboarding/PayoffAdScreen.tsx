@@ -354,6 +354,10 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   // Signed-in (non-anonymous) users already have an account — their kit gets
   // pulled straight into it instead of asking them for an email to save it.
   const [hasAccount, setHasAccount] = useState(false);
+  // Save flow inside the dialog: ask for the email → either "you already have
+  // an account, log in and we'll pull this kit in" or "sent — here's 50% off".
+  const [packStep, setPackStep] = useState<"email" | "login" | "offer">("email");
+  const [checkingAccount, setCheckingAccount] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -609,8 +613,15 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       if (sendErr) throw sendErr;
 
       setPackState("sent");
-      setPackFormOpen(false);
-      if (!hasAccount) trackLumiEvent("Lead");
+      // Signed-in users are done. Leads stay in the dialog for the 50% offer,
+      // which replaces the old "ready to launch this now?" text link.
+      if (hasAccount) {
+        setPackFormOpen(false);
+      } else {
+        setPackStep("offer");
+        setPackFormOpen(true);
+        trackLumiEvent("Lead");
+      }
       // Save-in-place: the kit stays right here. Stamp the token onto this
       // URL (replace, not push — no back-button trap) so a refresh or a
       // bookmark of THIS page resolves to the permanent kit link, and let
@@ -627,6 +638,39 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       setPackState("error");
     }
   }, [brandId, images, leadEmail, leadName, packState, setSearchParams, options, selectedIdx, scriptBeats, strategy, hasAccount]);
+
+  // Step 1 of the save dialog: does this email already have a LUMI account?
+  // If it does, we don't email them a lead-magnet link — we send them to log
+  // in and pull the kit straight into their account.
+  const handleSaveSubmit = useCallback(async () => {
+    const email = leadEmail.trim();
+    if (!email || !email.includes("@")) {
+      toast.error("Enter a valid email");
+      return;
+    }
+    setCheckingAccount(true);
+    try {
+      const { data } = await supabase.functions.invoke("check-account-exists", {
+        body: { email },
+      });
+      if (data?.exists) {
+        setPackStep("login");
+        return;
+      }
+    } catch (e) {
+      console.warn("[payoff] account check failed, continuing as lead", e);
+    } finally {
+      setCheckingAccount(false);
+    }
+    await sendAdPack();
+  }, [leadEmail, sendAdPack]);
+
+  // Log in, land back on this exact kit — the signed-in auto-save effect above
+  // then pulls everything into their account.
+  const goLogin = useCallback(() => {
+    const returnTo = `${window.location.pathname}${window.location.search}`;
+    window.location.href = `/auth?returnTo=${encodeURIComponent(returnTo)}&email=${encodeURIComponent(leadEmail.trim())}`;
+  }, [leadEmail]);
 
   // Signed-in users never see the save prompt — as soon as the ad is ready,
   // the kit gets pulled into their account automatically.
@@ -1884,21 +1928,9 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           )}
         </div>
 
-        {/* The quiet lane for hot buyers — buying otherwise lives after the save */}
-        {packState !== "sent" && (phase === "building" || phase === "ready") && (
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={goCheckout}
-              disabled={checkoutLoading}
-              className="text-xs text-muted-foreground hover:text-foreground transition underline underline-offset-2"
-            >
-              {checkoutLoading
-                ? "Opening checkout…"
-                : "Ready to launch this now? Get 50% off your first month →"}
-            </button>
-          </div>
-        )}
+        {/* The 50% offer now lives inside the save dialog, right after the kit
+            is sent — no competing text link out here. */}
+
 
         {/* Saved → the close unfolds right here. No redirect, no re-reveal. */}
         {packState === "sent" && <VslCloseSection brandId={brandId} firstName={leadName.trim().split(" ")[0] || null} />}
@@ -1923,48 +1955,113 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           </div>
         )}
 
-        {/* Save dialog — the honest framing: the kit stays here, the email is
-            the private link that survives this anonymous session. */}
-        <Dialog open={packFormOpen && packState !== "sent" && !hasAccount} onOpenChange={setPackFormOpen}>
+        {/* Save dialog — three steps: email → (log in) or (sent + 50% off). */}
+        <Dialog open={packFormOpen && !hasAccount} onOpenChange={setPackFormOpen}>
           <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Save my Ad Kit</DialogTitle>
-              <DialogDescription>
-                Your kit stays right here — we'll email your private link so you can open it
-                anywhere, on any device.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col gap-2">
-              <Input
-                placeholder="Your name"
-                value={leadName}
-                onChange={(e) => setLeadName(e.target.value)}
-                className="h-10 text-sm"
-              />
-              <Input
-                type="email"
-                placeholder="you@email.com"
-                value={leadEmail}
-                onChange={(e) => setLeadEmail(e.target.value)}
-                className="h-10 text-sm"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && packState !== "sending") sendAdPack();
-                }}
-              />
-              <Button
-                onClick={sendAdPack}
-                disabled={packState === "sending"}
-                className="h-11 rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity"
-              >
-                {packState === "sending" ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving…</>
-                ) : (
-                  <><Mail className="h-4 w-4 mr-2" /> Save my Ad Kit</>
-                )}
-              </Button>
-            </div>
+            {packStep === "email" && (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Save my Ad Kit</DialogTitle>
+                  <DialogDescription>
+                    Drop your email — if you already have a LUMI account we'll pull this kit
+                    straight in. If not, we'll send you your private link.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col gap-2">
+                  <Input
+                    placeholder="Your name"
+                    value={leadName}
+                    onChange={(e) => setLeadName(e.target.value)}
+                    className="h-10 text-sm"
+                  />
+                  <Input
+                    type="email"
+                    placeholder="you@email.com"
+                    value={leadEmail}
+                    onChange={(e) => setLeadEmail(e.target.value)}
+                    className="h-10 text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && packState !== "sending" && !checkingAccount) {
+                        handleSaveSubmit();
+                      }
+                    }}
+                  />
+                  <Button
+                    onClick={handleSaveSubmit}
+                    disabled={packState === "sending" || checkingAccount}
+                    className="h-11 rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity"
+                  >
+                    {packState === "sending" || checkingAccount ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving…</>
+                    ) : (
+                      <><Mail className="h-4 w-4 mr-2" /> Save my Ad Kit</>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {packStep === "login" && (
+              <>
+                <DialogHeader>
+                  <DialogTitle>You already have a LUMI account 💜</DialogTitle>
+                  <DialogDescription>
+                    Log in with {leadEmail.trim()} and we'll drop this whole Ad Kit into your
+                    account as a new campaign — copy, script, creative and all.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    onClick={goLogin}
+                    className="h-11 rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity"
+                  >
+                    Log in & save to my account <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="h-10 text-sm"
+                    onClick={() => setPackStep("email")}
+                  >
+                    Use a different email
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {packStep === "offer" && (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Your Ad Kit is on its way ✨</DialogTitle>
+                  <DialogDescription>
+                    We just emailed your private link to {leadEmail.trim()}. Ready to actually
+                    launch it? Get 50% off your first month and we'll build it with you.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    onClick={goCheckout}
+                    disabled={checkoutLoading}
+                    className="h-11 rounded-xl text-white border-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:opacity-95 transition-opacity"
+                  >
+                    {checkoutLoading ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Opening checkout…</>
+                    ) : (
+                      <>Get 50% off my first month <ArrowRight className="h-4 w-4 ml-2" /></>
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="h-10 text-sm"
+                    onClick={() => setPackFormOpen(false)}
+                  >
+                    Maybe later — keep browsing my kit
+                  </Button>
+                </div>
+              </>
+            )}
           </DialogContent>
         </Dialog>
+
       </div>
     </div>
   );
