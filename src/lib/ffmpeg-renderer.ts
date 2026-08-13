@@ -266,7 +266,10 @@ async function renderTextToPng(
       ? '400'
       : '700';
 
-  ctx.font = `${weightCss} ${scaledFontSize}px "${style.fontFamily}", Inter, sans-serif`;
+  const setFont = (size: number) => {
+    ctx.font = `${weightCss} ${size}px "${style.fontFamily}", Inter, sans-serif`;
+  };
+  setFont(scaledFontSize);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
@@ -274,8 +277,27 @@ async function renderTextToPng(
   // hard line breaks (\n) in the source are preserved as forced breaks.
   const maxWidthFraction = Math.max(0.1, Math.min(1, overlay.width ?? 0.92));
   const maxLinePx = Math.round(width * maxWidthFraction);
+  // A single word longer than the line box used to blow straight through the
+  // frame edge (the "text runs off the side" render bug) — break it by
+  // character so no line can ever exceed the box.
+  const breakLongWord = (word: string): string[] => {
+    if (ctx.measureText(word).width <= maxLinePx) return [word];
+    const parts: string[] = [];
+    let chunk = '';
+    for (const ch of word) {
+      const candidate = chunk + ch;
+      if (chunk && ctx.measureText(candidate).width > maxLinePx) {
+        parts.push(chunk);
+        chunk = ch;
+      } else {
+        chunk = candidate;
+      }
+    }
+    if (chunk) parts.push(chunk);
+    return parts;
+  };
   const wrapLine = (raw: string): string[] => {
-    const words = raw.split(/\s+/).filter(Boolean);
+    const words = raw.split(/\s+/).filter(Boolean).flatMap(breakLongWord);
     if (words.length === 0) return [''];
     const out: string[] = [];
     let current = '';
@@ -291,26 +313,53 @@ async function renderTextToPng(
     if (current) out.push(current);
     return out;
   };
-  const lines = resolved.text
-    .split('\n')
-    .flatMap(hardLine => wrapLine(hardLine));
-  const lineHeight = scaledFontSize * 1.15;
+  const layout = (size: number) => {
+    setFont(size);
+    const ls = resolved.text.split('\n').flatMap(hardLine => wrapLine(hardLine));
+    const widest = ls.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0);
+    return { lines: ls, widest };
+  };
+
+  // Auto-fit: shrink until the widest line and the whole block fit the frame.
+  // Fonts can measure wider than expected (fallback metrics, condensed faces),
+  // which is what pushed text past the edge in rendered videos.
+  let fittedSize = scaledFontSize;
+  let { lines, widest } = layout(fittedSize);
+  const maxBlockHeight = height * 0.9;
+  for (let i = 0; i < 24; i++) {
+    const blockH = lines.length * fittedSize * 1.15;
+    if (widest <= maxLinePx && blockH <= maxBlockHeight) break;
+    const next = Math.max(8, Math.floor(fittedSize * 0.93));
+    if (next === fittedSize) break;
+    fittedSize = next;
+    ({ lines, widest } = layout(fittedSize));
+  }
+  setFont(fittedSize);
+
+  const lineHeight = fittedSize * 1.15;
   const totalHeight = lines.length * lineHeight;
 
   // Resolve positioning: per-overlay xy wins, otherwise use the style's
   // top/center/bottom default. xy is the CENTER of the text bounding box.
   const xy = overlay.xy ?? resolveDefaultXY(style);
-  const xCenter = Math.max(0, Math.min(width, Math.round(xy.x * width)));
-  let yCenter = Math.max(0, Math.min(height, Math.round(xy.y * height)));
+  let xCenter = Math.round(xy.x * width);
+  let yCenter = Math.round(xy.y * height);
 
-  // Clamp so the text bounding box stays inside the frame. This matches
-  // the preview's drag-clamp behavior so what you see really is what you
-  // get, even if a user drags into a corner.
+  // Clamp so the text bounding box stays inside the frame — horizontally too.
+  // Only Y was clamped before, so any overlay nudged toward an edge rendered
+  // with its copy cut off at the side.
+  const halfW = widest / 2;
   const halfH = totalHeight / 2;
+  const marginX = Math.round(width * 0.02);
+  xCenter = width >= widest + marginX * 2
+    ? Math.max(halfW + marginX, Math.min(width - halfW - marginX, xCenter))
+    : Math.round(width / 2);
   yCenter = Math.max(halfH + 4, Math.min(height - halfH - 4, yCenter));
 
-  const padX = scaledFontSize * 0.5;
-  const padY = scaledFontSize * 0.2;
+
+  const padX = fittedSize * 0.5;
+  const padY = fittedSize * 0.2;
+
 
   // Background pill (skipped when bgOpacity is 0).
   if (style.bgOpacity > 0) {
@@ -432,10 +481,15 @@ async function ensureFontLoaded(family: string, weightCss: string): Promise<void
   try {
     if (typeof document === 'undefined' || !('fonts' in document)) return;
     await (document as any).fonts.load(`${weightCss} 48px "${family}"`);
+    // Metrics measured before the face is actually ready come back with
+    // fallback widths, which is how wrapped lines ended up wider than the
+    // frame once the real (condensed) face painted.
+    await (document as any).fonts.ready;
   } catch {
     /* non-fatal */
   }
 }
+
 
 export async function renderVideoWithText(opts: RenderOptions): Promise<Blob> {
   const { videoUrl, overlays, style, loopVideo = false, trimStart, trimEnd, onProgress } = opts;
