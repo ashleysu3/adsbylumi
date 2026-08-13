@@ -355,65 +355,53 @@ export function CampaignsList({ brandId, restrictTo = "all", onCountChange, addC
 
   return (
     <Card variant="glow">
-      <CardHeader className="pb-3">
-        {/* The page header ("My Campaigns" + description) already titles this
-            view — the card just holds the list + actions, so it doesn't repeat
-            the heading. */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
-          <div className="flex items-center gap-2">
-            {!combineMode && draftCount >= 2 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() => setCombineMode(true)}
-              >
-                <Merge className="h-3.5 w-3.5 mr-1" />
-                Combine
-              </Button>
-            )}
-            {combineMode && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 text-xs"
-                  onClick={() => { setCombineMode(false); setSelectedForCombine(new Set()); }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-8 text-xs"
-                  disabled={selectedForCombine.size < 2}
-                  onClick={() => setCombineDialogOpen(true)}
-                >
-                  <Merge className="h-3.5 w-3.5 mr-1" />
-                  Combine {selectedForCombine.size > 0 ? `(${selectedForCombine.size})` : ""}
-                </Button>
-              </>
-            )}
-            {!combineMode && (
-              <Button onClick={() => navigate("/create")} size="sm" className="h-8">
-                <Plus className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">New campaign</span>
-                <span className="sm:hidden">New</span>
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Filter tabs */}
-        {campaigns.length > 0 && !combineMode && (
-          <div className="flex items-center justify-end gap-1 mt-3">
+      <CardHeader className="pb-2 pt-3">
+        {/* The Studio section header already titles this view — the card keeps
+            only the row of actions (Combine / Archived) so there's no dead
+            vertical space above the list, and no duplicate "new campaign" CTA. */}
+        <div className="flex items-center justify-end gap-2">
+          {!combineMode && campaigns.length > 0 && (
             <button
               onClick={() => setShowArchived(!showArchived)}
               className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
             >
               {showArchived ? "Hide archived" : "Archived"}
             </button>
-          </div>
-        )}
+          )}
+          {!combineMode && draftCount >= 2 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => setCombineMode(true)}
+            >
+              <Merge className="h-3.5 w-3.5 mr-1" />
+              Combine
+            </Button>
+          )}
+          {combineMode && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => { setCombineMode(false); setSelectedForCombine(new Set()); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 text-xs"
+                disabled={selectedForCombine.size < 2}
+                onClick={() => setCombineDialogOpen(true)}
+              >
+                <Merge className="h-3.5 w-3.5 mr-1" />
+                Combine {selectedForCombine.size > 0 ? `(${selectedForCombine.size})` : ""}
+              </Button>
+            </>
+          )}
+        </div>
+
 
         {combineMode && (
           <p className="text-xs text-muted-foreground mt-2">
