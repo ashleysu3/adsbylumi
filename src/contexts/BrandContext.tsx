@@ -41,7 +41,9 @@ export function BrandProvider({ children }: { children: ReactNode }) {
     setActiveBrandState(null);
     setBrandId(null);
     setOwnerUserId(null);
+    localStorage.removeItem('activeBrandId'); // legacy shared key
   }, [setBrandId]);
+
 
   const fetchBrands = useCallback(async () => {
     try {
