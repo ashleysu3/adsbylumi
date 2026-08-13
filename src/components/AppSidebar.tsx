@@ -283,7 +283,18 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
           {!collapsed && (
             <div className="mt-3 space-y-2">
               <IntentBar size="sm" innerBgClassName="bg-sidebar" />
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/admin/users")}
+                  className="w-full rounded-lg border border-amber-300/40 bg-amber-50/40 text-amber-700 dark:bg-amber-500/5 dark:text-amber-300 hover:bg-amber-100/60 dark:hover:bg-amber-500/15 transition-colors px-3 py-2 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <Shield className="h-4 w-4" />
+                  <span className="text-sm font-medium tracking-tight">Admin Dashboard</span>
+                </button>
+              )}
               {/* Tasks live in the slide-out tray so they follow you everywhere. */}
+
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new Event("open-tasks-tray"))}
