@@ -1433,180 +1433,175 @@ export function ProductionManager({
           
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-start justify-between gap-2">
                 <CardTitle className="text-lg">Production Checklist</CardTitle>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Occasional/utility actions — share, export, archive, clear — live in
-                      one overflow menu instead of competing at equal visual weight with
-                      the actions someone actually needs on every visit (rank, filter,
-                      push to ad). Previously 4-5 same-weight outline buttons cluttered
-                      this header with no hierarchy. */}
-                  {(productionItems.length > 0 || previousRoundItems.length > 0 || onClearAll || onUploadOwnAds) && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="gap-1">
-                          <MoreHorizontal className="h-3.5 w-3.5" />
-                          More
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {onUploadOwnAds && (
-                          <DropdownMenuItem onClick={onUploadOwnAds} className="gap-2">
-                            <Upload className="h-3.5 w-3.5" />
-                            Upload My Own Ads
-                          </DropdownMenuItem>
-                        )}
-                        {onOpenCreativeBrief && (
-                          <DropdownMenuItem onClick={onOpenCreativeBrief} className="gap-2">
-                            <FileDown className="h-3.5 w-3.5" />
-                            Creative Brief
-                          </DropdownMenuItem>
-                        )}
-                        {productionItems.length > 0 && (
-
-                          <DropdownMenuItem onClick={() => setShareDialogOpen(true)} className="gap-2">
-                            <Share2 className="h-3.5 w-3.5" />
-                            Share with Client
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onClick={() => setExportModalOpen(true)} className="gap-2">
-                          <Download className="h-3.5 w-3.5" />
-                          Export Production Checklist
+                <Badge variant={itemsWithAssets === productionItems.length ? "default" : "secondary"}>
+                  {itemsWithAssets}/{productionItems.length} uploaded
+                </Badge>
+              </div>
+              <div className="flex items-center justify-end flex-wrap gap-2 mt-2">
+                {(productionItems.length > 0 || previousRoundItems.length > 0 || onClearAll || onUploadOwnAds) && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-1">
+                        <MoreHorizontal className="h-3.5 w-3.5" />
+                        More
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {onUploadOwnAds && (
+                        <DropdownMenuItem onClick={onUploadOwnAds} className="gap-2">
+                          <Upload className="h-3.5 w-3.5" />
+                          Upload My Own Ads
                         </DropdownMenuItem>
-                        {previousRoundItems.length > 0 && (
+                      )}
+                      {onOpenCreativeBrief && (
+                        <DropdownMenuItem onClick={onOpenCreativeBrief} className="gap-2">
+                          <FileDown className="h-3.5 w-3.5" />
+                          Creative Brief
+                        </DropdownMenuItem>
+                      )}
+                      {productionItems.length > 0 && (
+
+                        <DropdownMenuItem onClick={() => setShareDialogOpen(true)} className="gap-2">
+                          <Share2 className="h-3.5 w-3.5" />
+                          Share with Client
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => setExportModalOpen(true)} className="gap-2">
+                        <Download className="h-3.5 w-3.5" />
+                        Export Production Checklist
+                      </DropdownMenuItem>
+                      {previousRoundItems.length > 0 && (
+                        <DropdownMenuItem
+                          onClick={async () => {
+                            if (!onArchivePrevious) return;
+                            setArchiving(true);
+                            await onArchivePrevious();
+                            setArchiving(false);
+                          }}
+                          disabled={archiving}
+                          className="gap-2"
+                        >
+                          {archiving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+                          Archive Previous ({previousRoundItems.length})
+                        </DropdownMenuItem>
+                      )}
+                      {productionItems.length > 0 && onClearAll && (
+                        <>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={async () => {
-                              if (!onArchivePrevious) return;
-                              setArchiving(true);
-                              await onArchivePrevious();
-                              setArchiving(false);
+                              setClearing(true);
+                              await onClearAll();
+                              setClearing(false);
                             }}
-                            disabled={archiving}
-                            className="gap-2"
+                            disabled={clearing}
+                            className="gap-2 text-destructive focus:text-destructive"
                           >
-                            {archiving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
-                            Archive Previous ({previousRoundItems.length})
+                            {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                            Clear All
                           </DropdownMenuItem>
-                        )}
-                        {productionItems.length > 0 && onClearAll && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={async () => {
-                                setClearing(true);
-                                await onClearAll();
-                                setClearing(false);
-                              }}
-                              disabled={clearing}
-                              className="gap-2 text-destructive focus:text-destructive"
-                            >
-                              {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                              Clear All
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                  {/* Move to Concept Library */}
-                  {onSaveToLibrary && (
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                {/* Move to Concept Library */}
+                {onSaveToLibrary && (
+                  <Button
+                    variant={bulkSelectMode ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      if (bulkSelectMode) {
+                        setBulkSelectMode(false);
+                        setSelectedIds(new Set());
+                      } else {
+                        setBulkSelectMode(true);
+                      }
+                    }}
+                    className="gap-1"
+                  >
+                    <Library className="h-3 w-3" />
+                    {bulkSelectMode ? "Cancel" : "Move to Concept Library"}
+                  </Button>
+                )}
+                {hasRankedItems && (
+                  <>
                     <Button
-                      variant={bulkSelectMode ? "default" : "outline"}
+                      variant={showTopOnly ? "default" : "outline"}
                       size="sm"
                       onClick={() => {
-                        if (bulkSelectMode) {
-                          setBulkSelectMode(false);
-                          setSelectedIds(new Set());
-                        } else {
-                          setBulkSelectMode(true);
+                        const next = !showTopOnly;
+                        setShowTopOnly(next);
+                        if (workspace?.id) {
+                          const nextState = { rankedItems, overallStrategy, showTopOnly: next };
+                          supabase
+                            .from("campaign_workspaces")
+                            .update({ top_five_state: nextState as any, updated_at: new Date().toISOString() })
+                            .eq("id", workspace.id)
+                            .then(({ error }) => { if (error) console.error(error); });
+                          onUpdateWorkspace?.({ top_five_state: nextState });
                         }
                       }}
                       className="gap-1"
                     >
-                      <Library className="h-3 w-3" />
-                      {bulkSelectMode ? "Cancel" : "Move to Concept Library"}
+                      <Filter className="h-3 w-3" />
+                      {showTopOnly ? "Show All" : "Top 5 Only"}
                     </Button>
-                  )}
-                  {hasRankedItems && (
-                    <>
-                      <Button
-                        variant={showTopOnly ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          const next = !showTopOnly;
-                          setShowTopOnly(next);
-                          if (workspace?.id) {
-                            const nextState = { rankedItems, overallStrategy, showTopOnly: next };
-                            supabase
-                              .from("campaign_workspaces")
-                              .update({ top_five_state: nextState as any, updated_at: new Date().toISOString() })
-                              .eq("id", workspace.id)
-                              .then(({ error }) => { if (error) console.error(error); });
-                            onUpdateWorkspace?.({ top_five_state: nextState });
-                          }
-                        }}
-                        className="gap-1"
-                      >
-                        <Filter className="h-3 w-3" />
-                        {showTopOnly ? "Show All" : "Top 5 Only"}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleMoveOthersToLibrary}
-                        disabled={movingToLibrary}
-                        className="gap-1"
-                      >
-                        {movingToLibrary ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Library className="h-3 w-3" />
-                        )}
-                        Save Others for Later
-                      </Button>
-                    </>
-                  )}
-                  {canRank && !hasRankedItems && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="lumi"
-                            size="sm"
-                            onClick={handleRankConcepts}
-                            disabled={isRanking}
-                            className="gap-1"
-                          >
-                            {isRanking ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <Sparkles className="h-3 w-3" />
-                            )}
-                            Get Lumi's Top 5
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Lumi will rank your {productionItems.length} concepts and pick the top 5</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                  <Badge variant={itemsWithAssets === productionItems.length ? "default" : "secondary"}>
-                    {itemsWithAssets}/{productionItems.length} uploaded
-                  </Badge>
-                  {hasLiveCampaign && approvedItems.length > 0 && (
                     <Button
-                      variant="lumi"
+                      variant="outline"
                       size="sm"
-                      onClick={() => setPushConfirmOpen(true)}
-                      disabled={pushingToAd}
-                      className="gap-1.5"
+                      onClick={handleMoveOthersToLibrary}
+                      disabled={movingToLibrary}
+                      className="gap-1"
                     >
-                      {pushingToAd ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5" />}
-                      Push {approvedItems.length} approved to ad
+                      {movingToLibrary ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Library className="h-3 w-3" />
+                      )}
+                      Save Others for Later
                     </Button>
-                  )}
-                </div>
+                  </>
+                )}
+                {canRank && !hasRankedItems && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="lumi"
+                          size="sm"
+                          onClick={handleRankConcepts}
+                          disabled={isRanking}
+                          className="gap-1"
+                        >
+                          {isRanking ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-3 w-3" />
+                          )}
+                          Get Lumi's Top 5
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Lumi will rank your {productionItems.length} concepts and pick the top 5</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                {hasLiveCampaign && approvedItems.length > 0 && (
+                  <Button
+                    variant="lumi"
+                    size="sm"
+                    onClick={() => setPushConfirmOpen(true)}
+                    disabled={pushingToAd}
+                    className="gap-1.5"
+                  >
+                    {pushingToAd ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5" />}
+                    Push {approvedItems.length} approved to ad
+                  </Button>
+                )}
               </div>
               {overallStrategy && (
                 <p className="text-sm text-muted-foreground mt-2 bg-muted/50 p-2 rounded-md">
