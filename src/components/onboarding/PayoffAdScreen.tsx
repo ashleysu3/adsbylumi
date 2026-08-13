@@ -354,6 +354,10 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   // Signed-in (non-anonymous) users already have an account — their kit gets
   // pulled straight into it instead of asking them for an email to save it.
   const [hasAccount, setHasAccount] = useState(false);
+  // Save flow inside the dialog: ask for the email → either "you already have
+  // an account, log in and we'll pull this kit in" or "sent — here's 50% off".
+  const [packStep, setPackStep] = useState<"email" | "login" | "offer">("email");
+  const [checkingAccount, setCheckingAccount] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
