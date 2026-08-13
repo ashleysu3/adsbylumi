@@ -217,6 +217,7 @@ export default function BrandSetup() {
         { onConflict: "user_id,brand_id" }
       );
       if (error) throw error;
+      try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       toast.success("Brand saved");
       navigate("/ad-generator");
     } catch (e: any) {
@@ -392,7 +393,9 @@ export default function BrandSetup() {
             </Card>
           )}
 
-          <div className="flex justify-end">
+          <div className="flex justify-end items-center gap-3">
+            <span className="text-xs text-muted-foreground">Your edits save automatically</span>
+            <AutoSaveIndicator status={saveStatus} showLabel={false} />
             <Button size="lg" onClick={handleSave} disabled={saving}>
               {saving ? (
                 <>
