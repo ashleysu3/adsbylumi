@@ -276,20 +276,28 @@ export function LiveAdPreview({
       break;
 
     case "framed":
+      // Engine layout: photo fills the left half, copy panel on the right in
+      // the background color, with a thin accent frame inset over the whole
+      // canvas and the CTA pill sitting under the headline.
       body = (
-        <div className="h-full p-3">
-          <div className="flex h-full flex-col gap-2 border p-3" style={{ borderColor: colors.ink }}>
-            <Eyebrow />
-            <Headline size={1.3} />
-            <Photo className="min-h-0 w-full flex-1 rounded-sm" />
-            <div className="flex items-center justify-between gap-2">
-              <Sub className="flex-1" />
-              <Cta />
+        <>
+          <div className="grid h-full grid-cols-[45%_1fr]">
+            <Photo className="h-full w-full" />
+            <div className="flex flex-col justify-center gap-2 px-4 py-5" style={{ backgroundColor: colors.bg }}>
+              <Eyebrow />
+              <Headline size={1.15} />
+              <Sub />
+              <Cta className="mt-2" />
             </div>
           </div>
-        </div>
+          <div
+            className="pointer-events-none absolute inset-3 border"
+            style={{ borderColor: colors.accent }}
+          />
+        </>
       );
       break;
+
 
     case "spotlight":
       body = (
