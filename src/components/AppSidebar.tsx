@@ -72,9 +72,10 @@ type NavGroup = {
   items: NavItem[];
 };
 
-// Flat top-level actions — always visible, no folder.
+// The two primary actions. When the sidebar is expanded they render as the big
+// buttons in the header; collapsed, they fall back to icon rows so they stay
+// reachable in icon mode. Home lives on the LUMI logo.
 const topActions: NavItem[] = [
-  { label: "Home", to: "/home", icon: LayoutGrid },
   { label: "Create New", to: "/create", icon: Plus },
   { label: "My Ads", to: "/my-ads", icon: Activity },
 ];
@@ -254,6 +255,7 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
               alt="Lumi"
               className="h-8 w-auto object-contain flex-shrink-0 cursor-pointer"
               src={lumiLogo}
+              title="Home"
               onClick={() => navigate("/home")}
             />
             {!collapsed && (
@@ -268,13 +270,22 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
           {!collapsed && (
             <div className="mt-3 space-y-2">
               <IntentBar size="sm" innerBgClassName="bg-sidebar" />
+              {/* The two things to do: make something, or check on it. */}
               <button
                 type="button"
-                onClick={() => navigate("/tasks")}
-                className="group relative w-full overflow-hidden rounded-lg bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-sm transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-ring px-3 py-2 flex items-center gap-2"
+                onClick={() => navigate("/create")}
+                className="group relative w-full overflow-hidden rounded-lg bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-sm transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-ring px-3 py-2.5 flex items-center gap-2"
               >
-                <span className="text-base leading-none">✅</span>
-                <span className="text-sm font-medium tracking-tight">My Tasks</span>
+                <Plus className="h-4 w-4" />
+                <span className="text-sm font-semibold tracking-tight">Create New</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/my-ads")}
+                className="w-full rounded-lg border-2 border-lumi-purple-1/50 bg-lumi-purple-1/10 text-foreground hover:bg-lumi-purple-1/20 transition-colors px-3 py-2.5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <Activity className="h-4 w-4 text-lumi-purple-1" />
+                <span className="text-sm font-semibold tracking-tight">My Ads</span>
               </button>
               {isAdmin && (
                 <button
@@ -314,14 +325,18 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
         <SidebarSeparator />
 
         <SidebarContent>
-          {/* Primary actions — always visible, no folder to open */}
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>{topActions.map(renderItem)}</SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
-          <SidebarSeparator />
+          {/* Collapsed mode: the header buttons are hidden, so surface the two
+              primary actions as icon rows instead. */}
+          {collapsed && (
+            <>
+              <SidebarGroup>
+                <SidebarGroupContent>
+                  <SidebarMenu>{topActions.map(renderItem)}</SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+              <SidebarSeparator />
+            </>
+          )}
 
           {allGroups.map((group) => {
 
