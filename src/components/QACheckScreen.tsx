@@ -48,6 +48,17 @@ interface Issue {
   location?: string;
 }
 
+type CopyDraft = {
+  key: string;
+  label: string;
+  source: "shared" | "item";
+  index: number;
+  headline: string;
+  primary_text: string;
+  description: string;
+};
+
+
 interface CheckResult {
   id: string;
   name: string;
