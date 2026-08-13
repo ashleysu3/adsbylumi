@@ -106,7 +106,10 @@ import AdPackReveal from "./pages/AdPackReveal";
 import Welcome from "./pages/Welcome";
 import BrandPatterns from "./pages/BrandPatterns";
 import Retrospectives from "./pages/Retrospectives";
+import RecommendedStrategy from "./pages/RecommendedStrategy";
+import StrategyPlan from "./pages/StrategyPlan";
 import Strategy from "./pages/Strategy";
+import AdStrategy from "./pages/AdStrategy";
 const AdminStrategies = lazy(() => import("./pages/admin/Strategies"));
 import OfficeHours from "./pages/OfficeHours";
 import PartnerPortal from "./pages/PartnerPortal";
@@ -181,11 +184,11 @@ const App = () => {
                   <Route path="/start" element={<Start />} />
                   <Route path="/create" element={<Create />} />
                   <Route path="/recommended-strategy" element={<Navigate to="/create" replace />} />
-                  <Route path="/strategy-plan" element={<Navigate to="/create" replace />} />
+                  <Route path="/strategy-plan" element={<Navigate to="/strategy" replace />} />
                   <Route path="/home" element={<Home />} />
                   <Route path="/dashboard" element={<Navigate to="/initial-setup" replace />} />
                   <Route path="/planning" element={<Navigate to="/campaigns" replace />} />
-                  <Route path="/strategy" element={<Navigate to="/create" replace />} />
+                  <Route path="/strategy" element={<AdStrategy />} />
                   <Route path="/strategy-builder" element={<Strategy />} />
                   
                   <Route path="/creative" element={<Creative />} />
@@ -274,7 +277,7 @@ const App = () => {
                  <Route path="/admin/features" element={<AdminFeatures />} />
                   <Route path="/tasks" element={<Tasks />} />
                   <Route path="/audience" element={<Audience />} />
-                  <Route path="/goals" element={<Navigate to="/create" replace />} />
+                  <Route path="/goals" element={<Navigate to="/strategy" replace />} />
                   <Route path="/voice" element={<Voice />} />
                   <Route path="/initial-setup" element={<InitialSetup />} />
                   <Route path="/troubleshooting" element={<TroubleshootingPlaceholder />} />

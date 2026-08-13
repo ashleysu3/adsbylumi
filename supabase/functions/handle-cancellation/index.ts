@@ -78,24 +78,13 @@ Deno.serve(async (req) => {
 
     // 2. For each brand with Meta connected, pause all active campaigns
     for (const brand of (brands || [])) {
-      if (!brand.meta_account_id) {
+      if (!brand.meta_account_id || !brand.meta_access_token) {
         logStep("Skipping brand without Meta connection", { brandId: brand.id, brandName: brand.name });
         continue;
       }
 
       const metaAccountId = brand.meta_account_id;
-      let metaAccessToken = brand.meta_access_token as string | null;
-
-      // Tokens usually live in vault, not on the brands row.
-      if (!metaAccessToken) {
-        const { data: vaultToken } = await supabaseAdmin.rpc("get_meta_token", { p_brand_id: brand.id });
-        metaAccessToken = (vaultToken as string | null) ?? null;
-      }
-      if (!metaAccessToken) {
-        logStep("No Meta token available for brand", { brandId: brand.id });
-        pauseResults.push({ brand: brand.name, error: "No Meta token available" });
-        continue;
-      }
+      const metaAccessToken = brand.meta_access_token;
 
       // Add Ads Manager link for this account
       const cleanAccountId = metaAccountId.replace("act_", "");

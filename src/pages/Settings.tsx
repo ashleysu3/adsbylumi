@@ -155,7 +155,7 @@ export default function Settings() {
   
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   
-  const { isLoading: subLoading, isSubscribed, tier, isAnnual, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription, isCodeBased, status, discount, amountPaid, billingInterval, paymentMethod } = useSubscription();
+  const { isLoading: subLoading, isSubscribed, tier, isAnnual, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription, isCodeBased, isTrial, status, discount, amountPaid, billingInterval, paymentMethod } = useSubscription();
 
   useEffect(() => {
     fetchData();
@@ -750,13 +750,18 @@ export default function Settings() {
                         </CardDescription>
                       </div>
                       <div className="flex gap-2">
+                        {isTrial && (
+                          <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
+                            Trial
+                          </Badge>
+                        )}
                         {isCodeBased && (
                           <Badge variant="secondary" className="bg-purple-500/10 text-purple-600 border-purple-500/30">
                             Invite Code
                           </Badge>
                         )}
                         <Badge className="bg-gradient-lumi text-white border-0">
-                          Active
+                          {status === 'trial' ? 'Trial Active' : 'Active'}
                         </Badge>
                       </div>
                     </div>
@@ -812,9 +817,11 @@ export default function Settings() {
                         <p className="text-sm text-muted-foreground">
                           {cancelAtPeriodEnd 
                             ? 'Access Ends' 
-                            : isCodeBased 
-                              ? 'Access Period'
-                              : 'Next Billing Date'
+                            : isTrial 
+                              ? 'Trial Ends' 
+                              : isCodeBased 
+                                ? 'Access Period'
+                                : 'Next Billing Date'
                           }
                         </p>
                         <p className="text-lg font-medium">
@@ -946,25 +953,30 @@ export default function Settings() {
 
                 <Card className="border-destructive/30">
                   <CardHeader>
-                    <CardTitle className="text-destructive">Cancel Account</CardTitle>
+                    <CardTitle className="text-destructive">
+                      {isTrial ? 'Cancel Trial' : 'Cancel Subscription'}
+                    </CardTitle>
                     <CardDescription>
-                      End your account at the end of the current billing period
+                      {isTrial 
+                        ? 'Cancel your trial before being billed'
+                        : 'End your subscription at the end of the current billing period'
+                      }
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {cancelAtPeriodEnd ? (
                       <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
                         <p className="text-sm font-medium text-destructive mb-1">
-                          Account is set to cancel
+                          {isTrial ? 'Trial is set to cancel' : 'Subscription is set to cancel'}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Your account will end on {subscriptionEnd ? new Date(subscriptionEnd).toLocaleDateString() : 'the scheduled date'}. 
+                          Your {isTrial ? 'trial' : 'subscription'} will end on {subscriptionEnd ? new Date(subscriptionEnd).toLocaleDateString() : 'the scheduled date'}. 
                           You'll retain access until then.
                         </p>
                         {!isCodeBased && (
                           <Button onClick={handleManageSubscription} disabled={portalLoading} variant="outline" size="sm" className="mt-3 gap-2">
                             {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                            Reactivate Account
+                            Reactivate Subscription
                           </Button>
                         )}
                       </div>
@@ -972,15 +984,14 @@ export default function Settings() {
                       <>
                         <p className="text-sm text-muted-foreground">
                           {isCodeBased
-                            ? 'Cancel your complimentary access. Your data will be preserved but you\'ll need to subscribe to regain access.'
-                            : 'If you cancel, you\'ll retain access until the end of your billing period. Your campaigns and data will be preserved.'}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Any ads that are still running will be paused when you cancel — that's required. You can turn them back on yourself in Meta Ads Manager any time.
+                            ? isTrial
+                              ? 'Cancel your trial to avoid being billed. Your access will end immediately upon cancellation.'
+                              : 'Cancel your complimentary access. Your data will be preserved but you\'ll need to subscribe to regain access.'
+                            : 'If you cancel, you\'ll retain access to your current plan until the end of your billing period. Your campaigns and data will be preserved.'}
                         </p>
                         <Button onClick={() => setCancelModalOpen(true)} disabled={saving} variant="destructive" className="gap-2">
                           <LogOut className="h-4 w-4" />
-                          Cancel Account
+                          {isTrial ? 'Cancel Trial' : 'Cancel Subscription'}
                         </Button>
                       </>
                     )}
@@ -992,6 +1003,7 @@ export default function Settings() {
                   onOpenChange={setCancelModalOpen}
                   subscriptionEnd={subscriptionEnd}
                   isCodeBased={isCodeBased}
+                  isTrial={isTrial}
                   tierName={currentTier.name}
                   onCancelled={refreshSubscription}
                 />
