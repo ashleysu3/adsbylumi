@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { QuickFixDialog } from "@/components/QuickFixDialog";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -195,6 +196,8 @@ export function CreativeChecklistCard({
   const [customBrollUrl, setCustomBrollUrl] = useState<string | null>(null);
   const [customBrollName, setCustomBrollName] = useState<string | null>(null);
   const [uploadingBroll, setUploadingBroll] = useState(false);
+  // Missing b-roll gets fixed in a modal on this screen — no navigating away.
+  const [brollFixOpen, setBrollFixOpen] = useState(false);
   // Render queue for "Queue Render" — user clicks, we enqueue the job,
   // they keep working. Toast + bell icon + email notify on completion.
   const { enqueue, jobs } = useRenderQueue();
@@ -258,6 +261,12 @@ export function CreativeChecklistCard({
   
   return (
     <TooltipProvider>
+    <QuickFixDialog
+      open={brollFixOpen}
+      onOpenChange={setBrollFixOpen}
+      kind="broll"
+      brandId={(brand as any)?.id}
+    />
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card className={cn(
         "transition-all border-l-4",
