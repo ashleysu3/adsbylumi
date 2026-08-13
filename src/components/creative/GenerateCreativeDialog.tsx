@@ -1103,7 +1103,21 @@ export function GenerateCreativeDialog() {
       const logoOverlay = placeLogo && brandLogoAsset?.url
         ? { url: brandLogoAsset.url, corner: logoCorner }
         : undefined;
-      const photo = selectedPhoto ? { url: selectedPhoto.url, removeBackground } : undefined;
+      // Apply the focal point / zoom the user set in the preview by pre-cropping
+      // the photo before it goes to the render engine.
+      let photoUrlForRender = selectedPhoto?.url;
+      const framingChanged = focalX !== 50 || focalY !== 50 || photoZoom !== 1;
+      if (selectedPhoto && framingChanged) {
+        try {
+          setProgress("Applying image framing…");
+          photoUrlForRender = await cropImageToFocal(selectedPhoto.url, focalX, focalY, photoZoom);
+        } catch {
+          photoUrlForRender = selectedPhoto.url;
+        }
+      }
+      const photo = selectedPhoto
+        ? { url: photoUrlForRender!, removeBackground, focalX, focalY, zoom: photoZoom }
+        : undefined;
       // Collage uses 2–4 photos. Take the most recently uploaded/brand photos.
       const collagePool = [...photos, ...brandPhotoAssets].filter((p) => !!p.url);
       const collagePhotos = template === "collage"
