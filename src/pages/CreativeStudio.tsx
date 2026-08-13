@@ -1511,7 +1511,13 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
             })}
             <button
               type="button"
-              onClick={() => navigate("/launch")}
+              onClick={() =>
+                navigate(
+                  workspace?.id
+                    ? `/campaigns/build?workspace=${workspace.id}`
+                    : "/launch",
+                )
+              }
               className="gap-1.5 relative rounded-xl h-10 text-sm font-semibold transition-all flex items-center justify-center bg-lumi-orange-1 text-white hover:bg-lumi-orange-2 shadow-sm"
             >
               <Send className="h-4 w-4" />
