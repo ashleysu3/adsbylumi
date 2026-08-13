@@ -144,6 +144,21 @@ function pathFromUrl(url: string): string | null {
 
 type RenderImage = { placement: string; width: number; height: number; base64: string; label?: string };
 
+// Wait until the rendered ad has actually decoded before revealing it, so the
+// payoff moment never flashes a half-painted image on a projector.
+async function waitForDecode(img?: RenderImage): Promise<void> {
+  if (!img?.base64 || typeof window === "undefined") return;
+  await new Promise<void>((resolve) => {
+    const el = new Image();
+    let done = false;
+    const finish = () => { if (!done) { done = true; resolve(); } };
+    el.onload = finish;
+    el.onerror = finish;
+    setTimeout(finish, 4000);
+    el.src = `data:image/png;base64,${img.base64}`;
+  });
+}
+
 // One stop on the build's progress rail: ✓ done, spinner in flight, dim dot queued.
 function RailItem({ label, done, active }: { label: string; done: boolean; active?: boolean }) {
   return (
