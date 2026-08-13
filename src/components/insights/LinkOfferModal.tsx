@@ -194,6 +194,21 @@ export function LinkOfferModal({
           price_point: offerInfo?.price_point || null,
           target_outcome: offerInfo?.target_outcome || null,
           product_psychology: offerInfo || null,
+          messaging_guidelines: offerInfo
+            ? {
+                key_benefits: offerInfo.key_benefits || [],
+                pain_points: offerInfo.pain_points_addressed || [],
+                unique_selling_points: offerInfo.unique_selling_points || [],
+                social_proof: offerInfo.social_proof || null,
+                emotional_hooks: offerInfo.emotional_hooks || [],
+                tone_and_voice: offerInfo.tone_and_voice || null,
+                cta_language: offerInfo.cta_language || [],
+                objections_addressed: offerInfo.objections_addressed || [],
+                raw_copy_highlights: offerInfo.raw_copy_highlights || [],
+              }
+            : null,
+          page_excerpt: offerInfo?.page_excerpt || null,
+          page_extracted_at: offerInfo?.page_excerpt ? new Date().toISOString() : null,
           ai_generated_description: true,
           ai_generated_price: !!offerInfo?.price_point,
         })

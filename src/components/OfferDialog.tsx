@@ -290,6 +290,8 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
           ai_generated_description: !!extractedData,
           ai_generated_price: !!extractedData?.price_point,
           messaging_guidelines: messagingGuidelines,
+          page_excerpt: extractedData?.page_excerpt || null,
+          page_extracted_at: extractedData?.page_excerpt ? new Date().toISOString() : null,
           use_brand_style_defaults: formData.use_brand_style_defaults,
         } as any)
         .select()

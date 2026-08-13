@@ -733,7 +733,16 @@ export default function GuidedOnboarding() {
     if (Array.isArray(e.cta_language)) mg.cta_language = e.cta_language;
     if (e.tone_and_voice) mg.tone_and_voice = e.tone_and_voice;
     if (Array.isArray(e.raw_copy_highlights)) mg.raw_copy_highlights = e.raw_copy_highlights;
+    if (Array.isArray(e.key_benefits)) mg.key_benefits = e.key_benefits;
+    if (Array.isArray(e.pain_points_addressed)) mg.pain_points = e.pain_points_addressed;
+    if (Array.isArray(e.objections_addressed)) mg.objections_addressed = e.objections_addressed;
+    if (Array.isArray(e.emotional_hooks)) mg.emotional_hooks = e.emotional_hooks;
+    if (e.social_proof) mg.social_proof = e.social_proof;
     if (Object.keys(mg).length) patch.messaging_guidelines = mg;
+    if (e.page_excerpt) {
+      patch.page_excerpt = e.page_excerpt;
+      patch.page_extracted_at = new Date().toISOString();
+    }
     if (e.social_proof) patch.product_psychology = { social_proof: e.social_proof };
     if (Object.keys(patch).length) {
       const { error: upErr } = await supabase.from("offers").update(patch).eq("id", offerId);
