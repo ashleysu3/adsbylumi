@@ -334,6 +334,12 @@ export function GenerateCreativeDialog() {
   const [textCase, setTextCase] = useState<"original" | "upper" | "lower" | "title">("original");
   const [headlineScale, setHeadlineScale] = useState<number>(1);
   const [bodyScale, setBodyScale] = useState<number>(1);
+  // Readability controls: a color box/scrim behind the copy + where the copy sits.
+  const [textBoxStyle, setTextBoxStyle] = useState<"none" | "box" | "scrim">("none");
+  const [textBoxColor, setTextBoxColor] = useState<string>("");
+  const [textBoxOpacity, setTextBoxOpacity] = useState<number>(0.85);
+  const [textPosition, setTextPosition] = useState<"top" | "middle" | "bottom">("bottom");
+  const [textAlign, setTextAlign] = useState<"left" | "center" | "right">("left");
   // Readability controls for templates that put text directly on a photo
   // with no card behind it (currently just nativecaption) — the template's
   // own white text + shadow isn't always enough contrast against every photo.
