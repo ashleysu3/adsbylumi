@@ -4,7 +4,7 @@ import {
   BookOpen, LayoutTemplate, BarChart3, CreditCard, Bug, Users, Settings,
   Shield, Gift, DollarSign, Mail, XCircle, FileWarning, Star, Monitor, Wrench,
   ChevronDown, Palette, Tag, Inbox, Sparkles, Image as ImageIcon, CheckSquare,
-  Video,
+  Video, Pin,
 } from "lucide-react";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
@@ -49,6 +49,7 @@ const adminGroups: AdminGroup[] = [
       { path: "/admin/knowledge", label: "Knowledge", icon: BookOpen },
       { path: "/admin/inspiration", label: "Inspiration Library", icon: ImageIcon },
       { path: "/admin/stock-broll", label: "Stock B-Roll", icon: Video },
+      { path: "/admin/demo-ads", label: "Demo Ads", icon: Pin },
       { path: "/admin/approvals", label: "Approvals", icon: CheckSquare },
       { path: "/admin/templates", label: "Templates", icon: LayoutTemplate },
       { path: "/admin/magic-templates", label: "Magic Templates", icon: Sparkles },

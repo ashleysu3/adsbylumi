@@ -22,6 +22,12 @@ import { ScriptBlock } from "@/components/ad-kit/ScriptBlock";
 import { BrollBlock } from "@/components/ad-kit/BrollBlock";
 import { VslCloseSection, useKitCheckout } from "@/components/ad-kit/VslClose";
 import type { ScriptBeat } from "@/components/ad-kit/types";
+import {
+  rankPhotoCandidates,
+  bestCopyIndex,
+  guardPalette,
+  normalizeDemoDomain,
+} from "@/lib/ad-quality";
 
 // Coerce however brand_kits.colors is shaped (array of hexes from extract-brand,
 // or the {bg, ink, accent, pop, highlight, cream} object the Style page saves)
@@ -137,6 +143,21 @@ function pathFromUrl(url: string): string | null {
 }
 
 type RenderImage = { placement: string; width: number; height: number; base64: string; label?: string };
+
+// Wait until the rendered ad has actually decoded before revealing it, so the
+// payoff moment never flashes a half-painted image on a projector.
+async function waitForDecode(img?: RenderImage): Promise<void> {
+  if (!img?.base64 || typeof window === "undefined") return;
+  await new Promise<void>((resolve) => {
+    const el = new Image();
+    let done = false;
+    const finish = () => { if (!done) { done = true; resolve(); } };
+    el.onload = finish;
+    el.onerror = finish;
+    setTimeout(finish, 4000);
+    el.src = `data:image/png;base64,${img.base64}`;
+  });
+}
 
 // One stop on the build's progress rail: ✓ done, spinner in flight, dim dot queued.
 function RailItem({ label, done, active }: { label: string; done: boolean; active?: boolean }) {
@@ -315,6 +336,13 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
   const [palette, setPalette] = useState<EngineColors | null>(null);
   const [paletteDirty, setPaletteDirty] = useState(false);
   const [savingPalette, setSavingPalette] = useState(false);
+  // Demo safety net: when the entered website matches a pinned demo domain we
+  // reveal the hand-approved ad instead of whatever the live run produced.
+  // The live run still happens in the background — press "D" to toggle.
+  const pinnedRef = useRef<{ images: RenderImage[]; copy?: any; template?: string } | null>(null);
+  const [pinnedActive, setPinnedActive] = useState(false);
+  const liveImagesRef = useRef<RenderImage[]>([]);
+  const [isAdminViewer, setIsAdminViewer] = useState(false);
 
   // Save-in-place: the kit stays on this page. Saving emails the private
   // /your-ad-pack?kit= link and stamps ?kit= onto THIS url (no navigation —
@@ -341,6 +369,41 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Admins get the demo controls: pin the ad on screen, toggle pinned vs live.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const user = data?.user;
+      if (!user || (user as any).is_anonymous) return;
+      const { data: role } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      if (!cancelled && role) setIsAdminViewer(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // "D" flips between the pinned demo ad and the live render (admins only).
+  useEffect(() => {
+    if (!isAdminViewer) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "d" && e.key !== "D") return;
+      const t = e.target as HTMLElement | null;
+      if (t && /^(INPUT|TEXTAREA)$/.test(t.tagName)) return;
+      if (!pinnedRef.current?.images?.length || !liveImagesRef.current.length) return;
+      setPinnedActive((wasPinned) => {
+        setImages(wasPinned ? liveImagesRef.current : pinnedRef.current!.images);
+        return !wasPinned;
+      });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isAdminViewer]);
 
 
   // The quiet "ready to launch now?" path for hot buyers — same shared
@@ -625,10 +688,23 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       style: {},
     };
     if (photo) body.photo = photo;
-    const { data, error } = await supabase.functions.invoke("generate-ad", { body });
-    if (error) throw error;
-    if ((data as any)?.error) throw new Error((data as any).error);
-    return ((data as any)?.images || []) as RenderImage[];
+    // One silent retry — a single flaky render should never become the error
+    // screen a first-time visitor (or a demo audience) sees.
+    let lastErr: any = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const { data, error } = await supabase.functions.invoke("generate-ad", { body });
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+        const imgs = ((data as any)?.images || []) as RenderImage[];
+        if (!imgs.length) throw new Error("No image returned");
+        return imgs;
+      } catch (e) {
+        lastErr = e;
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 900));
+      }
+    }
+    throw lastErr instanceof Error ? lastErr : new Error("Render failed");
   }, []);
 
   const rerenderWith = useCallback(
@@ -683,6 +759,46 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       setSavingPalette(false);
     }
   }, [palette, brandId, rerenderWith, selectedIdx]);
+
+  // Pin the ad currently on screen as the hand-approved demo result for this
+  // brand's domain. Admin-only; the row is what every later visit to that
+  // domain reveals instead of a fresh (and possibly weak) render.
+  const [pinning, setPinning] = useState(false);
+  const pinCurrentAd = useCallback(async () => {
+    const domain = normalizeDemoDomain((brand as any)?.website_url);
+    if (!domain) {
+      toast.error("This brand has no website on file — can't pin it.");
+      return;
+    }
+    if (!images.length) {
+      toast.error("Nothing to pin yet.");
+      return;
+    }
+    setPinning(true);
+    try {
+      const { data: userRes } = await supabase.auth.getUser();
+      const { error } = await supabase.from("demo_pinned_ads" as any).upsert(
+        {
+          domain,
+          label: brand?.name || domain,
+          template: templateRef.current,
+          copy: options[selectedIdx] || null,
+          images: images as any,
+          active: true,
+          created_by: userRes?.user?.id || null,
+        },
+        { onConflict: "domain" },
+      );
+      if (error) throw error;
+      pinnedRef.current = { images, copy: options[selectedIdx], template: templateRef.current };
+      toast.success(`Pinned as the demo ad for ${domain}`);
+    } catch (e: any) {
+      console.error("[payoff-ad] pin failed", e);
+      toast.error(e?.message || "Couldn't pin this ad");
+    } finally {
+      setPinning(false);
+    }
+  }, [brand, images, options, selectedIdx]);
 
   // Phase B of the build: compose the copy and render the ad. Runs either from
   // the user's "Build my ad" click (with their chosen angle + photo) or straight
@@ -782,12 +898,24 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       if (!mountedRef.current) return;
       if (!returned.length) throw new Error("No copy options returned");
       setOptions(returned);
-      setSelectedIdx(0);
+      // Default to the strongest option instead of always option 0 — the
+      // model returns them unordered and option 0 is often the weakest.
+      const bestIdx = bestCopyIndex(template, returned, {
+        brandName: brand?.name,
+        offerText: offerHint || offerRowFull?.description || undefined,
+      });
+      setSelectedIdx(bestIdx);
 
       setStatusLine("🖼️ Rendering your first ad…");
-      const imgs = await callRender(returned[0]);
+      const imgs = await callRender(returned[bestIdx]);
       if (!mountedRef.current) return;
-      setImages(imgs);
+      liveImagesRef.current = imgs;
+      const pinned = pinnedRef.current;
+      const reveal = pinned?.images?.length ? pinned.images : imgs;
+      setPinnedActive(!!pinned?.images?.length);
+      await waitForDecode(reveal[0]);
+      if (!mountedRef.current) return;
+      setImages(reveal);
       setPhase("ready");
       // Once per brand per browser session — the payoff moment is the
       // key retargeting signal (people who saw their ad and left).
@@ -795,6 +923,13 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
     } catch (e: any) {
       if (!mountedRef.current) return;
       console.error("[payoff-ad] build failed", e);
+      // A pinned demo ad exists — never show the error screen on stage.
+      if (pinnedRef.current?.images?.length) {
+        setPinnedActive(true);
+        setImages(pinnedRef.current.images);
+        setPhase("ready");
+        return;
+      }
       setRenderErr(e?.message || "Something didn't line up");
       setPhase("error");
     }
@@ -809,6 +944,29 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
     (async () => {
       try {
         setPhase("loading");
+
+        // 0a) Pinned demo ad for this domain, if one exists. Fetched first so
+        // it's in hand before the live run finishes (or fails).
+        try {
+          const domain = normalizeDemoDomain((brand as any)?.website_url);
+          if (domain) {
+            const { data: pin } = await supabase
+              .from("demo_pinned_ads" as any)
+              .select("images, copy, template")
+              .eq("domain", domain)
+              .eq("active", true)
+              .maybeSingle();
+            const pinImgs = ((pin as any)?.images || []) as RenderImage[];
+            if (!cancelled && Array.isArray(pinImgs) && pinImgs.length) {
+              pinnedRef.current = {
+                images: pinImgs,
+                copy: (pin as any)?.copy || null,
+                template: (pin as any)?.template || undefined,
+              };
+            }
+          }
+        } catch { /* pinned ads are a safety net, never a gate */ }
+
 
         // 0) Instagram avatar for the feed-post mock — kicked off first and
         // never awaited, so the 2–4s scrape/re-host overlaps the whole build
@@ -848,7 +1006,10 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           if (hasAnyColors(kit?.colors)) break;
         }
         if (cancelled) return;
-        engineColorsRef.current = toEngineColors(kit?.colors);
+        // Extraction can hand back an unusable pair (white ink on white bg, a
+        // washed-out accent). guardPalette keeps it on-brand where it can and
+        // only falls back where the render would otherwise be unreadable.
+        engineColorsRef.current = guardPalette(toEngineColors(kit?.colors));
         fontsRef.current = toFontsPayload(kit?.fonts);
         logoUrlRef.current = kit?.logo_url || undefined;
         setUsedRealColors(hasVividColors(kit?.colors));
@@ -871,7 +1032,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             for (const r of kept) if (r.role === p && !ranked.includes(r)) ranked.push(r);
           }
           for (const r of kept) if (PHOTO_ROLES.has(r.role) && !ranked.includes(r)) ranked.push(r);
-          for (const r of ranked.slice(0, 3)) {
+          for (const r of ranked.slice(0, 8)) {
             const p = pathFromUrl(r.url);
             if (p) {
               const { data: s } = await supabase.storage
@@ -882,6 +1043,12 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
               candidates.push({ url: r.url });
             }
           }
+          // Measure before trusting: drop favicons, sprites, tiny thumbnails
+          // and extreme banners, then keep the three strongest. When nothing
+          // clears the bar we fall through with zero candidates and the build
+          // picks a text-forward template instead of framing a bad image.
+          const scored = await rankPhotoCandidates(candidates);
+          candidates = scored.slice(0, 3).map((s) => ({ url: s.url, label: s.label }));
         } catch {
           /* brand_assets may not exist; keep candidates empty */
         }
@@ -1567,6 +1734,26 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
               >
                 <Download className="h-3.5 w-3.5" /> Download this graphic
               </a>
+            </div>
+          )}
+
+          {/* Demo controls — admins only, invisible to every real visitor. */}
+          {isAdminViewer && phase === "ready" && (
+            <div className="mt-2 flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+              <span className="rounded-full border px-2 py-0.5">
+                {pinnedActive ? "Showing pinned demo ad" : "Showing live render"}
+              </span>
+              {pinnedRef.current?.images?.length && liveImagesRef.current.length ? (
+                <span className="opacity-70">press D to switch</span>
+              ) : null}
+              <button
+                type="button"
+                onClick={pinCurrentAd}
+                disabled={pinning}
+                className="underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+              >
+                {pinning ? "Pinning…" : "Pin this ad for demos"}
+              </button>
             </div>
           )}
 

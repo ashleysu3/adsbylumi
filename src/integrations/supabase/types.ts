@@ -1740,6 +1740,45 @@ export type Database = {
           },
         ]
       }
+      demo_pinned_ads: {
+        Row: {
+          active: boolean
+          copy: Json | null
+          created_at: string
+          created_by: string | null
+          domain: string
+          id: string
+          images: Json
+          label: string | null
+          template: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          copy?: Json | null
+          created_at?: string
+          created_by?: string | null
+          domain: string
+          id?: string
+          images?: Json
+          label?: string | null
+          template?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          copy?: Json | null
+          created_at?: string
+          created_by?: string | null
+          domain?: string
+          id?: string
+          images?: Json
+          label?: string | null
+          template?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       digest_settings: {
         Row: {
           additional_emails: string[] | null
