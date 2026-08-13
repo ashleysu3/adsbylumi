@@ -653,10 +653,23 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       style: {},
     };
     if (photo) body.photo = photo;
-    const { data, error } = await supabase.functions.invoke("generate-ad", { body });
-    if (error) throw error;
-    if ((data as any)?.error) throw new Error((data as any).error);
-    return ((data as any)?.images || []) as RenderImage[];
+    // One silent retry — a single flaky render should never become the error
+    // screen a first-time visitor (or a demo audience) sees.
+    let lastErr: any = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const { data, error } = await supabase.functions.invoke("generate-ad", { body });
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+        const imgs = ((data as any)?.images || []) as RenderImage[];
+        if (!imgs.length) throw new Error("No image returned");
+        return imgs;
+      } catch (e) {
+        lastErr = e;
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 900));
+      }
+    }
+    throw lastErr instanceof Error ? lastErr : new Error("Render failed");
   }, []);
 
   const rerenderWith = useCallback(
