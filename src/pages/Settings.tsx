@@ -812,11 +812,9 @@ export default function Settings() {
                         <p className="text-sm text-muted-foreground">
                           {cancelAtPeriodEnd 
                             ? 'Access Ends' 
-                            : isTrial 
-                              ? 'Trial Ends' 
-                              : isCodeBased 
-                                ? 'Access Period'
-                                : 'Next Billing Date'
+                            : isCodeBased 
+                              ? 'Access Period'
+                              : 'Next Billing Date'
                           }
                         </p>
                         <p className="text-lg font-medium">
