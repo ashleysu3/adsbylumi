@@ -24,7 +24,6 @@ import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
 import DashboardLayout from "@/components/DashboardLayout";
-import { CampaignSpine } from "@/components/CampaignSpine";
 import { LumiThinking, LumiThinkingInline } from "@/components/LumiThinking";
 import { SparkleIcon } from "@/components/SparkleIcon";
 import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelector";
@@ -1478,7 +1477,6 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
       >
         {/* Main Content */}
         <div className="flex-1 max-w-6xl mx-auto w-full">
-          {!embedded && <CampaignSpine currentStep={2} compact />}
           {/* Toolbar — inside content container for alignment */}
           <div className="flex items-end justify-between gap-3 mb-6">
             <div className="flex flex-col gap-1 min-w-0">

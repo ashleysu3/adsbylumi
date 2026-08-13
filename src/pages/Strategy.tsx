@@ -19,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CampaignSpine } from "@/components/CampaignSpine";
 import { useBrand } from "@/contexts/BrandContext";
 import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -306,8 +305,6 @@ export default function Strategy() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8">
-        <CampaignSpine currentStep={1} />
-
         <div className="space-y-2 mb-8">
           <h1 className="text-3xl md:text-4xl font-heading font-bold tracking-tight">
             What should you run?

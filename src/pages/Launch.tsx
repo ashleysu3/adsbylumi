@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { CampaignSpine } from "@/components/CampaignSpine";
 import { useCampaignDraft } from "@/contexts/CampaignDraftContext";
 import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -198,8 +197,6 @@ export default function Launch() {
   return (
     <DashboardLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-        <CampaignSpine currentStep={3} />
-
         {/* Missing prerequisites — shown when the draft is empty */}
         {(concepts.length === 0 || !strategy) && (
           <Card className="border-amber-300 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-900">
