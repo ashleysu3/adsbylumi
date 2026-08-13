@@ -372,24 +372,66 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
         </SidebarContent>
 
         <SidebarFooter className="p-2 space-y-2">
-          {!collapsed && (
-            <div className="flex items-center justify-between gap-2 px-1 text-[11px] text-muted-foreground">
+          {/* Account settings cog — My Brand, Agency, Help & Settings,
+              billing & plan and refer & earn all live here. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                onClick={() => navigate("/refer")}
-                className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                aria-label="Account settings"
+                className={cn(
+                  "w-full rounded-lg border border-border bg-card hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-ring text-muted-foreground hover:text-foreground",
+                  collapsed
+                    ? "p-2 flex items-center justify-center"
+                    : "px-3 py-2 flex items-center gap-2",
+                )}
               >
-                <Gift className="h-3 w-3" /> refer & earn
+                <SettingsIcon className="h-4 w-4" />
+                {!collapsed && (
+                  <span className="text-sm font-medium tracking-tight">
+                    Account settings
+                  </span>
+                )}
               </button>
-              <button
-                type="button"
-                onClick={() => navigate("/settings?tab=billing")}
-                className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="start" className="w-60">
+              {accountGroups.map((group) => (
+                <div key={group.key}>
+                  <DropdownMenuLabel className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+                    {group.label}
+                  </DropdownMenuLabel>
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <DropdownMenuItem
+                        key={`${group.key}-${item.label}`}
+                        onSelect={() => {
+                          if ("action" in item) setBugReportOpen(true);
+                          else navigate(item.to);
+                        }}
+                        className="gap-2"
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span>{item.label}</span>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                  <DropdownMenuSeparator />
+                </div>
+              ))}
+              <DropdownMenuItem
+                className="gap-2"
+                onSelect={() => navigate("/settings?tab=billing")}
               >
-                <CreditCard className="h-3 w-3" /> billing & plan
-              </button>
-            </div>
-          )}
+                <CreditCard className="h-4 w-4" />
+                <span>Billing &amp; plan</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onSelect={() => navigate("/refer")}>
+                <Gift className="h-4 w-4" />
+                <span>Refer &amp; earn</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <button
             type="button"
             onClick={() => navigate("/review")}
