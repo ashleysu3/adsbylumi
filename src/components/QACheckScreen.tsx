@@ -198,7 +198,8 @@ export function QACheckScreen({
           template,
           approvedCopySignature:
             overrideCopy?.signature ?? workspace.approved_copy_signature ?? null,
-        },
+          trackingSetup,
+
       });
 
 
