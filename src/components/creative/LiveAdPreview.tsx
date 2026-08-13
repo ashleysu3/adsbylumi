@@ -321,11 +321,13 @@ export function LiveAdPreview({
 
     case "bigtype":
       body = (
-        <div className="flex h-full flex-col justify-center gap-3 p-6">
-          <Eyebrow />
-          <Headline size={2.1} />
-          <Sub />
-          <Cta className="mt-1" />
+        <div className={`flex h-full flex-col gap-3 p-6 ${justifyClass} ${alignItemsClass}`}>
+          <TextStack>
+            <Eyebrow />
+            <Headline size={2.1} />
+            <Sub />
+            <Cta className="mt-1" />
+          </TextStack>
         </div>
       );
       break;
