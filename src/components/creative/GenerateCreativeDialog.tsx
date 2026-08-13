@@ -755,26 +755,35 @@ export function GenerateCreativeDialog() {
     try {
       const voicePayload = brandVoice && Object.keys(brandVoice).length > 0 ? brandVoice : {};
 
-      // If a custom template is selected, prefill its slot keys so the user can edit
-      // and the render button enables even if AI copy generation isn't slot-aware.
-      if (activeCustom) {
-        if (activeCustom.type === "carousel") {
-          const slots: string[] = Array.isArray(activeCustom.slide_slots) ? activeCustom.slide_slots : [];
-          const makeBlank = (): Slide => {
-            const s: Slide = {};
-            slots.forEach((k) => (s[k] = ""));
-            return s;
-          };
+      // Custom (admin-authored) templates carry their own slot keys. We used to
+      // just prefill blank slots here, which is why "Generate this creative"
+      // never wrote any copy for them — now the slots go to compose-ad so the
+      // AI fills them, and blanks are only the fallback.
+      const customSlots: string[] | null = activeCustom
+        ? (activeCustom.type === "carousel"
+            ? (Array.isArray(activeCustom.slide_slots) ? activeCustom.slide_slots : [])
+            : (Array.isArray(activeCustom.copy_slots) ? activeCustom.copy_slots : [])
+          ).filter((k: any) => typeof k === "string" && k.trim())
+        : null;
+      const customIsCarousel = !!activeCustom && activeCustom.type === "carousel";
+
+      const makeBlankFromSlots = (): Slide => {
+        const s: Slide = {};
+        (customSlots || []).forEach((k) => (s[k] = ""));
+        return s;
+      };
+
+      if (activeCustom && (!customSlots || customSlots.length === 0)) {
+        // Nothing to write into — fall back to the old blank behavior.
+        if (customIsCarousel) {
           const n = Math.max(1, slideCount || 1);
-          const blankSlides: Slide[] = Array.from({ length: n }, makeBlank);
+          const blankSlides: Slide[] = Array.from({ length: n }, makeBlankFromSlots);
           setCarouselOptions([{ slides: blankSlides }]);
           setEditedSlides(blankSlides);
           setSingleOptions([]);
           setEditedSingle({});
         } else {
-          const slots: string[] = Array.isArray(activeCustom.copy_slots) ? activeCustom.copy_slots : [];
-          const blank: SingleOption = {};
-          slots.forEach((k) => (blank[k] = ""));
+          const blank: SingleOption = makeBlankFromSlots();
           setSingleOptions([blank]);
           setEditedSingle(blank);
           setCarouselOptions([]);
@@ -786,6 +795,7 @@ export function GenerateCreativeDialog() {
       }
 
       const briefWithTemplate = { ...b, template };
+
 
       // Pull rich context so copy actually sounds like THIS brand for THIS offer.
       let offerContext: any = null;
@@ -857,9 +867,11 @@ export function GenerateCreativeDialog() {
         body: {
           brief: briefWithTemplate,
           brandVoice: voicePayload,
-          count: 3,
+          count: activeCustom ? 1 : 3,
           slideCount,
           feedback: feedback || null,
+          customSlots,
+          customType: activeCustom ? activeCustom.type : null,
           offerContext,
           offerPsychology,
           audiencePsychology,
@@ -874,11 +886,27 @@ export function GenerateCreativeDialog() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      const returnedTemplate: string =
-        data?.template || mapStyleToTemplate(b.styleHint, b.format);
-      setTemplate(returnedTemplate);
+      if (!activeCustom) {
+        const returnedTemplate: string =
+          data?.template || mapStyleToTemplate(b.styleHint, b.format);
+        setTemplate(returnedTemplate);
+      }
       const options: any[] = data?.options || [];
-      if (returnedTemplate === "carousel" || b.format === "carousel") {
+      // Keep only the template's own slots, and guarantee every slot exists so
+      // the editor renders a field for each one even if the model skipped it.
+      const toSlots = (src: any): Record<string, string> => {
+        const out: Record<string, string> = {};
+        const keys = customSlots && customSlots.length ? customSlots : Object.keys(src || {});
+        for (const k of keys) {
+          const v = (src || {})[k];
+          out[k] = typeof v === "string" ? v : "";
+        }
+        return out;
+      };
+      const treatAsCarousel = activeCustom
+        ? customIsCarousel
+        : (data?.template || template) === "carousel" || b.format === "carousel";
+      if (treatAsCarousel) {
         // Ensure every option has exactly `slideCount` slides. The model
         // often ignores the requested count and returns just 1 — pad with
         // blank slides so the user can fill them in rather than shipping
@@ -888,34 +916,31 @@ export function GenerateCreativeDialog() {
         const targetN = Math.max(2, slideCount || 4);
         const carOpts: CarouselOption[] = options.map((o) => {
           const raw = Array.isArray(o?.slides) ? o.slides : [];
-          const cleaned: Slide[] = raw.map((sl: any) => ({ ...(sl || {}) }));
+          const cleaned: Slide[] = raw.map((sl: any) => toSlots(sl));
           if (cleaned.length > targetN) cleaned.length = targetN;
           while (cleaned.length < targetN) {
-            const template: Slide = cleaned[0]
+            const blank: Slide = cleaned[0]
               ? Object.fromEntries(Object.keys(cleaned[0]).map((k) => [k, ""]))
               : { headline: "", sub: "", cta: "" };
-            cleaned.push(template);
+            cleaned.push(blank);
           }
           return { slides: cleaned };
         });
-        setCarouselOptions(carOpts);
+        setCarouselOptions(carOpts.length ? carOpts : [{ slides: Array.from({ length: Math.max(2, slideCount || 4) }, makeBlankFromSlots) }]);
         setSelectedOptionIdx(0);
-        setEditedSlides(carOpts[0]?.slides || []);
+        setEditedSlides((carOpts[0]?.slides) || Array.from({ length: Math.max(2, slideCount || 4) }, makeBlankFromSlots));
         setSingleOptions([]);
+        setEditedSingle({});
       } else {
-        // Pass through option fields as-is; the option's keys ARE the slots.
-        const opts: SingleOption[] = options.map((o) => {
-          const clean: SingleOption = {};
-          for (const [k, v] of Object.entries(o || {})) {
-            if (typeof v === "string") clean[k] = v;
-          }
-          return clean;
-        });
-        setSingleOptions(opts);
+        const opts: SingleOption[] = options.map((o) => toSlots(o));
+        setSingleOptions(opts.length ? opts : [makeBlankFromSlots()]);
         setSelectedOptionIdx(0);
-        setEditedSingle(opts[0] || {});
+        setEditedSingle(opts[0] || makeBlankFromSlots());
         setCarouselOptions([]);
+        setEditedSlides([]);
       }
+      if (activeCustom) setEditingCopy(true);
+
     } catch (err: any) {
       toast.error(err?.message || "Failed to write copy");
     } finally {

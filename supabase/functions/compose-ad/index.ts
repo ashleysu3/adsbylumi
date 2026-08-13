@@ -76,6 +76,24 @@ function mapStyle(styleHint?: string, format?: string): string {
   return (styleHint && m[styleHint]) || "bigtype";
 }
 
+// Copy instructions for a custom (admin-authored) template: its slot keys come
+// from the template row, so we describe them generically instead of using the
+// built-in SLOTS map. Without this, custom templates got no copy at all.
+function customInstruction(keys: string[], count: number, isCarousel: boolean, slideCount?: number): string {
+  const keyList = keys.map((k) => `"${k}"`).join(", ");
+  const rules =
+    `Slot naming tells you the job: keys containing "headline"/"hook"/"title" = <=8 punchy words; ` +
+    `"eyebrow"/"label"/"tag"/"badge" = <=4 words; "sub"/"body"/"desc"/"quote"/"item"/"msg" = one sentence <=18 words; ` +
+    `"cta"/"button" = <=4 words matching the brief's offer (never "Learn more"/"Sign up"/"Get started"); ` +
+    `anything numeric-sounding ("stat", "num", "price") = a short number or figure. ` +
+    `Never leave a slot blank unless it truly cannot apply — write real copy for every key.`;
+  if (isCarousel) {
+    const n = Math.max(2, Math.min(10, Number(slideCount) || 5));
+    return `Return ${count} option(s). Each option is {"slides":[...]} with EXACTLY ${n} slide(s) — no more, no fewer. Each slide is a JSON object with EXACTLY these keys: ${keyList}. Slide 1 = the hook; middle slides deliver payoff/proof/steps; the final slide carries the CTA (leave CTA-ish slots "" on earlier slides). ${rules}`;
+  }
+  return `Return ${count} DISTINCT option(s) (different angles). Each option is a JSON object with EXACTLY these keys: ${keyList}. ${rules}`;
+}
+
 function instruction(template: string, count: number, slideCount?: number): string {
   if (template === "carousel") {
     const n = Math.max(1, Math.min(10, Number(slideCount) || 5));
@@ -83,6 +101,7 @@ function instruction(template: string, count: number, slideCount?: number): stri
   }
   return `Return ${count} DISTINCT option(s) (different angles). For template "${template}", each option is a JSON object with EXACTLY these keys: ${SLOTS[template] || SLOTS.bigtype}. Use "" for any optional field you skip. Full headline reads as one natural line, <=8 words.`;
 }
+
 
 function truncate(v: unknown, max = 1400): string {
   if (v == null) return "";
@@ -299,8 +318,14 @@ serve(async (req) => {
   if (gate.blocked) return gate.blocked;
   try {
     const body = await req.json();
-    const { brief = {}, brandVoice = {}, count = 3, slideCount, feedback = null, positioningBrief = null } = body;
+    const { brief = {}, brandVoice = {}, count = 3, slideCount, feedback = null, positioningBrief = null, customSlots = null, customType = null } = body;
     const template = brief.template || mapStyle(brief.styleHint, brief.format);
+    // Custom (admin-authored) templates carry their own slot keys.
+    const customKeys: string[] = Array.isArray(customSlots)
+      ? customSlots.filter((k: any) => typeof k === "string" && k.trim())
+      : [];
+    const isCustom = customKeys.length > 0;
+    const customIsCarousel = customType === "carousel";
     const feedbackBlock = feedback && (feedback.quickSelections?.length || feedback.additionalNotes)
       ? `\n\nUSER FEEDBACK ON PREVIOUS COPY — apply these changes in this rewrite:\n- Issues: ${(feedback.quickSelections || []).join(", ") || "(none)"}\n- Notes: ${feedback.additionalNotes || "(none)"}\n`
       : "";
@@ -309,16 +334,20 @@ serve(async (req) => {
     const realTestimonialRule = template === "testimonial" && body.socialProofContext?.quote
       ? `Hard rule: the "quote" field must be the REAL TESTIMONIAL above, verbatim or lightly trimmed to fit the word limit without changing its meaning or voice — never write a new/invented testimonial. Set "author"/"role" from its real attribution (split "Name, context" into author="Name", role="context"); if no attribution was given, use author="Verified client" and role="".\n\n`
       : "";
+    const instructionBlock = isCustom
+      ? customInstruction(customKeys, count, customIsCarousel, slideCount)
+      : instruction(template, count, slideCount);
     const user =
       `${contextBlock ? contextBlock + "\n\n" : ""}` +
       `${positioningBlock}` +
       `=== CREATIVE BRIEF ===\n${JSON.stringify(brief)}\n\n` +
       `=== BRAND VOICE SAMPLES (mirror the tone, rhythm, punctuation) ===\n${JSON.stringify(brandVoice)}` +
       `${feedbackBlock}\n\n` +
-      `${instruction(template, count, slideCount)}\n\n` +
+      `${instructionBlock}\n\n` +
       `${realTestimonialRule}` +
       `Hard rule: every option must reference at least one SPECIFIC element from the OFFER PSYCHOLOGY or AUDIENCE PSYCHOLOGY above (a named moment, a real pain, a real hesitation, a concrete before/after). Generic copy that could belong to any brand is an instant fail.\n\n` +
       `Output ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
+
 
     const first = await callModel(voiceRulesFor(template), user);
     if (!first.ok) {
@@ -362,7 +391,7 @@ serve(async (req) => {
     // returns a single slide regardless of the "EXACTLY N slides" instruction,
     // which ships a "carousel" that's really just slide 1. Re-prompt once for
     // the right count, then trim any option that still overshoots.
-    if (template === "carousel" && options.length > 0) {
+    if ((template === "carousel" || customIsCarousel) && options.length > 0) {
       const targetN = Math.max(1, Math.min(10, Number(slideCount ?? (brief as any)?.slideCount) || 5));
       const countIsWrong = (opts: any[]) =>
         opts.some((o) => !Array.isArray(o?.slides) || o.slides.length !== targetN);
@@ -407,7 +436,8 @@ serve(async (req) => {
     }
 
     // Validate slot lengths. If any slot is over, re-prompt ONCE with the specific offenders.
-    let violations = findViolations(options, template);
+    // Custom templates define their own slots, so there are no built-in budgets to check.
+    let violations = isCustom ? [] : findViolations(options, template);
     if (violations.length > 0) {
       console.log(`compose-ad: ${violations.length} slot(s) over budget on first pass, retrying once.`);
       const retryUser =
