@@ -10,7 +10,7 @@ import {
   Video, Film, Image, Eye, FolderOpen, Maximize2,
   Sparkles, Loader2, Filter, Library, Info, Download,
   Archive, Trash2, ChevronDown, Star, Printer, CheckSquare, Square, XCircle,
-  Share2, Repeat, FastForward, MoreHorizontal
+  Share2, Repeat, FastForward, MoreHorizontal, FileDown
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
