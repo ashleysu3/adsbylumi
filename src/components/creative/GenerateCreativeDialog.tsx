@@ -1356,37 +1356,45 @@ export function GenerateCreativeDialog() {
         </AccordionTrigger>
         <AccordionContent className="space-y-4 pb-3">
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Colors</p>
-            <div className="grid grid-cols-6 gap-1.5">
-              {(Object.keys(colors) as Array<keyof Colors>).map((k) => (
-                <Popover key={k}>
-                  <PopoverTrigger asChild>
-                    <button type="button" className="group flex flex-col items-center gap-1" aria-label={`Edit ${k} color`}>
-                      <span
-                        className="h-8 w-full rounded-md border border-border shadow-sm transition group-hover:scale-[1.03]"
-                        style={{ backgroundColor: colors[k] }}
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Brand colors</p>
+            <div className="grid grid-cols-4 gap-1.5">
+              {COLOR_SLOTS.map((slot) => {
+                const value = readSlotColor(colors, slot.key);
+                return (
+                  <Popover key={slot.key}>
+                    <PopoverTrigger asChild>
+                      <button type="button" className="group flex flex-col items-center gap-1" aria-label={`Edit ${slot.label} color`}>
+                        <span
+                          className="h-8 w-full rounded-md border border-border shadow-sm transition group-hover:scale-[1.03]"
+                          style={{ backgroundColor: value }}
+                        />
+                        <span className="text-[9px] text-muted-foreground">{slot.label}</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-3" align="start">
+                      <HexColorPicker
+                        color={value}
+                        onChange={(v) => setColors((prev) => writeSlotColor(prev, slot.key, v))}
                       />
-                      <span className="text-[9px] text-muted-foreground capitalize">{k}</span>
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-3" align="start">
-                    <HexColorPicker
-                      color={colors[k]}
-                      onChange={(v) => setColors((prev) => ({ ...prev, [k]: v }))}
-                    />
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-[10px] uppercase text-muted-foreground capitalize">{k}</span>
-                      <Input
-                        value={colors[k]}
-                        onChange={(e) => setColors((prev) => ({ ...prev, [k]: e.target.value }))}
-                        className="h-7 text-xs font-mono"
-                      />
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              ))}
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-[10px] uppercase text-muted-foreground">{slot.label}</span>
+                        <Input
+                          value={value}
+                          onChange={(e) => setColors((prev) => writeSlotColor(prev, slot.key, e.target.value))}
+                          className="h-7 text-xs font-mono"
+                        />
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                );
+              })}
             </div>
+            <p className="mt-1.5 text-[10px] text-muted-foreground">
+              These come from your brand kit — editing here only changes this ad.
+            </p>
           </div>
+
+
 
           <div>
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Text case</p>
