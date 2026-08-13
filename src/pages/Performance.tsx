@@ -222,7 +222,14 @@ function TrendArrow({ kpi, vsGoalPct, direction }: { kpi: string; vsGoalPct: num
   return <Icon className={cn("h-3.5 w-3.5", color)} />;
 }
 
-export default function Performance() {
+interface PerformanceProps {
+  /** Rendered inside the My Ads page: no DashboardLayout wrapper, no page title. */
+  embedded?: boolean;
+  /** Reports how many live campaigns are showing, for the section header count. */
+  onLiveCountChange?: (count: number) => void;
+}
+
+export default function Performance({ embedded = false, onLiveCountChange }: PerformanceProps = {}) {
   const navigate = useNavigate();
   const { activeBrand, loading: brandLoading } = useBrand();
 
@@ -735,17 +742,23 @@ export default function Performance() {
     }
   }
 
+  const Shell = embedded
+    ? ({ children }: { children: React.ReactNode }) => <>{children}</>
+    : DashboardLayout;
+
   return (
-    <DashboardLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+    <Shell>
+      <div className={embedded ? "space-y-6" : "max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6"}>
         <div className="flex items-end justify-between gap-3 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-bold">Live Ads</h1>
-            <p className="text-sm text-muted-foreground">
-              Everything running, paused, or off in your Meta account. Created a campaign directly in Meta? Import it to manage it here.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          {!embedded && (
+            <div>
+              <h1 className="text-2xl font-bold">Live Ads</h1>
+              <p className="text-sm text-muted-foreground">
+                Everything running, paused, or off in your Meta account. Created a campaign directly in Meta? Import it to manage it here.
+              </p>
+            </div>
+          )}
+          <div className="flex items-center gap-2 flex-wrap ml-auto">
             <DateRangePicker
               dateRange={dateRange}
               customDateRange={customDateRange}
@@ -1349,7 +1362,7 @@ export default function Performance() {
           })()}
         </SheetContent>
       </Sheet>
-    </DashboardLayout>
+    </Shell>
   );
 }
 
