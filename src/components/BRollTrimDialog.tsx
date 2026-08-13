@@ -11,6 +11,7 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Loader2, Scissors, RotateCcw } from "lucide-react";
 import type { BRollClip } from "./BRollLibrary";
+import { usePlayableUrl } from "@/hooks/usePlayableUrl";
 
 interface BRollTrimDialogProps {
   open: boolean;
@@ -103,7 +104,7 @@ export function BRollTrimDialog({ open, clip, onClose, onSave }: BRollTrimDialog
             <div className="rounded-lg overflow-hidden bg-black">
               <video
                 ref={videoRef}
-                src={clip.file_url}
+                src={playableUrl}
                 className="w-full aspect-[9/16] max-h-[420px] object-contain mx-auto"
                 controls
                 muted

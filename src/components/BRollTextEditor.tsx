@@ -30,6 +30,7 @@ import {
 import { DEFAULT_RENDER_STYLE, type RenderStyle } from '@/lib/ffmpeg-renderer';
 import { useRenderQueue } from '@/contexts/RenderQueueContext';
 import { TemplateGallery } from '@/components/TemplateGallery';
+import { usePlayableUrl } from '@/hooks/usePlayableUrl';
 
 // ============================================================================
 // BRollTextEditor (patch #17)
@@ -86,6 +87,8 @@ export function BRollTextEditor({
   const [fitMode, setFitMode] = useState<'loop' | 'speed' | null>(null);
   // Trim window applied to the source clip on render. null = no trim.
   const [trim, setTrim] = useState<{ start: number; end: number } | null>(null);
+  // Signed URL for playback (storage buckets are private).
+  const playableVideoUrl = usePlayableUrl(activeVideoUrl);
 
   // Whenever the caller opens the editor with a new clip, or the user swaps
   // clips inside the editor, reset fit + trim (they're clip-specific).
@@ -631,7 +634,7 @@ export function BRollTextEditor({
 
 
             <VideoTextPreview
-              videoUrl={activeVideoUrl}
+              videoUrl={playableVideoUrl}
               overlays={fittedOverlays}
               style={effectiveStyle}
               editable
