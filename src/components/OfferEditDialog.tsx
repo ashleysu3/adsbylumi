@@ -207,21 +207,28 @@ export function OfferEditDialog({ open, onOpenChange, offer, onSuccess }: OfferE
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading || !formData.name}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Changes"
-              )}
-            </Button>
+          <div className="flex justify-between items-center gap-2 pt-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Saves automatically</span>
+              <AutoSaveIndicator status={saveStatus} showLabel={false} />
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={async () => { await flush(); onSuccess(); onOpenChange(false); }}>
+                Close
+              </Button>
+              <Button type="submit" disabled={loading || !formData.name}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Done"
+                )}
+              </Button>
+            </div>
           </div>
+
         </form>
       </DialogContent>
     </Dialog>
