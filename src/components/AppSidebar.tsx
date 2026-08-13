@@ -289,7 +289,7 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
                 className="w-full rounded-lg border-2 border-lumi-purple-1/50 bg-lumi-purple-1/10 text-foreground hover:bg-lumi-purple-1/20 transition-colors px-3 py-2.5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <Activity className="h-4 w-4 text-lumi-purple-1" />
-                <span className="text-sm font-semibold tracking-tight">My Ads</span>
+                <span className="text-sm font-semibold tracking-tight">See My Ads</span>
               </button>
               {isPartner && (
                 <button
