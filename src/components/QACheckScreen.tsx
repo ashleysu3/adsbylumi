@@ -436,6 +436,70 @@ export function QACheckScreen({
   };
 
 
+  // Let the user keep their copy as-is when a policy/spelling flag is only a
+  // potential issue — we re-sign the current copy so publish isn't blocked.
+  const acknowledgeCopyCheck = async (check: CheckResult) => {
+    setCopySaving(true);
+    try {
+      const selected = wsCopy?.selected_copy ?? workspace.selected_copy ?? {};
+      const items: any[] = wsCopy?.production_items ?? workspace.production_items ?? [];
+
+      const variations: any[] = [];
+      if (Array.isArray(selected?.shared_variations)) variations.push(...selected.shared_variations);
+      for (const item of items) {
+        const fc = item?.finalCopy || item?.final_copy;
+        if (fc) {
+          variations.push({
+            headline: fc.headline,
+            primary_text: fc.primary_text || fc.primaryText,
+            description: fc.description,
+          });
+        }
+      }
+      const signature = await computeCopySignature(variations);
+
+      const { error } = await supabase
+        .from("campaign_workspaces")
+        .update({
+          approved_copy_signature: signature,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", workspace.id);
+      if (error) throw error;
+
+      workspace.approved_copy_signature = signature;
+
+      setChecks((prev) =>
+        prev.map((c) =>
+          c.id === check.id
+            ? {
+                ...c,
+                status: "passed" as const,
+                message: "You chose to keep this copy",
+                details:
+                  "You reviewed this flag and decided to publish as-is. Meta may still review this ad.",
+                issues: c.issues,
+              }
+            : c,
+        ),
+      );
+      setSummary((prev) => ({
+        ...prev,
+        passed: prev.passed + 1,
+        warnings: check.status === "warning" ? Math.max(0, prev.warnings - 1) : prev.warnings,
+        failed: check.status === "failed" ? Math.max(0, prev.failed - 1) : prev.failed,
+      }));
+      setCopyDialogOpen(false);
+      toast.success("Keeping your copy as-is");
+    } catch (err: any) {
+      console.error("Failed to acknowledge copy check:", err);
+      toast.error(err?.message || "Couldn't save your choice");
+    } finally {
+      setCopySaving(false);
+    }
+  };
+
+
   const openTrackingDialog = (check: CheckResult) => {
     setTrackingCheck(check);
     setTrackingDialogOpen(true);
