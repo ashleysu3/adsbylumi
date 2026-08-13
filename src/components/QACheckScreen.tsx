@@ -199,8 +199,9 @@ export function QACheckScreen({
           approvedCopySignature:
             overrideCopy?.signature ?? workspace.approved_copy_signature ?? null,
           trackingSetup,
-
+        },
       });
+
 
 
       if (error) throw error;
