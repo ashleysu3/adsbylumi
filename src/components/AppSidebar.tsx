@@ -319,7 +319,17 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
         <SidebarSeparator />
 
         <SidebarContent>
+          {/* Primary actions — always visible, no folder to open */}
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>{topActions.map(renderItem)}</SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarSeparator />
+
           {allGroups.map((group) => {
+
             const GroupIcon = group.icon;
             const isOpen = openGroups[group.key] ?? false;
             return (
