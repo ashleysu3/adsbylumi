@@ -181,8 +181,12 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
     return () => window.removeEventListener("open-bug-report", handler);
   }, []);
 
-  const allGroups: NavGroup[] = [
-    ...groups,
+  // Creative stays in the main nav; everything account-related moves into the
+  // settings cog at the bottom-left.
+  const allGroups: NavGroup[] = groups.filter((g) => g.key === "creative");
+
+  const accountGroups: NavGroup[] = [
+    ...groups.filter((g) => g.key === "brand"),
     ...(isAgencyUser ? [agencyGroup] : []),
     helpGroup,
   ];
