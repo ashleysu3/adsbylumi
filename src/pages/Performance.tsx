@@ -245,6 +245,11 @@ export default function Performance({ embedded = false, onLiveCountChange }: Per
   const [quickListOpen, setQuickListOpen] = useState(false);
   const [reloadNonce, setReloadNonce] = useState(0);
 
+  // Surface the live-campaign count to the My Ads section header.
+  useEffect(() => {
+    onLiveCountChange?.(results.length);
+  }, [results.length, onLiveCountChange]);
+
 
   // Date range — persists in localStorage. "3" | "7" | "14" | "30" (preset days)
   // or "custom" with a customDateRange. Default: last 7 days.
