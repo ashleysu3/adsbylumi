@@ -12,12 +12,11 @@ import {
   ChevronRight, CheckCircle2, Circle, Loader2,
   Sparkles, ArrowRight, Video, Film, Image, Trash2,
   X, Check, FileDown, Printer, BarChart3, RefreshCw, Upload, MessageSquare,
-  Bookmark, Wrench, Palette
+  Send, Wrench, Palette
 } from "lucide-react";
 import AdGenerator from "@/pages/AdGenerator";
 import CreativeToolkit from "@/pages/CreativeToolkit";
 import ContentLibrary from "@/pages/ContentLibrary";
-import { MyCreativeLibrary } from "@/components/creative/MyCreativeLibrary";
 import { printCreativeBrief } from "@/lib/print-creative-brief";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -74,7 +73,7 @@ import { GenerateCreativeDialog } from "@/components/creative/GenerateCreativeDi
 import { TheLab as LazyTheLab } from "@/components/lab/TheLab";
 import type { TourStep } from "@/components/GuidedTour";
 
-type WorkflowTab = "angles" | "concepts" | "copy" | "build" | "saved";
+type WorkflowTab = "angles" | "concepts" | "copy" | "build";
 
 function normalizeScriptLines(input: unknown): string[] | undefined {
   if (!input) return undefined;
@@ -245,7 +244,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
   const [workspace, setWorkspace] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<WorkflowTab>(() => {
     const t = searchParams.get("tab");
-    return (t === "saved" || t === "concepts" || t === "copy" || t === "build" || t === "angles") ? t : "angles";
+    return (t === "angles" || t === "concepts" || t === "copy" || t === "build") ? t : "angles";
   });
   const [contentIdeas, setContentIdeas] = useState<any[]>([]);
   const [brandId, setBrandId] = useState<string>("");
@@ -666,9 +665,9 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
       }
     }
     
-    // Honor explicit ?tab= in URL (e.g. ?tab=saved from sidebar "My Creative")
+    // Honor explicit ?tab= in URL for workflow tabs
     const urlTab = searchParams.get("tab") as WorkflowTab | null;
-    if (urlTab === "saved" || urlTab === "angles" || urlTab === "concepts" || urlTab === "copy" || urlTab === "build") {
+    if (urlTab === "angles" || urlTab === "concepts" || urlTab === "copy" || urlTab === "build") {
       targetTab = urlTab;
     }
     setActiveTab(targetTab);
@@ -1366,7 +1365,6 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
     { id: "concepts" as const, label: "Concepts", icon: Lightbulb },
     { id: "copy" as const, label: "Ad Copy", icon: FileText },
     { id: "build" as const, label: "Produce", icon: Rocket },
-    { id: "saved" as const, label: "My Creative", icon: Bookmark },
   ];
 
   // Tab progress indicators
@@ -1381,7 +1379,6 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
       const assets = workspace?.user_uploaded_assets || [];
       return assets.some((a: any) => a.linked_concept_id === item.id);
     }),
-    saved: false,
   };
 
   // Context-aware primary action for top-right
@@ -1444,23 +1441,6 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </motion.div>
-      </Layout>
-    );
-  }
-
-  if (activeTab === "saved") {
-    return (
-      <Layout>
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-          className="min-h-[calc(100vh-120px)]"
-        >
-          <div className="max-w-6xl mx-auto w-full py-6">
-            <MyCreativeLibrary />
           </div>
         </motion.div>
       </Layout>
@@ -1558,10 +1538,6 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
                   active: "bg-tab-blue-light text-primary-foreground shadow-md",
                   inactive: "bg-tab-blue-light/10 text-tab-blue-dark hover:bg-tab-blue-light/20 border border-tab-blue-light/20",
                 },
-                saved: {
-                  active: "bg-muted-foreground text-primary-foreground shadow-md",
-                  inactive: "bg-muted/40 text-muted-foreground hover:bg-muted/60 border border-border",
-                },
               };
               const colors = colorMap[t.id] || colorMap.angles;
               return (
@@ -1583,6 +1559,14 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
                 </TabsTrigger>
               );
             })}
+            <button
+              type="button"
+              onClick={() => navigate("/launch")}
+              className="gap-1.5 relative rounded-xl h-10 text-sm font-semibold transition-all flex items-center justify-center bg-lumi-orange-1 text-white hover:bg-lumi-orange-2 shadow-sm"
+            >
+              <Send className="h-4 w-4" />
+              <span className="text-xs sm:text-sm">Launch</span>
+            </button>
           </TabsList>
 
           {/* Top-right Give Feedback button per tab */}
@@ -2028,10 +2012,6 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
                 <CreativeToolkit embedded />
               </TabsContent>
             </Tabs>
-          </TabsContent>
-
-          <TabsContent value="saved">
-            <MyCreativeLibrary />
           </TabsContent>
         </Tabs>
       </div>
