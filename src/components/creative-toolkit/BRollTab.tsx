@@ -140,6 +140,8 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
   const [brandDetails, setBrandDetails] = useState<BrandDetails | null>(null);
   const [libraryClips, setLibraryClips] = useState<Array<{ file_name: string; tags?: string[] }>>([]);
 
+  const [libraryReloadKey, setLibraryReloadKey] = useState(0);
+
   // Fetch extra brand fields + uploaded b-roll library
   useEffect(() => {
     if (!activeBrand?.id) return;
@@ -157,7 +159,7 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
         const lib = (data as any).broll_library;
         setLibraryClips(Array.isArray(lib) ? lib : []);
       });
-  }, [activeBrand?.id]);
+  }, [activeBrand?.id, libraryReloadKey]);
 
   const generateIdeas = async () => {
     if (!activeBrand) return;
@@ -198,7 +200,7 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
         onOpenChange={setBrollFixOpen}
         kind="broll"
         brandId={activeBrand?.id}
-        onDone={() => void loadLibrary?.()}
+        onDone={() => setLibraryReloadKey((k) => k + 1)}
       />
       {/* Section 1: AI B-Roll Idea Generator */}
       <section className="space-y-4">
