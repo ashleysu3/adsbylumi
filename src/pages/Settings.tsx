@@ -750,18 +750,13 @@ export default function Settings() {
                         </CardDescription>
                       </div>
                       <div className="flex gap-2">
-                        {isTrial && (
-                          <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
-                            Trial
-                          </Badge>
-                        )}
                         {isCodeBased && (
                           <Badge variant="secondary" className="bg-purple-500/10 text-purple-600 border-purple-500/30">
                             Invite Code
                           </Badge>
                         )}
                         <Badge className="bg-gradient-lumi text-white border-0">
-                          {status === 'trial' ? 'Trial Active' : 'Active'}
+                          Active
                         </Badge>
                       </div>
                     </div>
