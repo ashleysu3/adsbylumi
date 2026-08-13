@@ -1455,56 +1455,8 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
       >
         {/* Main Content */}
         <div className="flex-1 max-w-6xl mx-auto w-full">
-          {/* Toolbar — inside content container for alignment */}
-          <div className="flex items-end justify-between gap-3 mb-6">
-            <div className="flex flex-col gap-1 min-w-0">
-              <span className="text-xs text-muted-foreground font-medium">Campaign</span>
-              <Select value={selectedWorkspaceId} onValueChange={loadWorkspace}>
-                <SelectTrigger className="w-[200px] sm:w-[260px]"><SelectValue placeholder="Select campaign" /></SelectTrigger>
-                <SelectContent>{workspaces.map(w => (
-                  <SelectItem key={w.id} value={w.id}>
-                    <div className="flex flex-col">
-                      <span className="font-medium truncate max-w-[280px]">{w.name || w.offerName || "Untitled campaign"}</span>
-                      {w.offerName && w.name && w.offerName !== w.name && (
-                        <span className="text-[11px] text-muted-foreground truncate max-w-[280px]">Offer: {w.offerName}</span>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}</SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-2">
-              {(gridData.length > 0 || productionItems.length > 0) && (
-                <Button variant="outline" size="sm" onClick={() => setShowBrief(true)} className="gap-2 hidden sm:flex">
-                  <FileDown className="h-4 w-4" />
-                  Creative Brief
-                </Button>
-              )}
-              {primaryAction && (
-                <Button 
-                  variant="outline"
-                  size="sm"
-                  onClick={primaryAction.action} 
-                  disabled={primaryAction.disabled}
-                  className="gap-2 hidden sm:flex"
-                >
-                  <primaryAction.icon className="h-4 w-4" />
-                  {primaryAction.label}
-                </Button>
-              )}
-              {workspace && (
-                <Button 
-                  variant="lumi"
-                  size="sm"
-                  onClick={() => { setShowBYOUploader(true); setActiveTab("angles"); }}
-                  className="gap-2 hidden sm:flex"
-                >
-                  <Upload className="h-4 w-4" />
-                  Upload My Own Ads
-                </Button>
-              )}
-            </div>
-          </div>
+
+
 
           {/* Archetype-driven creative cadence — suggested test size +
               time-to-refresh nudge. Hidden when brand has no archetype. */}
