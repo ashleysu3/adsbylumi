@@ -1,5 +1,4 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { CampaignSpine } from "@/components/CampaignSpine";
 import { LaunchTray } from "@/components/LaunchTray";
 import CreativeStudio from "@/pages/CreativeStudio";
 
@@ -18,7 +17,6 @@ export default function Creative() {
   return (
     <DashboardLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4">
-        <CampaignSpine currentStep={2} compact />
         <LaunchTray />
         <CreativeStudio embedded />
       </div>
