@@ -1106,6 +1106,23 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             for (const r of kept) if (r.role === p && !ranked.includes(r)) ranked.push(r);
           }
           for (const r of kept) if (PHOTO_ROLES.has(r.role) && !ranked.includes(r)) ranked.push(r);
+
+          // Background/texture pick — a real background asset if they have one,
+          // otherwise nothing (the render falls back to their accent color).
+          const BG_ROLES = ["background", "texture", "pattern", "banner", "hero"];
+          const bgRow = kept.find((r) => BG_ROLES.includes(String(r.role || "")));
+          if (bgRow?.url) {
+            const bp = pathFromUrl(bgRow.url);
+            if (bp) {
+              const { data: bs } = await supabase.storage
+                .from("brand-assets")
+                .createSignedUrl(bp, 60 * 60);
+              backgroundUrlRef.current = bs?.signedUrl || bgRow.url;
+            } else {
+              backgroundUrlRef.current = bgRow.url;
+            }
+          }
+
           for (const r of ranked.slice(0, 8)) {
             const p = pathFromUrl(r.url);
             if (p) {
