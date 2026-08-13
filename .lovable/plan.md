@@ -1,77 +1,64 @@
-# Autosave everywhere
+# Creative generator pop-up: UX redesign
 
-## Goal
-No user should ever click "Save" or lose changes. Every editable field writes itself back to the database on change (debounced), flushes on navigation / tab close, and shows a small "Saving… / Saved" indicator instead of a button.
+Goal: turn the "Generate this creative (beta)" dialog into a calm, three-step flow with a live preview always in view. All generation logic, edge function calls, brief handling, and rendering stay exactly as they are — this is a layout and interaction change only.
 
-We already have the primitive: `useAutosave` (debounce + flush-on-unmount + flush-on-hide + beforeunload guard) and the `AutoSaveIndicator` component. This work is about applying them everywhere and deleting the manual Save UI.
+## Problems being fixed
 
-## Scope
+- Six stacked bands of chrome (title, beta banner, brand-kit swatches, step chips, tour button, mode link, brief card) before the first real control.
+- Two competing mental models: Template has 2 steps, Remix has none, and the step chips only render in Template mode.
+- Step 2 is one long scroll: image source, copy editor, render button, and a large color/size/case tweak panel all at equal weight.
+- No preview while editing — you edit copy blind, render, scroll down to results, scroll back up to tweak.
+- Developer language leaks into the UI ("Will be sent as `backgroundUrl` to the renderer", raw slot keys as labels).
 
-### In scope — user-facing editors that currently require a manual save
-Grouped by area. Each becomes "type → autosaves → indicator in the corner":
+## New structure
 
-- **Brand / Style**
-  - `src/pages/Style.tsx` (brand details, emoji settings, overlay style)
-  - `src/components/BrandColorsAndFonts.tsx`
-  - `src/components/BrandEditDialog.tsx`
-  - `src/components/BrandVoiceCard.tsx`
-  - `src/components/OverlayStylePicker.tsx`
-  - `src/pages/BrandSetup.tsx`
-- **Offers / Audience**
-  - `src/components/OfferEditDialog.tsx`, `OfferMessagingEditor.tsx`
-  - `src/components/AudiencePsychology.tsx`
-- **Campaigns / Creative**
-  - `src/pages/CreativeStudio.tsx`
-  - `src/components/creative/AngleCopyEditor.tsx`
-  - `src/components/MobileCampaignReview.tsx`
-  - `src/components/insights/CampaignGoalRow.tsx`
-- **Content / Ads Manager**
-  - `src/pages/ContentLibrary.tsx`
-  - `src/pages/AdsManager.tsx`
-  - `src/components/ads-manager/ReviewForm.tsx`, `ReportDraftPreview.tsx`
-- **Settings**
-  - `src/pages/AgencySettings.tsx`
-  - `src/components/PixelVerificationCard.tsx`
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ Generate this creative   Beta · Brand kit: Holly ▪▪▪▪        │
+│ ① Style ——— ② Image & copy ——— ③ Render        [Show me how] │
+├───────────────────────────────┬──────────────────────────────┤
+│ LEFT: step content (scrolls)   │ RIGHT: live preview (sticky) │
+│                                │  ┌────────────────┐         │
+│  brief summary (compact)       │  │                │         │
+│  step controls                 │  │   1:1 / 9:16   │         │
+│                                │  │                │         │
+│                                │  └────────────────┘         │
+│                                │  ▸ Refine (collapsed)       │
+├───────────────────────────────┴──────────────────────────────┤
+│ [Back]                                   [Primary action →]  │
+└──────────────────────────────────────────────────────────────┘
+```
 
-### Explicitly out of scope
-- **Destructive / transactional actions**: publish, launch campaign, send email, checkout, delete, "Apply brand guide" — these stay as explicit buttons. Autosave is for edits to your own data, not for firing side-effects.
-- **Admin console pages** (`src/pages/admin/*`): different UX (bulk edits, moderator intent). Keep manual save.
-- **Onboarding wizards** (`GuidedOnboarding.tsx`, `Onboarding.tsx`): step-based flows where "Next" is the save. Untouched.
-- **Auth / password change**: security-sensitive, must stay explicit.
+### Step 1 — Style
+Two large choice cards instead of the tiny "Remix a real ad instead" link:
+- **Use a template** — pick from built-in + custom templates (existing template grid).
+- **Remix a real ad** — pick a board image (existing board/image picker).
 
-## How it works
+Choosing a card sets `mode` and reveals that mode's picker inline. Continue advances to step 2.
 
-1. **One shared hook per editor.** Each editor component gets a `useAutosave` instance with a saver that upserts the current form state to the right table (`brands`, `brand_kits`, `offers`, `campaign_workspaces`, etc.). Debounce stays at 1500ms; existing behavior (flush on unmount, hide, beforeunload) is already correct.
+### Step 2 — Image & copy
+- Image source block first (uploads / brand library tabs, unchanged logic), with plain-English helper text replacing the `backgroundUrl` note.
+- Copy block second: option tabs and per-slide fields as today, but slot labels run through the friendly-label map, and empty slots read "Add {label}" instead of a blank box.
+- Every keystroke updates the right-hand preview.
 
-2. **One shared status pill.** Replace every "Save" button with `<AutoSaveIndicator status={status} />` in the card header or dialog footer. Users see "Saving…" while typing, "Saved" after, "Retrying…" on error.
+### Step 3 — Render & results
+- Primary "Render" action; results grid stays where it is today.
+- All styling controls (colors, text case, headline/body size, text color, text background) move into a **Refine** accordion under the preview, closed by default, auto-opened after the first successful render.
 
-3. **Dialogs never block on save.** `BrandEditDialog`, `OfferEditDialog`, etc. call `await flush()` in their close handler so the row is guaranteed persisted before the dialog unmounts — but the user just clicks the X or outside, no "Save & close".
-
-4. **Optimistic UI.** Local state updates immediately. Errors re-queue via the hook's existing retry, and we surface a toast only if the same save fails twice in a row (to avoid noise on flaky networks).
-
-5. **Cleanup.** Delete now-unused `handleSave*` functions, `saving` state, and Save button JSX from each file in scope.
-
-## Rollout order (small, verifiable batches)
-
-Instead of one giant PR, ship in four passes so each is testable:
-
-1. Style page cluster — brand details, colors/fonts, emoji, overlay style, voice card. (Highest visible payoff, all edits are simple field-updates.)
-2. Offers + Audience editors.
-3. Creative Studio + AngleCopyEditor + CampaignGoalRow.
-4. Ads Manager review/report + Agency settings + Pixel card.
-
-After each batch: build passes, visit the page in the preview, confirm the indicator shows Saving → Saved and reload shows the value persisted.
-
-## What the user will notice
-
-- No more "Save" buttons on brand, style, offers, audience, creative, and content editors.
-- A subtle "Saving… / Saved just now" indicator in the top-right of each card / dialog.
-- Closing a dialog or navigating away never loses input, even mid-keystroke.
-- Publish, launch, send, delete, and checkout still require an explicit click — those are actions, not edits.
+### Header cleanup
+- Beta banner + brand-kit swatch row condense to one line in the header: `Beta · Brand kit: <name> <swatches>`, with the swatch tooltip and "switch brands in the sidebar" hint preserved as a tooltip.
+- Step rail replaces the ad-hoc chips and renders identically in both modes.
+- Brief card becomes a single compact line with badges, expandable to show key message / offer.
 
 ## Technical notes
 
-- No schema changes. All target tables already exist and are being written to today.
-- No new dependencies; `useAutosave` + `AutoSaveIndicator` are already in the repo.
-- Each saver is scoped to the row currently loaded (brand id, offer id, workspace id) so there is no risk of cross-record writes.
-- The hook already handles: debounce, flush on unmount, flush on tab hide, `beforeunload` warning when a write is pending, and automatic retry on failure.
+- File: `src/components/creative/GenerateCreativeDialog.tsx` (currently 2282 lines). The redesign is a good moment to extract presentational pieces without touching logic:
+  - `StyleStep.tsx` — mode cards + template grid + board picker.
+  - `ImageCopyStep.tsx` — image source + copy editors (`SingleEditor` / `CarouselEditor` move here).
+  - `PreviewPane.tsx` — sticky preview + Refine accordion + results.
+  - Parent keeps all state, effects, `compose()`, `generate()`, `runAnalysis()`, brief handling unchanged.
+- `step` state becomes `"style" | "image-copy" | "render"`; Remix mode now uses the same three steps (its step 1 is the board picker).
+- Live preview reuses the existing render-preview markup; it renders from `editedSingle` / `editedSlides` + `selectedPhoto` + current style overrides, so no new backend calls.
+- `dialogTourSteps` gets a third branch for the render step; existing `data-help-target` attributes are carried over to the new components.
+- Dialog grows to `max-w-6xl` with a `md:grid-cols-[minmax(0,1fr)_360px]` body; on small screens the preview stacks above the controls.
+- Guardrails: no changes to `compose-ad`, `customSlots`/`customType` payloads, slide-count enforcement, or the `canRender` / `copyReady` gating rules.
