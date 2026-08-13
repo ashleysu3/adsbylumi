@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireAuthedUser } from "../_shared/check-subscription.ts";
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { assertBrandOfferAccess } from '../_shared/access.ts';
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -34,6 +35,22 @@ Deno.serve(async (req) => {
         creativeBrief,
         campaignName,
      } = await req.json();
+
+    // TENANCY GUARD: never generate concepts with another brand's / another
+    // brand's offer's context, even if the client sends mismatched ids.
+    {
+      const guardClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const access = await assertBrandOfferAccess(guardClient, gate.userId, brandId, offerId);
+      if (!access.ok) {
+        return new Response(JSON.stringify({ error: access.error }), {
+          status: access.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     // Derive the campaign INTENT so we constrain CTAs + angle behaviour.
     // The strategy plan tells us the actual Meta objective for THIS campaign

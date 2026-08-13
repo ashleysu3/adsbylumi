@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { fetchOfferPageLanguageBlock } from "../_shared/offer-page-language.ts";
 import { requireAuthedUser } from "../_shared/check-subscription.ts";
 import { buildPositioningBriefBlock } from "../_shared/positioning-brief.ts";
+import { assertBrandOfferAccess } from "../_shared/access.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,6 +21,21 @@ Deno.serve(async (req) => {
 
     const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext, creativeIntelligence, previouslyUsedAngles, neverUseWords, singleAngleReplacement, maxAngles, campaignObjective, creativeBrief, campaignName, positioningBrief } = await req.json();
     const positioningBlock = buildPositioningBriefBlock(positioningBrief);
+
+    // TENANCY GUARD: the brand + offer must belong together and to this caller.
+    {
+      const guardClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const access = await assertBrandOfferAccess(guardClient, gate.userId, brandId, offerId);
+      if (!access.ok) {
+        return new Response(JSON.stringify({ error: access.error }), {
+          status: access.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     // Map the campaign's Meta objective to an angle-shaping intent. Keeps
     // top-of-funnel awareness campaigns from generating webinar-registration
