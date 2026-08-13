@@ -48,6 +48,18 @@ function linesFor(copy: Copy) {
   return { headline, sub, eyebrow, cta };
 }
 
+// Turn a hex color into rgba() so the text box can be dialed in with opacity.
+function hexWithAlpha(hex: string, alpha: number) {
+  const h = (hex || "").replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  if (full.length < 6) return hex;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alpha))})`;
+}
+
+
 // Pull an ordered list of repeated slots (item1..item6, stat1Num/stat1Label, msg1..)
 const listOf = (copy: Copy, prefix: string, max = 6) =>
   Array.from({ length: max }, (_, i) => copy[`${prefix}${i + 1}`])
