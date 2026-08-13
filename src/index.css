@@ -349,6 +349,37 @@ p, li, span, blockquote {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
+/* Slow gradient outline — subtle attention without blinking */
+@keyframes rotate-outline {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.lumi-outline-gradient {
+  position: relative;
+  isolation: isolate;
+}
+
+.lumi-outline-gradient::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  z-index: -1;
+  border-radius: inherit;
+  background: conic-gradient(from 0deg, hsl(24 95% 53%), hsl(330 81% 60%), hsl(270 60% 70%), hsl(215 75% 70%), hsl(24 95% 53%));
+  animation: rotate-outline 3s linear infinite;
+  opacity: 0.9;
+}
+
+.lumi-outline-gradient:hover::before {
+  opacity: 1;
+  filter: drop-shadow(0 0 8px hsl(var(--lumi-pink-1) / 0.5));
+}
+
 /* Typing Headline Component */
 .typing-headline {
   font-family: 'Red Hat Display', system-ui, sans-serif;
