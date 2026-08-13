@@ -268,7 +268,60 @@ export function GenerateCreativeDialog() {
   const [placeLogo, setPlaceLogo] = useState(false);
   const [logoCorner, setLogoCorner] = useState<LogoCorner>("br");
   const [photosLoading, setPhotosLoading] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [selectedPhotoId, setSelectedPhotoId] = useState<string>("");
+
+  // Quick inline upload: lets someone drop in their own image right here
+  // instead of leaving the dialog to go to My Photos.
+  const uploadOwnPhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    if (!activeBrand?.id) {
+      toast.error("Choose a brand before uploading photos");
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) throw new Error("You must be signed in.");
+      const added: Photo[] = [];
+      for (const file of files) {
+        const safe = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+        const path = `${userId}/${activeBrand.id}/${Date.now()}-${safe}`;
+        const { error: upErr } = await supabase.storage
+          .from("ad-photos")
+          .upload(path, file, { cacheControl: "3600", upsert: false });
+        if (upErr) throw upErr;
+        const { data: row, error: insErr } = await supabase
+          .from("user_assets" as any)
+          .insert({ original_url: path, kind: "photo", brand_id: activeBrand.id })
+          .select("id")
+          .single();
+        if (insErr) throw insErr;
+        const { data: signed } = await supabase.storage
+          .from("ad-photos")
+          .createSignedUrl(path, 60 * 60);
+        added.push({
+          id: (row as any)?.id as string,
+          path,
+          url: signed?.signedUrl || "",
+          source: "upload",
+        });
+      }
+      setPhotos((prev) => [...added, ...prev]);
+      setImageSource("uploads");
+      if (added[0]) setSelectedPhotoId(added[0].id);
+      toast.success(`Uploaded ${added.length} image${added.length > 1 ? "s" : ""}`);
+    } catch (err: any) {
+      toast.error(err?.message || "Upload failed");
+    } finally {
+      setUploadingPhoto(false);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  };
+
   const [removeBackground, setRemoveBackground] = useState(true);
   // Beta: AI-generated brand background composited behind the layout.
   const [bgBetaOpen, setBgBetaOpen] = useState(false);
@@ -1770,7 +1823,31 @@ export function GenerateCreativeDialog() {
                   {/* Image */}
                   {needsPhoto && (
                     <div className="space-y-2">
-                      <Label className="text-xs uppercase text-muted-foreground">Your image</Label>
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-xs uppercase text-muted-foreground">Your image</Label>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1.5 text-xs"
+                          disabled={uploadingPhoto}
+                          onClick={() => photoInputRef.current?.click()}
+                        >
+                          {uploadingPhoto ? (
+                            <><Loader2 className="h-3 w-3 animate-spin" /> Uploading…</>
+                          ) : (
+                            <><ImagePlus className="h-3.5 w-3.5" /> Upload image</>
+                          )}
+                        </Button>
+                        <input
+                          ref={photoInputRef}
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={uploadOwnPhotos}
+                        />
+                      </div>
                       <Tabs value={imageSource} onValueChange={(v) => setImageSource(v as "uploads" | "brand")}>
                         <TabsList className="w-full">
                           <TabsTrigger value="uploads" className="flex-1">Your uploads</TabsTrigger>
@@ -1783,13 +1860,21 @@ export function GenerateCreativeDialog() {
                           <Loader2 className="h-3 w-3 animate-spin" /> Loading…
                         </div>
                       ) : pickerImages.length === 0 ? (
-                        <div className="text-xs text-muted-foreground rounded border p-3 flex items-center gap-2">
-                          <ImageOff className="h-4 w-4" />
-                          {imageSource === "uploads"
-                            ? "No uploads yet — add photos in My Photos."
-                            : "No brand images yet — pull images from your website in Style."}
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => photoInputRef.current?.click()}
+                          className="w-full text-xs text-muted-foreground rounded border border-dashed p-4 flex flex-col items-center gap-1.5 hover:border-primary hover:text-foreground transition"
+                        >
+                          <ImagePlus className="h-5 w-5" />
+                          <span className="font-medium text-foreground">Upload your own image</span>
+                          <span>
+                            {imageSource === "uploads"
+                              ? "Drop in a photo from your computer — it saves to My Photos too."
+                              : "No brand images yet — pull images from your website in Style."}
+                          </span>
+                        </button>
                       ) : (
+
                         <div className="grid grid-cols-5 gap-2 pt-1">
                           {pickerImages.slice(0, 20).map((p) => (
                             <div key={p.id} className="relative aspect-square">
