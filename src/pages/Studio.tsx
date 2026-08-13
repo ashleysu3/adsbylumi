@@ -70,6 +70,9 @@ export default function Studio() {
   const [liveCount, setLiveCount] = useState<number | null>(null);
   const [draftCount, setDraftCount] = useState<number | null>(null);
   const [resumeWorkspaceId, setResumeWorkspaceId] = useState<string | null>(null);
+  // Bumped after a Meta import so the live engine refetches
+  const [liveRefreshKey, setLiveRefreshKey] = useState(0);
+
 
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     live: true,
