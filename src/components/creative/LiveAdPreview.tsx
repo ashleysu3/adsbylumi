@@ -122,6 +122,10 @@ export function LiveAdPreview({
   logoUrl,
   showLogo,
   logoCorner = "br",
+  focalX = 50,
+  focalY = 50,
+  photoZoom = 1,
+  onFocalChange,
 }: {
   copy?: Copy;
   slides?: Copy[];
