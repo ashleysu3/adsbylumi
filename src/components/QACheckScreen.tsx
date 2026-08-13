@@ -124,9 +124,18 @@ export function QACheckScreen({
 
   // Tracking dialog state
   const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
-  const [confirmationUrl, setConfirmationUrl] = useState("");
+  // Prefill from what was already saved so returning to this screen (e.g. after
+  // editing copy) shows the thank-you page URL the user entered earlier.
+  const [confirmationUrl, setConfirmationUrl] = useState<string>(
+    workspace.custom_conversion_id || "",
+  );
+  const [trackingSetup, setTrackingSetup] = useState<{ verified: boolean; conversionUrl: string | null }>({
+    verified: !!workspace.tracking_verified && !!workspace.custom_conversion_id,
+    conversionUrl: workspace.custom_conversion_id || null,
+  });
   const [trackingSaving, setTrackingSaving] = useState(false);
   const [trackingCheck, setTrackingCheck] = useState<CheckResult | null>(null);
+
 
   // ---- Inline copy editor (policy / spelling fixes without leaving QA) ----
   const [wsCopy, setWsCopy] = useState<{ selected_copy: any; production_items: any[] }>({
@@ -189,8 +198,10 @@ export function QACheckScreen({
           template,
           approvedCopySignature:
             overrideCopy?.signature ?? workspace.approved_copy_signature ?? null,
+          trackingSetup,
         },
       });
+
 
 
       if (error) throw error;
@@ -513,16 +524,26 @@ export function QACheckScreen({
 
     setTrackingSaving(true);
     try {
+      const url = confirmationUrl.trim();
       // Save the confirmation URL to the workspace as the custom conversion URL
       const { error } = await supabase
         .from("campaign_workspaces")
         .update({
-          custom_conversion_id: confirmationUrl.trim(),
+          custom_conversion_id: url,
           tracking_verified: true,
+          updated_at: new Date().toISOString(),
         })
         .eq("id", workspace.id);
 
       if (error) throw error;
+
+      // Keep the in-memory workspace + local state in sync so navigating away
+      // and back (e.g. to edit copy) doesn't look like the URL was lost.
+      workspace.custom_conversion_id = url;
+      workspace.tracking_verified = true;
+      setTrackingSetup({ verified: true, conversionUrl: url });
+
+
 
       // Update the tracking check to passed
       setChecks((prev) =>

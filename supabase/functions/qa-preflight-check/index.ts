@@ -46,7 +46,9 @@ serve(async (req) => {
       selectedCopy,
       template,
       approvedCopySignature,
+      trackingSetup,
     } = await req.json();
+
 
     console.log('QA Preflight Check started');
     console.log('productionItems count:', productionItems?.length || 0);
@@ -75,7 +77,7 @@ serve(async (req) => {
     results.push(checkSchedule(answers));
     const landingPageResult = await checkLandingPage(resolvedUrl, brand);
     results.push(landingPageResult);
-    results.push(checkEventTracking(brand, template, landingPageResult));
+    results.push(checkEventTracking(brand, template, landingPageResult, trackingSetup));
     if (copyPreApproved) {
       results.push({ id: 'spelling', name: 'Spelling & Grammar', status: 'passed', message: 'Approved copy — skipped', details: 'Copy was already reviewed and approved.' });
       results.push({ id: 'ad_policy', name: 'Ad Policy', status: 'passed', message: 'Approved copy — skipped', details: 'Copy was already reviewed and approved.' });
@@ -476,8 +478,14 @@ async function checkLandingPage(url: string | undefined, brand: any): Promise<Ch
 
 
 
-function checkEventTracking(brand: any, template: any, lp?: CheckResult): CheckResult {
+function checkEventTracking(
+  brand: any,
+  template: any,
+  lp?: CheckResult,
+  trackingSetup?: { verified?: boolean; conversionUrl?: string | null } | null,
+): CheckResult {
   const objective = template?.objective?.toLowerCase() || '';
+
   const optimizationEvent = template?.optimization_event || '';
 
   let requiredEvent = '';
@@ -505,6 +513,18 @@ function checkEventTracking(brand: any, template: any, lp?: CheckResult): CheckR
   const pixelState: PixelState = (lp?.pixelState as PixelState) || 'unknown';
   const foundPixelId = lp?.foundPixelId || null;
   const base = { id: 'tracking', name: 'Event Tracking', requiredEvent, pixelId, campaignGoal, pixelState } as const;
+
+  // The user already set up the conversion with a thank-you page URL — keep it
+  // green so it survives leaving and coming back to the publish screen.
+  if (trackingSetup?.verified && trackingSetup?.conversionUrl) {
+    return {
+      ...base, status: 'passed',
+      message: 'Confirmation page URL set',
+      details: `Meta will track conversions when someone lands on: ${trackingSetup.conversionUrl}`,
+    };
+  }
+
+
 
   // 1. No pixel on the ad account at all — that IS "no pixel connected".
   if (!pixelId) {
