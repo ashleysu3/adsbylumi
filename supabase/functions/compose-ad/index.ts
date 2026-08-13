@@ -436,7 +436,8 @@ serve(async (req) => {
     }
 
     // Validate slot lengths. If any slot is over, re-prompt ONCE with the specific offenders.
-    let violations = findViolations(options, template);
+    // Custom templates define their own slots, so there are no built-in budgets to check.
+    let violations = isCustom ? [] : findViolations(options, template);
     if (violations.length > 0) {
       console.log(`compose-ad: ${violations.length} slot(s) over budget on first pass, retrying once.`);
       const retryUser =
