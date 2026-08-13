@@ -43,6 +43,10 @@ const hasRealMetaCampaign = (metaCampaignIds: any): boolean => {
 
 interface CampaignsListProps {
   brandId: string;
+  /** Limit the list to drafts (in progress) or live campaigns. Default: everything. */
+  restrictTo?: "all" | "draft" | "live";
+  /** Reports how many campaigns are visible (after the restrictTo filter). */
+  onCountChange?: (count: number) => void;
   addCreativeMode?: boolean;
   /** Skip this workspace — it's already featured in the "Continue your ad?" banner above. */
   excludeWorkspaceId?: string | null;
@@ -51,7 +55,7 @@ interface CampaignsListProps {
 
 type ViewFilter = "all" | "draft" | "live";
 
-export function CampaignsList({ brandId, addCreativeMode = false, excludeWorkspaceId, onCampaignSelectForCreative }: CampaignsListProps) {
+export function CampaignsList({ brandId, restrictTo = "all", onCountChange, addCreativeMode = false, excludeWorkspaceId, onCampaignSelectForCreative }: CampaignsListProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -321,6 +325,8 @@ export function CampaignsList({ brandId, addCreativeMode = false, excludeWorkspa
   // campaign here to manage its creative.
   const filteredCampaigns = campaigns.filter(c => {
     if (c.id === excludeWorkspaceId) return false;
+    if (restrictTo === "live" && !isLive(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids)) return false;
+    if (restrictTo === "draft" && !isDraft(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids)) return false;
     if (viewFilter === "live") return isLive(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids);
     if (viewFilter === "draft") return isDraft(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids);
     return true;
@@ -328,6 +334,11 @@ export function CampaignsList({ brandId, addCreativeMode = false, excludeWorkspa
 
   const liveCount = campaigns.filter(c => isLive(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids)).length;
   const draftCount = campaigns.filter(c => isDraft(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids)).length;
+
+  // Let the parent (My Ads sections) show a live count in its header.
+  useEffect(() => {
+    onCountChange?.(filteredCampaigns.filter(c => !c.archived).length);
+  }, [filteredCampaigns.length, loading]);
 
   if (loading) {
     return (

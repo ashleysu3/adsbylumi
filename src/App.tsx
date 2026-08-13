@@ -33,7 +33,7 @@ const AdPerformance = lazy(() => import("./pages/Data"));
 import WorkspaceRedirect from "./pages/WorkspaceRedirect";
 import CampaignBuilder from "./pages/CampaignBuilder";
 
-import Campaigns from "./pages/Campaigns";
+import MyAds from "./pages/MyAds";
 import MetaOAuthCallback from "./pages/MetaOAuthCallback";
 const AdminKnowledge = lazy(() => import("./pages/admin/Knowledge"));
 const AdminAnalytics = lazy(() => import("./pages/admin/Analytics"));
@@ -187,22 +187,23 @@ const App = () => {
                   <Route path="/strategy-plan" element={<Navigate to="/strategy" replace />} />
                   <Route path="/home" element={<Home />} />
                   <Route path="/dashboard" element={<Navigate to="/initial-setup" replace />} />
-                  <Route path="/planning" element={<Navigate to="/campaigns" replace />} />
+                  <Route path="/planning" element={<Navigate to="/my-ads" replace />} />
                   <Route path="/strategy" element={<AdStrategy />} />
                   <Route path="/strategy-builder" element={<Strategy />} />
                   
                   <Route path="/creative" element={<Creative />} />
                   <Route path="/launch" element={<Launch />} />
-                  <Route path="/live-ads" element={<Performance />} />
-                  <Route path="/ad-performance" element={<Navigate to="/live-ads" replace />} />
+                  <Route path="/my-ads" element={<MyAds />} />
+                  <Route path="/live-ads" element={<Navigate to="/my-ads" replace />} />
+                  <Route path="/ad-performance" element={<Navigate to="/my-ads" replace />} />
                   <Route path="/live-ads/:campaignId" element={<CloserLook />} />
                   <Route path="/data" element={<AdPerformance />} />
-                  <Route path="/performance" element={<Navigate to="/ad-performance" replace />} />
-                  <Route path="/performance-summary" element={<Navigate to="/ad-performance" replace />} />
-                  <Route path="/performance-history" element={<Navigate to="/ad-performance" replace />} />
-                  <Route path="/past-reports" element={<Navigate to="/ad-performance" replace />} />
-                  <Route path="/production" element={<Navigate to="/campaigns" replace />} />
-                  <Route path="/campaigns" element={<Campaigns />} />
+                  <Route path="/performance" element={<Navigate to="/my-ads" replace />} />
+                  <Route path="/performance-summary" element={<Navigate to="/my-ads" replace />} />
+                  <Route path="/performance-history" element={<Navigate to="/my-ads" replace />} />
+                  <Route path="/past-reports" element={<Navigate to="/my-ads" replace />} />
+                  <Route path="/production" element={<Navigate to="/my-ads" replace />} />
+                  <Route path="/campaigns" element={<MyAds />} />
                   <Route path="/ad-generator" element={<AdGenerator />} />
                   <Route path="/brand-setup" element={<BrandSetup />} />
                   <Route path="/photos" element={<Photos />} />

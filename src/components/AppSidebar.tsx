@@ -8,7 +8,6 @@ import {
   LifeBuoy,
   ChevronDown,
   Activity,
-  Loader2,
   Plus,
   Lightbulb,
   Images,
@@ -77,8 +76,7 @@ type NavGroup = {
 const topActions: NavItem[] = [
   { label: "Home", to: "/home", icon: LayoutGrid },
   { label: "Create New", to: "/create", icon: Plus },
-  { label: "My Ads", to: "/ad-performance", icon: Activity },
-  { label: "Campaigns", to: "/campaigns", icon: Loader2 },
+  { label: "My Ads", to: "/my-ads", icon: Activity },
 ];
 
 // Two collapsible folders for the deeper work.
