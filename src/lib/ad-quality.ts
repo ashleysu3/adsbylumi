@@ -268,8 +268,42 @@ export function guardPalette<T extends { bg: string; ink: string; accent: string
     }
   }
 
+  // 4) `cream` is the card surface most photo templates lay copy on. It was
+  //    never validated, which is how a white headline ended up on a cream card
+  //    (unreadable) even though ink-vs-bg passed. Force it to a real light
+  //    surface and make sure ink reads on BOTH surfaces, not just bg.
+  if (!toRgb(out.cream) || relLuminance(out.cream) < 0.5) {
+    out.cream = "#fdf7f2";
+  }
+  if (contrastRatio(out.ink, out.cream) < 4.5) {
+    out.ink = relLuminance(out.cream) > 0.4 ? "#111111" : "#ffffff";
+    // Flipping ink for the card must not break it against bg.
+    if (contrastRatio(out.ink, out.bg) < 4.5) {
+      out.bg = relLuminance(out.ink) > 0.5 ? "#111111" : "#ffffff";
+    }
+  }
+  // An accent chip sitting on the cream card needs to separate from it too.
+  if (contrastRatio(out.accent, out.cream) < 2.5) {
+    const alt = [out.pop, out.highlight, out.ink].find(
+      (c: string) => contrastRatio(c, out.cream) >= 2.5,
+    );
+    out.accent = alt || (relLuminance(out.cream) > 0.4 ? "#111111" : "#ffffff");
+    if (contrastRatio(out.pop, out.cream) < 2.5) out.pop = out.accent;
+    if (contrastRatio(out.highlight, out.cream) < 2.5) out.highlight = out.accent;
+  }
+
   return out as T;
 }
+
+/**
+ * Black or white — whichever is readable on top of `surface`. Used for every
+ * label the engine paints onto a colored chip/card so we never hand it a
+ * "text color" that happens to match the surface underneath.
+ */
+export function readableTextOn(surface: string): string {
+  return relLuminance(surface) > 0.42 ? "#111111" : "#ffffff";
+}
+
 
 /** Normalize a website/domain string to the key used for pinned demo ads. */
 export function normalizeDemoDomain(input?: string | null): string {
