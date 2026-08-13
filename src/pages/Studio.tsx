@@ -5,6 +5,7 @@ import Performance from "@/pages/Performance";
 import { CampaignsList } from "@/components/CampaignsList";
 import { ResumeWorkspaceBanner } from "@/components/ResumeWorkspaceBanner";
 import { MetaImportBridgeBanner } from "@/components/insights/MetaImportBridgeBanner";
+import { ImportFromMetaButton } from "@/components/insights/ImportFromMetaButton";
 import { GridShimmer } from "@/components/GradientShimmer";
 import { Button } from "@/components/ui/button";
 import { useBrand } from "@/contexts/BrandContext";
@@ -69,6 +70,9 @@ export default function Studio() {
   const [liveCount, setLiveCount] = useState<number | null>(null);
   const [draftCount, setDraftCount] = useState<number | null>(null);
   const [resumeWorkspaceId, setResumeWorkspaceId] = useState<string | null>(null);
+  // Bumped after a Meta import so the live engine refetches
+  const [liveRefreshKey, setLiveRefreshKey] = useState(0);
+
 
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     live: true,
@@ -227,42 +231,51 @@ export default function Studio() {
           </div>
         )}
 
-        <div className={liveCount === 0 && draftCount === 0 ? "hidden" : "contents"}>
+        <div className={liveCount === 0 && draftCount === 0 ? "hidden" : "space-y-6"}>
         {/* ── LIVE ───────────────────────────────────────────────────────── */}
-        {/* Both engines stay mounted while collapsed so the header counts are
-            accurate before the user expands anything — collapsing only hides. */}
-        <div className="space-y-4">
-          <button
-            type="button"
-            onClick={() => toggleSection("live")}
-            className="w-full rounded-xl border bg-card/60 px-4 py-3 hover:bg-card transition-colors"
-          >
-            <SectionHeader
-              open={openSections.live}
-              icon={Radio}
-              label="Live"
-              count={liveCount}
-              hint="Running, paused, or off in Meta"
+        {/* Header and content share one panel so the section reads as a single
+            block instead of a floating title above a gap. Both engines stay
+            mounted while collapsed so the counts are accurate. */}
+        <section className="rounded-xl border bg-card/60 overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3">
+            <button
+              type="button"
+              onClick={() => toggleSection("live")}
+              className="flex-1 min-w-0 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+            >
+              <SectionHeader
+                open={openSections.live}
+                icon={Radio}
+                label="Live"
+                count={liveCount}
+                hint="Running, paused, or off in Meta"
+              />
+            </button>
+            <ImportFromMetaButton
+              brandId={activeBrand.id}
+              className="shrink-0"
+              onImported={() => setLiveRefreshKey((k) => k + 1)}
             />
-          </button>
-          <div className={openSections.live ? undefined : "hidden"}>
-            {liveCount === 0 && (
-              <div className="rounded-xl border bg-card/40 px-4 py-8 text-center text-sm text-muted-foreground">
-                No ads running yet — finish a draft below and hit publish.
-              </div>
-            )}
           </div>
-          <div className={openSections.live && liveCount !== 0 ? undefined : "hidden"}>
-            <Performance embedded onLiveCountChange={setLiveCount} />
+          <div className={cn("border-t", !openSections.live && "hidden")}>
+            {liveCount === 0 ? (
+              <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+                No ads running yet — finish a draft below and hit publish, or import what's
+                already running in Meta.
+              </p>
+            ) : null}
+            <div className={cn("p-4", liveCount === 0 && "hidden")}>
+              <Performance key={liveRefreshKey} embedded onLiveCountChange={setLiveCount} />
+            </div>
           </div>
-        </div>
+        </section>
 
         {/* ── IN PROGRESS ────────────────────────────────────────────────── */}
-        <div className="space-y-4">
+        <section className="rounded-xl border bg-card/60 overflow-hidden">
           <button
             type="button"
             onClick={() => toggleSection("progress")}
-            className="w-full rounded-xl border bg-card/60 px-4 py-3 hover:bg-card transition-colors"
+            className="w-full px-4 py-3 hover:bg-card transition-colors"
           >
             <SectionHeader
               open={openSections.progress}
@@ -272,13 +285,11 @@ export default function Studio() {
               hint="Drafts you're still building"
             />
           </button>
-          <div className={cn("space-y-4", !openSections.progress && "hidden")}>
+          <div className={cn("border-t p-4 space-y-3", !openSections.progress && "hidden")}>
             <ResumeWorkspaceBanner
               brandId={activeBrand.id}
               onWorkspaceResolved={setResumeWorkspaceId}
             />
-          </div>
-          <div className={openSections.progress ? undefined : "hidden"}>
             <CampaignsList
               brandId={activeBrand.id}
               restrictTo="draft"
@@ -286,8 +297,9 @@ export default function Studio() {
               excludeWorkspaceId={resumeWorkspaceId}
             />
           </div>
+        </section>
         </div>
-        </div>
+
 
       </div>
     </DashboardLayout>
