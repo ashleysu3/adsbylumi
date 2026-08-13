@@ -190,25 +190,17 @@ export default function Studio() {
   return (
     <DashboardLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-        {/* Page header */}
-        <div className="flex items-end justify-between gap-3 flex-wrap">
-          <div>
-            <h1 className="text-3xl font-display font-bold tracking-tight">
-              Ad <span className="text-gradient-lumi">Dashboard</span>
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Everything you're running, and everything you're building.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate("/create")}
-            className="rounded-lg bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-sm px-4 py-2.5 flex items-center gap-2 font-semibold tracking-tight transition-transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <Plus className="h-4 w-4" />
-            Create a new ad
-          </button>
+        {/* Page header — the "Create a new ad" button lives in the top bar now,
+            so it isn't repeated here. */}
+        <div>
+          <h1 className="text-3xl font-display font-bold tracking-tight">
+            Ad <span className="text-gradient-lumi">Dashboard</span>
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Everything you're running, and everything you're building.
+          </p>
         </div>
+
 
         {/* Meta has campaigns LUMI doesn't know about yet */}
         <MetaImportBridgeBanner surface="live-ads" />
