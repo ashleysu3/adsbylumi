@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireAuthedUser } from "../_shared/check-subscription.ts";
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { buildPositioningBriefBlock } from '../_shared/positioning-brief.ts';
+import { buildPageLanguageBlock, fetchOfferPageLanguageBlock } from '../_shared/offer-page-language.ts';
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -114,6 +115,15 @@ testimonial quote from the content assets above.
 
     // Extract offer-specific messaging guidelines
     const messagingGuidelines = offerData?.messaging_guidelines || {};
+    // Their own sales-page language (verbatim source material).
+    const pageLanguageBlock =
+      (await fetchOfferPageLanguageBlock(supabase, offerId)) ||
+      buildPageLanguageBlock({
+        messagingGuidelines,
+        offerAudiencePsychology: offerAudiencePsychology,
+        productPsychology: offerData?.product_psychology,
+        url: offerData?.url,
+      });
     const productPsychology = offerData?.product_psychology || {};
     
     const painPoints = toArray(productPsychology.pain_points);
@@ -310,7 +320,8 @@ For each angle, create:
 - 3-5 description variations (different frameworks)
 - 3-5 primary copy variations (mix of short/medium/long, different frameworks)
 
-Make sure each angle's copy reflects its UNIQUE positioning and psychological approach. Use the offer-audience psychology to address specific hesitations and highlight the emotional transformation.`;
+Make sure each angle's copy reflects its UNIQUE positioning and psychological approach. Use the offer-audience psychology to address specific hesitations and highlight the emotional transformation. Wherever the sales page already says it well, reuse their exact wording.
+${pageLanguageBlock}`;
 
     console.log(`Generating copy for ${angles.length} angles...`);
 

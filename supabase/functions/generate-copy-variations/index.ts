@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.83.0';
+import { buildPageLanguageBlock, fetchOfferPageLanguageBlock } from '../_shared/offer-page-language.ts';
 import { requirePaidUser } from '../_shared/check-subscription.ts';
 import { getCorsHeaders } from '../_shared/cors.ts';
 
@@ -75,6 +76,16 @@ serve(async (req) => {
     const offer = brandInfo?.offer || {};
     const messagingGuidelines = offer?.messaging_guidelines || {};
     const productPsychology = offer?.product_psychology || {};
+    // Their own sales-page language (verbatim source material).
+    const pageLanguageBlock =
+      (offer?.id ? await fetchOfferPageLanguageBlock(supabase, offer.id) : '') ||
+      buildPageLanguageBlock({
+        messagingGuidelines,
+        offerAudiencePsychology: offer?.offer_audience_psychology,
+        productPsychology,
+        pageExcerpt: offer?.page_excerpt,
+        url: offer?.url,
+      });
 
     // Helper function to safely handle array-like fields (could be string, array, or undefined)
     const toArray = (val: any): string[] => {

@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.83.0';
+import { buildPageLanguageBlock, fetchOfferPageLanguageBlock } from '../_shared/offer-page-language.ts';
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { buildPositioningBriefBlock } from '../_shared/positioning-brief.ts';
 import { requirePaidUser } from '../_shared/check-subscription.ts';
@@ -73,6 +74,16 @@ serve(async (req) => {
     const offer = brandInfo?.offer || {};
     const messagingGuidelines = offer?.messaging_guidelines || {};
     const productPsychology = offer?.product_psychology || {};
+    // Their own sales-page language (verbatim source material).
+    const pageLanguageBlock =
+      (offer?.id ? await fetchOfferPageLanguageBlock(supabase, offer.id) : '') ||
+      buildPageLanguageBlock({
+        messagingGuidelines,
+        offerAudiencePsychology: offer?.offer_audience_psychology,
+        productPsychology,
+        pageExcerpt: offer?.page_excerpt,
+        url: offer?.url,
+      });
 
     const systemPrompt = `You are a Meta Ads copywriter specializing in high-converting ad copy that complies with Meta's policies.
 ${positioningBlock}

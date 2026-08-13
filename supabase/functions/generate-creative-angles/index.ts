@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { fetchOfferPageLanguageBlock } from "../_shared/offer-page-language.ts";
 import { requireAuthedUser } from "../_shared/check-subscription.ts";
 import { buildPositioningBriefBlock } from "../_shared/positioning-brief.ts";
 
@@ -54,6 +55,9 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Their own sales-page language — mined before we invent anything.
+    const pageLanguageBlock = await fetchOfferPageLanguageBlock(supabase, offerId);
 
     console.log("[generate-creative-angles] Fetching knowledge base...");
 
@@ -448,6 +452,7 @@ ${dmContext}
 ${audiencePsychology ? `BRAND-LEVEL AUDIENCE PSYCHOLOGY:\n${JSON.stringify(audiencePsychology, null, 2)}` : ""}
 
 ${productPsychology ? `PRODUCT PSYCHOLOGY:\n${JSON.stringify(productPsychology, null, 2)}` : ""}
+${pageLanguageBlock}
 
 Generate ${maxAngles === 1 ? 'exactly 1 creative angle as a replacement for "' + (singleAngleReplacement || '') + '"' : 'exactly 10 creative angles'} that would resonate with this audience and offer. Use both the brand-level psychology for broad appeal and the offer-specific insights for targeted messaging.${conversationInsights?.length > 0 ? " Make sure to incorporate the user's specific insights from their previous conversations." : ""}${isDmLeads ? " Remember: every angle must drive DM conversations, not link clicks or purchases." : ""}`;
 
