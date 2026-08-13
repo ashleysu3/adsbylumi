@@ -34,6 +34,8 @@ export function BRollTrimDialog({ open, clip, onClose, onSave }: BRollTrimDialog
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(0);
   const [saving, setSaving] = useState(false);
+  const playableUrl = usePlayableUrl(clip?.file_url);
+
 
   // Initialize trim values when clip changes
   useEffect(() => {
