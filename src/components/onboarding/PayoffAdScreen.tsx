@@ -760,6 +760,46 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
     }
   }, [palette, brandId, rerenderWith, selectedIdx]);
 
+  // Pin the ad currently on screen as the hand-approved demo result for this
+  // brand's domain. Admin-only; the row is what every later visit to that
+  // domain reveals instead of a fresh (and possibly weak) render.
+  const [pinning, setPinning] = useState(false);
+  const pinCurrentAd = useCallback(async () => {
+    const domain = normalizeDemoDomain((brand as any)?.website_url);
+    if (!domain) {
+      toast.error("This brand has no website on file — can't pin it.");
+      return;
+    }
+    if (!images.length) {
+      toast.error("Nothing to pin yet.");
+      return;
+    }
+    setPinning(true);
+    try {
+      const { data: userRes } = await supabase.auth.getUser();
+      const { error } = await supabase.from("demo_pinned_ads" as any).upsert(
+        {
+          domain,
+          label: brand?.name || domain,
+          template: templateRef.current,
+          copy: options[selectedIdx] || null,
+          images: images as any,
+          active: true,
+          created_by: userRes?.user?.id || null,
+        },
+        { onConflict: "domain" },
+      );
+      if (error) throw error;
+      pinnedRef.current = { images, copy: options[selectedIdx], template: templateRef.current };
+      toast.success(`Pinned as the demo ad for ${domain}`);
+    } catch (e: any) {
+      console.error("[payoff-ad] pin failed", e);
+      toast.error(e?.message || "Couldn't pin this ad");
+    } finally {
+      setPinning(false);
+    }
+  }, [brand, images, options, selectedIdx]);
+
   // Phase B of the build: compose the copy and render the ad. Runs either from
   // the user's "Build my ad" click (with their chosen angle + photo) or straight
   // from boot when angle generation came back empty — so the old auto-build path
