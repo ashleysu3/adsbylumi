@@ -1154,6 +1154,9 @@ export default function GuidedOnboarding() {
         )}
 
         {/* ============== STEP 1 — Website only ============== */}
+        {step === 1 && (autoStartFiredRef.current || step1Busy) && (
+          <OnboardingLoadingOverlay visible statusLabel="Opening your site…" />
+        )}
         {step === 1 && !autoStartFiredRef.current && !step1Busy && (
           <div className="min-h-[70vh] flex items-center justify-center py-8">
             <div className="w-full max-w-xl mx-auto">
