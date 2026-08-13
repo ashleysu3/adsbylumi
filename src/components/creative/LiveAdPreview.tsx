@@ -100,6 +100,23 @@ const FAMILY: Record<string, Family> = {
   carousel: "overlay",
 };
 
+// Width/height ratio of the photo slot inside each layout family, based on a
+// 1:1 feed canvas. Used to pre-crop the photo so the render frames exactly what
+// the live preview shows.
+const FRAME_ASPECT: Partial<Record<Family, number>> = {
+  split: 0.5,
+  framed: 0.45,
+  device: 0.5,
+  spotlight: 1,
+  collage: 1,
+};
+
+export function photoFrameAspect(template?: string): number {
+  const fam: Family = FAMILY[template || ""] || "overlay";
+  return FRAME_ASPECT[fam] ?? 1;
+}
+
+
 export function LiveAdPreview({
   copy,
   slides,
