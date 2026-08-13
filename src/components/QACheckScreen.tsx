@@ -1219,9 +1219,17 @@ fbq('track', 'PageView');
                 {copySaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                 Save & re-check
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => copyCheck && acknowledgeCopyCheck(copyCheck)}
+                disabled={copySaving}
+              >
+                Keep as-is
+              </Button>
               <Button variant="ghost" onClick={() => setCopyDialogOpen(false)} disabled={copySaving}>
                 Cancel
               </Button>
+
             </div>
             {onFixIssue && (
               <button
