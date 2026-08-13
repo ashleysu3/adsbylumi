@@ -7,7 +7,6 @@ import { ResumeWorkspaceBanner } from "@/components/ResumeWorkspaceBanner";
 import { MetaImportBridgeBanner } from "@/components/insights/MetaImportBridgeBanner";
 import { GridShimmer } from "@/components/GradientShimmer";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronDown, Radio, PenTool, Plus } from "lucide-react";
@@ -207,8 +206,14 @@ export default function MyAds() {
         <MetaImportBridgeBanner surface="live-ads" />
 
         {/* ── LIVE ───────────────────────────────────────────────────────── */}
-        <Collapsible open={openSections.live} onOpenChange={() => toggleSection("live")}>
-          <CollapsibleTrigger className="w-full rounded-xl border bg-card/60 px-4 py-3 hover:bg-card transition-colors">
+        {/* Both engines stay mounted while collapsed so the header counts are
+            accurate before the user expands anything — collapsing only hides. */}
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => toggleSection("live")}
+            className="w-full rounded-xl border bg-card/60 px-4 py-3 hover:bg-card transition-colors"
+          >
             <SectionHeader
               open={openSections.live}
               icon={Radio}
@@ -216,36 +221,26 @@ export default function MyAds() {
               count={liveCount}
               hint="Running, paused, or off in Meta"
             />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-4">
-            {liveCount === 0 ? (
+          </button>
+          <div className={openSections.live ? undefined : "hidden"}>
+            {liveCount === 0 && (
               <div className="rounded-xl border bg-card/40 px-4 py-8 text-center text-sm text-muted-foreground">
                 No ads running yet — finish a draft below and hit publish.
               </div>
-            ) : null}
-            <div className={liveCount === 0 ? "hidden" : undefined}>
-              <Performance embedded onLiveCountChange={setLiveCount} />
-            </div>
-            {/* Keep the engine mounted so it can report the count even at zero. */}
-            {liveCount === 0 && (
-              <div className="hidden">
-                <Performance embedded onLiveCountChange={setLiveCount} />
-              </div>
             )}
-          </CollapsibleContent>
-        </Collapsible>
-
-        {/* Mount the engine once even when the section is collapsed, so the
-            header count is honest before the user expands anything. */}
-        {!openSections.live && (
-          <div className="hidden">
+          </div>
+          <div className={openSections.live && liveCount !== 0 ? undefined : "hidden"}>
             <Performance embedded onLiveCountChange={setLiveCount} />
           </div>
-        )}
+        </div>
 
         {/* ── IN PROGRESS ────────────────────────────────────────────────── */}
-        <Collapsible open={openSections.progress} onOpenChange={() => toggleSection("progress")}>
-          <CollapsibleTrigger className="w-full rounded-xl border bg-card/60 px-4 py-3 hover:bg-card transition-colors">
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => toggleSection("progress")}
+            className="w-full rounded-xl border bg-card/60 px-4 py-3 hover:bg-card transition-colors"
+          >
             <SectionHeader
               open={openSections.progress}
               icon={PenTool}
@@ -253,27 +248,23 @@ export default function MyAds() {
               count={draftCount}
               hint="Drafts you're still building"
             />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-4 space-y-4">
+          </button>
+          <div className={cn("space-y-4", !openSections.progress && "hidden")}>
             <ResumeWorkspaceBanner
               brandId={activeBrand.id}
               onWorkspaceResolved={setResumeWorkspaceId}
             />
+          </div>
+          <div className={openSections.progress ? undefined : "hidden"}>
             <CampaignsList
               brandId={activeBrand.id}
               restrictTo="draft"
               onCountChange={setDraftCount}
               excludeWorkspaceId={resumeWorkspaceId}
             />
-          </CollapsibleContent>
-        </Collapsible>
-
-        {/* Count the drafts even while collapsed. */}
-        {!openSections.progress && (
-          <div className="hidden">
-            <CampaignsList brandId={activeBrand.id} restrictTo="draft" onCountChange={setDraftCount} />
           </div>
-        )}
+        </div>
+
       </div>
     </DashboardLayout>
   );
