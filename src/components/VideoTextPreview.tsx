@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { usePlayableUrl } from '@/hooks/usePlayableUrl';
 
 // ============================================================================
 // VideoTextPreview (patch #17)
@@ -221,7 +222,9 @@ export function VideoTextPreview({
   trimEnd,
 }: VideoTextPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const playableUrl = usePlayableUrl(videoUrl);
   const containerRef = useRef<HTMLDivElement>(null);
+
   const [, setCurrentTime] = useState(0);
   const [timelineTime, setTimelineTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -809,7 +812,7 @@ export function VideoTextPreview({
       >
         <video
           ref={videoRef}
-          src={videoUrl}
+          src={playableUrl}
           className="w-full h-full object-contain"
           controls
           muted
