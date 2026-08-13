@@ -2272,55 +2272,67 @@ export function GenerateCreativeDialog() {
                     <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                          Reposition the photo — drag it here
+                          Reposition the photo — drag each size
                         </p>
-                        <div className="flex items-center gap-2">
-                          {FrameToggle}
-                          <button
-                            type="button"
-                            className="text-[10px] text-muted-foreground underline"
-                            onClick={resetActiveFraming}
-                          >
-                            Reset framing
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          className="text-[10px] text-muted-foreground underline"
+                          onClick={() => {
+                            setFocalX(50); setFocalY(50); setPhotoZoom(1);
+                            setStoryFocalX(50); setStoryFocalY(50); setStoryZoom(1);
+                          }}
+                        >
+                          Reset framing
+                        </button>
                       </div>
-                      <div className="max-w-[340px]">
-                        <LiveAdPreview
-                          copy={editedSingle}
-                          slides={editedSlides}
-                          isCarousel={isCarousel}
-                          template={template}
-                          templateLabel={activeCustom ? activeCustom.name : (BUILT_IN_LABELS[template] || template)}
-                          colors={colors}
-                          displayFamily={displayFamily}
-                          bodyFamily={bodyFamily}
-                          photoUrl={selectedPhoto?.url}
-                          backgroundUrl={bgSelectedUrl || undefined}
-                          textCase={textCase}
-                          headlineScale={headlineScale}
-                          bodyScale={bodyScale}
-                          textBoxStyle={textBoxStyle}
-                          textBoxColor={textBoxColor || colors.bg}
-                          textBoxOpacity={textBoxOpacity}
-                          textPosition={textPosition}
-                          textAlign={textAlign}
-                          logoUrl={brandLogoAsset?.url}
-                          showLogo={placeLogo}
-                          logoCorner={logoCorner}
-                          frame={previewFrame}
-                          focalX={activeFocalX}
-                          focalY={activeFocalY}
-                          photoZoom={activeZoom}
-                          onFocalChange={setActiveFocal}
-                        />
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Zoom</p>
-                          <span className="text-[10px] text-muted-foreground tabular-nums">{activeZoom.toFixed(2)}x</span>
-                        </div>
-                        <Slider min={1} max={2.5} step={0.05} value={[activeZoom]} onValueChange={(v) => setActiveZoom(v[0])} />
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        {([
+                          { frame: "feed" as const, label: "Feed 1:1", fx: focalX, fy: focalY, z: photoZoom,
+                            onFocal: (x: number, y: number) => { setFocalX(x); setFocalY(y); }, onZoom: setPhotoZoom },
+                          { frame: "story" as const, label: "Story 9:16", fx: storyFocalX, fy: storyFocalY, z: storyZoom,
+                            onFocal: (x: number, y: number) => { setStoryFocalX(x); setStoryFocalY(y); }, onZoom: setStoryZoom },
+                        ]).map((f) => (
+                          <div key={f.frame} className="space-y-2">
+                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{f.label}</p>
+                            <div className={f.frame === "story" ? "max-w-[200px]" : "max-w-[300px]"}>
+                              <LiveAdPreview
+                                copy={editedSingle}
+                                slides={editedSlides}
+                                isCarousel={isCarousel}
+                                template={template}
+                                templateLabel={activeCustom ? activeCustom.name : (BUILT_IN_LABELS[template] || template)}
+                                colors={colors}
+                                displayFamily={displayFamily}
+                                bodyFamily={bodyFamily}
+                                photoUrl={selectedPhoto?.url}
+                                backgroundUrl={bgSelectedUrl || undefined}
+                                textCase={textCase}
+                                headlineScale={headlineScale}
+                                bodyScale={bodyScale}
+                                textBoxStyle={textBoxStyle}
+                                textBoxColor={textBoxColor || colors.bg}
+                                textBoxOpacity={textBoxOpacity}
+                                textPosition={textPosition}
+                                textAlign={textAlign}
+                                logoUrl={brandLogoAsset?.url}
+                                showLogo={placeLogo}
+                                logoCorner={logoCorner}
+                                frame={f.frame}
+                                focalX={f.fx}
+                                focalY={f.fy}
+                                photoZoom={f.z}
+                                onFocalChange={f.onFocal}
+                              />
+                            </div>
+                            <div>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Zoom</p>
+                                <span className="text-[10px] text-muted-foreground tabular-nums">{f.z.toFixed(2)}x</span>
+                              </div>
+                              <Slider min={1} max={2.5} step={0.05} value={[f.z]} onValueChange={(v) => f.onZoom(v[0])} />
+                            </div>
+                          </div>
+                        ))}
                       </div>
                       {framingStale && (
                         <div className="flex items-center justify-between gap-2 rounded border border-primary/30 bg-primary/5 px-3 py-2">
