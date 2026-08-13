@@ -111,8 +111,29 @@ function truncate(v: unknown, max = 1400): string {
 }
 
 function buildContextBlock(payload: any): string {
-  const { offerContext, offerPsychology, audiencePsychology, brandContext, socialProofContext, referenceAdContext, angle } = payload || {};
+  const { offerContext, offerPsychology, audiencePsychology, brandContext, socialProofContext, referenceAdContext, angle, brief } = payload || {};
   const parts: string[] = [];
+  // The user picked ONE specific concept in the checklist. That concept — not
+  // a generic best-practice ad — is what this copy must execute.
+  const cd = brief?.conceptDetail || {};
+  const conceptLines: string[] = [];
+  if (brief?.concept) conceptLines.push(`Concept: ${truncate(brief.concept, 600)}`);
+  if (cd.hook || brief?.keyMessage) conceptLines.push(`The hook this concept is built on (use its idea and, where it fits, its exact words): "${truncate(cd.hook || brief.keyMessage, 300)}"`);
+  if (cd.angleName || brief?.angle) conceptLines.push(`Angle: ${truncate(cd.angleName || brief.angle, 160)}`);
+  if (cd.psychologyTrigger) conceptLines.push(`Psychology trigger: ${truncate(cd.psychologyTrigger, 160)}`);
+  if (cd.whyThisWorks) conceptLines.push(`Why it works: ${truncate(cd.whyThisWorks, 400)}`);
+  if (cd.guidance) conceptLines.push(`Creative direction: ${truncate(cd.guidance, 600)}`);
+  if (Array.isArray(cd.textOverlays) && cd.textOverlays.length) {
+    conceptLines.push(`Planned on-image text (rewrite/tighten these, don't invent unrelated lines):\n${cd.textOverlays.slice(0, 8).map((t: any, i: number) => `${i + 1}. "${typeof t === "string" ? t : (t?.text || JSON.stringify(t))}"`).join("\n")}`);
+  }
+  if (brief?.proofPoint) conceptLines.push(`Proof point: ${truncate(brief.proofPoint, 300)}`);
+  if (conceptLines.length) {
+    parts.push(
+      `=== THE CHOSEN CONCEPT (HARD CONSTRAINT — every option must be THIS concept, varying only the wording/hook phrasing, never the idea) ===\n` +
+      conceptLines.join("\n") +
+      `\nIf an option could be swapped onto a different concept without anyone noticing, it is wrong.`
+    );
+  }
   if (angle && (angle.name || angle.description)) {
     // The user picked this angle from a set of three during onboarding —
     // it's first in the context block because it's a constraint, not a hint.
@@ -123,6 +144,7 @@ function buildContextBlock(payload: any): string {
       (angle.psychologyTrigger ? `Psychology trigger to lean on: ${truncate(angle.psychologyTrigger, 120)}\n` : "")
     );
   }
+
   if (referenceAdContext && (referenceAdContext.structuralNotes || referenceAdContext.fontPersonality)) {
     parts.push(
       `=== REFERENCE AD YOU'RE ADAPTING (match this structure and rhythm — write NEW copy for THIS brand's offer, never reuse the reference's content) ===\n` +
@@ -363,6 +385,8 @@ serve(async (req) => {
       `${instructionBlock}\n\n` +
       `${realTestimonialRule}` +
       `Hard rule: every option must reference at least one SPECIFIC element from the OFFER PSYCHOLOGY or AUDIENCE PSYCHOLOGY above (a named moment, a real pain, a real hesitation, a concrete before/after). Generic copy that could belong to any brand is an instant fail.\n\n` +
+      `Hard rule: if a CHOSEN CONCEPT block is present, every option executes THAT concept and its hook. Do not fall back to a generic "grow your business" style ad; the concept's specific idea must be recognizable in the headline of every option.\n\n` +
+
       `Output ONLY valid JSON: {"template":"${template}","options":[ ... ]}`;
 
 
