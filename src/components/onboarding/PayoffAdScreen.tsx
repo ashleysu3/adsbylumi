@@ -707,12 +707,24 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
 
   const callRender = useCallback(async (copy: any): Promise<RenderImage[]> => {
     const colors = engineColorsRef.current;
+    // Every label the engine paints onto a chip/card gets a text color derived
+    // from what's UNDER it, never from `bg` — that's how white-on-cream copy
+    // shipped. Card surface = cream, so headline/body tokens use ink.
+    const onAccent = readableTextOn(colors.accent);
+    const onCard = readableTextOn(colors.cream);
     const colorsForEngine = {
       ...colors,
       primary: colors.accent, secondary: colors.pop,
-      cta: colors.accent, ctaBg: colors.accent, ctaText: colors.bg,
-      button: colors.accent, buttonBg: colors.accent, buttonText: colors.bg,
-      badge: colors.accent, badgeBg: colors.accent, badgeText: colors.bg,
+      cta: colors.accent, ctaBg: colors.accent, ctaText: onAccent,
+      button: colors.accent, buttonBg: colors.accent, buttonText: onAccent,
+      badge: colors.accent, badgeBg: colors.accent, badgeText: onAccent,
+      // Text tokens — whichever name the engine reaches for, it reads.
+      text: onCard, textPrimary: onCard, textSecondary: onCard,
+      heading: onCard, headline: onCard, title: onCard, body: onCard,
+      subhead: onCard, sub: onCard, eyebrow: colors.accent,
+      card: colors.cream, cardBg: colors.cream, cardText: onCard,
+      surface: colors.cream, surfaceText: onCard,
+      onBg: readableTextOn(colors.bg),
     };
     const brandKit = {
       colors: colorsForEngine,
@@ -732,6 +744,18 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       style: {},
     };
     if (photo) body.photo = photo;
+    // The big image behind the card must never be the same shot as the little
+    // circle portrait. Prefer a real background/texture from their site, then
+    // a different photo of theirs, and otherwise fall back to their accent
+    // color rather than duplicating the portrait.
+    const bgUrl = backgroundUrlRef.current;
+    if (bgUrl && bgUrl !== photoUrlRef.current) {
+      body.backgroundUrl = bgUrl;
+    } else {
+      body.style = { ...(body.style || {}), backgroundColor: colors.accent };
+      body.backgroundColor = colors.accent;
+    }
+
     // One silent retry — a single flaky render should never become the error
     // screen a first-time visitor (or a demo audience) sees.
     let lastErr: any = null;
