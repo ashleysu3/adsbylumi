@@ -957,7 +957,7 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             for (const r of kept) if (r.role === p && !ranked.includes(r)) ranked.push(r);
           }
           for (const r of kept) if (PHOTO_ROLES.has(r.role) && !ranked.includes(r)) ranked.push(r);
-          for (const r of ranked.slice(0, 3)) {
+          for (const r of ranked.slice(0, 8)) {
             const p = pathFromUrl(r.url);
             if (p) {
               const { data: s } = await supabase.storage
@@ -968,6 +968,12 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
               candidates.push({ url: r.url });
             }
           }
+          // Measure before trusting: drop favicons, sprites, tiny thumbnails
+          // and extreme banners, then keep the three strongest. When nothing
+          // clears the bar we fall through with zero candidates and the build
+          // picks a text-forward template instead of framing a bad image.
+          const scored = await rankPhotoCandidates(candidates);
+          candidates = scored.slice(0, 3).map((s) => ({ url: s.url, label: s.label }));
         } catch {
           /* brand_assets may not exist; keep candidates empty */
         }
