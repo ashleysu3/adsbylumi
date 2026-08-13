@@ -1737,6 +1737,26 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
             </div>
           )}
 
+          {/* Demo controls — admins only, invisible to every real visitor. */}
+          {isAdminViewer && phase === "ready" && (
+            <div className="mt-2 flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+              <span className="rounded-full border px-2 py-0.5">
+                {pinnedActive ? "Showing pinned demo ad" : "Showing live render"}
+              </span>
+              {pinnedRef.current?.images?.length && liveImagesRef.current.length ? (
+                <span className="opacity-70">press D to switch</span>
+              ) : null}
+              <button
+                type="button"
+                onClick={pinCurrentAd}
+                disabled={pinning}
+                className="underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+              >
+                {pinning ? "Pinning…" : "Pin this ad for demos"}
+              </button>
+            </div>
+          )}
+
           {/* Hook chips */}
           {options.length > 0 && (
             <div className="mt-5 space-y-2">
