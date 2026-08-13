@@ -328,11 +328,9 @@ export function GenerateCreativeDialog() {
   };
 
   const [removeBackground, setRemoveBackground] = useState(true);
-  // Beta: AI-generated brand background composited behind the layout.
-  const [bgBetaOpen, setBgBetaOpen] = useState(false);
-  const [bgGenerating, setBgGenerating] = useState(false);
-  const [bgOptions, setBgOptions] = useState<Array<{ aspect: string; url: string; path: string }>>([]);
+  // Background image chosen from the user's own uploaded/brand assets.
   const [bgSelectedUrl, setBgSelectedUrl] = useState<string>("");
+
   const [textCase, setTextCase] = useState<"original" | "upper" | "lower" | "title">("original");
   const [headlineScale, setHeadlineScale] = useState<number>(1);
   const [bodyScale, setBodyScale] = useState<number>(1);
@@ -778,41 +776,8 @@ export function GenerateCreativeDialog() {
     }
   };
 
-  const runBrandBackground = async () => {
-    if (!activeBrand?.id) {
-      toast.error("Pick a brand first.");
-      return;
-    }
-    setBgGenerating(true);
-    setBgOptions([]);
-    setBgSelectedUrl("");
-    try {
-      const headline = isCarousel ? editedSlides[0]?.headline : editedSingle.headline;
-      const subhead = isCarousel ? editedSlides[0]?.sub : (editedSingle.sub || editedSingle.subhead);
-      const { data, error } = await supabase.functions.invoke("generate-ad-from-style", {
-        body: {
-          mode: "brand_background",
-          brandId: activeBrand.id,
-          copy: { headline, subhead },
-          count: 3,
-        },
-      });
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || "Background generation failed");
-      const imgs = (data.images || []) as Array<{ aspect: string; url: string; path: string }>;
-      const usedBrandAssets = !!data.used_brand_assets;
-      setBgOptions(imgs);
-      if (imgs[0]) setBgSelectedUrl(imgs[0].url);
-      if (!imgs.length) toast.error("No backgrounds available.");
-      else if (usedBrandAssets) toast.success(`Using ${imgs.length} approved brand backgrounds (no AI generation — zero gibberish-text risk).`);
-      else toast.success(`Generated ${imgs.length} brand backgrounds`);
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message || "Could not generate background");
-    } finally {
-      setBgGenerating(false);
-    }
-  };
+
+
 
   const compose = useCallback(async (feedback?: CopyFeedback | null) => {
     const b = briefRef.current;
@@ -1949,65 +1914,7 @@ export function GenerateCreativeDialog() {
                         </div>
                       )}
 
-                      {/* AI brand background (optional) */}
-                      <Accordion type="single" collapsible>
-                        <AccordionItem value="bg" className="border rounded-lg px-3">
-                          <AccordionTrigger className="py-2.5 text-xs font-medium hover:no-underline">
-                            <span className="flex items-center gap-1.5">
-                              <Sparkles className="h-3 w-3 text-primary" /> Generate a brand background (optional)
-                            </span>
-                          </AccordionTrigger>
-                          <AccordionContent className="space-y-2 pb-3">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="text-[11px] text-muted-foreground">
-                                A clean on-brand background — no faces. Your photo, copy &amp; logo layer on top.
-                              </p>
-                              <Button
-                                size="sm"
-                                variant={bgOptions.length ? "outline" : "default"}
-                                onClick={runBrandBackground}
-                                disabled={bgGenerating}
-                              >
-                                {bgGenerating ? (
-                                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Generating…</>
-                                ) : bgOptions.length ? (
-                                  <><RefreshCw className="h-3 w-3 mr-1" /> Regenerate</>
-                                ) : (
-                                  <>Generate</>
-                                )}
-                              </Button>
-                            </div>
-                            {brandBackgroundAssets.length === 0 && (
-                              <p className="text-[11px] text-muted-foreground">
-                                Tip: add background or texture examples in <b>Brand Assets</b> for more on-brand results.
-                              </p>
-                            )}
-                            {bgOptions.length > 0 && (
-                              <div className="grid grid-cols-4 gap-2 pt-1">
-                                {bgOptions.map((o) => (
-                                  <button
-                                    key={o.path}
-                                    type="button"
-                                    onClick={() => setBgSelectedUrl(o.url === bgSelectedUrl ? "" : o.url)}
-                                    className={`relative aspect-square rounded border-2 overflow-hidden transition ${
-                                      bgSelectedUrl === o.url ? "border-primary" : "border-border hover:border-muted-foreground"
-                                    }`}
-                                    title={`Background ${o.aspect}`}
-                                  >
-                                    <img src={o.url} alt="" className="w-full h-full object-cover" />
-                                    <span className="absolute bottom-0 left-0 right-0 text-[9px] uppercase text-white bg-black/55 py-0.5 text-center leading-none">
-                                      {o.aspect}
-                                    </span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                            {bgSelectedUrl && (
-                              <p className="text-[11px] text-primary">✓ This background will sit behind your layout.</p>
-                            )}
-                          </AccordionContent>
-                        </AccordionItem>
-                      </Accordion>
+
                     </div>
                   )}
 

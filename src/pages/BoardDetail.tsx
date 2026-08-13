@@ -46,62 +46,9 @@ export default function BoardDetail() {
   const [noteItem, setNoteItem] = useState<BoardItem | null>(null);
   const [noteValue, setNoteValue] = useState("");
 
-  // Generate-from-board (Recraft) state
   const { activeBrand } = useBrand();
   const { addConcept } = useCampaignDraft();
-  const [genOpen, setGenOpen] = useState(false);
-  const [genCopy, setGenCopy] = useState({ headline: "", subhead: "", cta: "Learn more" });
-  const [generating, setGenerating] = useState(false);
-  const [genResults, setGenResults] = useState<Array<{ aspect: string; url: string; path: string }>>([]);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
-
-  const startGenerate = () => {
-    if (items.length === 0) {
-      toast.error("Add at least 1 ad to this board first.");
-      return;
-    }
-    setGenResults([]);
-    setGenOpen(true);
-  };
-
-  const runGenerate = async () => {
-    if (!boardId) return;
-    if (!genCopy.headline.trim()) {
-      toast.error("Add a headline so we can preview the ad.");
-      return;
-    }
-    setGenerating(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-ad-from-style", {
-        body: { boardId, brandId: activeBrand?.id, copy: genCopy, count: 4 },
-      });
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || "Generation failed");
-      setGenResults(data.images || []);
-      if (!data.images?.length) toast.error("Recraft returned no images. Try again.");
-      else toast.success(`Generated ${data.images.length} visuals`);
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e.message || "Failed to generate ads");
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const addResultToLaunch = (r: { aspect: string; url: string; path: string }) => {
-    const id = `recraft:${r.path}`;
-    addConcept({
-      id,
-      title: genCopy.headline || "Recraft visual",
-      angle: "Inspiration board",
-      styleHint: r.aspect,
-      assetUrl: r.url,
-      thumbnailUrl: r.url,
-      copy: { headline: genCopy.headline, primary_text: genCopy.subhead, cta: genCopy.cta },
-    });
-    setAddedIds((prev) => new Set(prev).add(id));
-    toast.success("Added to launch");
-  };
 
   useEffect(() => {
     (async () => {
@@ -258,10 +205,6 @@ export default function BoardDetail() {
               {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
               {uploading ? "Uploading…" : "Upload images"}
             </Button>
-            <Button onClick={startGenerate} disabled={items.length === 0}>
-              <Sparkles className="h-4 w-4 mr-2" />
-              Generate ads from this board
-            </Button>
           </div>
         </div>
 
@@ -316,80 +259,7 @@ export default function BoardDetail() {
           </div>
         )}
 
-        {(generating || genResults.length > 0) && (
-          <div className="space-y-3 pt-4 border-t">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Sparkles className="h-4 w-4" /> Generated visuals
-            </h2>
-            {generating && (
-              <div className="text-sm text-muted-foreground flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" /> Building style from your board and generating ads…
-              </div>
-            )}
-            {genResults.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {genResults.map((r) => {
-                  const id = `recraft:${r.path}`;
-                  const added = addedIds.has(id);
-                  return (
-                    <div key={r.path} className="space-y-2">
-                      <AdPreview
-                        concept={{
-                          title: genCopy.headline,
-                          linkedAsset: { url: r.url, type: "image" },
-                          finalCopy: {
-                            headline: genCopy.headline,
-                            primaryText: genCopy.subhead,
-                            cta: genCopy.cta,
-                          },
-                        }}
-                        brandName={activeBrand?.name}
-                      />
-                      <div className="flex justify-end">
-                        <Button size="sm" variant={added ? "secondary" : "default"} disabled={added} onClick={() => addResultToLaunch(r)}>
-                          <Plus className="h-3 w-3 mr-1" /> {added ? "Added to launch" : "Add to launch"}
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
       </div>
-
-      <Dialog open={genOpen} onOpenChange={(o) => !generating && setGenOpen(o)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Generate ads from this board</DialogTitle>
-            <DialogDescription>
-              We'll build a Recraft style from your saved references and generate 4 on-brand visuals with clean space for your copy.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="gen-headline">Headline</Label>
-              <Input id="gen-headline" value={genCopy.headline} onChange={(e) => setGenCopy((c) => ({ ...c, headline: e.target.value }))} placeholder="The one line that grabs them" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="gen-subhead">Subhead / primary text</Label>
-              <Textarea id="gen-subhead" rows={3} value={genCopy.subhead} onChange={(e) => setGenCopy((c) => ({ ...c, subhead: e.target.value }))} placeholder="Why it matters in 1–2 sentences" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="gen-cta">CTA</Label>
-              <Input id="gen-cta" value={genCopy.cta} onChange={(e) => setGenCopy((c) => ({ ...c, cta: e.target.value }))} placeholder="Learn more" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setGenOpen(false)} disabled={generating}>Cancel</Button>
-            <Button onClick={async () => { await runGenerate(); setGenOpen(false); }} disabled={generating}>
-              {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-              Generate 4 visuals
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={!!noteItem} onOpenChange={(o) => !o && setNoteItem(null)}>
         <DialogContent>
