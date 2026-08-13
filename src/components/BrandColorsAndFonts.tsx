@@ -188,14 +188,18 @@ export default function BrandColorsAndFonts({ brandId, websiteUrl }: Props) {
       // Replace the whole palette/fonts from what the extractor returned.
       // Do NOT fall back to previously loaded values — otherwise switching
       // brands and re-pulling leaves stale colors from the prior site.
+      // Collapse whatever the extractor returned into the four slots.
+      const light = s.colors?.bg || s.colors?.cream || "";
+      const accent2 = s.colors?.pop || s.colors?.highlight || "";
       setColors({
-        bg: s.colors?.bg || "",
+        bg: light,
+        cream: light,
         ink: s.colors?.ink || "",
         accent: s.colors?.accent || "",
-        pop: s.colors?.pop || "",
-        highlight: s.colors?.highlight || "",
-        cream: s.colors?.cream || "",
+        pop: accent2,
+        highlight: accent2,
       });
+
       setFonts({
         displayItalicUrl: s.fonts?.display?.url || "",
         displayFamily: s.fonts?.display?.family || "",
