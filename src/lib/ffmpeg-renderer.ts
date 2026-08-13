@@ -357,8 +357,9 @@ async function renderTextToPng(
   yCenter = Math.max(halfH + 4, Math.min(height - halfH - 4, yCenter));
 
 
-  const padX = scaledFontSize * 0.5;
-  const padY = scaledFontSize * 0.2;
+  const padX = fittedSize * 0.5;
+  const padY = fittedSize * 0.2;
+
 
   // Background pill (skipped when bgOpacity is 0).
   if (style.bgOpacity > 0) {
