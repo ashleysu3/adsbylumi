@@ -1086,7 +1086,7 @@ export default function GuidedOnboarding() {
     }
     await refreshBrands();
     toast.success("You're set up. Welcome ✨");
-    navigate("/home");
+    navigate("/studio");
   };
 
   const startFirstCampaign = async () => {

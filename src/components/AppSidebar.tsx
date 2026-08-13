@@ -29,6 +29,7 @@ import {
   Crown,
   Shield,
   Briefcase,
+  CheckSquare,
 } from "lucide-react";
 import { LadybugIcon } from "@/components/LadybugIcon";
 import { IntentBar } from "@/components/IntentBar";
@@ -84,8 +85,8 @@ type NavGroup = {
 // buttons in the header; collapsed, they fall back to icon rows so they stay
 // reachable in icon mode. Home lives on the LUMI logo.
 const topActions: NavItem[] = [
+  { label: "The Studio", to: "/studio", icon: LayoutGrid },
   { label: "Create a New Ad", to: "/create", icon: Plus },
-  { label: "See My Ads", to: "/my-ads", icon: Activity },
 ];
 
 // Two collapsible folders for the deeper work.
@@ -268,7 +269,7 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
               className="h-8 w-auto object-contain flex-shrink-0 cursor-pointer"
               src={lumiLogo}
               title="Home"
-              onClick={() => navigate("/home")}
+              onClick={() => navigate("/studio")}
             />
             {!collapsed && (
               <>
@@ -282,22 +283,14 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
           {!collapsed && (
             <div className="mt-3 space-y-2">
               <IntentBar size="sm" innerBgClassName="bg-sidebar" />
-              {/* The two things to do: make something, or check on it. */}
+              {/* Tasks live in the slide-out tray so they follow you everywhere. */}
               <button
                 type="button"
-                onClick={() => navigate("/create")}
-                className="group relative w-full overflow-hidden rounded-lg bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-sm transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-ring px-3 py-2.5 flex items-center gap-2"
+                onClick={() => window.dispatchEvent(new Event("open-tasks-tray"))}
+                className="w-full rounded-lg border border-border bg-card hover:bg-muted transition-colors px-3 py-2 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <Plus className="h-4 w-4" />
-                <span className="text-sm font-semibold tracking-tight">Create a New Ad</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate("/my-ads")}
-                className="w-full rounded-lg border-2 border-lumi-purple-1/50 bg-lumi-purple-1/10 text-foreground hover:bg-lumi-purple-1/20 transition-colors px-3 py-2.5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <Activity className="h-4 w-4 text-lumi-purple-1" />
-                <span className="text-sm font-semibold tracking-tight">See My Ads</span>
+                <CheckSquare className="h-4 w-4 text-lumi-purple-1" />
+                <span className="text-sm font-medium tracking-tight">My Tasks</span>
               </button>
               {isPartner && (
                 <button

@@ -26,14 +26,13 @@ import Reactivate from "./pages/Reactivate";
 import WelcomeBack from "./pages/WelcomeBack";
 import GuidedOnboarding from "./pages/GuidedOnboarding";
 import Dashboard from "./pages/Dashboard";
-import Home from "./pages/Home";
 import Start from "./pages/Start";
 const Create = lazy(() => import("./pages/Create"));
 const AdPerformance = lazy(() => import("./pages/Data"));
 import WorkspaceRedirect from "./pages/WorkspaceRedirect";
 import CampaignBuilder from "./pages/CampaignBuilder";
 
-import MyAds from "./pages/MyAds";
+import Studio from "./pages/Studio";
 import MetaOAuthCallback from "./pages/MetaOAuthCallback";
 const AdminKnowledge = lazy(() => import("./pages/admin/Knowledge"));
 const AdminAnalytics = lazy(() => import("./pages/admin/Analytics"));
@@ -126,7 +125,6 @@ import {
   TroubleshootingPlaceholder,
   CloserLookPlaceholder,
 } from "./pages/Placeholder";
-import Tasks from "./pages/Tasks";
 import Voice from "./pages/Voice";
 import Audience from "./pages/Audience";
 import InitialSetup from "./pages/InitialSetup";
@@ -185,25 +183,26 @@ const App = () => {
                   <Route path="/create" element={<Create />} />
                   <Route path="/recommended-strategy" element={<Navigate to="/create" replace />} />
                   <Route path="/strategy-plan" element={<Navigate to="/strategy" replace />} />
-                  <Route path="/home" element={<Home />} />
+                  <Route path="/home" element={<Navigate to="/studio" replace />} />
                   <Route path="/dashboard" element={<Navigate to="/initial-setup" replace />} />
-                  <Route path="/planning" element={<Navigate to="/my-ads" replace />} />
+                  <Route path="/planning" element={<Navigate to="/studio" replace />} />
                   <Route path="/strategy" element={<AdStrategy />} />
                   <Route path="/strategy-builder" element={<Strategy />} />
                   
                   <Route path="/creative" element={<Creative />} />
                   <Route path="/launch" element={<Launch />} />
-                  <Route path="/my-ads" element={<MyAds />} />
-                  <Route path="/live-ads" element={<Navigate to="/my-ads" replace />} />
-                  <Route path="/ad-performance" element={<Navigate to="/my-ads" replace />} />
+                  <Route path="/studio" element={<Studio />} />
+                  <Route path="/my-ads" element={<Navigate to="/studio" replace />} />
+                  <Route path="/live-ads" element={<Navigate to="/studio" replace />} />
+                  <Route path="/ad-performance" element={<Navigate to="/studio" replace />} />
                   <Route path="/live-ads/:campaignId" element={<CloserLook />} />
                   <Route path="/data" element={<AdPerformance />} />
-                  <Route path="/performance" element={<Navigate to="/my-ads" replace />} />
-                  <Route path="/performance-summary" element={<Navigate to="/my-ads" replace />} />
-                  <Route path="/performance-history" element={<Navigate to="/my-ads" replace />} />
-                  <Route path="/past-reports" element={<Navigate to="/my-ads" replace />} />
-                  <Route path="/production" element={<Navigate to="/my-ads" replace />} />
-                  <Route path="/campaigns" element={<MyAds />} />
+                  <Route path="/performance" element={<Navigate to="/studio" replace />} />
+                  <Route path="/performance-summary" element={<Navigate to="/studio" replace />} />
+                  <Route path="/performance-history" element={<Navigate to="/studio" replace />} />
+                  <Route path="/past-reports" element={<Navigate to="/studio" replace />} />
+                  <Route path="/production" element={<Navigate to="/studio" replace />} />
+                  <Route path="/campaigns" element={<Navigate to="/studio" replace />} />
                   <Route path="/ad-generator" element={<AdGenerator />} />
                   <Route path="/brand-setup" element={<BrandSetup />} />
                   <Route path="/photos" element={<Photos />} />
@@ -276,7 +275,7 @@ const App = () => {
                  <Route path="/admin/updates" element={<AdminUpdates />} />
                  <Route path="/admin/updates/:campaignId" element={<AdminUpdatesResults />} />
                  <Route path="/admin/features" element={<AdminFeatures />} />
-                  <Route path="/tasks" element={<Tasks />} />
+                  <Route path="/tasks" element={<Navigate to="/studio?tasks=open" replace />} />
                   <Route path="/audience" element={<Audience />} />
                   <Route path="/goals" element={<Navigate to="/strategy" replace />} />
                   <Route path="/voice" element={<Voice />} />

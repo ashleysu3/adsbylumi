@@ -110,7 +110,7 @@ export function IntentConversation({ open, onOpenChange, initial }: IntentConver
 
   async function handleAction(a: IntentAction) {
     if (a.type === "route") {
-      const route = typeof a.target === "string" ? a.target : "/home";
+      const route = typeof a.target === "string" ? a.target : "/studio";
       onOpenChange(false);
       navigate(routeWithParams(route, a.routeParams));
       return;
@@ -144,7 +144,7 @@ export function IntentConversation({ open, onOpenChange, initial }: IntentConver
       }
       if (key === "quick_list") {
         onOpenChange(false);
-        navigate("/home");
+        navigate("/studio");
         return;
       }
       if (key === "create_from_board") {
