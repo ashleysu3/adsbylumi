@@ -1129,27 +1129,32 @@ export function GenerateCreativeDialog() {
         ? { url: brandLogoAsset.url, corner: logoCorner }
         : undefined;
       // Apply the focal point / zoom the user set in the preview by pre-cropping
-      // the photo before it goes to the render engine. We crop to the same frame
-      // aspect the preview uses so the render matches what they positioned.
-      let photoUrlForRender = selectedPhoto?.url;
-      const framingChanged = focalX !== 50 || focalY !== 50 || photoZoom !== 1;
-      if (selectedPhoto && framingChanged) {
+      // the photo before it goes to the render engine. Feed (1:1) and story
+      // (9:16) crop differently, so each placement gets its own cropped photo.
+      const cropFor = async (
+        fx: number, fy: number, z: number, frame: "feed" | "story",
+      ): Promise<string | undefined> => {
+        if (!selectedPhoto) return undefined;
+        if (fx === 50 && fy === 50 && z === 1) return selectedPhoto.url;
         try {
           setProgress("Applying image framing…");
-          photoUrlForRender = await cropImageToFocal(
-            selectedPhoto.url,
-            focalX,
-            focalY,
-            photoZoom,
-            photoFrameAspect(template),
-          );
+          return await cropImageToFocal(selectedPhoto.url, fx, fy, z, photoFrameAspect(template, frame));
         } catch {
-          photoUrlForRender = selectedPhoto.url;
+          return selectedPhoto.url;
         }
-      }
-      setRenderedFraming({ focalX, focalY, photoZoom, photoId: selectedPhotoId });
+      };
+      const photoUrlForRender = await cropFor(focalX, focalY, photoZoom, "feed");
+      const storyPhotoUrl = await cropFor(storyFocalX, storyFocalY, storyZoom, "story");
+      setRenderedFraming({
+        focalX, focalY, photoZoom,
+        storyFocalX, storyFocalY, storyZoom,
+        photoId: selectedPhotoId,
+      });
       const photo = selectedPhoto
         ? { url: photoUrlForRender!, removeBackground, focalX, focalY, zoom: photoZoom }
+        : undefined;
+      const storyPhoto = selectedPhoto
+        ? { url: storyPhotoUrl!, removeBackground, focalX: storyFocalX, focalY: storyFocalY, zoom: storyZoom }
         : undefined;
 
       // Collage uses 2–4 photos. Take the most recently uploaded/brand photos.
