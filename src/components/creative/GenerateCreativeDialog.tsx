@@ -932,6 +932,16 @@ export function GenerateCreativeDialog() {
           offerPsychology,
           audiencePsychology,
           brandContext,
+          // The concept the user clicked carries its own angle/psychology —
+          // send it as a first-class constraint, not buried in the brief JSON.
+          angle: (b as any).conceptDetail?.angleName || (b as any).angle
+            ? {
+                name: (b as any).conceptDetail?.angleName || (b as any).angle || "",
+                description: (b as any).conceptDetail?.whyThisWorks || (b as any).concept || "",
+                psychologyTrigger: (b as any).conceptDetail?.psychologyTrigger || "",
+              }
+            : null,
+
           referenceAdContext: referenceAnalysis
             ? {
                 structuralNotes: referenceAnalysis.structural_notes,
