@@ -125,26 +125,8 @@ export default function Voice() {
     }
   };
 
-  const handleSaveEmojiSettings = async () => {
-    if (!brand) return;
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from("brands")
-        .update({
-          use_emojis: emojiSettings.use_emojis,
-          brand_emojis: emojiSettings.brand_emojis,
-          bullet_emoji: emojiSettings.bullet_emoji,
-        })
-        .eq("id", brand.id);
-      if (error) throw error;
-      toast.success("Emoji settings saved");
-    } catch {
-      toast.error("Failed to save emoji settings");
-    } finally {
-      setSaving(false);
-    }
-  };
+
+
 
   const addEmoji = () => {
     if (!newEmoji.trim()) return;
