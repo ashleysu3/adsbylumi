@@ -71,6 +71,35 @@ const DEFAULT_COLORS: Colors = {
   pop: "#22c55e", highlight: "#f59e0b", cream: "#f5f5f5",
 };
 
+// The brand kit is authored as four decisions; the engine still wants six
+// slots, so light mirrors into cream and accent 2 mirrors into pop/highlight.
+type ColorSlot = "light" | "dark" | "accent" | "accent2";
+const COLOR_SLOTS: Array<{ key: ColorSlot; label: string }> = [
+  { key: "light", label: "Light" },
+  { key: "dark", label: "Dark" },
+  { key: "accent", label: "Accent 1" },
+  { key: "accent2", label: "Accent 2" },
+];
+
+function readSlotColor(c: Colors, key: ColorSlot): string {
+  switch (key) {
+    case "light": return c.bg || c.cream;
+    case "dark": return c.ink;
+    case "accent": return c.accent;
+    case "accent2": return c.pop || c.highlight;
+  }
+}
+
+function writeSlotColor(c: Colors, key: ColorSlot, v: string): Colors {
+  switch (key) {
+    case "light": return { ...c, bg: v, cream: v };
+    case "dark": return { ...c, ink: v };
+    case "accent": return { ...c, accent: v };
+    case "accent2": return { ...c, pop: v, highlight: v };
+  }
+}
+
+
 type SingleOption = Record<string, string>;
 type Slide = Record<string, string>;
 type CarouselOption = { slides: Slide[] };
@@ -517,14 +546,21 @@ export function GenerateCreativeDialog() {
           return;
         }
 
+        // The brand kit is edited as four decisions (light / dark / accent 1 /
+        // accent 2). Older kits may be missing the mirrored slots — derive them
+        // from the brand's own colors instead of falling back to LUMI defaults,
+        // which is what made ads render with stock green/orange.
+        const light = c.bg || c.cream || DEFAULT_COLORS.bg;
+        const accent2 = c.pop || c.highlight || c.accent || DEFAULT_COLORS.pop;
         setColors({
-          bg: c.bg || DEFAULT_COLORS.bg,
+          bg: light,
+          cream: c.cream || light,
           ink: c.ink || DEFAULT_COLORS.ink,
-          accent: c.accent || DEFAULT_COLORS.accent,
-          pop: c.pop || DEFAULT_COLORS.pop,
-          highlight: c.highlight || DEFAULT_COLORS.highlight,
-          cream: c.cream || DEFAULT_COLORS.cream,
+          accent: c.accent || accent2,
+          pop: accent2,
+          highlight: accent2,
         });
+
         setFontUrl(f.displayUrl || f.displayItalicUrl || "");
         setDisplayFamily(f.displayFamily || "");
         setBodyFamily(f.bodyFamily || "");
@@ -1349,37 +1385,45 @@ export function GenerateCreativeDialog() {
         </AccordionTrigger>
         <AccordionContent className="space-y-4 pb-3">
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Colors</p>
-            <div className="grid grid-cols-6 gap-1.5">
-              {(Object.keys(colors) as Array<keyof Colors>).map((k) => (
-                <Popover key={k}>
-                  <PopoverTrigger asChild>
-                    <button type="button" className="group flex flex-col items-center gap-1" aria-label={`Edit ${k} color`}>
-                      <span
-                        className="h-8 w-full rounded-md border border-border shadow-sm transition group-hover:scale-[1.03]"
-                        style={{ backgroundColor: colors[k] }}
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Brand colors</p>
+            <div className="grid grid-cols-4 gap-1.5">
+              {COLOR_SLOTS.map((slot) => {
+                const value = readSlotColor(colors, slot.key);
+                return (
+                  <Popover key={slot.key}>
+                    <PopoverTrigger asChild>
+                      <button type="button" className="group flex flex-col items-center gap-1" aria-label={`Edit ${slot.label} color`}>
+                        <span
+                          className="h-8 w-full rounded-md border border-border shadow-sm transition group-hover:scale-[1.03]"
+                          style={{ backgroundColor: value }}
+                        />
+                        <span className="text-[9px] text-muted-foreground">{slot.label}</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-3" align="start">
+                      <HexColorPicker
+                        color={value}
+                        onChange={(v) => setColors((prev) => writeSlotColor(prev, slot.key, v))}
                       />
-                      <span className="text-[9px] text-muted-foreground capitalize">{k}</span>
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-3" align="start">
-                    <HexColorPicker
-                      color={colors[k]}
-                      onChange={(v) => setColors((prev) => ({ ...prev, [k]: v }))}
-                    />
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-[10px] uppercase text-muted-foreground capitalize">{k}</span>
-                      <Input
-                        value={colors[k]}
-                        onChange={(e) => setColors((prev) => ({ ...prev, [k]: e.target.value }))}
-                        className="h-7 text-xs font-mono"
-                      />
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              ))}
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-[10px] uppercase text-muted-foreground">{slot.label}</span>
+                        <Input
+                          value={value}
+                          onChange={(e) => setColors((prev) => writeSlotColor(prev, slot.key, e.target.value))}
+                          className="h-7 text-xs font-mono"
+                        />
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                );
+              })}
             </div>
+            <p className="mt-1.5 text-[10px] text-muted-foreground">
+              These come from your brand kit — editing here only changes this ad.
+            </p>
           </div>
+
+
 
           <div>
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Text case</p>
