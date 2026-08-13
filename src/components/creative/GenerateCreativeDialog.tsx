@@ -1698,6 +1698,10 @@ export function GenerateCreativeDialog() {
         logoUrl={brandLogoAsset?.url}
         showLogo={placeLogo}
         logoCorner={logoCorner}
+        focalX={focalX}
+        focalY={focalY}
+        photoZoom={photoZoom}
+        onFocalChange={(x, y) => { setFocalX(x); setFocalY(y); }}
       />
       {refinePanel}
     </aside>
