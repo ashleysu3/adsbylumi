@@ -588,7 +588,7 @@ export function LiveAdPreview({
     default:
       body = (
         <>
-          {bgImage && <img src={bgImage} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+          {bgImage && <Photo className="absolute inset-0 h-full w-full" />}
           {bgImage && textBoxStyle === "none" && (
             <div
               className="absolute inset-0"
