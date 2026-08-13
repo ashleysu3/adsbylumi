@@ -111,9 +111,13 @@ const FRAME_ASPECT: Partial<Record<Family, number>> = {
   collage: 1,
 };
 
-export function photoFrameAspect(template?: string): number {
+export function photoFrameAspect(template?: string, frame: "feed" | "story" = "feed"): number {
   const fam: Family = FAMILY[template || ""] || "overlay";
-  return FRAME_ASPECT[fam] ?? 1;
+  const base = FRAME_ASPECT[fam] ?? 1;
+  // Story canvas is 9:16, so every photo slot gets proportionally taller.
+  // The spotlight circle stays square in both placements.
+  if (frame === "story" && fam !== "spotlight") return base * (9 / 16);
+  return base;
 }
 
 
