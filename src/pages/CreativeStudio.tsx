@@ -1953,17 +1953,8 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
             {primaryAction.label}
           </Button>
         )}
-        {workspace && (
-          <Button 
-            variant="lumi"
-            onClick={() => { setShowBYOUploader(true); setActiveTab("angles"); }}
-            className="w-full gap-2 shadow-lg"
-            size="lg"
-          >
-            <Upload className="h-4 w-4" />
-            Upload My Own Ads
-          </Button>
-        )}
+
+
       </div>
       
       
