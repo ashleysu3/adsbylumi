@@ -2180,7 +2180,74 @@ export function GenerateCreativeDialog() {
                       </Button>
                     </div>
                   )}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {images.length > 0 && selectedPhoto && (
+                    <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          Reposition the photo — drag it here
+                        </p>
+                        <button
+                          type="button"
+                          className="text-[10px] text-muted-foreground underline"
+                          onClick={() => { setFocalX(50); setFocalY(50); setPhotoZoom(1); }}
+                        >
+                          Reset framing
+                        </button>
+                      </div>
+                      <div className="max-w-[340px]">
+                        <LiveAdPreview
+                          copy={editedSingle}
+                          slides={editedSlides}
+                          isCarousel={isCarousel}
+                          template={template}
+                          templateLabel={activeCustom ? activeCustom.name : (BUILT_IN_LABELS[template] || template)}
+                          colors={colors}
+                          displayFamily={displayFamily}
+                          bodyFamily={bodyFamily}
+                          photoUrl={selectedPhoto?.url}
+                          backgroundUrl={bgSelectedUrl || undefined}
+                          textCase={textCase}
+                          headlineScale={headlineScale}
+                          bodyScale={bodyScale}
+                          textBoxStyle={textBoxStyle}
+                          textBoxColor={textBoxColor || colors.bg}
+                          textBoxOpacity={textBoxOpacity}
+                          textPosition={textPosition}
+                          textAlign={textAlign}
+                          logoUrl={brandLogoAsset?.url}
+                          showLogo={placeLogo}
+                          logoCorner={logoCorner}
+                          focalX={focalX}
+                          focalY={focalY}
+                          photoZoom={photoZoom}
+                          onFocalChange={(x, y) => { setFocalX(x); setFocalY(y); }}
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Zoom</p>
+                          <span className="text-[10px] text-muted-foreground tabular-nums">{photoZoom.toFixed(2)}x</span>
+                        </div>
+                        <Slider min={1} max={2.5} step={0.05} value={[photoZoom]} onValueChange={(v) => setPhotoZoom(v[0])} />
+                      </div>
+                      {framingStale && (
+                        <div className="flex items-center justify-between gap-2 rounded border border-primary/30 bg-primary/5 px-3 py-2">
+                          <p className="text-[11px] text-foreground">
+                            Framing changed — the images below still show the old crop.
+                          </p>
+                          <Button size="sm" onClick={generate} disabled={generating || !canRender}>
+                            {generating ? (
+                              <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Rendering…</>
+                            ) : (
+                              <><Sparkles className="h-3 w-3 mr-1" /> Apply &amp; re-render</>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className={cn("grid grid-cols-1 sm:grid-cols-2 gap-3", framingStale && "opacity-60")}>
+
                     {images.map((img, i) => {
                       const isApproved = approvedIdxs.has(i);
                       return (
