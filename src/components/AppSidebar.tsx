@@ -328,12 +328,13 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
             </>
           )}
 
+          <div className={collapsed ? undefined : "mt-1 space-y-0 border-t border-sidebar-border pt-2"}>
           {allGroups.map((group) => {
 
             const GroupIcon = group.icon;
             const isOpen = openGroups[group.key] ?? false;
             return (
-              <SidebarGroup key={group.key}>
+              <SidebarGroup key={group.key} className="py-0">
                 <Collapsible
                   open={collapsed ? true : isOpen}
                   onOpenChange={(v) =>
@@ -342,11 +343,11 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
                 >
                   {!collapsed && (
                     <CollapsibleTrigger asChild>
-                      <SidebarGroupLabel className="flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5 my-1 h-auto bg-gradient-to-r from-lumi-orange-1/15 via-lumi-pink-1/15 to-lumi-purple-1/15 hover:from-lumi-orange-1/25 hover:via-lumi-pink-1/25 hover:to-lumi-purple-1/25 transition-colors font-display text-[13px] uppercase tracking-[0.12em] text-foreground">
-                        <GroupIcon className="h-4 w-4" />
+                      <SidebarGroupLabel className="flex items-center gap-2 cursor-pointer rounded-md px-2 py-1 my-0 h-auto text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50 transition-colors font-display text-[11px] uppercase tracking-[0.1em]">
+                        <GroupIcon className="h-3.5 w-3.5" />
                         <span className="flex-1 text-left">{group.label}</span>
                         <ChevronDown
-                          className={`h-3.5 w-3.5 transition-transform ${
+                          className={`h-3 w-3 transition-transform ${
                             isOpen ? "rotate-0" : "-rotate-90"
                           }`}
                         />
@@ -354,7 +355,7 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
                     </CollapsibleTrigger>
                   )}
                   <CollapsibleContent>
-                    <SidebarGroupContent>
+                    <SidebarGroupContent className="pb-1">
                       <SidebarMenu>{group.items.map(renderItem)}</SidebarMenu>
                     </SidebarGroupContent>
                   </CollapsibleContent>
@@ -362,6 +363,8 @@ export function AppSidebar({ isAdmin, brandId: _brandId }: AppSidebarProps) {
               </SidebarGroup>
             );
           })}
+          </div>
+
         </SidebarContent>
 
         <SidebarFooter className="p-2 space-y-2">
