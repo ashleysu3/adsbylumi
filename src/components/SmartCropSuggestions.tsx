@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Scissors, Check } from "lucide-react";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 // Note: on-device object detection was removed in favor of a lightweight
 // heuristic (center-based rule-of-thirds crop) to avoid shipping a vulnerable
 // upstream dependency chain. Crop suggestions are still safe defaults.

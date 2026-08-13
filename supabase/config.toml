@@ -29,8 +29,6 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = true
   [functions.check-creative-fatigue]
     verify_jwt = false
-  [functions.check-generation-readiness]
-    verify_jwt = true
   [functions.check-pixel-status]
     verify_jwt = true
   [functions.check-subscription]
@@ -50,8 +48,6 @@ project_id = "sqwjbndgighjtifijgws"
   [functions.create-custom-conversion]
     verify_jwt = false
   [functions.customer-portal]
-    verify_jwt = true
-  [functions.expand-creative]
     verify_jwt = true
   [functions.extract-brand-info]
     verify_jwt = true
@@ -98,8 +94,6 @@ project_id = "sqwjbndgighjtifijgws"
   [functions.funnel-strategy-chat]
     verify_jwt = true
   [functions.generate-trend-insights]
-    verify_jwt = true
-  [functions.generate-weekly-report]
     verify_jwt = true
   [functions.get-affiliate-data]
     verify_jwt = true
@@ -161,11 +155,7 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = false
   [functions.slack-error-alert]
     verify_jwt = false
-  [functions.slack-lumi-chat]
-    verify_jwt = false
   [functions.slack-new-user]
-    verify_jwt = false
-  [functions.slack-notify]
     verify_jwt = false
   [functions.stripe-admin]
     verify_jwt = false
@@ -173,8 +163,6 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = false
   [functions.submit-partner-application]
     verify_jwt = false
-  [functions.suggest-next-action]
-    verify_jwt = true
   [functions.sync-flodesk]
     verify_jwt = false
   [functions.sync-meta-campaigns]
