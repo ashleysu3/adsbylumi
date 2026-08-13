@@ -1928,21 +1928,9 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           )}
         </div>
 
-        {/* The quiet lane for hot buyers — buying otherwise lives after the save */}
-        {packState !== "sent" && (phase === "building" || phase === "ready") && (
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={goCheckout}
-              disabled={checkoutLoading}
-              className="text-xs text-muted-foreground hover:text-foreground transition underline underline-offset-2"
-            >
-              {checkoutLoading
-                ? "Opening checkout…"
-                : "Ready to launch this now? Get 50% off your first month →"}
-            </button>
-          </div>
-        )}
+        {/* The 50% offer now lives inside the save dialog, right after the kit
+            is sent — no competing text link out here. */}
+
 
         {/* Saved → the close unfolds right here. No redirect, no re-reveal. */}
         {packState === "sent" && <VslCloseSection brandId={brandId} firstName={leadName.trim().split(" ")[0] || null} />}
