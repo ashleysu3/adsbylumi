@@ -888,7 +888,7 @@ export function GenerateCreativeDialog() {
               .maybeSingle(),
             supabase
               .from("offers")
-              .select("id, name, page_goal, target_outcome, price_point, url, description, messaging_guidelines, offer_audience_psychology, product_psychology, created_at")
+              .select("id, name, page_goal, target_outcome, price_point, url, description, messaging_guidelines, offer_audience_psychology, product_psychology, page_excerpt, created_at")
               .eq("brand_id", activeBrand.id)
               .order("created_at", { ascending: false }),
           ]);
@@ -930,6 +930,9 @@ export function GenerateCreativeDialog() {
                 url: chosen.url,
                 description: chosen.description,
                 messagingGuidelines: chosen.messaging_guidelines,
+                offerAudiencePsychology: chosen.offer_audience_psychology,
+                productPsychology: chosen.product_psychology,
+                pageExcerpt: chosen.page_excerpt,
               };
               offerPsychology = chosen.offer_audience_psychology || chosen.product_psychology || null;
             }

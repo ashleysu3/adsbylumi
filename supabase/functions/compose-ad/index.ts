@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { buildPageLanguageBlock } from "../_shared/offer-page-language.ts";
 import { requireAuthedUser } from "../_shared/check-subscription.ts";
 import { buildPositioningBriefBlock } from "../_shared/positioning-brief.ts";
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
@@ -144,8 +145,18 @@ function buildContextBlock(payload: any): string {
       (offerContext.price ? `Price: ${offerContext.price}\n` : "") +
       (offerContext.url ? `URL: ${offerContext.url}\n` : "") +
       (offerContext.description ? `Description: ${truncate(offerContext.description, 600)}\n` : "") +
-      (offerContext.messagingGuidelines ? `Messaging guidelines: ${truncate(offerContext.messagingGuidelines, 600)}\n` : "")
+      ""
     );
+  }
+  {
+    const pageLanguage = buildPageLanguageBlock({
+      messagingGuidelines: offerContext?.messagingGuidelines,
+      offerAudiencePsychology: offerContext?.offerAudiencePsychology ?? offerPsychology,
+      productPsychology: offerContext?.productPsychology,
+      pageExcerpt: offerContext?.pageExcerpt,
+      url: offerContext?.url,
+    });
+    if (pageLanguage) parts.push(pageLanguage.trim());
   }
   if (offerPsychology) {
     const op: any = offerPsychology;

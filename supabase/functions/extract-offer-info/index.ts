@@ -367,6 +367,8 @@ ${!fetchSuccess ? 'Since the page content could not be fetched, set needs_clarif
 
     offerInfo.extraction_success = fetchSuccess;
     offerInfo.extracted_length = offerContent.length;
+    // Raw page copy so downstream generators can reuse the brand's exact words.
+    offerInfo.page_excerpt = fetchSuccess ? offerContent.slice(0, 12000) : null;
 
     console.log('Offer info extracted successfully:', {
       hasDescription: !!offerInfo.description,
