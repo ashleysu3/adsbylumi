@@ -193,6 +193,13 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
 
   return (
     <div className="space-y-10">
+      <QuickFixDialog
+        open={brollFixOpen}
+        onOpenChange={setBrollFixOpen}
+        kind="broll"
+        brandId={activeBrand?.id}
+        onDone={() => void loadLibrary?.()}
+      />
       {/* Section 1: AI B-Roll Idea Generator */}
       <section className="space-y-4">
         <Card className="border-2 border-transparent bg-gradient-to-r from-primary/5 via-secondary/5 to-accent/5 relative overflow-hidden">
