@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { LiveAdPreview } from "./LiveAdPreview";
+import { LiveAdPreview, photoFrameAspect } from "./LiveAdPreview";
 import { HexColorPicker } from "react-colorful";
 import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff, Info, ImagePlus, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -374,6 +374,11 @@ export function GenerateCreativeDialog() {
   const [focalX, setFocalX] = useState<number>(50);
   const [focalY, setFocalY] = useState<number>(50);
   const [photoZoom, setPhotoZoom] = useState<number>(1);
+  // Framing that the currently shown renders were made with, so we can tell the
+  // user when the preview no longer matches what's on screen.
+  const [renderedFraming, setRenderedFraming] = useState<{
+    focalX: number; focalY: number; photoZoom: number; photoId: string | null;
+  } | null>(null);
   // Readability controls for templates that put text directly on a photo
   // with no card behind it (currently just nativecaption) — the template's
   // own white text + shadow isn't always enough contrast against every photo.
@@ -1105,20 +1110,29 @@ export function GenerateCreativeDialog() {
         ? { url: brandLogoAsset.url, corner: logoCorner }
         : undefined;
       // Apply the focal point / zoom the user set in the preview by pre-cropping
-      // the photo before it goes to the render engine.
+      // the photo before it goes to the render engine. We crop to the same frame
+      // aspect the preview uses so the render matches what they positioned.
       let photoUrlForRender = selectedPhoto?.url;
       const framingChanged = focalX !== 50 || focalY !== 50 || photoZoom !== 1;
       if (selectedPhoto && framingChanged) {
         try {
           setProgress("Applying image framing…");
-          photoUrlForRender = await cropImageToFocal(selectedPhoto.url, focalX, focalY, photoZoom);
+          photoUrlForRender = await cropImageToFocal(
+            selectedPhoto.url,
+            focalX,
+            focalY,
+            photoZoom,
+            photoFrameAspect(template),
+          );
         } catch {
           photoUrlForRender = selectedPhoto.url;
         }
       }
+      setRenderedFraming({ focalX, focalY, photoZoom, photoId: selectedPhotoId });
       const photo = selectedPhoto
         ? { url: photoUrlForRender!, removeBackground, focalX, focalY, zoom: photoZoom }
         : undefined;
+
       // Collage uses 2–4 photos. Take the most recently uploaded/brand photos.
       const collagePool = [...photos, ...brandPhotoAssets].filter((p) => !!p.url);
       const collagePhotos = template === "collage"
@@ -1369,6 +1383,15 @@ export function GenerateCreativeDialog() {
     !generating && !composing &&
     (!needsPhoto || !!selectedPhoto) &&
     copyReady;
+
+  // True when the framing on screen no longer matches what the renders used.
+  const framingStale =
+    images.length > 0 &&
+    !!renderedFraming &&
+    (renderedFraming.focalX !== focalX ||
+      renderedFraming.focalY !== focalY ||
+      renderedFraming.photoZoom !== photoZoom ||
+      renderedFraming.photoId !== selectedPhotoId);
 
   // ---- Step rail helpers -------------------------------------------------
   const stepIndex = step === "style" ? 0 : step === "image-copy" ? 1 : 2;
@@ -2166,7 +2189,74 @@ export function GenerateCreativeDialog() {
                       </Button>
                     </div>
                   )}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {images.length > 0 && selectedPhoto && (
+                    <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          Reposition the photo — drag it here
+                        </p>
+                        <button
+                          type="button"
+                          className="text-[10px] text-muted-foreground underline"
+                          onClick={() => { setFocalX(50); setFocalY(50); setPhotoZoom(1); }}
+                        >
+                          Reset framing
+                        </button>
+                      </div>
+                      <div className="max-w-[340px]">
+                        <LiveAdPreview
+                          copy={editedSingle}
+                          slides={editedSlides}
+                          isCarousel={isCarousel}
+                          template={template}
+                          templateLabel={activeCustom ? activeCustom.name : (BUILT_IN_LABELS[template] || template)}
+                          colors={colors}
+                          displayFamily={displayFamily}
+                          bodyFamily={bodyFamily}
+                          photoUrl={selectedPhoto?.url}
+                          backgroundUrl={bgSelectedUrl || undefined}
+                          textCase={textCase}
+                          headlineScale={headlineScale}
+                          bodyScale={bodyScale}
+                          textBoxStyle={textBoxStyle}
+                          textBoxColor={textBoxColor || colors.bg}
+                          textBoxOpacity={textBoxOpacity}
+                          textPosition={textPosition}
+                          textAlign={textAlign}
+                          logoUrl={brandLogoAsset?.url}
+                          showLogo={placeLogo}
+                          logoCorner={logoCorner}
+                          focalX={focalX}
+                          focalY={focalY}
+                          photoZoom={photoZoom}
+                          onFocalChange={(x, y) => { setFocalX(x); setFocalY(y); }}
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Zoom</p>
+                          <span className="text-[10px] text-muted-foreground tabular-nums">{photoZoom.toFixed(2)}x</span>
+                        </div>
+                        <Slider min={1} max={2.5} step={0.05} value={[photoZoom]} onValueChange={(v) => setPhotoZoom(v[0])} />
+                      </div>
+                      {framingStale && (
+                        <div className="flex items-center justify-between gap-2 rounded border border-primary/30 bg-primary/5 px-3 py-2">
+                          <p className="text-[11px] text-foreground">
+                            Framing changed — the images below still show the old crop.
+                          </p>
+                          <Button size="sm" onClick={generate} disabled={generating || !canRender}>
+                            {generating ? (
+                              <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Rendering…</>
+                            ) : (
+                              <><Sparkles className="h-3 w-3 mr-1" /> Apply &amp; re-render</>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className={cn("grid grid-cols-1 sm:grid-cols-2 gap-3", framingStale && "opacity-60")}>
+
                     {images.map((img, i) => {
                       const isApproved = approvedIdxs.has(i);
                       return (
