@@ -542,10 +542,10 @@ export default function Settings() {
                 </div>
 
                 <div className="pt-4 flex gap-3">
-                  <Button onClick={handleSaveNotificationPrefs} disabled={saving} variant="lumi">
-                    {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Save Preferences
-                  </Button>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>Changes save automatically.</span>
+                    <AutoSaveIndicator status={prefsSaveStatus} />
+                  </div>
                   <Button onClick={() => navigate('/settings/digest-preview')} variant="outline" className="gap-2">
                     <Eye className="h-4 w-4" />
                     Preview Performance Report
@@ -677,10 +677,10 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <Button onClick={handleSaveAlertThresholds} disabled={saving} variant="lumi" className="mt-4">
-                  {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  Save Thresholds
-                </Button>
+                <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>Changes save automatically.</span>
+                  <AutoSaveIndicator status={thresholdsSaveStatus} />
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -778,10 +778,10 @@ export default function Settings() {
                 </div>
 
                 <div className="pt-4">
-                  <Button onClick={handleSaveCreativeAutomation} disabled={saving} variant="lumi">
-                    {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Save Automation Settings
-                  </Button>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>Changes save automatically.</span>
+                    <AutoSaveIndicator status={automationSaveStatus} />
+                  </div>
                 </div>
               </CardContent>
             </Card>
