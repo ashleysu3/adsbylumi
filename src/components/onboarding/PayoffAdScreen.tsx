@@ -22,6 +22,12 @@ import { ScriptBlock } from "@/components/ad-kit/ScriptBlock";
 import { BrollBlock } from "@/components/ad-kit/BrollBlock";
 import { VslCloseSection, useKitCheckout } from "@/components/ad-kit/VslClose";
 import type { ScriptBeat } from "@/components/ad-kit/types";
+import {
+  rankPhotoCandidates,
+  bestCopyIndex,
+  guardPalette,
+  normalizeDemoDomain,
+} from "@/lib/ad-quality";
 
 // Coerce however brand_kits.colors is shaped (array of hexes from extract-brand,
 // or the {bg, ink, accent, pop, highlight, cream} object the Style page saves)
