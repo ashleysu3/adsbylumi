@@ -1769,7 +1769,10 @@ export function GenerateCreativeDialog() {
 
   const previewPane = (
     <aside className="hidden md:flex flex-col gap-3 overflow-y-auto border-l bg-muted/20 px-4 py-5">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Preview</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Preview</p>
+        {FrameToggle}
+      </div>
       <LiveAdPreview
         copy={editedSingle}
         slides={editedSlides}
@@ -1792,10 +1795,11 @@ export function GenerateCreativeDialog() {
         logoUrl={brandLogoAsset?.url}
         showLogo={placeLogo}
         logoCorner={logoCorner}
-        focalX={focalX}
-        focalY={focalY}
-        photoZoom={photoZoom}
-        onFocalChange={(x, y) => { setFocalX(x); setFocalY(y); }}
+        frame={previewFrame}
+        focalX={activeFocalX}
+        focalY={activeFocalY}
+        photoZoom={activeZoom}
+        onFocalChange={setActiveFocal}
       />
       {refinePanel}
     </aside>
@@ -2266,13 +2270,16 @@ export function GenerateCreativeDialog() {
                         <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
                           Reposition the photo — drag it here
                         </p>
-                        <button
-                          type="button"
-                          className="text-[10px] text-muted-foreground underline"
-                          onClick={() => { setFocalX(50); setFocalY(50); setPhotoZoom(1); }}
-                        >
-                          Reset framing
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {FrameToggle}
+                          <button
+                            type="button"
+                            className="text-[10px] text-muted-foreground underline"
+                            onClick={resetActiveFraming}
+                          >
+                            Reset framing
+                          </button>
+                        </div>
                       </div>
                       <div className="max-w-[340px]">
                         <LiveAdPreview
@@ -2297,18 +2304,19 @@ export function GenerateCreativeDialog() {
                           logoUrl={brandLogoAsset?.url}
                           showLogo={placeLogo}
                           logoCorner={logoCorner}
-                          focalX={focalX}
-                          focalY={focalY}
-                          photoZoom={photoZoom}
-                          onFocalChange={(x, y) => { setFocalX(x); setFocalY(y); }}
+                          frame={previewFrame}
+                          focalX={activeFocalX}
+                          focalY={activeFocalY}
+                          photoZoom={activeZoom}
+                          onFocalChange={setActiveFocal}
                         />
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
                           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Zoom</p>
-                          <span className="text-[10px] text-muted-foreground tabular-nums">{photoZoom.toFixed(2)}x</span>
+                          <span className="text-[10px] text-muted-foreground tabular-nums">{activeZoom.toFixed(2)}x</span>
                         </div>
-                        <Slider min={1} max={2.5} step={0.05} value={[photoZoom]} onValueChange={(v) => setPhotoZoom(v[0])} />
+                        <Slider min={1} max={2.5} step={0.05} value={[activeZoom]} onValueChange={(v) => setActiveZoom(v[0])} />
                       </div>
                       {framingStale && (
                         <div className="flex items-center justify-between gap-2 rounded border border-primary/30 bg-primary/5 px-3 py-2">
