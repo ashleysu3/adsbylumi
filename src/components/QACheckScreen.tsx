@@ -159,7 +159,10 @@ export function QACheckScreen({
     runChecks();
   }, []);
 
-  const runChecks = async (overrideUrl?: string) => {
+  const runChecks = async (
+    overrideUrl?: string,
+    overrideCopy?: { selected_copy: any; production_items: any[]; signature?: string },
+  ) => {
     for (let i = 0; i < INITIAL_CHECKS.length; i++) {
       setCurrentCheckIndex(i);
       setChecks((prev) =>
@@ -170,19 +173,22 @@ export function QACheckScreen({
 
     try {
       const template = workspace.campaign_templates || workspace.template || null;
+      const copySource = overrideCopy || wsCopy;
 
       const { data, error } = await supabase.functions.invoke("qa-preflight-check", {
         body: {
           brand: workspace.brands,
           answers,
           creativeJson: workspace.creative_json,
-          productionItems: workspace.production_items,
+          productionItems: copySource.production_items,
           offerUrl: overrideUrl || landingUrl || null,
-          selectedCopy: workspace.selected_copy || null,
+          selectedCopy: copySource.selected_copy || null,
           template,
-          approvedCopySignature: workspace.approved_copy_signature || null,
+          approvedCopySignature:
+            overrideCopy?.signature ?? workspace.approved_copy_signature ?? null,
         },
       });
+
 
       if (error) throw error;
 
