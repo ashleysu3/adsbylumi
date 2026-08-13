@@ -5,6 +5,7 @@ import Performance from "@/pages/Performance";
 import { CampaignsList } from "@/components/CampaignsList";
 import { ResumeWorkspaceBanner } from "@/components/ResumeWorkspaceBanner";
 import { MetaImportBridgeBanner } from "@/components/insights/MetaImportBridgeBanner";
+import { ImportFromMetaButton } from "@/components/insights/ImportFromMetaButton";
 import { GridShimmer } from "@/components/GradientShimmer";
 import { Button } from "@/components/ui/button";
 import { useBrand } from "@/contexts/BrandContext";
@@ -253,7 +254,7 @@ export default function Studio() {
               onImported={() => setLiveRefreshKey((k) => k + 1)}
             />
           </div>
-          <div className={openSections.live ? "border-t" : "hidden"}>
+          <div className={cn("border-t", !openSections.live && "hidden")}>
             {liveCount === 0 ? (
               <p className="px-4 py-6 text-center text-sm text-muted-foreground">
                 No ads running yet — finish a draft below and hit publish, or import what's
@@ -263,10 +264,6 @@ export default function Studio() {
             <div className={cn("p-4", liveCount === 0 && "hidden")}>
               <Performance key={liveRefreshKey} embedded onLiveCountChange={setLiveCount} />
             </div>
-          </div>
-          {/* Keep the engine mounted (hidden) so the count stays live while collapsed */}
-          <div className={!openSections.live ? "hidden" : "hidden"} aria-hidden>
-            <Performance key={`bg-${liveRefreshKey}`} embedded onLiveCountChange={setLiveCount} />
           </div>
         </section>
 
