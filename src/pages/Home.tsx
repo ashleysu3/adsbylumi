@@ -288,6 +288,41 @@ export default function Home() {
           />
         </section>
 
+        {/* Quick actions */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Card
+            className="hover:border-lumi-pink-1/40 transition cursor-pointer group"
+            onClick={() => navigate("/live-ads")}
+          >
+            <CardContent className="py-5 px-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition">
+                <Activity className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">My Ads</p>
+                <p className="text-xs text-muted-foreground">Check live performance</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            </CardContent>
+          </Card>
+
+          <Card
+            className="hover:border-lumi-pink-1/40 transition cursor-pointer group"
+            onClick={() => navigate("/create")}
+          >
+            <CardContent className="py-5 px-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition">
+                <Plus className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">Create a New Campaign</p>
+                <p className="text-xs text-muted-foreground">Launch something new</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            </CardContent>
+          </Card>
+        </section>
+
         {/* LUMI suggests… */}
         <section className="space-y-3">
           <div className="flex items-center gap-2">
