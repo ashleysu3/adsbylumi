@@ -355,12 +355,11 @@ export default function Voice() {
                 </>
               )}
 
-              <div className="pt-4">
-                <Button onClick={handleSaveEmojiSettings} disabled={saving} variant="lumi">
-                  {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  Save Emoji Settings
-                </Button>
+              <div className="pt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Changes save automatically.</span>
+                <AutoSaveIndicator status={emojiSaveStatus} />
               </div>
+
             </CardContent>
           </Card>
 
