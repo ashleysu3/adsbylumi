@@ -145,10 +145,26 @@ export function AudiencePsychology({
     }
   };
 
+  // Autosave every edit in the dialog so closing it (or navigating away) keeps
+  // the changes.
+  const { status: editSaveStatus, flush: flushEdits } = useAutosaveOnChange<any>(
+    editedPsychology,
+    async (value) => {
+      if (!value) return;
+      const { error } = await supabase
+        .from('brands')
+        .update({ audience_psychology: value, psychology_status: 'completed' })
+        .eq('id', brandId);
+      if (error) throw error;
+    },
+    { key: brandId, enabled: editDialogOpen && !!editedPsychology },
+  );
+
   const updateArrayField = (field: string, value: string) => {
     const items = value.split('\n').filter(item => item.trim());
     setEditedPsychology((prev: any) => ({ ...prev, [field]: items }));
   };
+
 
   const getStatusBadge = () => {
     switch (status) {
