@@ -507,17 +507,19 @@ export function LiveAdPreview({
       body = (
         <>
           {bgImage && <img src={bgImage} alt="" className="absolute inset-0 h-full w-full object-cover" />}
-          {bgImage && (
+          {bgImage && textBoxStyle === "none" && (
             <div
               className="absolute inset-0"
               style={{ background: `linear-gradient(to top, ${colors.bg}f2 12%, ${colors.bg}66 55%, transparent 100%)` }}
             />
           )}
-          <div className="relative flex h-full flex-col justify-end gap-2 p-5">
-            <Eyebrow />
-            <Headline />
-            <Sub />
-            <Cta className="mt-1" />
+          <div className={`relative flex h-full flex-col gap-2 p-5 ${justifyClass} ${alignItemsClass}`}>
+            <TextStack>
+              <Eyebrow />
+              <Headline />
+              <Sub />
+              <Cta className="mt-1" />
+            </TextStack>
           </div>
         </>
       );
