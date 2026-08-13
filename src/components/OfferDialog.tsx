@@ -36,6 +36,7 @@ interface ExtractedData {
   cta_language?: string[];
   objections_addressed?: string[];
   raw_copy_highlights?: string[];
+  page_excerpt?: string | null;
   content_summary?: string;
   missing_info?: string[];
   needs_clarification?: boolean;
