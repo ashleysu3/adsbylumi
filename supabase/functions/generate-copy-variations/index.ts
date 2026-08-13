@@ -220,6 +220,7 @@ Offer Details:
 - Description: ${offer.description || 'Not specified'}
 - Price: ${offer.price_point || 'Not specified'}
 - Target Outcome: ${offer.target_outcome || 'Not specified'}
+${pageLanguageBlock}
 
 Audience Psychology:
 - Pain Points: ${painPoints.join(', ') || 'Not specified'}

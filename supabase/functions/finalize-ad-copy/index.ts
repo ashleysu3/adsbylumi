@@ -167,6 +167,7 @@ Offer Details:
 - Description: ${offer.description || 'Not specified'}
 - Price: ${offer.price_point || 'Not specified'}
 - Target Outcome: ${offer.target_outcome || 'Not specified'}
+${pageLanguageBlock}
 
 Generate headline, primary_text, description, and call_to_action that:
 1. Maintains continuity with the hook/script
