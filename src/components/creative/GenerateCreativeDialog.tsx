@@ -1645,15 +1645,6 @@ export function GenerateCreativeDialog() {
                   ))}
                 </span>
               </span>
-              <button
-                type="button"
-                className="relative overflow-hidden flex items-center gap-1 text-[11px] font-medium text-white bg-gradient-lumi rounded-full px-2.5 py-1 shadow-lumi hover:shadow-glow transition-shadow disabled:opacity-50 disabled:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent before:animate-shimmer"
-                onClick={() => setTourOpen(true)}
-                disabled={dialogTourSteps.length === 0}
-              >
-                <Compass className="h-3 w-3" />
-                Show me what to do
-              </button>
             </div>
           </div>
 
@@ -1689,10 +1680,6 @@ export function GenerateCreativeDialog() {
             ))}
           </div>
         </DialogHeader>
-
-        {tourOpen && dialogTourSteps.length > 0 && (
-          <GuidedTour steps={dialogTourSteps} onClose={() => setTourOpen(false)} />
-        )}
 
         {/* ---------------- BODY ---------------- */}
         {step === "style" ? (
