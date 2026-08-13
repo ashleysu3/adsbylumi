@@ -517,14 +517,21 @@ export function GenerateCreativeDialog() {
           return;
         }
 
+        // The brand kit is edited as four decisions (light / dark / accent 1 /
+        // accent 2). Older kits may be missing the mirrored slots — derive them
+        // from the brand's own colors instead of falling back to LUMI defaults,
+        // which is what made ads render with stock green/orange.
+        const light = c.bg || c.cream || DEFAULT_COLORS.bg;
+        const accent2 = c.pop || c.highlight || c.accent || DEFAULT_COLORS.pop;
         setColors({
-          bg: c.bg || DEFAULT_COLORS.bg,
+          bg: light,
+          cream: c.cream || light,
           ink: c.ink || DEFAULT_COLORS.ink,
-          accent: c.accent || DEFAULT_COLORS.accent,
-          pop: c.pop || DEFAULT_COLORS.pop,
-          highlight: c.highlight || DEFAULT_COLORS.highlight,
-          cream: c.cream || DEFAULT_COLORS.cream,
+          accent: c.accent || accent2,
+          pop: accent2,
+          highlight: accent2,
         });
+
         setFontUrl(f.displayUrl || f.displayItalicUrl || "");
         setDisplayFamily(f.displayFamily || "");
         setBodyFamily(f.bodyFamily || "");
