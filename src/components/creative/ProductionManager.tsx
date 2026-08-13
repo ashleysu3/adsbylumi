@@ -51,7 +51,10 @@ interface ProductionManagerProps {
   onArchivePrevious?: () => Promise<void>;
   onClearAll?: () => Promise<void>;
   onUrlChange?: (url: string) => void;
+  onUploadOwnAds?: () => void;
+  onOpenCreativeBrief?: () => void;
   brand?: any;
+
 }
 
 function parseOverlayTiming(raw?: string): { start: number; end: number } | null {
