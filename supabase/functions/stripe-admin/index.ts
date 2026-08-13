@@ -674,10 +674,14 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
-    logStep("ERROR", { message: error.message });
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: error.message === "Unauthorized" ? 401 : 400,
+    const message = error?.message || String(error);
+    logStep("ERROR", { message });
+    // Always 200 so the message reaches the client instead of the SDK's
+    // generic "non-2xx status code" wrapper.
+    return new Response(JSON.stringify({ error: message }), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
+
 });
