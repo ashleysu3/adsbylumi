@@ -29,8 +29,9 @@ import {
   Crown,
   Shield,
   Briefcase,
-  CheckSquare,
   LogOut,
+  Search,
+  X,
 } from "lucide-react";
 import { LadybugIcon } from "@/components/LadybugIcon";
 import { IntentBar } from "@/components/IntentBar";
@@ -109,6 +110,7 @@ export function AppTopBar({ isAdmin }: AppTopBarProps) {
   const [userEmail, setUserEmail] = useState("");
   const [hasVipBonuses, setHasVipBonuses] = useState(false);
   const [isPartner, setIsPartner] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -202,13 +204,13 @@ export function AppTopBar({ isAdmin }: AppTopBarProps) {
               <span className="hidden sm:inline">Ad Dashboard</span>
             </button>
 
-            {/* Creative folds into the cog on narrow screens */}
-            <div className="hidden xl:block">
+            {/* Creative Studio folds into the cog on narrow screens */}
+            <div className="hidden lg:block">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button type="button" className={tabClass(isCreativeRoute)}>
                     <Palette className="h-4 w-4" />
-                    <span>Creative</span>
+                    <span>Creative Studio</span>
                     <ChevronDown className="h-3 w-3 opacity-60" />
                   </button>
                 </DropdownMenuTrigger>
@@ -229,20 +231,35 @@ export function AppTopBar({ isAdmin }: AppTopBarProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new Event("open-tasks-tray"))}
-              className={cn(tabClass(false), "hidden lg:inline-flex")}
-            >
-              <CheckSquare className="h-4 w-4 text-lumi-purple-1" />
-              <span>My Tasks</span>
-            </button>
           </nav>
 
-          {/* Ask LUMI — takes the leftover room */}
-          <div className="flex-1 min-w-0 px-1 hidden md:block">
-            <IntentBar size="sm" innerBgClassName="bg-card" />
+          {/* Ask LUMI — collapsed to a magnifying glass until opened */}
+          <div className="flex-1 min-w-0 px-1 hidden md:flex justify-end">
+            {searchOpen ? (
+              <div className="w-full max-w-xl flex items-center gap-1">
+                <div className="flex-1 min-w-0">
+                  <IntentBar size="sm" innerBgClassName="bg-card" />
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close search"
+                  onClick={() => setSearchOpen(false)}
+                  className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                aria-label="Ask LUMI"
+                title="Ask LUMI"
+                onClick={() => setSearchOpen(true)}
+                className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Search className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
           {/* The one dopamine action */}
