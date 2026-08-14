@@ -681,6 +681,10 @@ export function ImportCampaignsModal({
           </DialogDescription>
         </DialogHeader>
 
+        <ImportSteps current={1} />
+
+
+
         <div className="flex-1 overflow-hidden flex flex-col">
           {loading ? (
             <div className="space-y-3 py-4">
