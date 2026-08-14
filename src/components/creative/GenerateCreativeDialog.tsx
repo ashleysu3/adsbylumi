@@ -1793,23 +1793,9 @@ export function GenerateCreativeDialog() {
                 </div>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Drag the photo in the preview, or use the sliders, to choose what stays in frame.
+                Drag the photo right in the preview to choose what stays in frame.
                 Feed and story are framed separately — switch above to set each one.
               </p>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Horizontal</p>
-                  <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(activeFocalX)}%</span>
-                </div>
-                <Slider min={0} max={100} step={1} value={[activeFocalX]} onValueChange={(v) => setActiveFocal(v[0], activeFocalY)} />
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Vertical</p>
-                  <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(activeFocalY)}%</span>
-                </div>
-                <Slider min={0} max={100} step={1} value={[activeFocalY]} onValueChange={(v) => setActiveFocal(activeFocalX, v[0])} />
-              </div>
             </div>
           )}
 
