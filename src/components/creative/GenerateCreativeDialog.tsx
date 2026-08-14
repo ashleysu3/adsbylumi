@@ -25,6 +25,8 @@ import { cn } from "@/lib/utils";
 import type { CreativeBrief } from "./ProductionChecklistPanel";
 import { TemplatePreview } from "./TemplatePreview";
 import { CopyRegenerateDialog, type CopyFeedback } from "./CopyRegenerateDialog";
+import { GuidedTour, type TourStep } from "@/components/GuidedTour";
+import lumiBulb from "@/assets/lumi-bulb.png";
 // Real engine renders with clean sample copy — replaced the old AI-generated
 // mockup images, which rendered garbled/unreadable placeholder text (a known
 // limitation of image models asked to draw text) instead of a real preview.
@@ -1575,18 +1577,18 @@ export function GenerateCreativeDialog() {
     else { setFocalX(50); setFocalY(50); setPhotoZoom(1); }
   };
   const FrameToggle = (
-    <div className="inline-flex rounded-md border bg-background p-0.5 text-[10px]">
+    <div className="inline-flex rounded-full bg-muted/60 p-1 text-xs">
       {(["feed", "story"] as const).map((f) => (
         <button
           key={f}
           type="button"
           onClick={() => setPreviewFrame(f)}
           className={cn(
-            "rounded px-2 py-0.5 capitalize transition",
-            previewFrame === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+            "rounded-full px-2.5 py-1 font-medium transition",
+            previewFrame === f ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
           )}
         >
-          {f === "feed" ? "Feed 1:1" : "Story 9:16"}
+          {f === "feed" ? "1:1" : "9:16"}
         </button>
       ))}
     </div>
@@ -1606,6 +1608,34 @@ export function GenerateCreativeDialog() {
   useEffect(() => {
     if (images.length > 0) setRefineValue(["refine"]);
   }, [images.length]);
+
+  const [tourOpen, setTourOpen] = useState(false);
+  const dialogTourSteps: TourStep[] = [
+    {
+      targetSelector: '[data-help-target="remix-this-ad"]',
+      title: "Start from a real ad",
+      description: "Pick an ad you saved to a board and Lumi matches its layout with your own offer.",
+      position: "top",
+    },
+    {
+      targetSelector: '[data-help-target="style-next"]',
+      title: "Or pick a template",
+      description: "Choose a layout, then move on to add your photo and words.",
+      position: "top",
+    },
+    {
+      targetSelector: '[data-help-target="render-creative"]',
+      title: "Render it",
+      description: "Lumi builds this creative in your brand colours, at every size you need.",
+      position: "top",
+    },
+    {
+      targetSelector: '[data-help-target="approve-creative"]',
+      title: "Approve when you're happy",
+      description: "Approving attaches the creative to this ad — you can always come back and refine it first.",
+      position: "top",
+    },
+  ];
 
   const briefStrip = brief ? (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border bg-muted/30 px-3 py-2 text-xs">
@@ -1881,7 +1911,7 @@ export function GenerateCreativeDialog() {
   const previewPane = (
     <aside className="hidden md:flex flex-col gap-3 overflow-y-auto border-l bg-muted/20 px-4 py-5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Preview</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Live preview</p>
         {FrameToggle}
       </div>
       <LiveAdPreview
@@ -1912,6 +1942,9 @@ export function GenerateCreativeDialog() {
         photoZoom={activeZoom}
         onFocalChange={setActiveFocal}
       />
+      <p className="text-[11px] text-muted-foreground text-center">
+        {previewFrame === "feed" ? "Feed, 1080 × 1080" : "Reels & stories, 1080 × 1920"} · updates as you type
+      </p>
       {refinePanel}
     </aside>
   );
@@ -1930,18 +1963,18 @@ export function GenerateCreativeDialog() {
         <DialogHeader className="space-y-3 border-b px-6 pb-4 pt-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <DialogTitle className="flex items-center gap-2">
-                <Wand2 className="h-5 w-5 text-primary" />
+              <DialogTitle className="flex items-center gap-2 font-display text-xl">
+                <img src={lumiBulb} alt="" className="h-6 w-6" />
                 Generate this creative
               </DialogTitle>
               <DialogDescription className="text-xs">
                 {brief?.concept || "Write copy and render this ad in your brand kit."}
               </DialogDescription>
             </div>
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
               <Badge
-                variant="outline"
-                className="text-[10px] uppercase"
+                variant="secondary"
+                className="text-[10px] uppercase rounded-full bg-muted text-muted-foreground"
                 title="This generator is in beta — bugs are expected. If you hit one, send us a screenshot!"
               >
                 Beta
@@ -1957,12 +1990,19 @@ export function GenerateCreativeDialog() {
                     <span
                       key={k}
                       title={`${k}: ${colors[k]}`}
-                      className="h-3 w-3 rounded border border-border"
+                      className="h-3 w-3 rounded-[3px] border border-border"
                       style={{ backgroundColor: colors[k] }}
                     />
                   ))}
                 </span>
               </span>
+              <button
+                type="button"
+                onClick={() => setTourOpen(true)}
+                className="font-medium text-lumi-pink-1 hover:underline underline-offset-2"
+              >
+                Show me how
+              </button>
             </div>
           </div>
 
@@ -1978,16 +2018,16 @@ export function GenerateCreativeDialog() {
                   className={cn(
                     "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition",
                     i === stepIndex
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-gradient-warm text-white"
                       : i < stepIndex
-                        ? "bg-muted text-foreground hover:bg-muted/70"
-                        : "text-muted-foreground",
+                        ? "bg-[#EAF7EE] text-[#16A34A] hover:bg-[#EAF7EE]/70"
+                        : "text-[#9A9A9A]",
                   )}
                 >
                   <span
                     className={cn(
                       "flex h-4 w-4 items-center justify-center rounded-full text-[9px]",
-                      i === stepIndex ? "bg-primary-foreground/20" : "bg-border/60",
+                      i === stepIndex ? "bg-white/25" : i < stepIndex ? "bg-[#16A34A]/15" : "bg-border/60",
                     )}
                   >
                     {i + 1}
@@ -1998,42 +2038,74 @@ export function GenerateCreativeDialog() {
             ))}
           </div>
         </DialogHeader>
+        {tourOpen && <GuidedTour steps={dialogTourSteps} onClose={() => setTourOpen(false)} />}
 
         {/* ---------------- BODY ---------------- */}
         {step === "style" ? (
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
             {briefStrip}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <h3 className="font-display text-lg text-foreground">Where should this creative start?</h3>
+              <p className="text-xs text-muted-foreground">Pick one. You can change it later without losing your copy.</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <button
                 type="button"
                 onClick={() => { setMode("template"); setReferenceAnalysis(null); }}
                 className={cn(
-                  "rounded-xl border-2 p-4 text-left transition",
-                  mode === "template" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground",
+                  "rounded-xl border-2 p-[18px] text-left transition",
+                  mode === "template"
+                    ? "border-[#EC4899] ring-[3px] ring-[#EC4899]/12"
+                    : "border-border hover:border-muted-foreground",
                 )}
               >
                 <p className="flex items-center gap-2 text-sm font-medium">
-                  <Sparkles className="h-4 w-4 text-primary" /> Use a template
+                  <Sparkles className="h-4 w-4 text-lumi-pink-1" /> Use a template
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Pick a layout we've already designed. Fastest way to a finished ad.
+                  Start from a layout that already converts. Your brand colours and fonts drop straight in.
                 </p>
+                {styleCards.length > 0 && (
+                  <div className="mt-3 flex items-center gap-1.5">
+                    {styleCards.slice(0, 3).map((card) => (
+                      <div key={card.key} className="h-[50px] w-10 rounded-md overflow-hidden bg-muted/40 shrink-0">
+                        {card.thumb ? (
+                          <img src={card.thumb} alt="" className="h-full w-full object-cover" />
+                        ) : card.builtIn ? (
+                          <TemplatePreview kind={card.builtIn} />
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => { setMode("remix"); setReferenceAnalysis(null); }}
                 className={cn(
-                  "rounded-xl border-2 p-4 text-left transition",
-                  mode === "remix" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground",
+                  "rounded-xl border-2 p-[18px] text-left transition",
+                  mode === "remix"
+                    ? "border-[#EC4899] ring-[3px] ring-[#EC4899]/12"
+                    : "border-border hover:border-muted-foreground",
                 )}
               >
                 <p className="flex items-center gap-2 text-sm font-medium">
-                  <ImagePlus className="h-4 w-4 text-primary" /> Remix a real ad
+                  <ImagePlus className="h-4 w-4 text-lumi-pink-1" /> Remix a real ad
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Choose an ad you saved to a board — Lumi matches its layout for your offer.
+                  Point at an ad you saved to a board. Lumi keeps the structure, swaps in your offer.
                 </p>
+                {boardImages.length > 0 && (
+                  <div className="mt-3 flex items-center gap-1.5">
+                    {boardImages.slice(0, 2).map((img) => (
+                      <div key={img.id} className="h-[50px] w-[50px] rounded-md overflow-hidden bg-muted/40 shrink-0">
+                        <img src={img.url} alt="" className="h-full w-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </button>
             </div>
 
@@ -2091,12 +2163,12 @@ export function GenerateCreativeDialog() {
                               type="button"
                               onClick={() => { setSelectedRemixImageId(img.id); setReferenceAnalysis(null); }}
                               className={`relative aspect-square rounded border-2 overflow-hidden transition ${
-                                active ? "border-primary ring-2 ring-primary/30" : "border-border hover:border-muted-foreground"
+                                active ? "border-[#EC4899] ring-[3px] ring-[#EC4899]/12" : "border-border hover:border-muted-foreground"
                               }`}
                             >
                               <img src={img.url} alt="" className="w-full h-full object-cover" />
                               {active && (
-                                <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-semibold rounded-full h-5 w-5 flex items-center justify-center">
+                                <span className="absolute top-1 right-1 bg-lumi-pink-1 text-white text-[10px] font-semibold rounded-full h-5 w-5 flex items-center justify-center">
                                   ✓
                                 </span>
                               )}
@@ -2124,7 +2196,7 @@ export function GenerateCreativeDialog() {
                         type="button"
                         onClick={() => pickStyle(card)}
                         className={`group relative rounded-lg border-2 overflow-hidden text-left transition ${
-                          active ? "border-primary shadow-sm" : "border-border hover:border-muted-foreground"
+                          active ? "border-[#EC4899] ring-[3px] ring-[#EC4899]/12" : "border-border hover:border-muted-foreground"
                         }`}
                       >
                         <div className="aspect-square bg-muted/40 flex items-center justify-center overflow-hidden">
@@ -2179,7 +2251,9 @@ export function GenerateCreativeDialog() {
                   {needsPhoto && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
-                        <Label className="text-xs uppercase text-muted-foreground">Your image</Label>
+                        <h4 className="font-display text-base flex items-center gap-1.5">
+                          <ImagePlus className="h-4 w-4 text-muted-foreground" /> 1. The picture
+                        </h4>
                         <Button
                           type="button"
                           size="sm"
@@ -2204,11 +2278,24 @@ export function GenerateCreativeDialog() {
                         />
                       </div>
                       <Tabs value={imageSource} onValueChange={(v) => setImageSource(v as "uploads" | "brand")}>
-                        <TabsList className="w-full">
-                          <TabsTrigger value="uploads" className="flex-1">Your uploads</TabsTrigger>
-                          <TabsTrigger value="brand" className="flex-1">Brand library</TabsTrigger>
+                        <TabsList className="w-full bg-card border p-0.5 h-auto">
+                          <TabsTrigger
+                            value="uploads"
+                            className="flex-1 rounded-md data-[state=active]:bg-foreground data-[state=active]:text-background"
+                          >
+                            Your uploads
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="brand"
+                            className="flex-1 rounded-md data-[state=active]:bg-foreground data-[state=active]:text-background"
+                          >
+                            Brand library
+                          </TabsTrigger>
                         </TabsList>
                       </Tabs>
+                      <p className="text-[11px] text-muted-foreground">
+                        This is the photo behind your text. Portrait shots work best for Reels.
+                      </p>
 
                       {photosLoading ? (
                         <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
@@ -2237,7 +2324,7 @@ export function GenerateCreativeDialog() {
                                 type="button"
                                 onClick={() => setSelectedPhotoId(p.id)}
                                 className={`w-full h-full rounded border-2 overflow-hidden transition ${
-                                  selectedPhotoId === p.id ? "border-primary" : "border-border hover:border-muted-foreground"
+                                  selectedPhotoId === p.id ? "border-[#EC4899] ring-[3px] ring-[#EC4899]/12" : "border-border hover:border-muted-foreground"
                                 }`}
                                 title={p.source === "brand" ? `Brand · ${p.role}` : "Upload"}
                               >
@@ -2295,8 +2382,10 @@ export function GenerateCreativeDialog() {
                   )}
 
                   {/* Copy */}
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase text-muted-foreground">Your copy</Label>
+                  <div className="space-y-2 border-t pt-4">
+                    <h4 className="font-display text-base flex items-center gap-1.5">
+                      <Pencil className="h-4 w-4 text-muted-foreground" /> 2. The words
+                    </h4>
                     {composing ? (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
                         <Loader2 className="h-4 w-4 animate-spin" /> Writing copy in your brand voice…
@@ -2519,6 +2608,7 @@ export function GenerateCreativeDialog() {
               mode === "remix" ? (
                 <Button
                   data-help-target="remix-this-ad"
+                  variant="lumi"
                   size="lg"
                   onClick={runAnalyzeReference}
                   disabled={analyzingReference || !selectedRemixImageId}
@@ -2532,6 +2622,7 @@ export function GenerateCreativeDialog() {
               ) : (
                 <Button
                   data-help-target="style-next"
+                  variant="lumi"
                   size="lg"
                   onClick={() => setStep("image-copy")}
                   disabled={!activeStyleKey}
@@ -2543,6 +2634,7 @@ export function GenerateCreativeDialog() {
               activeCustom ? (
                 <Button
                   data-help-target="render-creative"
+                  variant="lumi"
                   size="lg"
                   onClick={() => { setStep("render"); generate(); }}
                   disabled={!canRender}
@@ -2583,7 +2675,7 @@ export function GenerateCreativeDialog() {
                 </div>
               )
             ) : (
-              <Button size="lg" onClick={generate} disabled={!canRender}>
+              <Button variant="lumi" size="lg" onClick={generate} disabled={!canRender}>
                 {generating ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {progress || "Rendering…"}</>
                 ) : (
