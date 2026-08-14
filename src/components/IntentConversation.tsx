@@ -149,7 +149,7 @@ export function IntentConversation({ open, onOpenChange, initial }: IntentConver
       }
       if (key === "create_from_board") {
         onOpenChange(false);
-        navigate("/boards");
+        navigate("/creative-studio");
         return;
       }
       onOpenChange(false);

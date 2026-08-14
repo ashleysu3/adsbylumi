@@ -402,27 +402,6 @@ export function GenerateCreativeDialog() {
   const [step, setStep] = useState<"style" | "image-copy" | "render">("style");
   const [imageSource, setImageSource] = useState<"uploads" | "brand">("uploads");
 
-  // Primary flow: remix a single real ad. Falls back to the template flow.
-  const [mode, setMode] = useState<"remix" | "template">("remix");
-
-  type BoardRow = { id: string; name: string };
-  type BoardImg = { id: string; url: string; rawSrc: string };
-  const [boards, setBoards] = useState<BoardRow[]>([]);
-  const [boardsLoading, setBoardsLoading] = useState(false);
-  const [selectedBoardId, setSelectedBoardId] = useState<string>("");
-  const [boardImages, setBoardImages] = useState<BoardImg[]>([]);
-  const [boardImagesLoading, setBoardImagesLoading] = useState(false);
-  const [selectedRemixImageId, setSelectedRemixImageId] = useState<string>("");
-  const [analyzingReference, setAnalyzingReference] = useState(false);
-  type ReferenceAnalysis = {
-    template: string;
-    needs_photo: boolean;
-    font_personality: string;
-    font_is_load_bearing: boolean;
-    template_reason: string;
-    structural_notes: string;
-  };
-  const [referenceAnalysis, setReferenceAnalysis] = useState<ReferenceAnalysis | null>(null);
 
   // single-template state
   const [singleOptions, setSingleOptions] = useState<SingleOption[]>([]);
@@ -496,9 +475,6 @@ export function GenerateCreativeDialog() {
       setTemplate(mapStyleToTemplate(detail.brief.styleHint, detail.brief.format));
       setCustomTemplateId("");
       setStep("style");
-      setMode("remix");
-      setSelectedRemixImageId("");
-      setReferenceAnalysis(null);
       setOpen(true);
       setSingleOptions([]);
       setCarouselOptions([]);
@@ -696,107 +672,9 @@ export function GenerateCreativeDialog() {
         /* templates table may not be available; ignore */
       }
     })();
-    // Load the user's boards for the inspiration flow.
-    (async () => {
-      setBoardsLoading(true);
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data, error } = await supabase
-          .from("boards")
-          .select("id, name")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-        if (cancelled) return;
-        const list = (data || []) as BoardRow[];
-        setBoards(list);
-        setSelectedBoardId((prev) => prev || list[0]?.id || "");
-      } catch (e: any) {
-        if (!cancelled) console.warn("load boards failed", e);
-      } finally {
-        if (!cancelled) setBoardsLoading(false);
-      }
-    })();
     return () => { cancelled = true; };
   }, [open, activeBrand?.id, brandsLoading, navigate, kitReloadKey]);
 
-  // Load images for the currently selected board.
-  useEffect(() => {
-    if (!open || !selectedBoardId) {
-      setBoardImages([]);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      setBoardImagesLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from("board_items")
-          .select("id, uploaded_image_url, inspiration_items(image_url)")
-          .eq("board_id", selectedBoardId)
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-        const resolved: BoardImg[] = [];
-        for (const it of (data || []) as any[]) {
-          const raw = (it.uploaded_image_url as string | null) ||
-            (it.inspiration_items?.image_url as string | null) || null;
-          if (!raw) continue;
-          let url = raw;
-          if (!raw.startsWith("http")) {
-            const { data: s } = await supabase.storage
-              .from("inspiration")
-              .createSignedUrl(raw, 60 * 60);
-            url = s?.signedUrl || "";
-          }
-          if (url) resolved.push({ id: it.id as string, url, rawSrc: raw });
-        }
-        if (cancelled) return;
-        setBoardImages(resolved);
-        setSelectedRemixImageId("");
-        setReferenceAnalysis(null);
-      } catch (e: any) {
-        if (!cancelled) {
-          console.warn("load board images failed", e);
-          setBoardImages([]);
-        }
-      } finally {
-        if (!cancelled) setBoardImagesLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [open, selectedBoardId]);
-
-  // Analyze the one chosen reference ad, then hand off into the normal
-  // template flow with the matched template pre-selected. The existing
-  // auto-compose effect (keyed on step + template) picks up from there.
-  const runAnalyzeReference = async () => {
-    const img = boardImages.find((b) => b.id === selectedRemixImageId);
-    if (!img) {
-      toast.error("Pick an ad to remix first.");
-      return;
-    }
-    setAnalyzingReference(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("analyze-reference-ad", {
-        body: { reference_image_url: img.url },
-      });
-      if (error) throw error;
-      const analysis = data?.analysis as ReferenceAnalysis | undefined;
-      if (!analysis?.template) throw new Error(data?.error || "Could not analyze this ad");
-      setReferenceAnalysis(analysis);
-      setTemplate(analysis.template);
-      setCustomTemplateId("");
-      setMode("template");
-      setStep("image-copy");
-      toast.success(`Matched to ${BUILT_IN_LABELS[analysis.template] || analysis.template} — writing copy…`);
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message || "Could not analyze this ad");
-    } finally {
-      setAnalyzingReference(false);
-    }
-  };
 
 
 
@@ -951,13 +829,6 @@ export function GenerateCreativeDialog() {
                 psychologyTrigger: (b as any).conceptDetail?.psychologyTrigger || "",
               }
             : null,
-
-          referenceAdContext: referenceAnalysis
-            ? {
-                structuralNotes: referenceAnalysis.structural_notes,
-                fontPersonality: referenceAnalysis.font_personality,
-              }
-            : null,
         },
       });
       if (error) throw error;
@@ -1022,14 +893,14 @@ export function GenerateCreativeDialog() {
     } finally {
       setComposing(false);
     }
-  }, [brandVoice, template, activeCustom, referenceAnalysis, slideCount]);
+  }, [brandVoice, template, activeCustom, slideCount]);
 
   // Auto-compose when we hit Screen 2, AND whenever the template selection changes.
   // Skip while still on the style picker.
   useEffect(() => {
     if (!open || !brief || kitLoading || composing) return;
     if (step !== "image-copy") return;
-    if (mode !== "template") return;
+    
     compose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, brief, kitLoading, step, template, customTemplateId]);
@@ -2004,111 +1875,7 @@ export function GenerateCreativeDialog() {
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
             {briefStrip}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => { setMode("template"); setReferenceAnalysis(null); }}
-                className={cn(
-                  "rounded-xl border-2 p-4 text-left transition",
-                  mode === "template" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground",
-                )}
-              >
-                <p className="flex items-center gap-2 text-sm font-medium">
-                  <Sparkles className="h-4 w-4 text-primary" /> Use a template
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Pick a layout we've already designed. Fastest way to a finished ad.
-                </p>
-              </button>
-              <button
-                type="button"
-                onClick={() => { setMode("remix"); setReferenceAnalysis(null); }}
-                className={cn(
-                  "rounded-xl border-2 p-4 text-left transition",
-                  mode === "remix" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground",
-                )}
-              >
-                <p className="flex items-center gap-2 text-sm font-medium">
-                  <ImagePlus className="h-4 w-4 text-primary" /> Remix a real ad
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Choose an ad you saved to a board — Lumi matches its layout for your offer.
-                </p>
-              </button>
-            </div>
-
-            {mode === "remix" ? (
-              /* ---------- Remix picker ---------- */
-              <div className="space-y-4">
-                {boardsLoading ? (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Loading your boards…
-                  </div>
-                ) : boards.length === 0 ? (
-                  <div className="rounded border border-dashed p-6 text-sm text-muted-foreground space-y-2">
-                    <p>You don't have any inspiration boards yet.</p>
-                    <Button size="sm" variant="outline" onClick={() => { setOpen(false); navigate("/boards"); }}>
-                      Go to Inspiration
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs uppercase text-muted-foreground">Board</Label>
-                      <Select
-                        value={selectedBoardId}
-                        onValueChange={(v) => { setSelectedBoardId(v); setSelectedRemixImageId(""); setReferenceAnalysis(null); }}
-                      >
-                        <SelectTrigger className="h-8 text-sm w-72">
-                          <SelectValue placeholder="Choose a board" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {boards.map((b) => (
-                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {boardImagesLoading ? (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Loader2 className="h-3 w-3 animate-spin" /> Loading images…
-                      </div>
-                    ) : boardImages.length === 0 ? (
-                      <div className="rounded border border-dashed p-6 text-sm text-muted-foreground space-y-2">
-                        <p>This board has no images yet. Add at least 1 ad to this board first.</p>
-                        <Button size="sm" variant="outline" onClick={() => { setOpen(false); navigate(`/boards/${selectedBoardId}`); }}>
-                          Open board
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                        {boardImages.map((img) => {
-                          const active = selectedRemixImageId === img.id;
-                          return (
-                            <button
-                              key={img.id}
-                              type="button"
-                              onClick={() => { setSelectedRemixImageId(img.id); setReferenceAnalysis(null); }}
-                              className={`relative aspect-square rounded border-2 overflow-hidden transition ${
-                                active ? "border-primary ring-2 ring-primary/30" : "border-border hover:border-muted-foreground"
-                              }`}
-                            >
-                              <img src={img.url} alt="" className="w-full h-full object-cover" />
-                              {active && (
-                                <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-semibold rounded-full h-5 w-5 flex items-center justify-center">
-                                  ✓
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            ) : (
+            {(
               /* ---------- Template picker ---------- */
               <div className="space-y-3">
                 <div>
@@ -2158,20 +1925,6 @@ export function GenerateCreativeDialog() {
           <div className="grid flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_360px] overflow-hidden">
             <div className="overflow-y-auto px-6 py-5 space-y-5">
               {briefStrip}
-
-              {referenceAnalysis && (
-                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs space-y-1">
-                  <p className="text-foreground">
-                    <b>Matched to {BUILT_IN_LABELS[referenceAnalysis.template] || referenceAnalysis.template}:</b>{" "}
-                    {referenceAnalysis.template_reason}
-                  </p>
-                  {referenceAnalysis.font_is_load_bearing && (
-                    <p className="text-muted-foreground">
-                      This ad's font is distinctive to its design — we matched the closest typographic personality instead of copying an exact font file.
-                    </p>
-                  )}
-                </div>
-              )}
 
               {step === "image-copy" ? (
                 <>
@@ -2516,29 +2269,14 @@ export function GenerateCreativeDialog() {
             </div>
 
             {step === "style" ? (
-              mode === "remix" ? (
-                <Button
-                  data-help-target="remix-this-ad"
-                  size="lg"
-                  onClick={runAnalyzeReference}
-                  disabled={analyzingReference || !selectedRemixImageId}
-                >
-                  {analyzingReference ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analyzing this ad…</>
-                  ) : (
-                    <><Wand2 className="h-4 w-4 mr-2" /> Remix this ad</>
-                  )}
-                </Button>
-              ) : (
-                <Button
-                  data-help-target="style-next"
-                  size="lg"
-                  onClick={() => setStep("image-copy")}
-                  disabled={!activeStyleKey}
-                >
-                  Next: image &amp; copy →
-                </Button>
-              )
+              <Button
+                data-help-target="style-next"
+                size="lg"
+                onClick={() => setStep("image-copy")}
+                disabled={!activeStyleKey}
+              >
+                Next: image &amp; copy →
+              </Button>
             ) : step === "image-copy" ? (
               activeCustom ? (
                 <Button
