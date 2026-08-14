@@ -1124,14 +1124,16 @@ export default function Performance({
                   </p>
                 ) : (
                   <>
-                    <div className="hidden md:grid grid-cols-[56px_1.7fr_0.8fr_0.8fr_96px_24px] gap-4 px-4 text-xs font-medium text-muted-foreground">
+                    <div className="hidden md:grid grid-cols-[56px_1.5fr_0.7fr_0.7fr_0.8fr_96px_24px] gap-4 px-4 text-xs font-medium text-muted-foreground">
                       <span />
                       <span>Ad</span>
+                      <span>Spend</span>
                       <span>{results[0]?.campaign.secondary?.label || "Results"}</span>
                       <span>{results[0]?.meta.primaryKpiLabel || "Primary metric"}</span>
                       <span>Live</span>
                       <span />
                     </div>
+
                     {results.map((r) => {
                       const needsGoals = r.meta.hasUserGoals === false;
                       const isNeedsAttention = needsGoals || (r.topRecommendation && r.topRecommendation.recommendation.priorityTier <= 3);
