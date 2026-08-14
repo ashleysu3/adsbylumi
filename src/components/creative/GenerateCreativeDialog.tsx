@@ -2394,13 +2394,6 @@ export function GenerateCreativeDialog() {
                                 onFocalChange={f.onFocal}
                               />
                             </div>
-                            <div>
-                              <div className="flex items-center justify-between mb-1.5">
-                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Zoom</p>
-                                <span className="text-[10px] text-muted-foreground tabular-nums">{f.z.toFixed(2)}x</span>
-                              </div>
-                              <Slider min={1} max={2.5} step={0.05} value={[f.z]} onValueChange={(v) => f.onZoom(v[0])} />
-                            </div>
                           </div>
                         ))}
                       </div>
