@@ -148,6 +148,8 @@ export function LiveAdPreview({
   photoZoom = 1,
   onFocalChange,
   frame = "feed",
+  bare = false,
+  slideIndex,
 }: {
   copy?: Copy;
   slides?: Copy[];
