@@ -75,8 +75,14 @@ Deno.serve(async (req) => {
     }
 
     if (!brand.meta_account_id) {
-      throw new Error('Meta account not connected');
+      // Not an error — brand simply hasn't connected Meta yet. Return 200 so
+      // the dashboard renders an empty state instead of a runtime error.
+      return new Response(
+        JSON.stringify({ success: false, notConnected: true, metrics: null, error: 'Meta account not connected' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
     }
+
 
     const metaAccessToken = brand.meta_access_token;
     if (!metaAccessToken) {
