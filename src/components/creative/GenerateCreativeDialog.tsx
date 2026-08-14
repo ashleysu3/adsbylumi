@@ -1088,7 +1088,7 @@ export function GenerateCreativeDialog() {
     return (data?.images || []) as RenderImage[];
   };
 
-  const generate = async () => {
+  const generate = async (): Promise<RenderImage[] | undefined> => {
     if (needsPhoto && !selectedPhoto) {
       toast.error("Pick a photo first");
       return;
