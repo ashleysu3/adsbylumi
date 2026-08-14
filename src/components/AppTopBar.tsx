@@ -170,10 +170,10 @@ export function AppTopBar({ isAdmin }: AppTopBarProps) {
 
   const tabClass = (active: boolean) =>
     cn(
-      "h-9 px-3 rounded-lg text-sm font-medium tracking-tight inline-flex items-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      "h-9 px-3.5 rounded-full text-sm font-semibold tracking-tight inline-flex items-center gap-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       active
-        ? "bg-muted text-foreground"
-        : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+        ? "bg-card text-foreground shadow-sm ring-1 ring-border"
+        : "text-muted-foreground hover:text-foreground hover:bg-card/70",
     );
 
   return (
@@ -191,16 +191,14 @@ export function AppTopBar({ isAdmin }: AppTopBarProps) {
             <img src={lumiLogo} alt="LUMI" className="h-8 w-auto object-contain" />
           </button>
 
-          <BrandSelector className="shrink-0 hidden lg:flex" compact />
-
-          {/* Named destinations — visible, not hidden behind a hamburger */}
-          <nav className="flex items-center gap-1 shrink-0">
+          {/* Named destinations — one soft segmented group */}
+          <nav className="ml-2 flex items-center gap-1 shrink-0 rounded-full bg-muted/60 p-1">
             <button
               type="button"
               onClick={() => navigate("/studio")}
               className={tabClass(isDashboard)}
             >
-              <LayoutGrid className="h-4 w-4" />
+              <LayoutGrid className={cn("h-4 w-4", isDashboard && "text-lumi-purple-1")} />
               <span className="hidden sm:inline">Ad Dashboard</span>
             </button>
 
@@ -209,7 +207,9 @@ export function AppTopBar({ isAdmin }: AppTopBarProps) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button type="button" className={tabClass(isCreativeRoute)}>
-                    <Palette className="h-4 w-4" />
+                    <Palette
+                      className={cn("h-4 w-4", isCreativeRoute && "text-lumi-pink-1")}
+                    />
                     <span>Creative Studio</span>
                     <ChevronDown className="h-3 w-3 opacity-60" />
                   </button>
@@ -233,10 +233,22 @@ export function AppTopBar({ isAdmin }: AppTopBarProps) {
             </div>
           </nav>
 
+          <div className="flex-1 min-w-0" />
+
+          {/* The one dopamine action */}
+          <button
+            type="button"
+            onClick={() => navigate("/create")}
+            className="shrink-0 rounded-full bg-[image:var(--gradient-lumi)] text-white shadow-md px-4 h-9 inline-flex items-center gap-2 text-sm font-semibold tracking-tight transition-transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Create a new ad</span>
+          </button>
+
           {/* Ask LUMI — collapsed to a magnifying glass until opened */}
-          <div className="flex-1 min-w-0 px-1 hidden md:flex justify-end">
+          <div className="shrink-0 hidden md:flex items-center justify-end">
             {searchOpen ? (
-              <div className="w-full max-w-xl flex items-center gap-1">
+              <div className="flex items-center gap-1 w-[min(28rem,40vw)]">
                 <div className="flex-1 min-w-0">
                   <IntentBar size="sm" innerBgClassName="bg-card" />
                 </div>
@@ -262,18 +274,9 @@ export function AppTopBar({ isAdmin }: AppTopBarProps) {
             )}
           </div>
 
-          {/* The one dopamine action */}
-          <button
-            type="button"
-            onClick={() => navigate("/create")}
-            className="shrink-0 rounded-xl bg-[image:var(--gradient-lumi)] text-white shadow-md px-4 h-9 inline-flex items-center gap-2 text-sm font-semibold tracking-tight transition-transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Create a new ad</span>
-          </button>
-
           <div className="shrink-0 flex items-center gap-1">
             <RenderQueueBell />
+
 
             {/* Quiet: account, brand, agency, support, admin */}
             <DropdownMenu>
