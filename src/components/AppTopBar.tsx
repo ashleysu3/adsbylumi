@@ -354,6 +354,8 @@ export function AppTopBar({ isAdmin }: AppTopBarProps) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <BrandSelector className="shrink-0 hidden lg:flex" compact />
           </div>
         </div>
       </header>
