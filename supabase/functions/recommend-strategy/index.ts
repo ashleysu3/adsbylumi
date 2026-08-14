@@ -496,9 +496,11 @@ function detectPrimaryObjective(snapshot: any): PrimaryObjective {
   // before falling back to fuzzy keyword matching in free-text fields below.
   // The keyword lists don't contain these exact enum strings (e.g.
   // "discovery call" with a space never matches the stored "discovery_call"
-  // with an underscore), so a free lead-magnet offer whose name/description
+  // with an underscore), so a discovery-call offer whose name/description
   // didn't happen to also contain a matching keyword was silently falling
   // through to the OUTCOME_SALES default.
+  const pageGoal = String(offer?.page_goal || "").toLowerCase().trim();
+  if (pageGoal === "discovery_call") return "OUTCOME_LEADS";
   if (pageGoal === "purchase") return "OUTCOME_SALES";
 
   const hasLead = leadSignals.some((s) => fields.includes(s));
