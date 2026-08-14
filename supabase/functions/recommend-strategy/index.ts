@@ -397,7 +397,16 @@ function isFreeEmailCaptureOffer(offer: any): boolean {
   if (!isFree) return false;
 
   const emailCaptureSignals = [
-    "email",
+    "email address",
+    "your email",
+    "enter your email",
+    "enter email",
+    "email list",
+    "collect email",
+    "collect emails",
+    "email capture",
+    "join with email",
+    "sign up with email",
     "opt-in",
     "opt in",
     "optin",
