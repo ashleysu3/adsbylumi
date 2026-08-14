@@ -301,7 +301,7 @@ export function LiveAdPreview({
     transformOrigin: `${focalX}% ${focalY}%`,
   };
 
-  const startFocalDrag = (e: React.PointerEvent<HTMLImageElement>) => {
+  const startFocalDrag = (e: React.PointerEvent<HTMLElement>) => {
     if (!onFocalChange) return;
     const el = e.currentTarget;
     const rect = el.getBoundingClientRect();
@@ -309,7 +309,7 @@ export function LiveAdPreview({
     const startY = e.clientY;
     const baseX = focalX;
     const baseY = focalY;
-    el.setPointerCapture(e.pointerId);
+    try { el.setPointerCapture(e.pointerId); } catch { /* ignore */ }
     const move = (ev: PointerEvent) => {
       const dx = ((ev.clientX - startX) / Math.max(1, rect.width)) * 100;
       const dy = ((ev.clientY - startY) / Math.max(1, rect.height)) * 100;
@@ -335,6 +335,7 @@ export function LiveAdPreview({
         className={`object-cover ${onFocalChange ? "cursor-move select-none" : ""} ${className}`}
       />
     ) : (
+
       <div className={`${className}`} style={{ backgroundColor: `${colors.accent}33` }} />
     );
 
@@ -676,6 +677,16 @@ export function LiveAdPreview({
           alt=""
           className={`absolute h-7 w-7 rounded object-contain ${cornerClass}`}
           style={{ backgroundColor: `${colors.cream}cc` }}
+        />
+      )}
+
+      {/* Drag layer: text panels and gradients sit above the photo, so without
+          this the pointer never reaches the image. Transparent, top-most. */}
+      {onFocalChange && bgImage && !bare && (
+        <div
+          className="absolute inset-0 z-20 cursor-move select-none"
+          onPointerDown={startFocalDrag}
+          title="Drag to reposition the photo"
         />
       )}
     </div>
