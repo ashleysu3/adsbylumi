@@ -177,8 +177,13 @@ export function LiveAdPreview({
   photoZoom?: number;
   onFocalChange?: (x: number, y: number) => void;
   frame?: "feed" | "story";
+  /** Capture mode: draw only the ad canvas (no border, caption, or dots). */
+  bare?: boolean;
+  /** Force a specific carousel slide (used when exporting each slide). */
+  slideIndex?: number;
 }) {
   const [slideIdx, setSlideIdx] = useState(0);
+
   const total = slides?.length || 0;
 
   useEffect(() => {
