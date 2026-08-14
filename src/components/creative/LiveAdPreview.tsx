@@ -190,7 +190,8 @@ export function LiveAdPreview({
     if (slideIdx > Math.max(0, total - 1)) setSlideIdx(0);
   }, [total, slideIdx]);
 
-  const active: Copy = isCarousel ? (slides?.[slideIdx] || {}) : (copy || {});
+  const shownSlide = typeof slideIndex === "number" ? slideIndex : slideIdx;
+  const active: Copy = isCarousel ? (slides?.[shownSlide] || {}) : (copy || {});
   const { headline, sub, eyebrow, cta } = linesFor(active);
   const hasAnything = headline || sub || eyebrow || cta;
 
