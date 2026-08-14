@@ -29,7 +29,6 @@ import {
   Crown,
   Shield,
   Briefcase,
-  CheckSquare,
   LogOut,
   Search,
   X,
