@@ -195,8 +195,8 @@ export function LiveAdPreview({
 
   const shownSlide = typeof slideIndex === "number" ? slideIndex : slideIdx;
   const active: Copy = isCarousel ? (slides?.[shownSlide] || {}) : (copy || {});
-  const { headline, sub, eyebrow, cta } = linesFor(active);
-  const hasAnything = headline || sub || eyebrow || cta;
+  const { headline, sub, eyebrow, cta, sig } = linesFor(active);
+  const hasAnything = headline || sub || eyebrow || cta || sig;
 
   const family: Family = FAMILY[template || ""] || "overlay";
   const bgImage = backgroundUrl || photoUrl;
