@@ -638,29 +638,36 @@ export function LiveAdPreview({
       );
   }
 
+  const canvas = (
+    <div
+      className={`relative w-full overflow-hidden ${bare ? "" : "rounded-lg border border-border"} ${frame === "story" ? "aspect-[9/16]" : "aspect-square"}`}
+      style={{ backgroundColor: colors.bg }}
+    >
+      {body}
+
+      {!hasAnything && !bare && (
+        <div className="absolute inset-x-0 bottom-3 text-center">
+          <p className="text-xs text-muted-foreground">Your copy will appear here as it's written.</p>
+        </div>
+      )}
+
+      {showLogo && logoUrl && (
+        <img
+          src={logoUrl}
+          alt=""
+          className={`absolute h-7 w-7 rounded object-contain ${cornerClass}`}
+          style={{ backgroundColor: `${colors.cream}cc` }}
+        />
+      )}
+    </div>
+  );
+
+  if (bare) return canvas;
+
   return (
     <div className="space-y-2">
-      <div
-        className={`relative w-full overflow-hidden rounded-lg border border-border ${frame === "story" ? "aspect-[9/16]" : "aspect-square"}`}
-        style={{ backgroundColor: colors.bg }}
-      >
-        {body}
+      {canvas}
 
-        {!hasAnything && (
-          <div className="absolute inset-x-0 bottom-3 text-center">
-            <p className="text-xs text-muted-foreground">Your copy will appear here as it's written.</p>
-          </div>
-        )}
-
-        {showLogo && logoUrl && (
-          <img
-            src={logoUrl}
-            alt=""
-            className={`absolute h-7 w-7 rounded object-contain ${cornerClass}`}
-            style={{ backgroundColor: `${colors.cream}cc` }}
-          />
-        )}
-      </div>
 
       {isCarousel && total > 1 && (
         <div className="flex items-center justify-center gap-1.5">
