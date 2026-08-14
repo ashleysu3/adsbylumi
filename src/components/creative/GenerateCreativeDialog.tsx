@@ -1144,8 +1144,11 @@ export function GenerateCreativeDialog() {
           return selectedPhoto.url;
         }
       };
-      const photoUrlForRender = await cropFor(focalX, focalY, photoZoom, "feed");
-      const storyPhotoUrl = await cropFor(storyFocalX, storyFocalY, storyZoom, "story");
+      // Only the engine path needs a pre-cropped photo; the WYSIWYG export
+      // captures the preview, which already applies focal point + zoom.
+      const photoUrlForRender = activeCustom ? await cropFor(focalX, focalY, photoZoom, "feed") : selectedPhoto?.url;
+      const storyPhotoUrl = activeCustom ? await cropFor(storyFocalX, storyFocalY, storyZoom, "story") : selectedPhoto?.url;
+
       setRenderedFraming({
         focalX, focalY, photoZoom,
         storyFocalX, storyFocalY, storyZoom,
