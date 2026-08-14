@@ -47,7 +47,6 @@ const adminGroups: AdminGroup[] = [
     icon: BookOpen,
     tabs: [
       { path: "/admin/knowledge", label: "Knowledge", icon: BookOpen },
-      { path: "/admin/inspiration", label: "Inspiration Library", icon: ImageIcon },
       { path: "/admin/stock-broll", label: "Stock B-Roll", icon: Video },
       { path: "/admin/demo-ads", label: "Demo Ads", icon: Pin },
       { path: "/admin/approvals", label: "Approvals", icon: CheckSquare },

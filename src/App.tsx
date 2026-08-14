@@ -49,12 +49,8 @@ const AdminCoupons = lazy(() => import("./pages/admin/Coupons"));
 const AdminUpdates = lazy(() => import("./pages/admin/Updates"));
 const AdminUpdatesResults = lazy(() => import("./pages/admin/UpdatesResults"));
 const AdminFeatures = lazy(() => import("./pages/admin/Features"));
-const AdminInspiration = lazy(() => import("./pages/admin/Inspiration"));
-import Inspiration from "./pages/Inspiration";
 const AdminStockBroll = lazy(() => import("./pages/admin/StockBroll"));
 const AdminDemoAds = lazy(() => import("./pages/admin/DemoAds"));
-import Boards from "./pages/Boards";
-import BoardDetail from "./pages/BoardDetail";
 const AdminApprovals = lazy(() => import("./pages/admin/Approvals"));
 import { useReferralCapture } from "./hooks/useReferralCapture";
 
@@ -233,12 +229,8 @@ const App = () => {
                   <Route path="/refer" element={<Refer />} />
                   <Route path="/partner-dashboard" element={<PartnerDashboard />} />
                   <Route path="/admin/knowledge" element={<AdminKnowledge />} />
-                  <Route path="/admin/inspiration" element={<AdminInspiration />} />
                   <Route path="/admin/stock-broll" element={<AdminStockBroll />} />
                   <Route path="/admin/demo-ads" element={<AdminDemoAds />} />
-                  <Route path="/inspiration" element={<Inspiration />} />
-                  <Route path="/boards" element={<Boards />} />
-                  <Route path="/boards/:boardId" element={<BoardDetail />} />
                   <Route path="/admin/approvals" element={<AdminApprovals />} />
                   <Route path="/admin/affiliates" element={<AdminAffiliates />} />
                   <Route path="/admin/payouts" element={<AdminPayouts />} />

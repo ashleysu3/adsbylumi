@@ -29,9 +29,11 @@ import { toast } from 'sonner';
 interface BrandSelectorProps {
   className?: string;
   compact?: boolean;
+  /** With `compact`, show the brand name inline next to the icon (one line, no "Brand" label or Agency badge) instead of hiding it entirely. */
+  showName?: boolean;
 }
 
-export function BrandSelector({ className, compact = false }: BrandSelectorProps) {
+export function BrandSelector({ className, compact = false, showName = false }: BrandSelectorProps) {
   const { brands, activeBrand, setActiveBrand, isAgencyUser, loading, refreshBrands } = useBrand();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -99,9 +101,14 @@ export function BrandSelector({ className, compact = false }: BrandSelectorProps
             )}
           >
             <div className="flex items-center gap-2">
-              <div className="h-6 w-6 rounded-md bg-gradient-to-br from-lumi-orange-1 to-lumi-pink-1 flex items-center justify-center">
+              <div className="h-6 w-6 rounded-md bg-gradient-to-br from-lumi-orange-1 to-lumi-pink-1 flex items-center justify-center shrink-0">
                 <Building2 className="h-3.5 w-3.5 text-white" />
               </div>
+              {compact && showName && (
+                <span className="text-sm font-medium truncate max-w-[140px]">
+                  {activeBrand?.name || 'Select Brand'}
+                </span>
+              )}
               {!compact && (
                 <div className="flex flex-col items-start">
                   <div className="flex items-center gap-1.5">
