@@ -90,8 +90,9 @@ export async function captureAdPreview(
       requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
     });
 
-    const target = host.firstElementChild as HTMLElement;
+    const target = await waitForMount(host);
     await waitForImages(target);
+
 
     const dataUrl = await toPng(target, {
       pixelRatio: scale,
