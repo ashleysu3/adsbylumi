@@ -1458,17 +1458,28 @@ export function GenerateCreativeDialog() {
     }
   };
 
-  // Download the exact preview without approving it.
+  // Download the exact preview without approving it — always gives the user
+  // every placement that was generated (feed 1:1 + story 9:16), not just one.
   const downloadFromPreview = async () => {
     setFinishing(true);
     try {
       const imgs = await generate();
-      if (!imgs) return;
-      imgs.forEach((img, i) => download(img, i));
+      if (!imgs || imgs.length === 0) return;
+      await downloadAll(imgs);
+      const hasFeed = imgs.some((i) => !(i.placement || "").toLowerCase().includes("story") && i.height <= i.width);
+      const hasStory = imgs.some((i) => (i.placement || "").toLowerCase().includes("story") || i.height > i.width);
+      if (isCarousel) {
+        toast.success(`Downloaded ${imgs.length} slide${imgs.length === 1 ? "" : "s"}`);
+      } else if (hasFeed && hasStory) {
+        toast.success("Downloaded both the feed (1:1) and story (9:16) images");
+      } else {
+        toast.success(`Downloaded ${imgs.length} image${imgs.length === 1 ? "" : "s"}`);
+      }
     } finally {
       setFinishing(false);
     }
   };
+
 
 
 
