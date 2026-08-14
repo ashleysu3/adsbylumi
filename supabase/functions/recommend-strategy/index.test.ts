@@ -169,3 +169,15 @@ Deno.test("every campaign can explain itself (for the 'teach the why' layer)", (
   const why = out.campaigns[0].why as string;
   assertEquals(typeof why === "string" && why.length > 40, true);
 });
+
+Deno.test("a free webinar titled only by its promise routes to LEADS", () => {
+  const s = snapshot({
+    selected_offer: {
+      name: "How to start a wedding planning business this year... and book your first 5 clients",
+      price_point: "Free",
+      offer_type: "webinar",
+      page_goal: "other",
+    },
+  });
+  assertEquals(detectPrimaryObjective(s), "OUTCOME_LEADS");
+});
