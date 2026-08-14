@@ -110,12 +110,26 @@ function MetricStrip({
   const costPerLead = current && current.leads > 0 ? current.spend / current.leads : null;
   const prevCostPerLead = previous && previous.leads > 0 ? previous.spend / previous.leads : null;
 
+  // Mirrors the dashboard mockup: the range lives in the tile label, and the
+  // comparison is spoken in plain language ("vs last week") rather than "period".
+  const rangeSuffix =
+    dateRange === "7d" ? " (7d)" :
+    dateRange === "30d" ? " (30d)" :
+    dateRange === "90d" ? " (90d)" :
+    dateRange === "today" ? " (today)" :
+    dateRange === "yesterday" ? " (yesterday)" : "";
+  const comparisonLabel =
+    dateRange === "7d" ? "vs last week" :
+    dateRange === "30d" ? "vs last month" :
+    dateRange === "today" || dateRange === "yesterday" ? "vs the day before" :
+    "vs the period before";
+
   const tiles = [
     {
       key: "spend",
-      label: "Spend",
+      label: `Spend${rangeSuffix}`,
       value: loading ? "—" : current ? `$${current.spend.toFixed(0)}` : "—",
-      footnote: spendDeltaPct != null ? `${spendDeltaPct >= 0 ? "+" : ""}${spendDeltaPct}% vs last period` : null,
+      footnote: spendDeltaPct != null ? `${spendDeltaPct >= 0 ? "+" : ""}${spendDeltaPct}% ${comparisonLabel}` : null,
       footnoteGood: spendDeltaPct != null && spendDeltaPct >= 0,
     },
     {
@@ -128,6 +142,7 @@ function MetricStrip({
       footnoteGood: costPerLead != null && prevCostPerLead != null && costPerLead <= prevCostPerLead,
     },
   ];
+
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
