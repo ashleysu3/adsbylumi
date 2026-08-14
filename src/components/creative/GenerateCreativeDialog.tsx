@@ -14,6 +14,7 @@ import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { LiveAdPreview, photoFrameAspect } from "./LiveAdPreview";
+import { captureAdPreview } from "@/lib/capture-preview";
 import { HexColorPicker } from "react-colorful";
 import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff, Info, ImagePlus, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -1143,8 +1144,11 @@ export function GenerateCreativeDialog() {
           return selectedPhoto.url;
         }
       };
-      const photoUrlForRender = await cropFor(focalX, focalY, photoZoom, "feed");
-      const storyPhotoUrl = await cropFor(storyFocalX, storyFocalY, storyZoom, "story");
+      // Only the engine path needs a pre-cropped photo; the WYSIWYG export
+      // captures the preview, which already applies focal point + zoom.
+      const photoUrlForRender = activeCustom ? await cropFor(focalX, focalY, photoZoom, "feed") : selectedPhoto?.url;
+      const storyPhotoUrl = activeCustom ? await cropFor(storyFocalX, storyFocalY, storyZoom, "story") : selectedPhoto?.url;
+
       setRenderedFraming({
         focalX, focalY, photoZoom,
         storyFocalX, storyFocalY, storyZoom,
@@ -1211,7 +1215,73 @@ export function GenerateCreativeDialog() {
         textAlign,
       };
 
+      // ── WYSIWYG path ──────────────────────────────────────────────────
+      // Built-in templates export the EXACT preview the user tuned, rendered
+      // offscreen at full ad resolution. Custom (HTML) templates still go to
+      // the render engine because the preview can't represent them.
+      if (!activeCustom) {
+        const previewProps = {
+          copy: sanitizeCopy(editedSingle),
+          slides: sanitizeCopy(editedSlides),
+          isCarousel,
+          template,
+          templateLabel: BUILT_IN_LABELS[template] || template,
+          colors,
+          displayFamily,
+          bodyFamily,
+          photoUrl: selectedPhoto?.url,
+          backgroundUrl: bgSelectedUrl || undefined,
+          textCase,
+          headlineScale,
+          bodyScale,
+          textBoxStyle,
+          textBoxColor: textBoxColor || colors.bg,
+          textBoxOpacity,
+          textPosition,
+          textAlign,
+          logoUrl: brandLogoAsset?.url,
+          showLogo: placeLogo,
+          logoCorner,
+        } as any;
+
+        if (isCarousel) {
+          if (!Array.isArray(editedSlides) || editedSlides.length < 2) {
+            toast.error("Carousels need at least 2 slides. Add another slide or switch this to a single image.");
+            setProgress("");
+            setGenerating(false);
+            return;
+          }
+          const out: RenderImage[] = [];
+          for (let i = 0; i < editedSlides.length; i++) {
+            setProgress(`Exporting slide ${i + 1} of ${editedSlides.length}…`);
+            const img = await captureAdPreview(
+              { ...previewProps, slideIndex: i, focalX, focalY, photoZoom },
+              "feed",
+            );
+            out.push({ ...img, label: `Slide ${i + 1}` } as RenderImage);
+          }
+          setImages(out);
+          setProgress("");
+          toast.success("Carousel exported exactly as previewed");
+        } else {
+          setProgress("Exporting feed + story…");
+          const feed = await captureAdPreview({ ...previewProps, focalX, focalY, photoZoom }, "feed");
+          const story = await captureAdPreview(
+            { ...previewProps, focalX: storyFocalX, focalY: storyFocalY, photoZoom: storyZoom },
+            "story",
+          );
+          setImages([
+            { ...feed, label: "Feed 1:1" } as RenderImage,
+            { ...story, label: "Story 9:16" } as RenderImage,
+          ]);
+          setProgress("");
+          toast.success("Exported exactly as previewed");
+        }
+        return;
+      }
+
       if (isCarousel) {
+
         if (!Array.isArray(editedSlides) || editedSlides.length < 2) {
           toast.error("Carousels need at least 2 slides. Add another slide or switch this to a single image.");
           setProgress("");

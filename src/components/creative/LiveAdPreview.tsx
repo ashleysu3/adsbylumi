@@ -148,6 +148,8 @@ export function LiveAdPreview({
   photoZoom = 1,
   onFocalChange,
   frame = "feed",
+  bare = false,
+  slideIndex,
 }: {
   copy?: Copy;
   slides?: Copy[];
@@ -175,15 +177,21 @@ export function LiveAdPreview({
   photoZoom?: number;
   onFocalChange?: (x: number, y: number) => void;
   frame?: "feed" | "story";
+  /** Capture mode: draw only the ad canvas (no border, caption, or dots). */
+  bare?: boolean;
+  /** Force a specific carousel slide (used when exporting each slide). */
+  slideIndex?: number;
 }) {
   const [slideIdx, setSlideIdx] = useState(0);
+
   const total = slides?.length || 0;
 
   useEffect(() => {
     if (slideIdx > Math.max(0, total - 1)) setSlideIdx(0);
   }, [total, slideIdx]);
 
-  const active: Copy = isCarousel ? (slides?.[slideIdx] || {}) : (copy || {});
+  const shownSlide = typeof slideIndex === "number" ? slideIndex : slideIdx;
+  const active: Copy = isCarousel ? (slides?.[shownSlide] || {}) : (copy || {});
   const { headline, sub, eyebrow, cta } = linesFor(active);
   const hasAnything = headline || sub || eyebrow || cta;
 
@@ -630,29 +638,36 @@ export function LiveAdPreview({
       );
   }
 
+  const canvas = (
+    <div
+      className={`relative w-full overflow-hidden ${bare ? "" : "rounded-lg border border-border"} ${frame === "story" ? "aspect-[9/16]" : "aspect-square"}`}
+      style={{ backgroundColor: colors.bg }}
+    >
+      {body}
+
+      {!hasAnything && !bare && (
+        <div className="absolute inset-x-0 bottom-3 text-center">
+          <p className="text-xs text-muted-foreground">Your copy will appear here as it's written.</p>
+        </div>
+      )}
+
+      {showLogo && logoUrl && (
+        <img
+          src={logoUrl}
+          alt=""
+          className={`absolute h-7 w-7 rounded object-contain ${cornerClass}`}
+          style={{ backgroundColor: `${colors.cream}cc` }}
+        />
+      )}
+    </div>
+  );
+
+  if (bare) return canvas;
+
   return (
     <div className="space-y-2">
-      <div
-        className={`relative w-full overflow-hidden rounded-lg border border-border ${frame === "story" ? "aspect-[9/16]" : "aspect-square"}`}
-        style={{ backgroundColor: colors.bg }}
-      >
-        {body}
+      {canvas}
 
-        {!hasAnything && (
-          <div className="absolute inset-x-0 bottom-3 text-center">
-            <p className="text-xs text-muted-foreground">Your copy will appear here as it's written.</p>
-          </div>
-        )}
-
-        {showLogo && logoUrl && (
-          <img
-            src={logoUrl}
-            alt=""
-            className={`absolute h-7 w-7 rounded object-contain ${cornerClass}`}
-            style={{ backgroundColor: `${colors.cream}cc` }}
-          />
-        )}
-      </div>
 
       {isCarousel && total > 1 && (
         <div className="flex items-center justify-center gap-1.5">
@@ -673,7 +688,7 @@ export function LiveAdPreview({
       <p className="text-center text-[10px] text-muted-foreground">
         {isCarousel && total > 1 ? `Slide ${slideIdx + 1} of ${total} · ` : ""}
         {templateLabel ? `${templateLabel} · ` : ""}
-        Rough preview — the final render is sharper.
+        This is exactly what gets exported.
       </p>
     </div>
   );
