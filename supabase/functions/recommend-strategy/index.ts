@@ -389,12 +389,21 @@ function isFreeEmailCaptureOffer(offer: any): boolean {
   const name = String(offer?.name || "").toLowerCase();
   const description = String(offer?.description || "").toLowerCase();
   const targetOutcome = String(offer?.target_outcome || "").toLowerCase();
-  const combinedText = `${description} ${targetOutcome}`;
+  const offerType = String(offer?.offer_type || offer?.type || "").toLowerCase();
+  // The offer NAME and TYPE carry the format signal ("free webinar", "masterclass")
+  // just as often as the description does — a webinar titled only by its promise
+  // ("How to start a wedding planning business") was falling through to SALES.
+  const combinedText = `${name} ${description} ${targetOutcome} ${offerType} ${pageGoal}`;
 
   const isFree =
     /\bfree\b|\$0\b|^0$|no cost|complimentary/.test(price) ||
-    /\bfree\b/.test(name);
+    /\bfree\b/.test(`${name} ${description} ${targetOutcome} ${offerType}`);
   if (!isFree) return false;
+
+  // A free offer is never something a stranger buys — the only conversion it
+  // can have is an opt-in. Unless it's explicitly tagged as a purchase page,
+  // treat any free offer as a lead capture even if no keyword matched.
+  if (pageGoal !== "purchase") return true;
 
   const emailCaptureSignals = [
     "email address",
