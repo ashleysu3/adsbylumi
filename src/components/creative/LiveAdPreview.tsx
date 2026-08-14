@@ -650,6 +650,20 @@ export function LiveAdPreview({
     >
       {body}
 
+      {sig && (
+        <p
+          className="absolute inset-x-0 bottom-2 px-5 text-[10px] font-medium tracking-wide"
+          style={{
+            color: colors.ink,
+            opacity: 0.75,
+            textAlign: textAlign || "left",
+            ...bFont,
+          }}
+        >
+          {T(sig)}
+        </p>
+      )}
+
       {!hasAnything && !bare && (
         <div className="absolute inset-x-0 bottom-3 text-center">
           <p className="text-xs text-muted-foreground">Your copy will appear here as it's written.</p>
