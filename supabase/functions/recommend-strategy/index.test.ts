@@ -80,16 +80,16 @@ Deno.test("a free download that mentions email in target_outcome routes to LEADS
   assertEquals(detectPrimaryObjective(s), "OUTCOME_LEADS");
 });
 
-Deno.test("a free offer that does NOT collect email does not force LEADS", () => {
+Deno.test("a free offer is never a sales campaign", () => {
   const s = snapshot({
     selected_offer: {
       name: "Free Community Access",
       price_point: "free",
-      description: "Join our free community. No email required.",
+      description: "Join our free community.",
       page_goal: "other",
     },
   });
-  assertEquals(detectPrimaryObjective(s), "OUTCOME_SALES");
+  assertEquals(detectPrimaryObjective(s), "OUTCOME_LEADS");
 });
 
 Deno.test("a discovery call routes to LEADS", () => {
@@ -168,4 +168,16 @@ Deno.test("every campaign can explain itself (for the 'teach the why' layer)", (
   const out = buildNeedsFirstStrategy(THREE_STEP_TEMPLATE, snapshot({ user_goal: "grow_social" }));
   const why = out.campaigns[0].why as string;
   assertEquals(typeof why === "string" && why.length > 40, true);
+});
+
+Deno.test("a free webinar titled only by its promise routes to LEADS", () => {
+  const s = snapshot({
+    selected_offer: {
+      name: "How to start a wedding planning business this year... and book your first 5 clients",
+      price_point: "Free",
+      offer_type: "webinar",
+      page_goal: "other",
+    },
+  });
+  assertEquals(detectPrimaryObjective(s), "OUTCOME_LEADS");
 });
