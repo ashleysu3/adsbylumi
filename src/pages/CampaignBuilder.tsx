@@ -173,6 +173,19 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
   const isCopyPolicyError = (msg?: string | null) =>
     !!msg && /(policy|disapprov|ad copy|prohibited|unacceptable|does not comply|violat)/i.test(msg);
 
+  // Meta refuses to create ads when the ad account has no valid card on file.
+  // That's fixed in Meta's billing center, not in LUMI — link straight there.
+  const isPaymentMethodError = (msg?: string | null) =>
+    !!msg && /(no payment method|payment method|billing and payment|funding source|payment failed)/i.test(msg);
+
+  const metaBillingUrl = (() => {
+    const raw = (workspace?.brands?.meta_account_id || '') as string;
+    const actId = raw ? (raw.startsWith('act_') ? raw : `act_${raw}`) : '';
+    return actId
+      ? `https://adsmanager.facebook.com/ads/manage/billing_settings?act=${actId.replace('act_', '')}`
+      : 'https://business.facebook.com/billing_hub/payment_settings';
+  })();
+
   const handleQAComplete = () => {
     handlePublish(answers.launchActive ? 'active' : 'paused');
   };
