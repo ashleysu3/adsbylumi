@@ -900,7 +900,7 @@ export function GenerateCreativeDialog() {
   useEffect(() => {
     if (!open || !brief || kitLoading || composing) return;
     if (step !== "image-copy") return;
-    if (mode !== "template") return;
+    
     compose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, brief, kitLoading, step, template, customTemplateId]);
