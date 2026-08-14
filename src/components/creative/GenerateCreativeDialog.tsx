@@ -829,13 +829,6 @@ export function GenerateCreativeDialog() {
                 psychologyTrigger: (b as any).conceptDetail?.psychologyTrigger || "",
               }
             : null,
-
-          referenceAdContext: referenceAnalysis
-            ? {
-                structuralNotes: referenceAnalysis.structural_notes,
-                fontPersonality: referenceAnalysis.font_personality,
-              }
-            : null,
         },
       });
       if (error) throw error;
@@ -900,7 +893,7 @@ export function GenerateCreativeDialog() {
     } finally {
       setComposing(false);
     }
-  }, [brandVoice, template, activeCustom, referenceAnalysis, slideCount]);
+  }, [brandVoice, template, activeCustom, slideCount]);
 
   // Auto-compose when we hit Screen 2, AND whenever the template selection changes.
   // Skip while still on the style picker.
@@ -1932,20 +1925,6 @@ export function GenerateCreativeDialog() {
           <div className="grid flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_360px] overflow-hidden">
             <div className="overflow-y-auto px-6 py-5 space-y-5">
               {briefStrip}
-
-              {referenceAnalysis && (
-                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs space-y-1">
-                  <p className="text-foreground">
-                    <b>Matched to {BUILT_IN_LABELS[referenceAnalysis.template] || referenceAnalysis.template}:</b>{" "}
-                    {referenceAnalysis.template_reason}
-                  </p>
-                  {referenceAnalysis.font_is_load_bearing && (
-                    <p className="text-muted-foreground">
-                      This ad's font is distinctive to its design — we matched the closest typographic personality instead of copying an exact font file.
-                    </p>
-                  )}
-                </div>
-              )}
 
               {step === "image-copy" ? (
                 <>
