@@ -218,6 +218,14 @@ export function LiveAdPreview({
       : textBoxStyle === "scrim"
         ? { backgroundColor: boxColor, borderRadius: "0.75rem", padding: "0.85rem 1rem" }
         : {};
+  // Story safe zones: Instagram/Facebook Stories cover the top and bottom 20%
+  // of the frame with the profile chip, caption and CTA. Keep all copy inside
+  // the middle 60%. Percentage padding resolves against width, so for a 9:16
+  // frame 20% of the height == 20 * (16/9) = 35.56% of the width.
+  const isStory = frame === "story";
+  const storySafe: React.CSSProperties = isStory
+    ? { paddingTop: "35.56%", paddingBottom: "35.56%" }
+    : {};
   const TextStack = ({ children }: { children: React.ReactNode }) => (
     <div
       className={`flex w-fit max-w-full flex-col gap-2 ${alignItemsClass}`}
@@ -346,7 +354,7 @@ export function LiveAdPreview({
       body = (
         <div className="grid h-full grid-cols-2">
           <Photo className="h-full w-full" />
-          <div className={`flex flex-col gap-2 p-4 ${justifyClass} ${alignItemsClass}`}>
+          <div className={`flex flex-col gap-2 p-4 ${justifyClass} ${alignItemsClass}`} style={storySafe}>
             <TextStack>
               <Eyebrow />
               <Headline size={1.25} />
@@ -434,7 +442,7 @@ export function LiveAdPreview({
 
     case "bigtype":
       body = (
-        <div className={`flex h-full flex-col gap-3 p-6 ${justifyClass} ${alignItemsClass}`}>
+        <div className={`flex h-full flex-col gap-3 p-6 ${justifyClass} ${alignItemsClass}`} style={storySafe}>
           <TextStack>
             <Eyebrow />
             <Headline size={2.1} />
@@ -447,7 +455,7 @@ export function LiveAdPreview({
 
     case "offer":
       body = (
-        <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
+        <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center" style={storySafe}>
           <Eyebrow />
           <p className="font-black leading-none" style={{ color: colors.pop, ...hFont, ...hSize(2.6) }}>
             {T(firstText(active, ["offerBig", "discount", "headline"]) || headline)}
@@ -630,7 +638,7 @@ export function LiveAdPreview({
               style={{ background: `linear-gradient(to top, ${colors.bg}f2 12%, ${colors.bg}66 55%, transparent 100%)` }}
             />
           )}
-          <div className={`relative flex h-full flex-col gap-2 p-5 ${justifyClass} ${alignItemsClass}`}>
+          <div className={`relative flex h-full flex-col gap-2 p-5 ${justifyClass} ${alignItemsClass}`} style={storySafe}>
             <TextStack>
               <Eyebrow />
               <Headline />
@@ -653,8 +661,9 @@ export function LiveAdPreview({
 
       {sig && (
         <p
-          className="absolute inset-x-0 bottom-2 px-5 text-[10px] font-medium tracking-wide"
+          className="absolute inset-x-0 px-5 text-[10px] font-medium tracking-wide"
           style={{
+            bottom: isStory ? "21%" : "0.5rem",
             color: colors.ink,
             opacity: 0.75,
             textAlign: textAlign || "left",
@@ -688,6 +697,14 @@ export function LiveAdPreview({
           onPointerDown={startFocalDrag}
           title="Drag to reposition the photo"
         />
+      )}
+
+      {/* Story safe-zone guides (preview only — never exported). */}
+      {isStory && !bare && (
+        <div className="pointer-events-none absolute inset-0 z-30">
+          <div className="absolute inset-x-0 top-0 h-[20%] border-b border-dashed border-white/40 bg-black/20" />
+          <div className="absolute inset-x-0 bottom-0 h-[20%] border-t border-dashed border-white/40 bg-black/20" />
+        </div>
       )}
     </div>
   );
