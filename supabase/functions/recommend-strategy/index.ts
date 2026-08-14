@@ -380,6 +380,57 @@ type PrimaryObjective =
   | "OUTCOME_TRAFFIC"
   | "OUTCOME_ENGAGEMENT";
 
+function isFreeEmailCaptureOffer(offer: any): boolean {
+  const pageGoal = String(offer?.page_goal || "").toLowerCase().trim();
+  // Any offer explicitly tagged as a free resource is a lead capture by design.
+  if (pageGoal === "free_resource") return true;
+
+  const price = String(offer?.price_point || "").toLowerCase();
+  const name = String(offer?.name || "").toLowerCase();
+  const description = String(offer?.description || "").toLowerCase();
+  const targetOutcome = String(offer?.target_outcome || "").toLowerCase();
+  const combinedText = `${description} ${targetOutcome}`;
+
+  const isFree =
+    /\bfree\b|\$0\b|^0$|no cost|complimentary/.test(price) ||
+    /\bfree\b/.test(name);
+  if (!isFree) return false;
+
+  const emailCaptureSignals = [
+    "email",
+    "opt-in",
+    "opt in",
+    "optin",
+    "signup",
+    "sign up",
+    "sign-up",
+    "register",
+    "registration",
+    "lead magnet",
+    "lead-magnet",
+    "freebie",
+    "download",
+    "guide",
+    "checklist",
+    "pdf",
+    "ebook",
+    "quiz",
+    "waitlist",
+    "newsletter",
+    "subscribe",
+    "webinar",
+    "masterclass",
+    "workshop",
+    "challenge",
+    "training",
+    "video series",
+    "mini course",
+    "free course",
+  ];
+
+  return emailCaptureSignals.some((s) => combinedText.includes(s));
+}
+
 function detectPrimaryObjective(snapshot: any): PrimaryObjective {
   const offer =
     snapshot?.selected_offer || (snapshot?.offers && snapshot.offers[0]) || {};
@@ -397,6 +448,10 @@ function detectPrimaryObjective(snapshot: any): PrimaryObjective {
   // acts on; a profile-destination traffic campaign optimizes for the click
   // that actually lands someone on the profile they can follow.
   if (goal === "grow_social") return "OUTCOME_TRAFFIC";
+
+  // HARD RULE: any offer that is free and collects an email address is a lead
+  // capture. The objective must be OUTCOME_LEADS, regardless of other signals.
+  if (isFreeEmailCaptureOffer(offer)) return "OUTCOME_LEADS";
 
   const fields = [
     offer?.name,
@@ -436,12 +491,6 @@ function detectPrimaryObjective(snapshot: any): PrimaryObjective {
     "shop", "store", "ecommerce", "coaching package", "membership",
   ];
 
-  const priceStr = String(offer?.price_point || "").toLowerCase();
-  const nameStr = String(offer?.name || "").toLowerCase();
-  const isFree =
-    /\bfree\b|\$0\b|^0$|no cost|complimentary/.test(priceStr) ||
-    /\bfree\b/.test(nameStr);
-
   // Check the offer's own formal page_goal enum ('purchase' | 'discovery_call'
   // | 'free_resource' | 'other', set directly in the Offer creation UI)
   // before falling back to fuzzy keyword matching in free-text fields below.
@@ -450,15 +499,13 @@ function detectPrimaryObjective(snapshot: any): PrimaryObjective {
   // with an underscore), so a free lead-magnet offer whose name/description
   // didn't happen to also contain a matching keyword was silently falling
   // through to the OUTCOME_SALES default.
-  const pageGoal = String(offer?.page_goal || "").toLowerCase().trim();
-  if (pageGoal === "free_resource" || pageGoal === "discovery_call") return "OUTCOME_LEADS";
   if (pageGoal === "purchase") return "OUTCOME_SALES";
 
   const hasLead = leadSignals.some((s) => fields.includes(s));
   const hasProfileGrowth = profileGrowthSignals.some((s) => fields.includes(s));
   const hasSale = salesSignals.some((s) => fields.includes(s));
 
-  if (isFree || hasLead) return "OUTCOME_LEADS";
+  if (hasLead) return "OUTCOME_LEADS";
   if (hasProfileGrowth && !hasSale) return "OUTCOME_TRAFFIC";
   return "OUTCOME_SALES";
 }
