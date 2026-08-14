@@ -31,6 +31,8 @@ import {
   Briefcase,
   CheckSquare,
   LogOut,
+  Search,
+  X,
 } from "lucide-react";
 import { LadybugIcon } from "@/components/LadybugIcon";
 import { IntentBar } from "@/components/IntentBar";
@@ -109,6 +111,7 @@ export function AppTopBar({ isAdmin }: AppTopBarProps) {
   const [userEmail, setUserEmail] = useState("");
   const [hasVipBonuses, setHasVipBonuses] = useState(false);
   const [isPartner, setIsPartner] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -236,7 +239,7 @@ export function AppTopBar({ isAdmin }: AppTopBarProps) {
             {searchOpen ? (
               <div className="w-full max-w-xl flex items-center gap-1">
                 <div className="flex-1 min-w-0">
-                  <IntentBar size="sm" innerBgClassName="bg-card" autoFocus />
+                  <IntentBar size="sm" innerBgClassName="bg-card" />
                 </div>
                 <button
                   type="button"
