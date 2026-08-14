@@ -56,6 +56,42 @@ Deno.test("a free lead magnet routes to LEADS", () => {
   assertEquals(detectPrimaryObjective(s), "OUTCOME_LEADS");
 });
 
+Deno.test("a free email-capture offer without page_goal still routes to LEADS", () => {
+  const s = snapshot({
+    selected_offer: {
+      name: "Free Starter Kit",
+      price_point: "Free",
+      description: "Sign up with your email to get the starter kit.",
+      page_goal: "other",
+    },
+  });
+  assertEquals(detectPrimaryObjective(s), "OUTCOME_LEADS");
+});
+
+Deno.test("a free download that mentions email in target_outcome routes to LEADS", () => {
+  const s = snapshot({
+    selected_offer: {
+      name: "Quick Wins Checklist",
+      price_point: "$0",
+      target_outcome: "Collect email addresses for the newsletter",
+      page_goal: "other",
+    },
+  });
+  assertEquals(detectPrimaryObjective(s), "OUTCOME_LEADS");
+});
+
+Deno.test("a free offer that does NOT collect email does not force LEADS", () => {
+  const s = snapshot({
+    selected_offer: {
+      name: "Free Community Access",
+      price_point: "free",
+      description: "Join our free community. No email required.",
+      page_goal: "other",
+    },
+  });
+  assertEquals(detectPrimaryObjective(s), "OUTCOME_SALES");
+});
+
 Deno.test("a discovery call routes to LEADS", () => {
   const s = snapshot({ selected_offer: { name: "Strategy Call", page_goal: "discovery_call" } });
   assertEquals(detectPrimaryObjective(s), "OUTCOME_LEADS");
