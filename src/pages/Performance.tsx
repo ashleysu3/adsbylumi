@@ -15,8 +15,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { LeadQualityCheck } from "@/components/insights/LeadQualityCheck";
-import { AdFitReviewTaskCard } from "@/components/insights/AdFitReviewTaskCard";
 import { MetaImportBridgeBanner } from "@/components/insights/MetaImportBridgeBanner";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
@@ -40,14 +38,15 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 import { upsertRecommendationTasks, closeMatchingTasks, RecForTask } from "@/lib/task-executors";
-import { DateRangePicker } from "@/components/insights/DateRangePicker";
+import { DateRangePillPicker } from "@/components/insights/DateRangePillPicker";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info, Target } from "lucide-react";
 import { format } from "date-fns";
-import { SetupPrompt } from "@/components/SetupPrompt";
 import { GoalSetupModal } from "@/components/insights/GoalSetupModal";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Zap } from "lucide-react";
+import { Zap, Radio } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import lumiBulb from "@/assets/lumi-bulb.png";
 
 
 // ============================================================================
@@ -159,43 +158,6 @@ const ACTION_VERB: Record<string, string> = {
   reduce_budget: "Reduce budget on",
 };
 
-// Plain-English purpose statements keyed by Meta objective. Covers both the
-// modern OUTCOME_* values and the older legacy objective names.
-const OBJECTIVE_PURPOSE: Record<string, string> = {
-  OUTCOME_SALES: "Get in front of cold audiences and drive purchases of your offer.",
-  OUTCOME_LEADS: "Reach cold audiences and collect new leads for your offer.",
-  OUTCOME_TRAFFIC: "Send cold audiences to your website and grow awareness of your offer.",
-  OUTCOME_ENGAGEMENT: "Get more people interacting with your content (messages, likes, comments, shares).",
-  OUTCOME_AWARENESS: "Put your brand in front of as many of the right people as possible.",
-  OUTCOME_APP_PROMOTION: "Drive installs and activity for your app.",
-  // Legacy objective names
-  CONVERSIONS: "Get in front of cold audiences and drive purchases or sign-ups for your offer.",
-  LEAD_GENERATION: "Reach cold audiences and collect new leads for your offer.",
-  LINK_CLICKS: "Send cold audiences to your website and grow awareness of your offer.",
-  TRAFFIC: "Send cold audiences to your website and grow awareness of your offer.",
-  POST_ENGAGEMENT: "Get more people interacting with your content (messages, likes, comments, shares).",
-  MESSAGES: "Start more conversations with potential customers in DMs.",
-  VIDEO_VIEWS: "Get your video in front of more of the right people.",
-  REACH: "Put your brand in front of as many of the right people as possible.",
-  BRAND_AWARENESS: "Put your brand in front of as many of the right people as possible.",
-};
-
-function purposeLine(objective?: string | null, primaryKpi?: string): string {
-  if (objective && OBJECTIVE_PURPOSE[objective]) return OBJECTIVE_PURPOSE[objective];
-  // Fallback by primary KPI when objective is missing/unknown.
-  switch (primaryKpi) {
-    case "roas":
-    case "cpp":
-      return "Get in front of cold audiences and drive purchases of your offer.";
-    case "cpl":
-      return "Reach cold audiences and collect new leads for your offer.";
-    case "cpc":
-    case "ctr":
-      return "Send cold audiences to your website and grow awareness of your offer.";
-    default:
-      return "Drive results from this campaign.";
-  }
-}
 
 function formatKpi(kpi: string, value: number | null): string {
   if (value == null || Number.isNaN(value)) return "—";
@@ -222,14 +184,50 @@ function TrendArrow({ kpi, vsGoalPct, direction }: { kpi: string; vsGoalPct: num
   return <Icon className={cn("h-3.5 w-3.5", color)} />;
 }
 
+export interface PerformanceSummary {
+  needsAttentionCount: number;
+  /** Short, real reasons behind the needs-attention count (e.g. "audience fatigue"), for the metric tile footnote. */
+  needsAttentionReasons: string[];
+  bestPerformer: {
+    name: string;
+    primaryLabel: string;
+    secondaryLabel: string | null;
+    workspaceId: string;
+  } | null;
+}
+
 interface PerformanceProps {
-  /** Rendered inside the My Ads page: no DashboardLayout wrapper, no page title. */
+  /** Rendered inside the Ad Dashboard: no DashboardLayout wrapper, no page title. */
   embedded?: boolean;
   /** Reports how many live campaigns are showing, for the section header count. */
   onLiveCountChange?: (count: number) => void;
+  /** Reports needs-attention count + best performer so the dashboard's metric strip can show them. */
+  onSummaryChange?: (summary: PerformanceSummary) => void;
+  /** Controlled date range — when provided (with onDateRangeChange), the page header owns the range picker instead of this component rendering its own. */
+  dateRange?: string;
+  onDateRangeChange?: (range: string) => void;
+  customDateRange?: { from: Date; to: Date } | null;
+  onCustomDateRangeChange?: (range: { from: Date; to: Date } | null) => void;
+  /** Hide the built-in range picker + "Showing: …" row — the parent renders its own. */
+  hideRangeControl?: boolean;
+  /** Rendered between the Today's move card and the Live panel — lets the parent slot in its own metric strip without duplicating this component's state. */
+  betweenMoveAndLive?: React.ReactNode;
+  /** Rendered in the Live panel header, e.g. the "Import from Meta" button. */
+  importButton?: React.ReactNode;
 }
 
-export default function Performance({ embedded = false, onLiveCountChange }: PerformanceProps = {}) {
+export default function Performance({
+  embedded = false,
+  onLiveCountChange,
+  onSummaryChange,
+  dateRange: controlledDateRange,
+  onDateRangeChange: controlledOnDateRangeChange,
+  customDateRange: controlledCustomDateRange,
+  onCustomDateRangeChange: controlledOnCustomDateRangeChange,
+  hideRangeControl = false,
+  betweenMoveAndLive,
+  importButton,
+}: PerformanceProps = {}) {
   const navigate = useNavigate();
   const { activeBrand, loading: brandLoading } = useBrand();
 
@@ -244,6 +242,18 @@ export default function Performance({ embedded = false, onLiveCountChange }: Per
   const [goalModalFor, setGoalModalFor] = useState<EngineResult | null>(null);
   const [quickListOpen, setQuickListOpen] = useState(false);
   const [reloadNonce, setReloadNonce] = useState(0);
+  // Today's move queue — one recommendation shown at a time.
+  const [moveIndex, setMoveIndex] = useState(0);
+  // Pausing a campaign directly from the Live row toggle (not from a recommendation).
+  const [pauseRowTarget, setPauseRowTarget] = useState<EngineResult | null>(null);
+  const [pauseRowConfirmOpen, setPauseRowConfirmOpen] = useState(false);
+  const [pauseRowSubmitting, setPauseRowSubmitting] = useState(false);
+  const [resumingWorkspaceId, setResumingWorkspaceId] = useState<string | null>(null);
+  // Everything in `results` loads as live/active (the fetch above only keeps
+  // active campaigns) — this tracks campaigns paused via the row switch this
+  // session, so the switch reflects reality without needing a raw on/off
+  // field from the engine response.
+  const [manuallyPaused, setManuallyPaused] = useState<Set<string>>(new Set());
 
   // Surface the live-campaign count to the My Ads section header.
   useEffect(() => {
@@ -253,10 +263,12 @@ export default function Performance({ embedded = false, onLiveCountChange }: Per
 
   // Date range — persists in localStorage. "3" | "7" | "14" | "30" (preset days)
   // or "custom" with a customDateRange. Default: last 7 days.
-  const [dateRange, setDateRange] = useState<string>(() => {
+  // The Studio dashboard owns this via controlled props (one pill row for the
+  // whole page); falls back to internal state so this still works standalone.
+  const [internalDateRange, setInternalDateRange] = useState<string>(() => {
     try { return localStorage.getItem("liveAdsDateRange") || "7"; } catch { return "7"; }
   });
-  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | null>(() => {
+  const [internalCustomDateRange, setInternalCustomDateRange] = useState<{ from: Date; to: Date } | null>(() => {
     try {
       const raw = localStorage.getItem("liveAdsCustomDateRange");
       if (!raw) return null;
@@ -264,6 +276,10 @@ export default function Performance({ embedded = false, onLiveCountChange }: Per
       return p?.from && p?.to ? { from: new Date(p.from), to: new Date(p.to) } : null;
     } catch { return null; }
   });
+  const dateRange = controlledDateRange ?? internalDateRange;
+  const setDateRange = controlledOnDateRangeChange ?? setInternalDateRange;
+  const customDateRange = controlledCustomDateRange !== undefined ? controlledCustomDateRange : internalCustomDateRange;
+  const setCustomDateRange = controlledOnCustomDateRangeChange ?? setInternalCustomDateRange;
   useEffect(() => { try { localStorage.setItem("liveAdsDateRange", dateRange); } catch { /* noop */ } }, [dateRange]);
   useEffect(() => {
     try {
@@ -289,6 +305,17 @@ export default function Performance({ embedded = false, onLiveCountChange }: Per
         body: { since: fmtDay(from), until: fmtDay(to) },
       };
     }
+    if (dateRange === "yesterday") {
+      const y = new Date();
+      y.setDate(y.getDate() - 1);
+      return {
+        since: fmtDay(y),
+        until: fmtDay(y),
+        days: 1,
+        label: `yesterday (${fmtLabel(y)})`,
+        body: { since: fmtDay(y), until: fmtDay(y) },
+      };
+    }
     const days = parseInt(dateRange, 10) || 7;
     const until = new Date();
     const from = new Date();
@@ -297,7 +324,7 @@ export default function Performance({ embedded = false, onLiveCountChange }: Per
       since: fmtDay(from),
       until: fmtDay(until),
       days,
-      label: `last ${days} days (${fmtLabel(from)}–${fmtLabel(until)})`,
+      label: days === 1 ? `today (${fmtLabel(until)})` : `last ${days} days (${fmtLabel(from)}–${fmtLabel(until)})`,
       body: { days },
     };
   }, [dateRange, customDateRange]);
@@ -476,6 +503,54 @@ export default function Performance({ embedded = false, onLiveCountChange }: Per
     items.sort((a, b) => (b.rec.recommendation?.impact ?? 0) - (a.rec.recommendation?.impact ?? 0));
     return items.slice(0, 3);
   }, [results, snoozedIds]);
+
+  // Keep the queue pointer in range as the underlying list changes (an item
+  // gets approved/snoozed, or a fresh load comes back with fewer items).
+  useEffect(() => {
+    setMoveIndex((i) => Math.min(i, Math.max(0, topThree.length - 1)));
+  }, [topThree.length]);
+
+  // Needs-attention: same rule the Quick list sheet already uses, hoisted so
+  // the metric strip can show the count too.
+  const needsAttentionRows = useMemo(() => {
+    return results
+      .map((r) => ({ result: r, rec: r.topRecommendation, needsGoals: r.meta.hasUserGoals === false }))
+      .filter((row) => row.needsGoals || (row.rec && row.rec.recommendation.priorityTier <= 3));
+  }, [results]);
+
+  // Best performer: among evaluated campaigns, the one with the strongest
+  // status against its own goal — reuses the same STATUS_STYLE ranking and
+  // primary/secondary KPI values already computed per campaign, no new logic.
+  const bestPerformerResult = useMemo(() => {
+    const STATUS_RANK: Record<Status, number> = {
+      scaling_ready: 0, performing: 1, promising: 2, learning: 3, spend_starved: 4, fatigued: 5, underperforming: 6,
+    };
+    const ranked = [...results]
+      .filter((r) => r.campaign.primary?.value != null)
+      .sort((a, b) => (STATUS_RANK[a.campaign.status] ?? 9) - (STATUS_RANK[b.campaign.status] ?? 9));
+    return ranked[0] ?? null;
+  }, [results]);
+
+  useEffect(() => {
+    if (!onSummaryChange) return;
+    const reasons = Array.from(new Set(
+      needsAttentionRows
+        .map((row) => row.rec?.recommendation.diagnosis?.rootCause)
+        .filter((r): r is string => !!r)
+        .map((r) => r.replace(/_/g, " "))
+    )).slice(0, 2);
+    const best = bestPerformerResult
+      ? {
+          name: bestPerformerResult.workspaceName || bestPerformerResult.campaign.name,
+          primaryLabel: formatKpi(bestPerformerResult.meta.primaryKpi, bestPerformerResult.campaign.primary.value),
+          secondaryLabel: bestPerformerResult.campaign.secondary
+            ? `${formatKpi(bestPerformerResult.meta.secondaryKpi || "", bestPerformerResult.campaign.secondary.value)} ${bestPerformerResult.campaign.secondary.label}`
+            : null,
+          workspaceId: bestPerformerResult.workspaceId!,
+        }
+      : null;
+    onSummaryChange({ needsAttentionCount: needsAttentionRows.length, needsAttentionReasons: reasons, bestPerformer: best });
+  }, [needsAttentionRows, bestPerformerResult, onSummaryChange]);
 
   function recTitle(rec: AdEval) {
     const verb = ACTION_VERB[rec.recommendation.action] || rec.recommendation.action;
@@ -747,6 +822,54 @@ export default function Performance({ embedded = false, onLiveCountChange }: Per
     }
   }
 
+  // Manual on/off from the Live row switch — separate from the recommendation
+  // "turn_off" flow above, but calls the same kind of Meta status mutation
+  // AdBreakdown.tsx already uses for per-ad pause/resume, at the campaign level.
+  async function confirmPauseRow() {
+    if (!pauseRowTarget?.workspaceId) return;
+    setPauseRowSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("check-campaign-status", {
+        body: { workspaceId: pauseRowTarget.workspaceId, action: "pause" },
+      });
+      if (error || !data?.success) {
+        toast.error("Couldn't pause in Meta", { description: error?.message || data?.error || "Unknown error" });
+        return;
+      }
+      toast.success("Paused in Meta");
+      setManuallyPaused((prev) => new Set([...prev, pauseRowTarget.workspaceId!]));
+      setPauseRowConfirmOpen(false);
+    } catch (e: any) {
+      toast.error("Couldn't pause in Meta", { description: e?.message || "Unknown error" });
+    } finally {
+      setPauseRowSubmitting(false);
+    }
+  }
+
+  async function resumeRow(r: EngineResult) {
+    if (!r.workspaceId) return;
+    setResumingWorkspaceId(r.workspaceId);
+    try {
+      const { data, error } = await supabase.functions.invoke("check-campaign-status", {
+        body: { workspaceId: r.workspaceId, action: "unpause" },
+      });
+      if (error || !data?.success) {
+        toast.error("Couldn't resume in Meta", { description: error?.message || data?.error || "Unknown error" });
+        return;
+      }
+      toast.success("Resumed in Meta");
+      setManuallyPaused((prev) => {
+        const next = new Set(prev);
+        next.delete(r.workspaceId!);
+        return next;
+      });
+    } catch (e: any) {
+      toast.error("Couldn't resume in Meta", { description: e?.message || "Unknown error" });
+    } finally {
+      setResumingWorkspaceId(null);
+    }
+  }
+
   const Shell = embedded
     ? ({ children }: { children: React.ReactNode }) => <>{children}</>
     : DashboardLayout;
@@ -754,57 +877,60 @@ export default function Performance({ embedded = false, onLiveCountChange }: Per
   return (
     <Shell>
       <div className={embedded ? "space-y-6" : "max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6"}>
-        <div className="flex items-end justify-between gap-3 flex-wrap">
-          {!embedded && (
-            <div>
-              <h1 className="text-2xl font-bold">Live Ads</h1>
-              <p className="text-sm text-muted-foreground">
-                Everything running, paused, or off in your Meta account. Created a campaign directly in Meta? Import it to manage it here.
-              </p>
+        {!hideRangeControl && (
+          <>
+            <div className="flex items-end justify-between gap-3 flex-wrap">
+              {!embedded && (
+                <div>
+                  <h1 className="text-2xl font-bold">Live Ads</h1>
+                  <p className="text-sm text-muted-foreground">
+                    Everything running, paused, or off in your Meta account. Created a campaign directly in Meta? Import it to manage it here.
+                  </p>
+                </div>
+              )}
+              <div className="flex items-center gap-2 flex-wrap ml-auto">
+                <DateRangePillPicker
+                  dateRange={dateRange}
+                  customDateRange={customDateRange}
+                  onDateRangeChange={setDateRange}
+                  onCustomDateRangeChange={setCustomDateRange}
+                />
+                {hasActive && !loading && (
+                  <Button
+                    onClick={() => setQuickListOpen(true)}
+                    className="gap-2 bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white hover:opacity-90"
+                  >
+                    <Zap className="h-4 w-4" />
+                    Short on time? See LUMI's recs
+                  </Button>
+                )}
+                <Button variant="outline" onClick={() => navigate("/retrospectives")} className="gap-2">
+                  <History className="h-4 w-4" />
+                  History
+                </Button>
+              </div>
             </div>
-          )}
-          <div className="flex items-center gap-2 flex-wrap ml-auto">
-            <DateRangePicker
-              dateRange={dateRange}
-              customDateRange={customDateRange}
-              onDateRangeChange={setDateRange}
-              onCustomDateRangeChange={setCustomDateRange}
-            />
-            {hasActive && !loading && (
-              <Button
-                onClick={() => setQuickListOpen(true)}
-                className="gap-2 bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white hover:opacity-90"
-              >
-                <Zap className="h-4 w-4" />
-                Short on time? See LUMI's recs
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => navigate("/retrospectives")} className="gap-2">
-              <History className="h-4 w-4" />
-              History
-            </Button>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-2 text-sm text-muted-foreground -mt-3 flex-wrap">
-          <span>
-            <span className="font-medium text-foreground">Showing:</span> {activeRange.label}
-          </span>
-          <TooltipProvider delayDuration={150}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button type="button" className="inline-flex items-center gap-1 text-xs underline-offset-2 hover:underline">
-                  <Info className="h-3 w-3" />
-                  How LUMI decides
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-xs">
-                Recommendations are based on LUMI's 3 / 7 / 30-day analysis, not this view's date range. The picker only changes which numbers are displayed.
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-
+            <div className="flex items-center gap-2 text-sm text-muted-foreground -mt-3 flex-wrap">
+              <span>
+                <span className="font-medium text-foreground">Showing:</span> {activeRange.label}
+              </span>
+              <TooltipProvider delayDuration={150}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="inline-flex items-center gap-1 text-xs underline-offset-2 hover:underline">
+                      <Info className="h-3 w-3" />
+                      How LUMI decides
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs">
+                    Recommendations are based on LUMI's 3 / 7 / 30-day analysis, not this view's date range. The picker only changes which numbers are displayed.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </>
+        )}
 
         {/* Bridge: live Meta campaigns not yet in LUMI */}
         <MetaImportBridgeBanner surface="live-ads" />
@@ -834,257 +960,251 @@ export default function Performance({ embedded = false, onLiveCountChange }: Per
 
         {!loading && hasActive && (
           <>
-            {/* THE ONE LIST — up to top 3 highest-impact recommendations */}
-            <Card className="border-lumi-pink-1/30">
-
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Sparkles className="h-4 w-4 text-lumi-pink-1" />
-                  {topThree.length > 1 ? "The next few moves worth making" : "The one thing this week"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {topThree.length === 0 ? (
+            {/* TODAY'S MOVE — one recommendation at a time, highest impact first */}
+            {topThree.length === 0 ? (
+              <Card className="border-lumi-pink-1/20">
+                <CardContent className="py-8 flex items-center gap-3">
+                  <Sparkles className="h-5 w-5 text-lumi-pink-1 shrink-0" />
                   <p className="text-sm text-muted-foreground">
                     Nothing urgent right now. Everything's running — check the campaigns below for detail.
                   </p>
-                ) : (
-                  <ul className="space-y-3">
-                    {topThree.map((item) => {
-                      const a = item.rec.recommendation.action;
-                      const approveLabel =
-                        a === "turn_off" ? "Approve · Pause it" :
-                        a === "increase_budget" || a === "reduce_budget" ? "Approve · Update budget" :
-                        a === "refresh_creative" ? "Approve · Swap creative" :
-                        a === "promote_to_scaling" ? "Approve · Set up scaling" :
-                        "Approve · Show me how";
-                      const whyOpen = whyOpenId === item.rec.id;
-                      return (
-                        <li
-                          key={`${item.result.workspaceId}-${item.rec.id}`}
-                          className="rounded-lg border bg-card/50 p-3 space-y-2"
+                </CardContent>
+              </Card>
+            ) : (() => {
+              const item = topThree[Math.min(moveIndex, topThree.length - 1)];
+              const a = item.rec.recommendation.action;
+              const doVerb =
+                a === "turn_off" ? "Turn it off" :
+                a === "increase_budget" ? "Raise budget" :
+                a === "reduce_budget" ? "Reduce budget" :
+                a === "refresh_creative" ? "Write the variants" :
+                a === "promote_to_scaling" ? "Set up scaling" :
+                "Do it";
+              const whyOpen = whyOpenId === item.rec.id;
+              const queuedAfter = topThree.length - moveIndex - 1;
+              const advance = () => setMoveIndex((i) => Math.min(i + 1, topThree.length - 1));
+              return (
+                <div
+                  className="rounded-2xl border p-7 sm:p-8"
+                  style={{
+                    background: "linear-gradient(160deg,#FFF4EC 0%,#FDEDF3 100%)",
+                    borderColor: "#F3DFD3",
+                    boxShadow: "0 6px 24px -14px rgba(17,17,17,0.10)",
+                  }}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-8">
+                    <div className="space-y-3.5 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <img src={lumiBulb} alt="" className="h-[22px] w-[22px]" />
+                        <span
+                          className="text-[11px] font-semibold uppercase tracking-[0.08em] bg-gradient-lumi bg-clip-text text-transparent"
                         >
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="capitalize">{item.rec.level === "adset" ? "ad set" : item.rec.level}</span>
-                            <span>·</span>
-                            <span className="truncate">{item.result.workspaceName || item.result.campaign.name}</span>
+                          {moveIndex === 0 ? "Today's move" : "Next move"}
+                        </span>
+                      </div>
+                      <div className="font-display text-2xl leading-[1.18] tracking-[-0.02em] text-foreground max-w-[24ch]">
+                        {recTitle(item.rec)}
+                      </div>
+                      <p className="text-[15px] leading-[1.55] text-muted-foreground max-w-[56ch]">
+                        {item.rec.recommendation.diagnosis?.why || item.rec.recommendation.reasoning}
+                      </p>
+                      {whyOpen && (
+                        <div className="border-t pt-4 flex flex-wrap gap-7" style={{ borderColor: "#F0DACE" }}>
+                          <div className="space-y-1">
+                            <div className="text-xs text-muted-foreground">Confidence</div>
+                            <div className="text-sm font-medium text-foreground capitalize">{item.rec.recommendation.confidence}</div>
                           </div>
-                          <div className="text-base font-semibold">{recTitle(item.rec)}</div>
-                          <p className="text-sm text-muted-foreground">
-                            {item.rec.recommendation.reasoning}
-                          </p>
-                          {item.rec.recommendation.diagnosis && (
-                            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-xs space-y-1">
-                              <div className="font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wide text-[10px]">
-                                Root cause: {(item.rec.recommendation.diagnosis.rootCause || 'unknown').replace(/_/g, ' ')}
-                              </div>
-                              {item.rec.recommendation.diagnosis.signals?.length > 0 && (
-                                <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-                                  {item.rec.recommendation.diagnosis.signals.map((s: string, i: number) => (
-                                    <li key={i}>{s}</li>
-                                  ))}
-                                </ul>
-                              )}
-                              {item.rec.recommendation.diagnosis.needsConversionTracking && (
-                                <div className="text-amber-700 dark:text-amber-300 italic">
-                                  Conversion tracking isn't reporting — we can't fully diagnose without it.
-                                </div>
-                              )}
+                          <div className="space-y-1">
+                            <div className="text-xs text-muted-foreground">Status</div>
+                            <div className="text-sm font-medium text-foreground">{STATUS_STYLE[item.rec.status]?.label || item.rec.status}</div>
+                          </div>
+                          {item.rec.recommendation.impactReasoning && (
+                            <div className="space-y-1 max-w-sm">
+                              <div className="text-xs text-muted-foreground">If you act today</div>
+                              <div className="text-sm font-medium text-foreground">{item.rec.recommendation.impactReasoning}</div>
                             </div>
                           )}
-                          {whyOpen && (
-                            <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground space-y-0.5">
-                              <div>
-                                <strong className="text-foreground">Confidence:</strong> {item.rec.recommendation.confidence}
-                              </div>
-                              <div>
-                                <strong className="text-foreground">Status:</strong> {STATUS_STYLE[item.rec.status]?.label || item.rec.status}
-                              </div>
-                              {item.rec.recommendation.impactReasoning && (
-                                <div className="italic">{item.rec.recommendation.impactReasoning}</div>
-                              )}
-                            </div>
+                        </div>
+                      )}
+                      <div className="flex flex-wrap items-center gap-3 pt-1">
+                        <Button
+                          onClick={() => handleApprove(item)}
+                          className="rounded-lg bg-gradient-warm text-white px-[22px] py-[13px] h-auto text-[15px] font-semibold hover:opacity-95"
+                        >
+                          {doVerb}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setWhyOpenId((id) => (id === item.rec.id ? null : item.rec.id))}
+                          className="rounded-lg bg-white border-[#E7CFC2] hover:bg-white/80 h-auto py-[13px] px-[18px] text-[15px]"
+                        >
+                          {whyOpen ? "Hide the why" : "Why?"}
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => { handleSnooze(item); advance(); }}
+                          className="text-[15px] text-[#8C8390] hover:text-foreground transition-colors"
+                        >
+                          Not now
+                        </button>
+                      </div>
+                    </div>
+                    <div className="w-full md:w-[220px] shrink-0 space-y-2">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "#9A8F92" }}>
+                        In question
+                      </div>
+                      <div
+                        className="rounded-xl aspect-[4/5] flex items-center justify-center text-[10px] uppercase tracking-wide text-muted-foreground/70"
+                        style={{ background: "repeating-linear-gradient(135deg, rgba(17,17,17,0.05) 0 8px, rgba(17,17,17,0.02) 8px 16px)" }}
+                      >
+                        {item.result.workspaceName || item.result.campaign.name}
+                      </div>
+                      {queuedAfter > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          {queuedAfter} more move{queuedAfter === 1 ? "" : "s"} queued after this one
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {betweenMoveAndLive}
+
+            {/* LIVE — one row per active campaign. Goal detail, KPI breakdown,
+                fatigue and lead-quality checks live one click away on the
+                campaign's own page (/live-ads/:id) rather than inline here. */}
+            <section className="rounded-2xl border bg-card overflow-hidden">
+              <div className="flex items-center gap-3 px-5 py-4 flex-wrap">
+                <Radio className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-xs font-semibold uppercase tracking-[0.08em]">Live</span>
+                <span className="text-xs font-medium rounded-full bg-muted px-2 py-0.5 text-muted-foreground tabular-nums">
+                  {results.length}
+                </span>
+                <span className="text-xs text-muted-foreground hidden sm:inline">Running, paused, or off in Meta</span>
+                <div className="ml-auto flex items-center gap-2 flex-wrap">
+                  {hasActive && !loading && (
+                    <Button size="sm" variant="outline" onClick={() => setQuickListOpen(true)} className="h-8 gap-1.5 text-xs">
+                      <Zap className="h-3.5 w-3.5" />
+                      Quick list
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" onClick={() => navigate("/retrospectives")} className="h-8 gap-1.5 text-xs">
+                    <History className="h-3.5 w-3.5" />
+                    History
+                  </Button>
+                  {importButton}
+                </div>
+              </div>
+
+              <div className="border-t bg-background p-4 space-y-3">
+                {hideRangeControl && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap px-1">
+                    <span><span className="font-medium text-foreground">Showing:</span> {activeRange.label}</span>
+                    <TooltipProvider delayDuration={150}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className="inline-flex items-center gap-1 underline-offset-2 hover:underline">
+                            <Info className="h-3 w-3" />
+                            How LUMI decides
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-xs">
+                          Recommendations are based on LUMI's 3 / 7 / 30-day analysis, not this view's date range. The picker only changes which numbers are displayed.
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                )}
+
+                {results.length === 0 ? (
+                  <p className="px-1 py-6 text-center text-sm text-muted-foreground">
+                    Once your ads have run a few days, each campaign shows up here.
+                  </p>
+                ) : (
+                  <>
+                    <div className="hidden md:grid grid-cols-[56px_1.7fr_0.8fr_0.8fr_96px_24px] gap-4 px-4 text-xs font-medium text-muted-foreground">
+                      <span />
+                      <span>Ad</span>
+                      <span>{results[0]?.campaign.secondary?.label || "Results"}</span>
+                      <span>{results[0]?.meta.primaryKpiLabel || "Primary metric"}</span>
+                      <span>Live</span>
+                      <span />
+                    </div>
+                    {results.map((r) => {
+                      const needsGoals = r.meta.hasUserGoals === false;
+                      const isNeedsAttention = needsGoals || (r.topRecommendation && r.topRecommendation.recommendation.priorityTier <= 3);
+                      const s = needsGoals
+                        ? { label: "Needs goals", cls: "bg-[#FEF6E7] text-[#B4551F] border-transparent" }
+                        : isNeedsAttention
+                          ? { label: STATUS_STYLE[r.campaign.status]?.label || "Needs attention", cls: "bg-[#FEF6E7] text-[#B4551F] border-transparent" }
+                          : (r.campaign.status === "scaling_ready" || r.campaign.status === "performing")
+                            ? { label: STATUS_STYLE[r.campaign.status].label, cls: "bg-[#EAF7EE] text-[#16A34A] border-transparent" }
+                            : { label: STATUS_STYLE[r.campaign.status]?.label || "Learning", cls: "bg-muted text-muted-foreground border-transparent" };
+                      const isOn = !!r.workspaceId && !manuallyPaused.has(r.workspaceId);
+                      const isResuming = resumingWorkspaceId === r.workspaceId;
+                      return (
+                        <div
+                          key={r.workspaceId}
+                          className={cn(
+                            "grid grid-cols-[56px_1fr_auto] md:grid-cols-[56px_1.7fr_0.8fr_0.8fr_96px_24px] items-center gap-4 rounded-xl border bg-card px-4 py-3.5 transition-colors",
+                            !isOn && "opacity-70"
                           )}
-                          <div className="flex flex-wrap gap-2 pt-1">
-                            <Button size="sm" onClick={() => handleApprove(item)} className="gap-2">
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                              {approveLabel}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setWhyOpenId((id) => (id === item.rec.id ? null : item.rec.id))}
-                              className="gap-2"
-                            >
-                              <HelpCircle className="h-3.5 w-3.5" />
-                              Why?
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleSnooze(item)} className="gap-2">
-                              <Clock className="h-3.5 w-3.5" />
-                              Snooze 5 days
-                            </Button>
+                        >
+                          <div
+                            className="h-14 w-14 rounded-lg shrink-0"
+                            style={{ background: "repeating-linear-gradient(135deg, rgba(17,17,17,0.06) 0 6px, rgba(17,17,17,0.02) 6px 12px)" }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/live-ads/${r.workspaceId}`)}
+                            className="min-w-0 text-left space-y-1"
+                          >
+                            <div className="text-[15px] font-semibold text-foreground truncate">
+                              {r.workspaceName || r.campaign.name}
+                            </div>
+                            <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium", s.cls)}>
+                              <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                              {s.label}
+                            </span>
+                          </button>
+                          <div className="hidden md:block text-sm tabular-nums text-foreground">
+                            {r.campaign.secondary ? formatKpi(r.meta.secondaryKpi || "", r.campaign.secondary.value) : "—"}
                           </div>
-                        </li>
+                          <div className="hidden md:block text-sm tabular-nums text-foreground">
+                            {formatKpi(r.meta.primaryKpi, r.campaign.primary.value)}
+                          </div>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Switch
+                              checked={isOn}
+                              disabled={isResuming}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  resumeRow(r);
+                                } else {
+                                  setPauseRowTarget(r);
+                                  setPauseRowConfirmOpen(true);
+                                }
+                              }}
+                              className="data-[state=checked]:bg-[hsl(var(--lumi-pink-1))]"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/live-ads/${r.workspaceId}`)}
+                            className="text-muted-foreground hover:text-foreground justify-self-end"
+                            aria-label={`Open ${r.workspaceName || r.campaign.name}`}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                        </div>
                       );
                     })}
-                  </ul>
+                  </>
                 )}
-              </CardContent>
-            </Card>
-
-            {/* CAMPAIGN CARDS — one per active campaign */}
-            <div className="space-y-3">
-              <h2 className="text-lg font-semibold">Your live campaigns</h2>
-              {results.length === 0 ? (
-                <Card>
-                  <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                    Once your ads have run a few days, each campaign shows up here. ✨
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                  {results.map((r) => {
-                    const s = STATUS_STYLE[r.campaign.status] ?? STATUS_STYLE.learning;
-                    const primaryVal = formatKpi(r.meta.primaryKpi, r.campaign.primary.value);
-                    const goalStr = r.meta.primaryGoal != null
-                      ? `goal ${formatKpi(r.meta.primaryKpi, r.meta.primaryGoal)}`
-                      : null;
-                    const secondaryStr =
-                      r.campaign.secondary && r.meta.secondaryKpi
-                        ? `${r.campaign.secondary.label}: ${formatKpi(r.meta.secondaryKpi, r.campaign.secondary.value)}`
-                        : null;
-                    const top = r.topRecommendation;
-                    const campRec = r.campaign?.recommendation;
-                    const primaryVal2 = r.campaign?.primary?.value;
-                    const goal = r.meta.primaryGoal;
-                    const dir = (r.meta as any).primaryDirection || "less_than";
-                    const primaryMissingGoal =
-                      goal != null && primaryVal2 != null &&
-                      (dir === "less_than" ? primaryVal2 > goal : primaryVal2 < goal);
-                    const primaryIsNull = primaryVal2 == null;
-                    // CLIENT GUARD: a card can never say "around target" / "hold steady"
-                    // while the primary KPI is null or missing its goal.
-                    let topLine: string;
-                    if (primaryIsNull) {
-                      topLine = `${r.meta.primaryKpiLabel || (r.meta.primaryKpi || "Primary KPI").toUpperCase()} has no value yet — can't judge performance. Likely either too early, or conversion tracking isn't set up for this goal.`;
-                    } else if (primaryMissingGoal) {
-                      const why = campRec?.diagnosis?.why || campRec?.reasoning || "Primary KPI is below goal — needs attention.";
-                      topLine = why;
-                    } else if (top) {
-                      topLine = `${recTitle(top)} — ${top.recommendation.reasoning}`;
-                    } else if (campRec?.reasoning) {
-                      topLine = campRec.reasoning;
-                    } else {
-                      topLine = "Holding steady — no changes needed right now.";
-                    }
-                    return (
-                      <Card
-                        key={r.workspaceId}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => navigate(`/live-ads/${r.workspaceId}`)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            navigate(`/live-ads/${r.workspaceId}`);
-                          }
-                        }}
-                        className="cursor-pointer hover:border-lumi-pink-1/40 hover:shadow-sm transition group"
-                      >
-                        <CardHeader className="pb-2">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <CardTitle className="text-base truncate">
-                                  {r.workspaceName || r.campaign.name}
-                                </CardTitle>
-                                <Badge variant="outline" className={cn("flex-shrink-0", s.cls)}>
-                                  {s.label}
-                                </Badge>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                <span className="font-medium text-foreground">Purpose:</span> {purposeLine(r.meta.objective, r.meta.primaryKpi)}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                <span className="font-medium text-foreground">Measure of success:</span>{" "}
-                                {r.meta.primaryKpiLabel}
-                                {r.meta.primaryGoal != null && ` (${goalStr})`}
-                              </p>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 group-hover:translate-x-0.5 transition" />
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          {/* KPI summary row — reach, frequency, then one cell per configured goal KPI */}
-                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 text-xs">
-                            <KpiPill
-                              label="Reach"
-                              value={r.campaign.reach != null ? r.campaign.reach.toLocaleString() : "—"}
-                            />
-                            <KpiPill
-                              label="Frequency"
-                              value={r.campaign.frequency != null ? r.campaign.frequency.toFixed(2) : "—"}
-                              hint={r.campaign.frequency != null && r.campaign.frequency > 4 ? "high" : undefined}
-                            />
-                            {(r.campaign.kpis || []).map(k => {
-                              const valStr = formatKpi(k.kpi, k.value);
-                              const goalStr = `goal ${formatKpi(k.kpi, k.goal)}`;
-                              const hitting = k.status === "above" || k.status === "at";
-                              const cls = k.status === "no_data"
-                                ? "text-muted-foreground"
-                                : hitting ? "text-emerald-700" : "text-amber-700";
-                              return (
-                                <KpiPill
-                                  key={k.kpi}
-                                  label={k.label + (k.isDefault ? " (default)" : "")}
-                                  value={valStr}
-                                  hint={`${goalStr} ${hitting && k.status !== "no_data" ? "✓" : k.status === "below" ? "✗" : ""}`.trim()}
-                                  valueClassName={cls}
-                                />
-                              );
-                            })}
-                          </div>
-                          {r.meta.hasUserGoals === false && (
-                            <SetupPrompt
-                              icon={Target}
-                              title="Set goals for this campaign"
-                              description="So LUMI can measure success against your targets (we're showing benchmark defaults for now)."
-                              ctaLabel="Set goals"
-                              tone="warning"
-                              onCta={() => setGoalModalFor(r)}
-                              autoTask={{
-                                title: `Set goals for ${r.workspaceName || r.campaign.name}`,
-                                link_to: `/live-ads/${r.workspaceId}`,
-                              }}
-                            />
-                          )}
-                          <p className="text-sm">
-                            <span className="text-muted-foreground">LUMI recommends: </span>
-                            <span className="text-foreground">{topLine}</span>
-                          </p>
-
-                          {activeBrand && (
-                            <AdFitReviewTaskCard
-                              workspaceId={r.workspaceId}
-                              brandId={activeBrand.id}
-                              variant="compact"
-                            />
-                          )}
-                          {activeBrand && (
-                            <LeadQualityCheck
-                              workspaceId={r.workspaceId}
-                              brandId={activeBrand.id}
-                              campaignMetaId={(r as any).meta?.metaCampaignId || null}
-                              variant="compact"
-                            />
-                          )}
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+              </div>
+            </section>
 
             <div className="text-center">
               <Button variant="link" onClick={() => navigate("/data")} className="gap-2">
@@ -1092,6 +1212,25 @@ export default function Performance({ embedded = false, onLiveCountChange }: Per
                 See full results
               </Button>
             </div>
+
+            <AlertDialog open={pauseRowConfirmOpen} onOpenChange={(o) => !pauseRowSubmitting && setPauseRowConfirmOpen(o)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Pause "{pauseRowTarget?.workspaceName || pauseRowTarget?.campaign.name}"?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    It will stop spending in Meta immediately. You can turn it back on any time from here or in Meta.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={pauseRowSubmitting}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={(e) => { e.preventDefault(); confirmPauseRow(); }} disabled={pauseRowSubmitting}>
+                    {pauseRowSubmitting ? (<><Loader2 className="h-4 w-4 animate-spin mr-2" />Pausing…</>) : "Pause it in Meta"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             {/* DIALOGS */}
             {chosen && (
@@ -1258,9 +1397,7 @@ export default function Performance({ embedded = false, onLiveCountChange }: Per
               rec: r.topRecommendation,
               needsGoals: r.meta.hasUserGoals === false,
             }));
-            const needsAttention = rows.filter(
-              (row) => row.needsGoals || (row.rec && row.rec.recommendation.priorityTier <= 3)
-            );
+            const needsAttention = needsAttentionRows;
             const allGood = rows.filter(
               (row) => !row.needsGoals && (!row.rec || row.rec.recommendation.priorityTier >= 4)
             );
@@ -1371,30 +1508,3 @@ export default function Performance({ embedded = false, onLiveCountChange }: Per
   );
 }
 
-function KpiPill({
-  label,
-  value,
-  hint,
-  trend,
-  fallback,
-  valueClassName,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  trend?: React.ReactNode;
-  fallback?: string;
-  valueClassName?: string;
-}) {
-  const display = value === "—" && fallback ? fallback : value;
-  return (
-    <div className="rounded-md border bg-background/60 px-2 py-1.5">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground truncate">{label}</div>
-      <div className={cn("text-sm font-semibold tabular-nums flex items-center gap-1", valueClassName)}>
-        <span className="truncate">{display}</span>
-        {trend}
-      </div>
-      {hint && <div className="text-[10px] text-muted-foreground truncate">{hint}</div>}
-    </div>
-  );
-}
