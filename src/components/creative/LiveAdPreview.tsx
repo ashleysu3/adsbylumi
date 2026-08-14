@@ -354,7 +354,7 @@ export function LiveAdPreview({
       body = (
         <div className="grid h-full grid-cols-2">
           <Photo className="h-full w-full" />
-          <div className={`flex flex-col gap-2 p-4 ${justifyClass} ${alignItemsClass}`}>
+          <div className={`flex flex-col gap-2 p-4 ${justifyClass} ${alignItemsClass}`} style={storySafe}>
             <TextStack>
               <Eyebrow />
               <Headline size={1.25} />
@@ -442,7 +442,7 @@ export function LiveAdPreview({
 
     case "bigtype":
       body = (
-        <div className={`flex h-full flex-col gap-3 p-6 ${justifyClass} ${alignItemsClass}`}>
+        <div className={`flex h-full flex-col gap-3 p-6 ${justifyClass} ${alignItemsClass}`} style={storySafe}>
           <TextStack>
             <Eyebrow />
             <Headline size={2.1} />
@@ -455,7 +455,7 @@ export function LiveAdPreview({
 
     case "offer":
       body = (
-        <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
+        <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center" style={storySafe}>
           <Eyebrow />
           <p className="font-black leading-none" style={{ color: colors.pop, ...hFont, ...hSize(2.6) }}>
             {T(firstText(active, ["offerBig", "discount", "headline"]) || headline)}
@@ -638,7 +638,7 @@ export function LiveAdPreview({
               style={{ background: `linear-gradient(to top, ${colors.bg}f2 12%, ${colors.bg}66 55%, transparent 100%)` }}
             />
           )}
-          <div className={`relative flex h-full flex-col gap-2 p-5 ${justifyClass} ${alignItemsClass}`}>
+          <div className={`relative flex h-full flex-col gap-2 p-5 ${justifyClass} ${alignItemsClass}`} style={storySafe}>
             <TextStack>
               <Eyebrow />
               <Headline />
@@ -661,8 +661,9 @@ export function LiveAdPreview({
 
       {sig && (
         <p
-          className="absolute inset-x-0 bottom-2 px-5 text-[10px] font-medium tracking-wide"
+          className="absolute inset-x-0 px-5 text-[10px] font-medium tracking-wide"
           style={{
+            bottom: isStory ? "21%" : "0.5rem",
             color: colors.ink,
             opacity: 0.75,
             textAlign: textAlign || "left",
