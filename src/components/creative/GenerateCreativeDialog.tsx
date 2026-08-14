@@ -1088,7 +1088,7 @@ export function GenerateCreativeDialog() {
     return (data?.images || []) as RenderImage[];
   };
 
-  const generate = async () => {
+  const generate = async (): Promise<RenderImage[] | undefined> => {
     if (needsPhoto && !selectedPhoto) {
       toast.error("Pick a photo first");
       return;
@@ -1263,6 +1263,7 @@ export function GenerateCreativeDialog() {
           setImages(out);
           setProgress("");
           toast.success("Carousel exported exactly as previewed");
+          return out;
         } else {
           setProgress("Exporting feed + story…");
           const feed = await captureAdPreview({ ...previewProps, focalX, focalY, photoZoom }, "feed");
@@ -1270,15 +1271,17 @@ export function GenerateCreativeDialog() {
             { ...previewProps, focalX: storyFocalX, focalY: storyFocalY, photoZoom: storyZoom },
             "story",
           );
-          setImages([
+          const pair = [
             { ...feed, label: "Feed 1:1" } as RenderImage,
             { ...story, label: "Story 9:16" } as RenderImage,
-          ]);
+          ];
+          setImages(pair);
           setProgress("");
           toast.success("Exported exactly as previewed");
+          return pair;
         }
-        return;
       }
+
 
       if (isCarousel) {
 
@@ -1304,6 +1307,7 @@ export function GenerateCreativeDialog() {
         setImages(labelled);
         setProgress("");
         toast.success("Carousel rendered");
+        return labelled;
       } else {
         setProgress("Rendering feed + story…");
         const placements = activeCustom?.placements ?? ["feed", "story"];
@@ -1316,8 +1320,6 @@ export function GenerateCreativeDialog() {
           style: styleOverrides,
           ...(bgSelectedUrl ? { backgroundUrl: bgSelectedUrl } : {}),
         };
-        // Feed and story crop the photo differently, so they render separately
-        // and the results are merged back into one set.
         const feedPlacements = placements.filter((p: string) => p !== "story");
         const storyPlacements = placements.filter((p: string) => p === "story");
         const batches = await Promise.all([
@@ -1332,7 +1334,9 @@ export function GenerateCreativeDialog() {
         setImages(imgs);
         setProgress("");
         toast.success("Ad rendered");
+        return imgs;
       }
+
     } catch (err: any) {
       toast.error(err?.message || "Generation failed");
       setProgress("");
@@ -1420,6 +1424,38 @@ export function GenerateCreativeDialog() {
     }
     if (allSucceeded) {
       setTimeout(() => setOpen(false), 600);
+    }
+  };
+
+  // One-click finish from the preview screen: export exactly what's on screen,
+  // save it to the creative, and close. No separate "render" step.
+  const [finishing, setFinishing] = useState(false);
+  const approveFromPreview = async () => {
+    setFinishing(true);
+    try {
+      const imgs = await generate();
+      if (!imgs || imgs.length === 0) return;
+      let allSucceeded = true;
+      for (let i = 0; i < imgs.length; i++) {
+        const ok = await approveRender(imgs[i], i);
+        if (!ok) allSucceeded = false;
+      }
+      if (allSucceeded) setTimeout(() => setOpen(false), 600);
+      else setStep("render");
+    } finally {
+      setFinishing(false);
+    }
+  };
+
+  // Download the exact preview without approving it.
+  const downloadFromPreview = async () => {
+    setFinishing(true);
+    try {
+      const imgs = await generate();
+      if (!imgs) return;
+      imgs.forEach((img, i) => download(img, i));
+    } finally {
+      setFinishing(false);
     }
   };
 
@@ -2496,20 +2532,48 @@ export function GenerateCreativeDialog() {
                 </Button>
               )
             ) : step === "image-copy" ? (
-              <Button
-                data-help-target="render-creative"
-                size="lg"
-                onClick={() => { setStep("render"); generate(); }}
-                disabled={!canRender}
-              >
-                {composing ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Writing copy…</>
-                ) : (
-                  <><Sparkles className="h-4 w-4 mr-2" />
-                    {isCarousel ? `Render ${editedSlides.length || ""} slides`.replace("  ", " ") : "Render feed + story"}
-                  </>
-                )}
-              </Button>
+              activeCustom ? (
+                <Button
+                  data-help-target="render-creative"
+                  size="lg"
+                  onClick={() => { setStep("render"); generate(); }}
+                  disabled={!canRender}
+                >
+                  {composing ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Writing copy…</>
+                  ) : (
+                    <><Sparkles className="h-4 w-4 mr-2" />
+                      {isCarousel ? `Render ${editedSlides.length || ""} slides`.replace("  ", " ") : "Render feed + story"}
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={downloadFromPreview}
+                    disabled={!canRender || finishing}
+                  >
+                    <Download className="h-4 w-4 mr-2" /> Download PNG
+                  </Button>
+                  <Button
+                    data-help-target="approve-creative"
+                    variant="lumi"
+                    size="lg"
+                    onClick={approveFromPreview}
+                    disabled={!canRender || finishing || !itemId}
+                  >
+                    {composing ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Writing copy…</>
+                    ) : finishing ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {progress || "Saving…"}</>
+                    ) : (
+                      <>Approve this ad</>
+                    )}
+                  </Button>
+                </div>
+              )
             ) : (
               <Button size="lg" onClick={generate} disabled={!canRender}>
                 {generating ? (
