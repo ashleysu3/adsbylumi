@@ -1349,8 +1349,19 @@ export function GenerateCreativeDialog() {
     const a = document.createElement("a");
     a.href = `data:image/png;base64,${img.base64}`;
     a.download = `ad-${img.label?.replace(/\s+/g, "-").toLowerCase() || img.placement}-${idx + 1}.png`;
+    document.body.appendChild(a);
     a.click();
+    a.remove();
   };
+
+  // Browsers throttle back-to-back programmatic downloads, so space them out.
+  const downloadAll = async (imgs: RenderImage[]) => {
+    for (let i = 0; i < imgs.length; i++) {
+      download(imgs[i], i);
+      if (i < imgs.length - 1) await new Promise((r) => setTimeout(r, 500));
+    }
+  };
+
 
   const approveRender = async (img: RenderImage, idx: number): Promise<boolean> => {
     if (!itemId) {
