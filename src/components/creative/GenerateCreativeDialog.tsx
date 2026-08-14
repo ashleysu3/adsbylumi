@@ -1307,35 +1307,16 @@ export function GenerateCreativeDialog() {
         setImages(labelled);
         setProgress("");
         toast.success("Carousel rendered");
+        return labelled;
       } else {
-        setProgress("Rendering feed + story…");
-        const placements = activeCustom?.placements ?? ["feed", "story"];
-        const base = {
-          ...templateField,
-          brandKit,
-          copy: collapseCopyForFallback(template, sanitizeCopy(editedSingle)),
-          ...(collagePhotos && collagePhotos.length >= 2 ? { photos: collagePhotos } : {}),
-          logoOverlay,
-          style: styleOverrides,
-          ...(bgSelectedUrl ? { backgroundUrl: bgSelectedUrl } : {}),
-        };
-        // Feed and story crop the photo differently, so they render separately
-        // and the results are merged back into one set.
-        const feedPlacements = placements.filter((p: string) => p !== "story");
-        const storyPlacements = placements.filter((p: string) => p === "story");
-        const batches = await Promise.all([
-          feedPlacements.length
-            ? callRender({ ...base, photo, placements: feedPlacements })
-            : Promise.resolve([] as RenderImage[]),
-          storyPlacements.length
-            ? callRender({ ...base, photo: storyPhoto, placements: storyPlacements })
-            : Promise.resolve([] as RenderImage[]),
-        ]);
+...
         const imgs = [...batches[0], ...batches[1]];
         setImages(imgs);
         setProgress("");
         toast.success("Ad rendered");
+        return imgs;
       }
+
     } catch (err: any) {
       toast.error(err?.message || "Generation failed");
       setProgress("");
