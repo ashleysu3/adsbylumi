@@ -96,7 +96,7 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
           ? supabase.from('campaign_templates').select('*').eq('id', ws.template_id).maybeSingle()
           : Promise.resolve({ data: null, error: null } as any),
         ws.offer_id
-          ? supabase.from('offers').select('id, name, url, price').eq('id', ws.offer_id).maybeSingle()
+          ? supabase.from('offers').select('id, name, url, price_point').eq('id', ws.offer_id).maybeSingle()
           : Promise.resolve({ data: null, error: null } as any),
       ]);
 
@@ -172,6 +172,19 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
   // when the publish error looks like one, surface a direct path to edit copy.
   const isCopyPolicyError = (msg?: string | null) =>
     !!msg && /(policy|disapprov|ad copy|prohibited|unacceptable|does not comply|violat)/i.test(msg);
+
+  // Meta refuses to create ads when the ad account has no valid card on file.
+  // That's fixed in Meta's billing center, not in LUMI — link straight there.
+  const isPaymentMethodError = (msg?: string | null) =>
+    !!msg && /(no payment method|payment method|billing and payment|funding source|payment failed)/i.test(msg);
+
+  const metaBillingUrl = (() => {
+    const raw = (workspace?.brands?.meta_account_id || '') as string;
+    const actId = raw ? (raw.startsWith('act_') ? raw : `act_${raw}`) : '';
+    return actId
+      ? `https://adsmanager.facebook.com/ads/manage/billing_settings?act=${actId.replace('act_', '')}`
+      : 'https://business.facebook.com/billing_hub/payment_settings';
+  })();
 
   const handleQAComplete = () => {
     handlePublish(answers.launchActive ? 'active' : 'paused');
@@ -404,10 +417,25 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
               {publishError && (
                 <Alert variant="destructive" className="mb-4 relative">
                   <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Publish failed — please review</AlertTitle>
+                  <AlertTitle>
+                    {isPaymentMethodError(publishError)
+                      ? 'Meta needs a payment method'
+                      : 'Publish failed — please review'}
+                  </AlertTitle>
                   <AlertDescription>
-                    {publishError}
-                    {isCopyPolicyError(publishError) && (
+                    {isPaymentMethodError(publishError)
+                      ? "Meta won't create ads until your ad account has a valid card on file. Add one in Meta's billing center, then come back and hit publish again."
+                      : publishError}
+                    {isPaymentMethodError(publishError) && (
+                      <div className="mt-3">
+                        <Button size="sm" variant="outline" asChild>
+                          <a href={metaBillingUrl} target="_blank" rel="noopener noreferrer">
+                            Add payment method in Meta
+                          </a>
+                        </Button>
+                      </div>
+                    )}
+                    {isCopyPolicyError(publishError) && !isPaymentMethodError(publishError) && (
                       <div className="mt-3">
                         <Button size="sm" variant="outline" onClick={goEditCopy}>
                           Edit ad copy
@@ -535,10 +563,25 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
               {publishError && (
                 <Alert variant="destructive" className="mb-4 relative">
                   <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Publish failed — please review</AlertTitle>
+                  <AlertTitle>
+                    {isPaymentMethodError(publishError)
+                      ? 'Meta needs a payment method'
+                      : 'Publish failed — please review'}
+                  </AlertTitle>
                   <AlertDescription>
-                    {publishError}
-                    {isCopyPolicyError(publishError) && (
+                    {isPaymentMethodError(publishError)
+                      ? "Meta won't create ads until your ad account has a valid card on file. Add one in Meta's billing center, then come back and hit publish again."
+                      : publishError}
+                    {isPaymentMethodError(publishError) && (
+                      <div className="mt-3">
+                        <Button size="sm" variant="outline" asChild>
+                          <a href={metaBillingUrl} target="_blank" rel="noopener noreferrer">
+                            Add payment method in Meta
+                          </a>
+                        </Button>
+                      </div>
+                    )}
+                    {isCopyPolicyError(publishError) && !isPaymentMethodError(publishError) && (
                       <div className="mt-3">
                         <Button size="sm" variant="outline" onClick={goEditCopy}>
                           Edit ad copy
