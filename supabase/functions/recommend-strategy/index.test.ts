@@ -80,16 +80,16 @@ Deno.test("a free download that mentions email in target_outcome routes to LEADS
   assertEquals(detectPrimaryObjective(s), "OUTCOME_LEADS");
 });
 
-Deno.test("a free offer that does NOT collect email does not force LEADS", () => {
+Deno.test("a free offer is never a sales campaign", () => {
   const s = snapshot({
     selected_offer: {
       name: "Free Community Access",
       price_point: "free",
-      description: "Join our free community. No email required.",
+      description: "Join our free community.",
       page_goal: "other",
     },
   });
-  assertEquals(detectPrimaryObjective(s), "OUTCOME_SALES");
+  assertEquals(detectPrimaryObjective(s), "OUTCOME_LEADS");
 });
 
 Deno.test("a discovery call routes to LEADS", () => {
