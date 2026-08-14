@@ -42,6 +42,20 @@ async function waitForImages(node: HTMLElement) {
   }
 }
 
+/** React 18 may commit asynchronously; wait until the subtree actually exists. */
+async function waitForMount(host: HTMLElement, timeoutMs = 5000): Promise<HTMLElement> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const el = host.firstElementChild as HTMLElement | null;
+    if (el && el.getBoundingClientRect().height > 0) return el;
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+  }
+  const el = host.firstElementChild as HTMLElement | null;
+  if (!el) throw new Error("Could not prepare the ad canvas for export. Please try again.");
+  return el;
+}
+
+
 /**
  * Renders the preview offscreen and returns a base64 PNG (no data: prefix)
  * at true ad resolution.
