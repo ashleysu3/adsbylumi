@@ -698,6 +698,14 @@ export function LiveAdPreview({
           title="Drag to reposition the photo"
         />
       )}
+
+      {/* Story safe-zone guides (preview only — never exported). */}
+      {isStory && !bare && (
+        <div className="pointer-events-none absolute inset-0 z-30">
+          <div className="absolute inset-x-0 top-0 h-[20%] border-b border-dashed border-white/40 bg-black/20" />
+          <div className="absolute inset-x-0 bottom-0 h-[20%] border-t border-dashed border-white/40 bg-black/20" />
+        </div>
+      )}
     </div>
   );
 
