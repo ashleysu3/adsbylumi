@@ -688,7 +688,7 @@ export function LiveAdPreview({
       <p className="text-center text-[10px] text-muted-foreground">
         {isCarousel && total > 1 ? `Slide ${slideIdx + 1} of ${total} · ` : ""}
         {templateLabel ? `${templateLabel} · ` : ""}
-        Rough preview — the final render is sharper.
+        This is exactly what gets exported.
       </p>
     </div>
   );
