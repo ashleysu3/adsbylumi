@@ -96,7 +96,7 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
           ? supabase.from('campaign_templates').select('*').eq('id', ws.template_id).maybeSingle()
           : Promise.resolve({ data: null, error: null } as any),
         ws.offer_id
-          ? supabase.from('offers').select('id, name, url, price').eq('id', ws.offer_id).maybeSingle()
+          ? supabase.from('offers').select('id, name, url, price_point').eq('id', ws.offer_id).maybeSingle()
           : Promise.resolve({ data: null, error: null } as any),
       ]);
 
