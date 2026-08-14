@@ -1150,7 +1150,8 @@ export default function Performance({
                         <div
                           key={r.workspaceId}
                           className={cn(
-                            "grid grid-cols-[56px_1fr_auto] md:grid-cols-[56px_1.7fr_0.8fr_0.8fr_96px_24px] items-center gap-4 rounded-xl border bg-card px-4 py-3.5 transition-colors",
+                            "grid grid-cols-[56px_1fr_auto] md:grid-cols-[56px_1.5fr_0.7fr_0.7fr_0.8fr_96px_24px] items-center gap-4 rounded-xl border bg-card px-4 py-3.5 transition-colors",
+                            isNeedsAttention && "border-[#F3CBB4] bg-[#FFF8F3]",
                             !isOn && "opacity-70"
                           )}
                         >
@@ -1172,12 +1173,18 @@ export default function Performance({
                             </span>
                           </button>
                           <div className="hidden md:block text-sm tabular-nums text-foreground">
+                            {r.campaign.windows?.medium?.spend != null
+                              ? `$${Math.round(r.campaign.windows.medium.spend)}`
+                              : "—"}
+                          </div>
+                          <div className="hidden md:block text-sm tabular-nums text-foreground">
                             {r.campaign.secondary ? formatKpi(r.meta.secondaryKpi || "", r.campaign.secondary.value) : "—"}
                           </div>
                           <div className="hidden md:block text-sm tabular-nums text-foreground">
                             {formatKpi(r.meta.primaryKpi, r.campaign.primary.value)}
                           </div>
                           <div onClick={(e) => e.stopPropagation()}>
+
                             <Switch
                               checked={isOn}
                               disabled={isResuming}
