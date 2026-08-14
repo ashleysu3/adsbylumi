@@ -218,6 +218,14 @@ export function LiveAdPreview({
       : textBoxStyle === "scrim"
         ? { backgroundColor: boxColor, borderRadius: "0.75rem", padding: "0.85rem 1rem" }
         : {};
+  // Story safe zones: Instagram/Facebook Stories cover the top and bottom 20%
+  // of the frame with the profile chip, caption and CTA. Keep all copy inside
+  // the middle 60%. Percentage padding resolves against width, so for a 9:16
+  // frame 20% of the height == 20 * (16/9) = 35.56% of the width.
+  const isStory = frame === "story";
+  const storySafe: React.CSSProperties = isStory
+    ? { paddingTop: "35.56%", paddingBottom: "35.56%" }
+    : {};
   const TextStack = ({ children }: { children: React.ReactNode }) => (
     <div
       className={`flex w-fit max-w-full flex-col gap-2 ${alignItemsClass}`}
