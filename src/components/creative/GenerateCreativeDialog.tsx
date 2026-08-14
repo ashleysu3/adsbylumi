@@ -1774,13 +1774,6 @@ export function GenerateCreativeDialog() {
                 </div>
                 <Slider min={0} max={100} step={1} value={[activeFocalY]} onValueChange={(v) => setActiveFocal(activeFocalX, v[0])} />
               </div>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Zoom</p>
-                  <span className="text-[10px] text-muted-foreground tabular-nums">{activeZoom.toFixed(2)}x</span>
-                </div>
-                <Slider min={1} max={2.5} step={0.05} value={[activeZoom]} onValueChange={(v) => setActiveZoom(v[0])} />
-              </div>
             </div>
           )}
 
