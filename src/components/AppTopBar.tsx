@@ -68,7 +68,6 @@ type MenuItem =
   | { label: string; action: "bug-report"; icon: any };
 
 const creativeItems: MenuItem[] = [
-  { label: "Inspiration", to: "/boards", icon: Lightbulb },
   { label: "The Lab", to: "/creative-studio?mode=lab", icon: Sparkles },
   { label: "My Creatives", to: "/my-creatives", icon: Images },
   { label: "Tools & Resources", to: "/creative-toolkit", icon: Wrench },
