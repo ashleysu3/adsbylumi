@@ -1349,8 +1349,19 @@ export function GenerateCreativeDialog() {
     const a = document.createElement("a");
     a.href = `data:image/png;base64,${img.base64}`;
     a.download = `ad-${img.label?.replace(/\s+/g, "-").toLowerCase() || img.placement}-${idx + 1}.png`;
+    document.body.appendChild(a);
     a.click();
+    a.remove();
   };
+
+  // Browsers throttle back-to-back programmatic downloads, so space them out.
+  const downloadAll = async (imgs: RenderImage[]) => {
+    for (let i = 0; i < imgs.length; i++) {
+      download(imgs[i], i);
+      if (i < imgs.length - 1) await new Promise((r) => setTimeout(r, 500));
+    }
+  };
+
 
   const approveRender = async (img: RenderImage, idx: number): Promise<boolean> => {
     if (!itemId) {
@@ -1447,17 +1458,28 @@ export function GenerateCreativeDialog() {
     }
   };
 
-  // Download the exact preview without approving it.
+  // Download the exact preview without approving it — always gives the user
+  // every placement that was generated (feed 1:1 + story 9:16), not just one.
   const downloadFromPreview = async () => {
     setFinishing(true);
     try {
       const imgs = await generate();
-      if (!imgs) return;
-      imgs.forEach((img, i) => download(img, i));
+      if (!imgs || imgs.length === 0) return;
+      await downloadAll(imgs);
+      const hasFeed = imgs.some((i) => !(i.placement || "").toLowerCase().includes("story") && i.height <= i.width);
+      const hasStory = imgs.some((i) => (i.placement || "").toLowerCase().includes("story") || i.height > i.width);
+      if (isCarousel) {
+        toast.success(`Downloaded ${imgs.length} slide${imgs.length === 1 ? "" : "s"}`);
+      } else if (hasFeed && hasStory) {
+        toast.success("Downloaded both the feed (1:1) and story (9:16) images");
+      } else {
+        toast.success(`Downloaded ${imgs.length} image${imgs.length === 1 ? "" : "s"}`);
+      }
     } finally {
       setFinishing(false);
     }
   };
+
 
 
 
@@ -2541,7 +2563,7 @@ export function GenerateCreativeDialog() {
                     onClick={downloadFromPreview}
                     disabled={!canRender || finishing}
                   >
-                    <Download className="h-4 w-4 mr-2" /> Download PNG
+                    <Download className="h-4 w-4 mr-2" /> {isCarousel ? "Download slides" : "Download PNGs (feed + story)"}
                   </Button>
                   <Button
                     data-help-target="approve-creative"
