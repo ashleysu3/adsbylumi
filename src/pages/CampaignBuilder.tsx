@@ -417,10 +417,25 @@ export default function CampaignBuilder({ embedded = false }: { embedded?: boole
               {publishError && (
                 <Alert variant="destructive" className="mb-4 relative">
                   <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Publish failed — please review</AlertTitle>
+                  <AlertTitle>
+                    {isPaymentMethodError(publishError)
+                      ? 'Meta needs a payment method'
+                      : 'Publish failed — please review'}
+                  </AlertTitle>
                   <AlertDescription>
-                    {publishError}
-                    {isCopyPolicyError(publishError) && (
+                    {isPaymentMethodError(publishError)
+                      ? "Meta won't create ads until your ad account has a valid card on file. Add one in Meta's billing center, then come back and hit publish again."
+                      : publishError}
+                    {isPaymentMethodError(publishError) && (
+                      <div className="mt-3">
+                        <Button size="sm" variant="outline" asChild>
+                          <a href={metaBillingUrl} target="_blank" rel="noopener noreferrer">
+                            Add payment method in Meta
+                          </a>
+                        </Button>
+                      </div>
+                    )}
+                    {isCopyPolicyError(publishError) && !isPaymentMethodError(publishError) && (
                       <div className="mt-3">
                         <Button size="sm" variant="outline" onClick={goEditCopy}>
                           Edit ad copy
