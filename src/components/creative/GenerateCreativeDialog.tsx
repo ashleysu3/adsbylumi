@@ -1652,7 +1652,7 @@ export function GenerateCreativeDialog() {
               size="sm"
               value={textCase}
               onValueChange={(v) => v && setTextCase(v as typeof textCase)}
-              className="justify-start"
+              className="flex-wrap justify-start gap-1"
             >
               <ToggleGroupItem value="original" className="text-xs">Original</ToggleGroupItem>
               <ToggleGroupItem value="upper" className="text-xs">UPPER</ToggleGroupItem>
@@ -1671,7 +1671,7 @@ export function GenerateCreativeDialog() {
                   size="sm"
                   value={textColor}
                   onValueChange={(v) => v && setTextColor(v as typeof textColor)}
-                  className="justify-start"
+                  className="flex-wrap justify-start gap-1"
                 >
                   <ToggleGroupItem value="auto" className="text-xs">Auto</ToggleGroupItem>
                   <ToggleGroupItem value="light" className="text-xs">Light</ToggleGroupItem>
@@ -1698,7 +1698,7 @@ export function GenerateCreativeDialog() {
                 size="sm"
                 value={textBoxStyle}
                 onValueChange={(v) => v && setTextBoxStyle(v as typeof textBoxStyle)}
-                className="justify-start"
+                className="flex-wrap justify-start gap-1"
               >
                 <ToggleGroupItem value="none" className="text-xs">None</ToggleGroupItem>
                 <ToggleGroupItem value="scrim" className="text-xs">Soft</ToggleGroupItem>
@@ -1745,29 +1745,29 @@ export function GenerateCreativeDialog() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Text position</p>
                 <ToggleGroup
                   type="single"
                   size="sm"
                   value={textPosition}
                   onValueChange={(v) => v && setTextPosition(v as typeof textPosition)}
-                  className="justify-start"
+                  className="flex-wrap justify-start gap-1"
                 >
                   <ToggleGroupItem value="top" className="text-xs">Top</ToggleGroupItem>
                   <ToggleGroupItem value="middle" className="text-xs">Middle</ToggleGroupItem>
                   <ToggleGroupItem value="bottom" className="text-xs">Bottom</ToggleGroupItem>
                 </ToggleGroup>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Text align</p>
                 <ToggleGroup
                   type="single"
                   size="sm"
                   value={textAlign}
                   onValueChange={(v) => v && setTextAlign(v as typeof textAlign)}
-                  className="justify-start"
+                  className="flex-wrap justify-start gap-1"
                 >
                   <ToggleGroupItem value="left" className="text-xs">Left</ToggleGroupItem>
                   <ToggleGroupItem value="center" className="text-xs">Center</ToggleGroupItem>
@@ -1793,23 +1793,9 @@ export function GenerateCreativeDialog() {
                 </div>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Drag the photo in the preview, or use the sliders, to choose what stays in frame.
+                Drag the photo right in the preview to choose what stays in frame.
                 Feed and story are framed separately — switch above to set each one.
               </p>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Horizontal</p>
-                  <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(activeFocalX)}%</span>
-                </div>
-                <Slider min={0} max={100} step={1} value={[activeFocalX]} onValueChange={(v) => setActiveFocal(v[0], activeFocalY)} />
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Vertical</p>
-                  <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(activeFocalY)}%</span>
-                </div>
-                <Slider min={0} max={100} step={1} value={[activeFocalY]} onValueChange={(v) => setActiveFocal(activeFocalX, v[0])} />
-              </div>
             </div>
           )}
 

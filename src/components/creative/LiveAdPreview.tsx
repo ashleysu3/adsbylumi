@@ -45,7 +45,10 @@ function linesFor(copy: Copy) {
   const sub = firstText(copy, ["sub", "line2", "accent", "meta", "msg2", "bubble2", "item2", "terms"]);
   const eyebrow = firstText(copy, ["eyebrow", "badgeTop", "tickerTop", "discount", "host"]);
   const cta = firstText(copy, ["cta", "badgeBottom", "tickerBottom", "expiry"]);
-  return { headline, sub, eyebrow, cta };
+  // Signature ("— Wendy, The Chair Stylist") is a real slot in several
+  // templates; it was collected in the editor but never drawn here.
+  const sig = firstText(copy, ["sig", "signature", "contactName"]);
+  return { headline, sub, eyebrow, cta, sig };
 }
 
 // Turn a hex color into rgba() so the text box can be dialed in with opacity.
@@ -192,8 +195,8 @@ export function LiveAdPreview({
 
   const shownSlide = typeof slideIndex === "number" ? slideIndex : slideIdx;
   const active: Copy = isCarousel ? (slides?.[shownSlide] || {}) : (copy || {});
-  const { headline, sub, eyebrow, cta } = linesFor(active);
-  const hasAnything = headline || sub || eyebrow || cta;
+  const { headline, sub, eyebrow, cta, sig } = linesFor(active);
+  const hasAnything = headline || sub || eyebrow || cta || sig;
 
   const family: Family = FAMILY[template || ""] || "overlay";
   const bgImage = backgroundUrl || photoUrl;
@@ -646,6 +649,20 @@ export function LiveAdPreview({
       style={{ backgroundColor: colors.bg, whiteSpace: "pre-wrap" }}
     >
       {body}
+
+      {sig && (
+        <p
+          className="absolute inset-x-0 bottom-2 px-5 text-[10px] font-medium tracking-wide"
+          style={{
+            color: colors.ink,
+            opacity: 0.75,
+            textAlign: textAlign || "left",
+            ...bFont,
+          }}
+        >
+          {T(sig)}
+        </p>
+      )}
 
       {!hasAnything && !bare && (
         <div className="absolute inset-x-0 bottom-3 text-center">
