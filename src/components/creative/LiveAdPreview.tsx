@@ -641,7 +641,9 @@ export function LiveAdPreview({
   const canvas = (
     <div
       className={`relative w-full overflow-hidden ${bare ? "" : "rounded-lg border border-border"} ${frame === "story" ? "aspect-[9/16]" : "aspect-square"}`}
-      style={{ backgroundColor: colors.bg }}
+      // whiteSpace: pre-wrap so manual line breaks typed in the copy editor
+      // render (and export) exactly where the user put them.
+      style={{ backgroundColor: colors.bg, whiteSpace: "pre-wrap" }}
     >
       {body}
 
