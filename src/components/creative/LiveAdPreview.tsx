@@ -679,6 +679,16 @@ export function LiveAdPreview({
           style={{ backgroundColor: `${colors.cream}cc` }}
         />
       )}
+
+      {/* Drag layer: text panels and gradients sit above the photo, so without
+          this the pointer never reaches the image. Transparent, top-most. */}
+      {onFocalChange && bgImage && !bare && (
+        <div
+          className="absolute inset-0 z-20 cursor-move select-none"
+          onPointerDown={startFocalDrag}
+          title="Drag to reposition the photo"
+        />
+      )}
     </div>
   );
 
