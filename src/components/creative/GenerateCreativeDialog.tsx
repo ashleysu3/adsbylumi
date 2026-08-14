@@ -14,6 +14,7 @@ import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { LiveAdPreview, photoFrameAspect } from "./LiveAdPreview";
+import { captureAdPreview } from "@/lib/capture-preview";
 import { HexColorPicker } from "react-colorful";
 import { Loader2, Sparkles, Pencil, Download, Wand2, RefreshCw, ImageOff, Info, ImagePlus, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
