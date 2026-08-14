@@ -553,6 +553,10 @@ export function ImportCampaignsModal({
             </DialogDescription>
           </DialogHeader>
 
+          <ImportSteps current={2} />
+
+
+
           <ScrollArea className="flex-1 -mx-6 px-6">
             <div className="space-y-4 py-2">
               {selectedCampaigns.map((c) => {
