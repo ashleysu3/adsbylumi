@@ -2563,7 +2563,7 @@ export function GenerateCreativeDialog() {
                     onClick={downloadFromPreview}
                     disabled={!canRender || finishing}
                   >
-                    <Download className="h-4 w-4 mr-2" /> Download PNG
+                    <Download className="h-4 w-4 mr-2" /> {isCarousel ? "Download slides" : "Download PNGs (feed + story)"}
                   </Button>
                   <Button
                     data-help-target="approve-creative"
