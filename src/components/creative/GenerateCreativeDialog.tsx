@@ -1263,6 +1263,7 @@ export function GenerateCreativeDialog() {
           setImages(out);
           setProgress("");
           toast.success("Carousel exported exactly as previewed");
+          return out;
         } else {
           setProgress("Exporting feed + story…");
           const feed = await captureAdPreview({ ...previewProps, focalX, focalY, photoZoom }, "feed");
@@ -1270,15 +1271,17 @@ export function GenerateCreativeDialog() {
             { ...previewProps, focalX: storyFocalX, focalY: storyFocalY, photoZoom: storyZoom },
             "story",
           );
-          setImages([
+          const pair = [
             { ...feed, label: "Feed 1:1" } as RenderImage,
             { ...story, label: "Story 9:16" } as RenderImage,
-          ]);
+          ];
+          setImages(pair);
           setProgress("");
           toast.success("Exported exactly as previewed");
+          return pair;
         }
-        return;
       }
+
 
       if (isCarousel) {
 
