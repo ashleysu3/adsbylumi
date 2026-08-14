@@ -2761,14 +2761,18 @@ function CarouselEditor({
 }
 
 function Field({ label, v, onChange, multiline }: { label: string; v: string; onChange: (v: string) => void; multiline?: boolean }) {
+  // Every field is a textarea so pressing Enter inserts a real line break that
+  // the preview + export honor (the canvas renders with white-space: pre-wrap).
   return (
     <div className="space-y-1">
       <Label className="text-[11px] text-muted-foreground">{label}</Label>
-      {multiline ? (
-        <Textarea value={v} onChange={(e) => onChange(e.target.value)} rows={2} />
-      ) : (
-        <Input value={v} onChange={(e) => onChange(e.target.value)} className="h-8 text-sm" />
-      )}
+      <Textarea
+        value={v}
+        onChange={(e) => onChange(e.target.value)}
+        rows={multiline ? 3 : 2}
+        className="text-sm leading-snug resize-y"
+      />
+      <p className="text-[10px] text-muted-foreground">Press Enter for a line break</p>
     </div>
   );
 }
