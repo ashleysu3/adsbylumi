@@ -158,7 +158,45 @@ interface ImportCampaignsModalProps {
   onImportComplete: () => void;
 }
 
+/** Two-step progress chips shown at the top of both import screens. */
+function ImportSteps({ current }: { current: 1 | 2 }) {
+  const steps: { n: 1 | 2; label: string }[] = [
+    { n: 1, label: "Pick campaigns" },
+    { n: 2, label: "Set the goal" },
+  ];
+  return (
+    <div className="flex items-center gap-2 pb-1">
+      {steps.map((s, i) => (
+        <div key={s.n} className="flex items-center gap-2">
+          <div
+            className={
+              "flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium transition-colors " +
+              (current === s.n
+                ? "bg-primary/10 text-primary"
+                : current > s.n
+                  ? "text-foreground"
+                  : "text-muted-foreground")
+            }
+          >
+            <span
+              className={
+                "flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold " +
+                (current >= s.n ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")
+              }
+            >
+              {s.n}
+            </span>
+            {s.label}
+          </div>
+          {i === 0 && <span className="h-px w-6 bg-border" />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function ImportCampaignsModal({
+
   open,
   onOpenChange,
   brandId,
