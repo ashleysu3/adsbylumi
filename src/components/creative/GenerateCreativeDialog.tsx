@@ -1427,6 +1427,38 @@ export function GenerateCreativeDialog() {
     }
   };
 
+  // One-click finish from the preview screen: export exactly what's on screen,
+  // save it to the creative, and close. No separate "render" step.
+  const [finishing, setFinishing] = useState(false);
+  const approveFromPreview = async () => {
+    setFinishing(true);
+    try {
+      const imgs = await generate();
+      if (!imgs || imgs.length === 0) return;
+      let allSucceeded = true;
+      for (let i = 0; i < imgs.length; i++) {
+        const ok = await approveRender(imgs[i], i);
+        if (!ok) allSucceeded = false;
+      }
+      if (allSucceeded) setTimeout(() => setOpen(false), 600);
+      else setStep("render");
+    } finally {
+      setFinishing(false);
+    }
+  };
+
+  // Download the exact preview without approving it.
+  const downloadFromPreview = async () => {
+    setFinishing(true);
+    try {
+      const imgs = await generate();
+      if (!imgs) return;
+      imgs.forEach((img, i) => download(img, i));
+    } finally {
+      setFinishing(false);
+    }
+  };
+
 
 
   // Style options for Screen 1.
