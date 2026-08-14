@@ -2532,20 +2532,48 @@ export function GenerateCreativeDialog() {
                 </Button>
               )
             ) : step === "image-copy" ? (
-              <Button
-                data-help-target="render-creative"
-                size="lg"
-                onClick={() => { setStep("render"); generate(); }}
-                disabled={!canRender}
-              >
-                {composing ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Writing copy…</>
-                ) : (
-                  <><Sparkles className="h-4 w-4 mr-2" />
-                    {isCarousel ? `Render ${editedSlides.length || ""} slides`.replace("  ", " ") : "Render feed + story"}
-                  </>
-                )}
-              </Button>
+              activeCustom ? (
+                <Button
+                  data-help-target="render-creative"
+                  size="lg"
+                  onClick={() => { setStep("render"); generate(); }}
+                  disabled={!canRender}
+                >
+                  {composing ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Writing copy…</>
+                  ) : (
+                    <><Sparkles className="h-4 w-4 mr-2" />
+                      {isCarousel ? `Render ${editedSlides.length || ""} slides`.replace("  ", " ") : "Render feed + story"}
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={downloadFromPreview}
+                    disabled={!canRender || finishing}
+                  >
+                    <Download className="h-4 w-4 mr-2" /> Download PNG
+                  </Button>
+                  <Button
+                    data-help-target="approve-creative"
+                    variant="lumi"
+                    size="lg"
+                    onClick={approveFromPreview}
+                    disabled={!canRender || finishing || !itemId}
+                  >
+                    {composing ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Writing copy…</>
+                    ) : finishing ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {progress || "Saving…"}</>
+                    ) : (
+                      <>Approve this ad</>
+                    )}
+                  </Button>
+                </div>
+              )
             ) : (
               <Button size="lg" onClick={generate} disabled={!canRender}>
                 {generating ? (
