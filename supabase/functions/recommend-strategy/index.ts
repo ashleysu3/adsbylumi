@@ -141,6 +141,7 @@ Deno.serve(async (req) => {
               role: "system",
               content:
                 "You are LUMI, an ad strategist. Pick the single best matching strategy template for THIS specific offer + goal. REQUIRED: match the funnel to what the user is actually promoting. Do NOT default to the most generic / broadest option. Specifically:\n" +
+                "- An offer that is free AND collects an email address (lead magnet, free guide, checklist, webinar, masterclass, workshop, challenge, quiz, waitlist, newsletter) → lead-magnet funnel with objective OUTCOME_LEADS. This is non-negotiable: free + email = leads.\n" +
                 "- A webinar / free training / masterclass / workshop offer → webinar funnel.\n" +
                 "- A free download / guide / checklist / PDF / quiz / lead magnet → lead-magnet funnel.\n" +
                 "- A low-ticket paid challenge / bootcamp / $27–$97 sprint → paid-challenge funnel.\n" +
