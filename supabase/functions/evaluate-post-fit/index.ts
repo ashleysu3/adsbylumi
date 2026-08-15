@@ -133,7 +133,7 @@ TARGET AUDIENCE: ${targetAudience}
 VALUE PROPOSITION: ${valueProp}
 AUDIENCE PSYCHOLOGY: ${audiencePsych}
 
-OFFER BEING PROMOTED: ${offer ? `${offer.name} (${offer.type || 'unknown type'}${offer.price ? `, ${offer.price}` : ''})` : workspace.offer_name || 'unspecified'}
+OFFER BEING PROMOTED: ${offer ? `${offer.name}${offer.price_point ? ` (${offer.price_point})` : ''}${offer.target_outcome ? ` — goal: ${offer.target_outcome}` : ''}` : workspace.offer_name || 'unspecified'}
 
 LIVE CAMPAIGN:
 - Name: ${workspace.name}
