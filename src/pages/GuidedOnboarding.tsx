@@ -293,7 +293,10 @@ export default function GuidedOnboarding() {
     !!(brand?.name && brand.name !== placeholderNameRef.current);
   const stillExtracting =
     loadingBrandBasics || loadingVoice || loadingAudience || loadingProof || loadingAssets;
-  const canContinue = phaseTimedOut || (allRevealed && !stillExtracting);
+  // Once every extractor has settled ('done'), the user must be able to move on
+  // even if a single card never revealed (e.g. audience psychology came back
+  // ungrounded) — otherwise they're trapped on the reading screen forever.
+  const canContinue = phaseTimedOut || extractionPhase === 'done' || (allRevealed && !stillExtracting);
   // Fallback state: extraction finished but produced nothing useful (no colors
   // AND no real brand name AND no audience picture). We show a friendly nudge
   // instead of a spinning card.
