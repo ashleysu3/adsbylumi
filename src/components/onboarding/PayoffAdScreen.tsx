@@ -613,10 +613,13 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
           .catch((e) => console.warn("[payoff] flodesk sync failed", e));
       }
 
+      // The kit itself is already saved above. A mail-delivery hiccup must
+      // never look like "your kit is gone" — keep them moving and tell them
+      // the link is right here on this page.
       const { error: sendErr } = await supabase.functions.invoke("send-ad-pack-email", {
         body: { brand_id: brandId },
       });
-      if (sendErr) throw sendErr;
+      if (sendErr) console.warn("[payoff] ad kit email failed to send", sendErr);
 
       setPackState("sent");
       // Signed-in users are done. Leads stay in the dialog for the 50% offer,
@@ -636,8 +639,11 @@ export function PayoffAdScreen({ brandId, brand, onAdvance, onBack }: Props) {
       toast.success(
         hasAccount
           ? "Saved to your account — your brand kit is ready."
-          : "Saved — your private link is on its way to your inbox!",
+          : sendErr
+            ? "Saved! We couldn't email the link, but your kit is right here — bookmark this page."
+            : "Saved — your private link is on its way to your inbox!",
       );
+
     } catch (err: any) {
       console.error("[payoff] send ad kit error", err);
       toast.error(err?.message || "Couldn't save your Ad Kit. Please try again.");
