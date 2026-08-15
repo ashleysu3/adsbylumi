@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     if ((workspace as any).offer_id) {
       const { data } = await supabase
         .from("offers")
-        .select("name, type, price, offer_psychology, auto_summary")
+        .select("name, description, price_point, target_outcome, product_psychology")
         .eq("id", (workspace as any).offer_id)
         .maybeSingle();
       offer = data;
