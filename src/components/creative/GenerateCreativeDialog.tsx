@@ -276,7 +276,34 @@ function mapStyleToTemplate(styleHint?: string, format?: string): string {
   return (styleHint && m[styleHint]) || "bigtype";
 }
 
+// ── Saved design state ────────────────────────────────────────────────────
+// Reopening a creative used to drop the user back on a blank "pick a style"
+// screen, so editing a finished carousel meant redoing every slide. We snapshot
+// the whole design (style, copy, photo, framing, readability) per creative item
+// and restore it on reopen so "go back and change one thing" actually works.
+const DESIGN_KEY = (itemId: string) => `lumi:creative-design:${itemId}`;
+
+function loadDesign(itemId: string): any | null {
+  if (!itemId) return null;
+  try {
+    const raw = localStorage.getItem(DESIGN_KEY(itemId));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeDesign(itemId: string, snap: any) {
+  if (!itemId) return;
+  try {
+    localStorage.setItem(DESIGN_KEY(itemId), JSON.stringify(snap));
+  } catch {
+    /* quota — non-fatal, the user just loses the resume point */
+  }
+}
+
 export function GenerateCreativeDialog() {
+
   const navigate = useNavigate();
   const { activeBrand, loading: brandsLoading } = useBrand();
   const [open, setOpen] = useState(false);
@@ -440,6 +467,9 @@ export function GenerateCreativeDialog() {
     : template === "carousel" || brief?.format === "carousel";
   const needsPhoto = activeCustom ? activeCustom.needs_photo : !NO_PHOTO_TEMPLATES.has(template);
 
+  // Set when we restore a saved design so the auto-compose effect doesn't
+  // immediately overwrite the user's copy with a fresh AI pass.
+  const restoredRef = useRef(false);
   const briefRef = useRef<CreativeBrief | null>(null);
   briefRef.current = brief;
 
@@ -486,10 +516,81 @@ export function GenerateCreativeDialog() {
       setImages([]);
       setProgress("");
       setSelectedOptionIdx(0);
+
+      // Pick up exactly where they left off on this creative, if we have it.
+      const saved = loadDesign(detail.itemId || "");
+      if (saved) {
+        if (saved.template) setTemplate(saved.template);
+        setCustomTemplateId(saved.customTemplateId || "");
+        if (typeof saved.slideCount === "number") setSlideCount(saved.slideCount);
+        if (Array.isArray(saved.singleOptions)) setSingleOptions(saved.singleOptions);
+        if (Array.isArray(saved.carouselOptions)) {
+          // Write the user's edited slides back into the option they came from
+          // so the "sync editor to selected option" effect can't clobber them.
+          const idx = typeof saved.selectedOptionIdx === "number" ? saved.selectedOptionIdx : 0;
+          const opts = saved.carouselOptions.map((o: any, i: number) =>
+            i === idx && Array.isArray(saved.editedSlides) ? { ...o, slides: saved.editedSlides } : o,
+          );
+          setCarouselOptions(opts);
+        }
+        if (Array.isArray(saved.editedSlides)) setEditedSlides(saved.editedSlides);
+        if (saved.editedSingle) setEditedSingle(saved.editedSingle);
+        if (typeof saved.selectedOptionIdx === "number") setSelectedOptionIdx(saved.selectedOptionIdx);
+        if (saved.selectedPhotoId) setSelectedPhotoId(saved.selectedPhotoId);
+        if (saved.imageSource) setImageSource(saved.imageSource);
+        setBgSelectedUrl(saved.bgSelectedUrl || "");
+        if (saved.textCase) setTextCase(saved.textCase);
+        if (typeof saved.headlineScale === "number") setHeadlineScale(saved.headlineScale);
+        if (typeof saved.bodyScale === "number") setBodyScale(saved.bodyScale);
+        if (saved.textBoxStyle) setTextBoxStyle(saved.textBoxStyle);
+        if (saved.textBoxColor !== undefined) setTextBoxColor(saved.textBoxColor);
+        if (typeof saved.textBoxOpacity === "number") setTextBoxOpacity(saved.textBoxOpacity);
+        if (saved.textPosition) setTextPosition(saved.textPosition);
+        if (saved.textAlign) setTextAlign(saved.textAlign);
+        if (typeof saved.focalX === "number") setFocalX(saved.focalX);
+        if (typeof saved.focalY === "number") setFocalY(saved.focalY);
+        if (typeof saved.photoZoom === "number") setPhotoZoom(saved.photoZoom);
+        if (typeof saved.storyFocalX === "number") setStoryFocalX(saved.storyFocalX);
+        if (typeof saved.storyFocalY === "number") setStoryFocalY(saved.storyFocalY);
+        if (typeof saved.storyZoom === "number") setStoryZoom(saved.storyZoom);
+        if (typeof saved.placeLogo === "boolean") setPlaceLogo(saved.placeLogo);
+        if (saved.logoCorner) setLogoCorner(saved.logoCorner);
+        if (saved.textColor) setTextColor(saved.textColor);
+        if (typeof saved.textBackdrop === "boolean") setTextBackdrop(saved.textBackdrop);
+        restoredRef.current = true;
+        setStep("image-copy");
+        toast.success("Picked up where you left off — your copy and design are still here.");
+      }
     };
     window.addEventListener("creative-brief:generate", handler as EventListener);
     return () => window.removeEventListener("creative-brief:generate", handler as EventListener);
   }, []);
+
+  // Keep the resume point fresh while they work.
+  useEffect(() => {
+    if (!open || !itemId || step === "style") return;
+    storeDesign(itemId, {
+      template, customTemplateId, slideCount,
+      singleOptions, carouselOptions, editedSlides, editedSingle, selectedOptionIdx,
+      selectedPhotoId, imageSource, bgSelectedUrl,
+      textCase, headlineScale, bodyScale,
+      textBoxStyle, textBoxColor, textBoxOpacity, textPosition, textAlign,
+      focalX, focalY, photoZoom, storyFocalX, storyFocalY, storyZoom,
+      placeLogo, logoCorner, textColor, textBackdrop,
+      savedAt: Date.now(),
+    });
+  }, [
+    open, itemId, step,
+    template, customTemplateId, slideCount,
+    singleOptions, carouselOptions, editedSlides, editedSingle, selectedOptionIdx,
+    selectedPhotoId, imageSource, bgSelectedUrl,
+    textCase, headlineScale, bodyScale,
+    textBoxStyle, textBoxColor, textBoxOpacity, textPosition, textAlign,
+    focalX, focalY, photoZoom, storyFocalX, storyFocalY, storyZoom,
+    placeLogo, logoCorner, textColor, textBackdrop,
+  ]);
+
+
 
 
 
@@ -902,7 +1003,12 @@ export function GenerateCreativeDialog() {
   useEffect(() => {
     if (!open || !brief || kitLoading || composing) return;
     if (step !== "image-copy") return;
-    
+    if (restoredRef.current) {
+      // Resumed an existing design — keep their copy, don't rewrite it.
+      restoredRef.current = false;
+      return;
+    }
+
     compose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, brief, kitLoading, step, template, customTemplateId]);
