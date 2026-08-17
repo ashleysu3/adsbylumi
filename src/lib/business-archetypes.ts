@@ -327,9 +327,25 @@ function parsePrice(raw: string | number | null | undefined): number | null {
   return n > 0 ? n : null;
 }
 
-// Heuristic diagnosis from the offer + goal. Each rule adds a confidence
-// tier; the highest-scoring archetype wins. Tied or unsure cases fall back
-// to lead_gen_funnels (the most common starting point for our audience).
+// Signals that the brand sells human services (therapy, coaching, clinics,
+// salons, agencies). These businesses often mention "products" or "shop" in
+// passing, so they must never be mistaken for a catalog e-commerce brand.
+const SERVICE_BUSINESS_RE =
+  /\b(therapy|therapist|counsel(?:ing|or)|psycholog|psychiatr|clinic|practice|practitioner|patient|coach(?:ing)?|consultant|consulting|advisor|attorney|law firm|lawyer|accountant|bookkeep|realtor|real estate|dentist|chiropract|physical therapy|salon|spa|barber|stylist|photograph|wedding planner|contractor|plumb|roofing|hvac|landscap|cleaning service|agency|studio session|session|appointment|booking|client work|done[- ]for[- ]you|service)\b/;
+
+// Genuine catalog / physical-goods signals. Word-bounded and deliberately
+// narrow — a bare "product" is far too common to be a reliable signal.
+const ECOM_STRONG_RE =
+  /\b(shopify|woocommerce|etsy|amazon store|online store|e-?commerce|ecom|catalog(?:ue)?|sku|add to cart|free shipping|shipping|shipped|physical products?|product line|our shop|shop now|inventory|dropship\w*)\b/;
+
+// Course / info-product / digital-offer language that should NOT be read as
+// e-commerce even though it contains the word "product".
+const INFO_PRODUCT_RE =
+  /\b(course|digital product|info product|template|ebook|e-book|program|curriculum|bundle of lessons)\b/;
+
+// Heuristic diagnosis from the offer + goal. Rules run in priority order and
+// each returns a confidence tier. Unsure cases fall back to lead_gen_funnels
+// (the most common starting point for our audience).
 export function diagnoseArchetype(input: DiagnosisInput): DiagnosisResult {
   const price = parsePrice(input.pricePoint);
   const offerType = (input.offerType || "").toLowerCase();
@@ -337,10 +353,13 @@ export function diagnoseArchetype(input: DiagnosisInput): DiagnosisResult {
   const name = (input.offerName || "").toLowerCase();
 
   const blob = `${offerType} ${goal} ${name}`;
+  const isServiceBusiness = SERVICE_BUSINESS_RE.test(blob);
 
   // Community / membership signals first — recurring + community keywords.
   if (
-    /(member|membership|community|subscription|recurring|cohort|circle)/.test(blob)
+    /\b(member|members|membership|community|subscription|recurring|cohort|inner circle)\b/.test(
+      blob,
+    )
   ) {
     return {
       slug: "community_membership",
@@ -349,11 +368,22 @@ export function diagnoseArchetype(input: DiagnosisInput): DiagnosisResult {
     };
   }
 
+  // Free offers are always lead-gen, regardless of anything else.
+  if (price === 0 || /\b(free|no[- ]cost|complimentary)\b/.test(blob)) {
+    return {
+      slug: "lead_gen_funnels",
+      confidence: "high",
+      reason:
+        "Free offer collecting emails — grade on opt-in, show-up and downstream conversion.",
+    };
+  }
+
   // High-ticket: explicit price or call/application keywords.
-  if (
-    (price != null && price >= 2000) ||
-    /(application|booked call|discovery call|consult|1:1|coaching call|mastermind|done-for-you|agency retainer)/.test(blob)
-  ) {
+  const highTicketKeywords =
+    /\b(application|apply|booked call|discovery call|strategy call|sales call|consultation|consult|1:1|one[- ]on[- ]one|private coaching|mastermind|retainer|intensive|vip day)\b/.test(
+      blob,
+    );
+  if ((price != null && price >= 2000) || highTicketKeywords) {
     return {
       slug: "high_ticket_consult",
       confidence: price != null && price >= 2000 ? "high" : "medium",
@@ -364,20 +394,26 @@ export function diagnoseArchetype(input: DiagnosisInput): DiagnosisResult {
     };
   }
 
-  // Ecommerce: physical/catalog/shop signals.
-  if (/(shopify|store|catalog|sku|product|physical|shipping|ecom)/.test(blob)) {
+  // E-commerce: only when there are strong catalog/physical-goods signals AND
+  // the brand doesn't read as a service business or an info-product seller.
+  if (
+    ECOM_STRONG_RE.test(blob) &&
+    !isServiceBusiness &&
+    !INFO_PRODUCT_RE.test(blob)
+  ) {
     return {
       slug: "ecommerce",
       confidence: "high",
-      reason: "Catalog/product offer — cold + retargeting at 2-3× cold spend.",
+      reason: "Catalog/physical product offer — cold + retargeting at 2-3× cold spend.",
     };
   }
 
-  // Lead-gen: webinar / challenge / lead-magnet language OR free price.
+  // Lead-gen: webinar / challenge / lead-magnet language.
   if (
-    /(webinar|training|challenge|workshop|masterclass|lead magnet|free guide|opt[- ]?in|email list|nurture)/.test(blob) ||
-    (price != null && price === 0) ||
-    /(lead|leads)/.test(goal)
+    /\b(webinar|training|challenge|workshop|masterclass|lead magnet|guide|checklist|opt[- ]?in|email list|newsletter|waitlist|nurture)\b/.test(
+      blob,
+    ) ||
+    /\b(lead|leads|sign[- ]?ups?|inquiries)\b/.test(goal)
   ) {
     return {
       slug: "lead_gen_funnels",
@@ -387,7 +423,25 @@ export function diagnoseArchetype(input: DiagnosisInput): DiagnosisResult {
     };
   }
 
-  // Low-ticket direct: $27-97 impulse range.
+  // Service businesses without a clear funnel: book the conversation.
+  // Cheap service businesses still run on inquiries, not catalog ROAS.
+  if (isServiceBusiness) {
+    if (price != null && price >= 500) {
+      return {
+        slug: "high_ticket_consult",
+        confidence: "medium",
+        reason: `Service business at $${price} — sell the conversation (inquiry or booked call), not the product.`,
+      };
+    }
+    return {
+      slug: "lead_gen_funnels",
+      confidence: "medium",
+      reason:
+        "Service business — new clients come from inquiries and bookings, so we grade on leads, not sales.",
+    };
+  }
+
+  // Low-ticket direct: $20-100 impulse range.
   if (price != null && price >= 20 && price <= 100) {
     return {
       slug: "low_ticket_direct",
@@ -411,6 +465,7 @@ export function diagnoseArchetype(input: DiagnosisInput): DiagnosisResult {
     reason: "Defaulting to Lead Generation — confirm or change if it doesn't fit.",
   };
 }
+
 
 // Convert an archetype's success metrics into KPI goal suggestions for
 // the goal-setup modal. Only metrics with a `kpiKey` matching the dropdown
