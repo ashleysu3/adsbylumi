@@ -3,6 +3,7 @@ import { fetchOfferPageLanguageBlock } from "../_shared/offer-page-language.ts";
 import { requireAuthedUser } from "../_shared/check-subscription.ts";
 import { buildPositioningBriefBlock } from "../_shared/positioning-brief.ts";
 import { assertBrandOfferAccess } from "../_shared/access.ts";
+import { buildBrandVoiceBlock } from "../_shared/brand-voice-block.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -74,6 +75,9 @@ Deno.serve(async (req) => {
 
     // Their own sales-page language — mined before we invent anything.
     const pageLanguageBlock = await fetchOfferPageLanguageBlock(supabase, offerId);
+
+    // Their brand voice, offer messaging guidelines, and buyer psychology.
+    const brandVoiceBlock = await buildBrandVoiceBlock(supabase, brandId, offerId);
 
     console.log("[generate-creative-angles] Fetching knowledge base...");
 
@@ -380,6 +384,7 @@ offer, audience, and psychology data supplied in this prompt. If a needed detail
 not present in this brand's data, write around it — do not invent or borrow one.
 Mentioning any other brand, offer, or person is an instant fail.
 
+${brandVoiceBlock}
 ${contentAssetsContext}
 ${socialProofContext}
 ${insightsContext}

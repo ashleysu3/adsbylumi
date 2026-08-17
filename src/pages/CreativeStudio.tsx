@@ -1626,7 +1626,7 @@ function CreativeStudioGuided({ embedded = false }: { embedded?: boolean }) {
                 {creativeIntelligence && (
                   <CreativeIntelligenceCard intelligence={creativeIntelligence} />
                 )}
-                <AngleSelector angles={availableAngles} selectedAngles={selectedAngleIds} onSelectionChange={setSelectedAngleIds} onContinue={generateCreativeGrid} isGenerating={generating} onAddCustomAngle={handleAddCustomAngle} onRegenerateAngle={regenerateSingleAngle} regeneratingAngleId={regeneratingAngleId} brandName={workspace?.brands?.name} offerData={{ name: workspace?.offer_name, description: workspace?.offer_description, price: workspace?.offer_price }} />
+                <AngleSelector angles={availableAngles} selectedAngles={selectedAngleIds} onSelectionChange={setSelectedAngleIds} onContinue={generateCreativeGrid} isGenerating={generating} onAddCustomAngle={handleAddCustomAngle} onRegenerateAngle={regenerateSingleAngle} regeneratingAngleId={regeneratingAngleId} brandName={workspace?.brands?.name} brandId={workspace?.brand_id} offerId={workspace?.offer_id} offerData={{ name: workspace?.offer_name, description: workspace?.offer_description, price: workspace?.offer_price }} />
                 {workspace?.brands?.meta_account_id && (
                   <div className="flex justify-center mt-2">
                     <button

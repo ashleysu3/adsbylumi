@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireAuthedUser } from "../_shared/check-subscription.ts";
 import { assertBrandOfferAccess } from "../_shared/access.ts";
+import { buildBrandVoiceBlock } from "../_shared/brand-voice-block.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -138,6 +139,9 @@ Prioritize formats that have historically performed well for this account.
       }
     }
 
+    // Their brand voice, offer messaging guidelines, and buyer psychology.
+    const brandVoiceBlock = await buildBrandVoiceBlock(supabase, brandId, null);
+
     // Fetch knowledge base for best practices
     const { data: kbDocs } = await supabase
       .from("knowledge_documents")
@@ -161,6 +165,7 @@ This account doesn't have historical performance data yet, so use these best pra
 - Consider production feasibility (talking heads are often fastest to produce)
 `}
 
+${brandVoiceBlock}
 ${kbContext ? `\nKnowledge base context:\n${kbContext}` : ""}
 
 IMPORTANT RANKING CRITERIA:

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requirePaidUser } from "../_shared/check-subscription.ts";
+import { buildBrandVoiceBlock } from "../_shared/brand-voice-block.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,7 +24,7 @@ serve(async (req) => {
     const user = { id: gate.userId! };
 
 
-    const { userInput, clarificationAnswer, brandName, offerData, existingAngles } = await req.json();
+    const { userInput, clarificationAnswer, brandName, offerData, existingAngles, brandId, offerId } = await req.json();
 
     if (!userInput || typeof userInput !== "string" || userInput.trim().length < 2) {
       return new Response(JSON.stringify({ error: "Please describe your angle idea" }), {
@@ -34,6 +35,10 @@ serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+
+    // Voice + psychology context. The anon client carries the caller's JWT, so
+    // RLS keeps this scoped to brands/offers they actually own.
+    const brandVoiceBlock = await buildBrandVoiceBlock(supabase as any, brandId, offerId);
 
     const existingAngleNames = (existingAngles || []).map((a: any) => a.name).join(", ");
 
@@ -47,6 +52,9 @@ A good angle has:
 - A short, punchy name (2-5 words)
 - A clear description explaining the messaging approach (1-2 sentences)
 - It should be distinct from existing angles: ${existingAngleNames || "none yet"}
+
+${brandVoiceBlock}
+The angle you write MUST match the brand voice above and be grounded in the buyer psychology given. Use their vocabulary, not generic ad-speak.
 
 Brand: ${brandName || "Unknown"}
 Offer: ${offerData?.name || "Unknown"} — ${offerData?.description || "No description"}
