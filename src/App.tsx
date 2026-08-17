@@ -103,7 +103,6 @@ import BrandPatterns from "./pages/BrandPatterns";
 import Retrospectives from "./pages/Retrospectives";
 import RecommendedStrategy from "./pages/RecommendedStrategy";
 import StrategyPlan from "./pages/StrategyPlan";
-import Strategy from "./pages/Strategy";
 import AdStrategy from "./pages/AdStrategy";
 const AdminStrategies = lazy(() => import("./pages/admin/Strategies"));
 import OfficeHours from "./pages/OfficeHours";
@@ -183,7 +182,7 @@ const App = () => {
                   <Route path="/dashboard" element={<Navigate to="/initial-setup" replace />} />
                   <Route path="/planning" element={<Navigate to="/studio" replace />} />
                   <Route path="/strategy" element={<AdStrategy />} />
-                  <Route path="/strategy-builder" element={<Strategy />} />
+                  <Route path="/strategy-builder" element={<Navigate to="/create" replace />} />
                   
                   <Route path="/creative" element={<Creative />} />
                   <Route path="/launch" element={<Launch />} />

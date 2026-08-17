@@ -224,11 +224,11 @@ export default function Launch() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => navigate("/strategy-builder")}
+                      onClick={() => navigate("/create")}
                       className="gap-1 flex-shrink-0"
                     >
                       <ArrowLeft className="h-3 w-3" />
-                      Go to Strategy
+                      Pick a strategy
                     </Button>
                   </li>
                 )}
