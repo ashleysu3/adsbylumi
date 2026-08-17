@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
-import { toPng } from "html-to-image";
+import { toCanvas } from "html-to-image";
+
 import type { ComponentProps } from "react";
 import { LiveAdPreview } from "@/components/creative/LiveAdPreview";
 
