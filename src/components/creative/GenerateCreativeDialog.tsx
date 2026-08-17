@@ -467,6 +467,9 @@ export function GenerateCreativeDialog() {
     : template === "carousel" || brief?.format === "carousel";
   const needsPhoto = activeCustom ? activeCustom.needs_photo : !NO_PHOTO_TEMPLATES.has(template);
 
+  // Set when we restore a saved design so the auto-compose effect doesn't
+  // immediately overwrite the user's copy with a fresh AI pass.
+  const restoredRef = useRef(false);
   const briefRef = useRef<CreativeBrief | null>(null);
   briefRef.current = brief;
 
@@ -521,7 +524,15 @@ export function GenerateCreativeDialog() {
         setCustomTemplateId(saved.customTemplateId || "");
         if (typeof saved.slideCount === "number") setSlideCount(saved.slideCount);
         if (Array.isArray(saved.singleOptions)) setSingleOptions(saved.singleOptions);
-        if (Array.isArray(saved.carouselOptions)) setCarouselOptions(saved.carouselOptions);
+        if (Array.isArray(saved.carouselOptions)) {
+          // Write the user's edited slides back into the option they came from
+          // so the "sync editor to selected option" effect can't clobber them.
+          const idx = typeof saved.selectedOptionIdx === "number" ? saved.selectedOptionIdx : 0;
+          const opts = saved.carouselOptions.map((o: any, i: number) =>
+            i === idx && Array.isArray(saved.editedSlides) ? { ...o, slides: saved.editedSlides } : o,
+          );
+          setCarouselOptions(opts);
+        }
         if (Array.isArray(saved.editedSlides)) setEditedSlides(saved.editedSlides);
         if (saved.editedSingle) setEditedSingle(saved.editedSingle);
         if (typeof saved.selectedOptionIdx === "number") setSelectedOptionIdx(saved.selectedOptionIdx);
@@ -546,6 +557,7 @@ export function GenerateCreativeDialog() {
         if (saved.logoCorner) setLogoCorner(saved.logoCorner);
         if (saved.textColor) setTextColor(saved.textColor);
         if (typeof saved.textBackdrop === "boolean") setTextBackdrop(saved.textBackdrop);
+        restoredRef.current = true;
         setStep("image-copy");
         toast.success("Picked up where you left off — your copy and design are still here.");
       }
@@ -991,7 +1003,12 @@ export function GenerateCreativeDialog() {
   useEffect(() => {
     if (!open || !brief || kitLoading || composing) return;
     if (step !== "image-copy") return;
-    
+    if (restoredRef.current) {
+      // Resumed an existing design — keep their copy, don't rewrite it.
+      restoredRef.current = false;
+      return;
+    }
+
     compose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, brief, kitLoading, step, template, customTemplateId]);
