@@ -114,14 +114,31 @@ export async function captureAdPreview(
     await waitForImages(target);
 
 
-    const dataUrl = await toPng(target, {
-      pixelRatio: 1,
+    // Supersample: rasterize at 2x the final ad size, then downscale with
+    // high-quality smoothing. Rasterizing straight at 1080 lets the browser
+    // reuse the small, already-composited photo layer, which is what made
+    // brand photos look soft. Capturing above target and stepping down keeps
+    // every pixel of detail from the original upload.
+    const SS = 2;
+    const raw = await toCanvas(target, {
+      pixelRatio: SS,
       width: size.width,
       height: size.height,
       cacheBust: true,
       backgroundColor: props.colors?.bg,
       skipAutoScale: true,
     });
+
+    const out = document.createElement("canvas");
+    out.width = size.width;
+    out.height = size.height;
+    const ctx = out.getContext("2d");
+    if (!ctx) throw new Error("Could not prepare the ad canvas for export. Please try again.");
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(raw, 0, 0, raw.width, raw.height, 0, 0, size.width, size.height);
+    const dataUrl = out.toDataURL("image/png");
+
 
 
     return {
