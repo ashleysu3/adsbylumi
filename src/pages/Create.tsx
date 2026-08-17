@@ -143,7 +143,11 @@ const CREATIVE_TEMPLATES: CreativeTemplate[] = [
 }];
 
 
-const STORAGE_KEY = "create_wizard_progress";
+const STORAGE_KEY_BASE = "create_wizard_progress";
+// Scoped per brand — otherwise a half-built ad from one brand resurfaces
+// (offer name, angles, templates) while the user is inside a different brand.
+const progressKey = (brandId: string | null | undefined) =>
+  `${STORAGE_KEY_BASE}:${brandId ?? "none"}`;
 
 interface WizardProgress {
   currentStep: number;
@@ -336,7 +340,7 @@ export default function Create() {
         selectedCreativeTemplates,
         savedAt: Date.now()
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+      localStorage.setItem(progressKey(brand?.id), JSON.stringify(progress));
 
       // Show saved status
       setSaveStatus("saved");
@@ -347,7 +351,9 @@ export default function Create() {
 
   // Clear saved progress
   const clearSavedProgress = () => {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(progressKey(brand?.id));
+    // Also drop the legacy un-scoped key so stale cross-brand drafts die out.
+    localStorage.removeItem(STORAGE_KEY_BASE);
     setSavedProgress(null);
     setShowResumePrompt(false);
   };
@@ -472,7 +478,8 @@ export default function Create() {
       }
 
       // Check for saved progress after data is loaded
-      const saved = fromStrategy ? null : localStorage.getItem(STORAGE_KEY);
+      localStorage.removeItem(STORAGE_KEY_BASE); // retire the old cross-brand key
+      const saved = fromStrategy ? null : localStorage.getItem(progressKey(brandData.id));
       if (saved) {
         try {
           const progress: WizardProgress = JSON.parse(saved);
@@ -487,13 +494,13 @@ export default function Create() {
               setSavedProgress(progress);
               setShowResumePrompt(true);
             } else {
-              localStorage.removeItem(STORAGE_KEY);
+              localStorage.removeItem(progressKey(brandData.id));
             }
           } else {
-            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(progressKey(brandData.id));
           }
         } catch {
-          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(progressKey(brandData.id));
         }
       }
     } catch (error: any) {
