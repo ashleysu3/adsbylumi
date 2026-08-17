@@ -16,13 +16,21 @@ const cors = {
 
 async function fetchPage(url: string): Promise<string> {
   // Prefer Firecrawl for rendered content; fall back to plain fetch.
+  // Both calls are capped so a slow/hanging scraper or origin doesn't
+  // keep the edge function alive until the runtime gateway times out (504).
+  const TIMEOUT_MS = 15_000;
+
   if (FIRECRAWL_API_KEY) {
     try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
       const r = await fetch("https://api.firecrawl.dev/v1/scrape", {
         method: "POST",
+        signal: ctrl.signal,
         headers: { "content-type": "application/json", Authorization: `Bearer ${FIRECRAWL_API_KEY}` },
         body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true }),
       });
+      clearTimeout(t);
       if (r.ok) {
         const j = await r.json();
         const md = j?.data?.markdown || "";
@@ -31,7 +39,10 @@ async function fetchPage(url: string): Promise<string> {
     } catch { /* fall through */ }
   }
   try {
-    const r = await fetch(url, { headers: { "user-agent": "Mozilla/5.0 LumiBot" } });
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    const r = await fetch(url, { signal: ctrl.signal, headers: { "user-agent": "Mozilla/5.0 LumiBot" } });
+    clearTimeout(t);
     if (!r.ok) return "";
     const html = await r.text();
     return html.replace(/<script[\s\S]*?<\/script>/gi, " ")
