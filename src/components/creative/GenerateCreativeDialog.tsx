@@ -513,10 +513,47 @@ export function GenerateCreativeDialog() {
       setImages([]);
       setProgress("");
       setSelectedOptionIdx(0);
+
+      // Pick up exactly where they left off on this creative, if we have it.
+      const saved = loadDesign(detail.itemId || "");
+      if (saved) {
+        if (saved.template) setTemplate(saved.template);
+        setCustomTemplateId(saved.customTemplateId || "");
+        if (typeof saved.slideCount === "number") setSlideCount(saved.slideCount);
+        if (Array.isArray(saved.singleOptions)) setSingleOptions(saved.singleOptions);
+        if (Array.isArray(saved.carouselOptions)) setCarouselOptions(saved.carouselOptions);
+        if (Array.isArray(saved.editedSlides)) setEditedSlides(saved.editedSlides);
+        if (saved.editedSingle) setEditedSingle(saved.editedSingle);
+        if (typeof saved.selectedOptionIdx === "number") setSelectedOptionIdx(saved.selectedOptionIdx);
+        if (saved.selectedPhotoId) setSelectedPhotoId(saved.selectedPhotoId);
+        if (saved.imageSource) setImageSource(saved.imageSource);
+        setBgSelectedUrl(saved.bgSelectedUrl || "");
+        if (saved.textCase) setTextCase(saved.textCase);
+        if (typeof saved.headlineScale === "number") setHeadlineScale(saved.headlineScale);
+        if (typeof saved.bodyScale === "number") setBodyScale(saved.bodyScale);
+        if (saved.textBoxStyle) setTextBoxStyle(saved.textBoxStyle);
+        if (saved.textBoxColor !== undefined) setTextBoxColor(saved.textBoxColor);
+        if (typeof saved.textBoxOpacity === "number") setTextBoxOpacity(saved.textBoxOpacity);
+        if (saved.textPosition) setTextPosition(saved.textPosition);
+        if (saved.textAlign) setTextAlign(saved.textAlign);
+        if (typeof saved.focalX === "number") setFocalX(saved.focalX);
+        if (typeof saved.focalY === "number") setFocalY(saved.focalY);
+        if (typeof saved.photoZoom === "number") setPhotoZoom(saved.photoZoom);
+        if (typeof saved.storyFocalX === "number") setStoryFocalX(saved.storyFocalX);
+        if (typeof saved.storyFocalY === "number") setStoryFocalY(saved.storyFocalY);
+        if (typeof saved.storyZoom === "number") setStoryZoom(saved.storyZoom);
+        if (typeof saved.placeLogo === "boolean") setPlaceLogo(saved.placeLogo);
+        if (saved.logoCorner) setLogoCorner(saved.logoCorner);
+        if (saved.textColor) setTextColor(saved.textColor);
+        if (typeof saved.textBackdrop === "boolean") setTextBackdrop(saved.textBackdrop);
+        setStep("image-copy");
+        toast.success("Picked up where you left off — your copy and design are still here.");
+      }
     };
     window.addEventListener("creative-brief:generate", handler as EventListener);
     return () => window.removeEventListener("creative-brief:generate", handler as EventListener);
   }, []);
+
 
 
 
