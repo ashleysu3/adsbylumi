@@ -72,7 +72,8 @@ export async function captureAdPreview(
     "position:fixed",
     "left:-10000px",
     "top:0",
-    `width:${BASE_WIDTH}px`,
+    `width:${size.width}px`,
+    `height:${size.height}px`,
     "pointer-events:none",
     "z-index:-1",
   ].join(";");
@@ -82,8 +83,26 @@ export async function captureAdPreview(
   try {
     await new Promise<void>((resolve) => {
       root.render(
-        <div style={{ width: BASE_WIDTH }}>
-          <LiveAdPreview {...props} frame={frame} bare onFocalChange={undefined} />
+        // The preview is laid out at BASE_WIDTH but visually scaled up to the
+        // real ad size BEFORE rasterizing. Rasterizing a small node and then
+        // upscaling (pixelRatio) resamples photos from their CSS size, which
+        // is what made brand photos look soft/blurry in the exported ad.
+        <div
+          style={{
+            width: size.width,
+            height: size.height,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              width: BASE_WIDTH,
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+            }}
+          >
+            <LiveAdPreview {...props} frame={frame} bare onFocalChange={undefined} />
+          </div>
         </div>,
       );
       // Let React commit + layout settle.
@@ -95,13 +114,14 @@ export async function captureAdPreview(
 
 
     const dataUrl = await toPng(target, {
-      pixelRatio: scale,
-      width: BASE_WIDTH,
-      height: Math.round(size.height / scale),
+      pixelRatio: 1,
+      width: size.width,
+      height: size.height,
       cacheBust: true,
       backgroundColor: props.colors?.bg,
       skipAutoScale: true,
     });
+
 
     return {
       base64: dataUrl.split(",")[1] || "",
