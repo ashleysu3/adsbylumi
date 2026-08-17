@@ -141,6 +141,9 @@ Every cell — talking_head, broll, graphic, carousel — must obey these CTA ru
       return `## ${doc.title}\n${truncated}`;
     }).join("\n\n");
 
+    // Their brand voice, offer messaging guidelines, and buyer psychology.
+    const brandVoiceBlock = await buildBrandVoiceBlock(supabase, brandId, offerId);
+
      // Fetch content assets for this brand
      let contentAssetsContext = "";
      if (brandId) {
@@ -257,6 +260,7 @@ offer, audience, and psychology data supplied in this prompt. If a needed detail
 not present in this brand's data, write around it — do not invent or borrow one.
 Mentioning any other brand, offer, or person is an instant fail.
 
+ ${brandVoiceBlock}
  ${contentAssetsContext}
 
 === CRITICAL RULES: SPECIFICITY IS EVERYTHING ===
