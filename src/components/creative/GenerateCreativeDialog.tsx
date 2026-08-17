@@ -554,6 +554,31 @@ export function GenerateCreativeDialog() {
     return () => window.removeEventListener("creative-brief:generate", handler as EventListener);
   }, []);
 
+  // Keep the resume point fresh while they work.
+  useEffect(() => {
+    if (!open || !itemId || step === "style") return;
+    storeDesign(itemId, {
+      template, customTemplateId, slideCount,
+      singleOptions, carouselOptions, editedSlides, editedSingle, selectedOptionIdx,
+      selectedPhotoId, imageSource, bgSelectedUrl,
+      textCase, headlineScale, bodyScale,
+      textBoxStyle, textBoxColor, textBoxOpacity, textPosition, textAlign,
+      focalX, focalY, photoZoom, storyFocalX, storyFocalY, storyZoom,
+      placeLogo, logoCorner, textColor, textBackdrop,
+      savedAt: Date.now(),
+    });
+  }, [
+    open, itemId, step,
+    template, customTemplateId, slideCount,
+    singleOptions, carouselOptions, editedSlides, editedSingle, selectedOptionIdx,
+    selectedPhotoId, imageSource, bgSelectedUrl,
+    textCase, headlineScale, bodyScale,
+    textBoxStyle, textBoxColor, textBoxOpacity, textPosition, textAlign,
+    focalX, focalY, photoZoom, storyFocalX, storyFocalY, storyZoom,
+    placeLogo, logoCorner, textColor, textBackdrop,
+  ]);
+
+
 
 
 
