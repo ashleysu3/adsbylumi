@@ -276,7 +276,34 @@ function mapStyleToTemplate(styleHint?: string, format?: string): string {
   return (styleHint && m[styleHint]) || "bigtype";
 }
 
+// ── Saved design state ────────────────────────────────────────────────────
+// Reopening a creative used to drop the user back on a blank "pick a style"
+// screen, so editing a finished carousel meant redoing every slide. We snapshot
+// the whole design (style, copy, photo, framing, readability) per creative item
+// and restore it on reopen so "go back and change one thing" actually works.
+const DESIGN_KEY = (itemId: string) => `lumi:creative-design:${itemId}`;
+
+function loadDesign(itemId: string): any | null {
+  if (!itemId) return null;
+  try {
+    const raw = localStorage.getItem(DESIGN_KEY(itemId));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeDesign(itemId: string, snap: any) {
+  if (!itemId) return;
+  try {
+    localStorage.setItem(DESIGN_KEY(itemId), JSON.stringify(snap));
+  } catch {
+    /* quota — non-fatal, the user just loses the resume point */
+  }
+}
+
 export function GenerateCreativeDialog() {
+
   const navigate = useNavigate();
   const { activeBrand, loading: brandsLoading } = useBrand();
   const [open, setOpen] = useState(false);
