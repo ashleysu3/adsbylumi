@@ -81,6 +81,8 @@ interface AngleSelectorProps {
   onRegenerateAngle?: (angleId: string) => void;
   regeneratingAngleId?: string | null;
   brandName?: string;
+  brandId?: string;
+  offerId?: string;
   offerData?: { name?: string; description?: string; price?: string };
   /** If provided, the awareness filter defaults to this level. */
   defaultAwarenessLevel?: AwarenessLevel;
@@ -96,6 +98,8 @@ export function AngleSelector({
   onRegenerateAngle,
   regeneratingAngleId,
   brandName,
+  brandId,
+  offerId,
   offerData,
   defaultAwarenessLevel,
 }: AngleSelectorProps) {
@@ -162,6 +166,8 @@ export function AngleSelector({
           userInput: inputText,
           clarificationAnswer: clarification || undefined,
           brandName,
+          brandId,
+          offerId,
           offerData,
           existingAngles: angles,
         },
