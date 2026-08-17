@@ -301,12 +301,39 @@ export function ProductionManager({
     return acc;
   }, {} as Record<string, ProductionItem[]>);
   
-  const displayItems = showTopOnly && rankedItems.length > 0 
-    ? currentRoundItems 
-    : currentRoundItems;
-  
+  // If the user generated a fresh round of concepts, any saved "Top 5" ranking
+  // points at items from the previous round. Drop it so the checklist shows the
+  // concepts they just picked instead of last round's picks.
+  const currentRoundIds = currentRoundItems.map((i) => i.id).join("|");
+  useEffect(() => {
+    if (rankedItems.length === 0) return;
+    const validIds = new Set(currentRoundItems.map((i) => i.id));
+    const stillValid = rankedItems.filter((r) => validIds.has(r.id));
+    if (stillValid.length === rankedItems.length) return;
+    setRankedItems(stillValid);
+    if (stillValid.length === 0) setShowTopOnly(false);
+    const nextState = {
+      rankedItems: stillValid,
+      overallStrategy: stillValid.length === 0 ? "" : overallStrategy,
+      showTopOnly: stillValid.length === 0 ? false : showTopOnly,
+    };
+    if (stillValid.length === 0) setOverallStrategy("");
+    const wsId = (workspace as any)?.id;
+    if (wsId) {
+      supabase
+        .from("campaign_workspaces")
+        .update({ top_five_state: nextState as any, updated_at: new Date().toISOString() })
+        .eq("id", wsId)
+        .then(() => onUpdateWorkspace?.({ top_five_state: nextState }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentRoundIds]);
+
+  const displayItems = currentRoundItems;
+
   const canRank = productionItems.length >= 6;
   const hasRankedItems = rankedItems.length > 0;
+
   
   // Group items by angle
   const itemsByAngle = displayItems.reduce((acc, item) => {
