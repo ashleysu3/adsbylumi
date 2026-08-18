@@ -418,6 +418,12 @@ export function GenerateCreativeDialog() {
   const [textBoxStyle, setTextBoxStyle] = useState<"none" | "box" | "scrim">("none");
   const [textBoxColor, setTextBoxColor] = useState<string>("");
   const [textBoxOpacity, setTextBoxOpacity] = useState<number>(0.85);
+  // Per-slot font color overrides ("" = use the template/brand default).
+  const [headlineColor, setHeadlineColor] = useState<string>("");
+  const [subColor, setSubColor] = useState<string>("");
+  const [eyebrowColor, setEyebrowColor] = useState<string>("");
+  const [ctaTextColor, setCtaTextColor] = useState<string>("");
+  const [ctaBgColor, setCtaBgColor] = useState<string>("");
   const [textPosition, setTextPosition] = useState<"top" | "middle" | "bottom">("bottom");
   const [textAlign, setTextAlign] = useState<"left" | "center" | "right">("left");
   // Image framing: focal point + zoom so the user controls what stays visible
@@ -566,6 +572,11 @@ export function GenerateCreativeDialog() {
         if (saved.textBoxStyle) setTextBoxStyle(saved.textBoxStyle);
         if (saved.textBoxColor !== undefined) setTextBoxColor(saved.textBoxColor);
         if (typeof saved.textBoxOpacity === "number") setTextBoxOpacity(saved.textBoxOpacity);
+        if (saved.headlineColor !== undefined) setHeadlineColor(saved.headlineColor);
+        if (saved.subColor !== undefined) setSubColor(saved.subColor);
+        if (saved.eyebrowColor !== undefined) setEyebrowColor(saved.eyebrowColor);
+        if (saved.ctaTextColor !== undefined) setCtaTextColor(saved.ctaTextColor);
+        if (saved.ctaBgColor !== undefined) setCtaBgColor(saved.ctaBgColor);
         if (saved.textPosition) setTextPosition(saved.textPosition);
         if (saved.textAlign) setTextAlign(saved.textAlign);
         if (typeof saved.focalX === "number") setFocalX(saved.focalX);
@@ -596,6 +607,7 @@ export function GenerateCreativeDialog() {
       selectedPhotoId, imageSource, bgSelectedUrl,
       textCase, headlineScale, bodyScale,
       textBoxStyle, textBoxColor, textBoxOpacity, textPosition, textAlign,
+      headlineColor, subColor, eyebrowColor, ctaTextColor, ctaBgColor,
       focalX, focalY, photoZoom, storyFocalX, storyFocalY, storyZoom,
       placeLogo, logoCorner, textColor, textBackdrop,
       savedAt: Date.now(),
@@ -607,6 +619,7 @@ export function GenerateCreativeDialog() {
     selectedPhotoId, imageSource, bgSelectedUrl,
     textCase, headlineScale, bodyScale,
     textBoxStyle, textBoxColor, textBoxOpacity, textPosition, textAlign,
+    headlineColor, subColor, eyebrowColor, ctaTextColor, ctaBgColor,
     focalX, focalY, photoZoom, storyFocalX, storyFocalY, storyZoom,
     placeLogo, logoCorner, textColor, textBackdrop,
   ]);
@@ -1237,6 +1250,11 @@ export function GenerateCreativeDialog() {
           textBoxStyle,
           textBoxColor: textBoxColor || colors.bg,
           textBoxOpacity,
+          headlineColor: headlineColor || undefined,
+          subColor: subColor || undefined,
+          eyebrowColor: eyebrowColor || undefined,
+          ctaTextColor: ctaTextColor || undefined,
+          ctaBgColor: ctaBgColor || undefined,
           textPosition,
           textAlign,
           logoUrl: brandLogoAsset?.url,
@@ -1923,6 +1941,11 @@ export function GenerateCreativeDialog() {
         textBoxStyle={textBoxStyle}
         textBoxColor={textBoxColor || colors.bg}
         textBoxOpacity={textBoxOpacity}
+        headlineColor={headlineColor || undefined}
+        subColor={subColor || undefined}
+        eyebrowColor={eyebrowColor || undefined}
+        ctaTextColor={ctaTextColor || undefined}
+        ctaBgColor={ctaBgColor || undefined}
         textPosition={textPosition}
         textAlign={textAlign}
         logoUrl={brandLogoAsset?.url}
@@ -2351,6 +2374,11 @@ export function GenerateCreativeDialog() {
                                 textBoxStyle={textBoxStyle}
                                 textBoxColor={textBoxColor || colors.bg}
                                 textBoxOpacity={textBoxOpacity}
+                                headlineColor={headlineColor || undefined}
+                                subColor={subColor || undefined}
+                                eyebrowColor={eyebrowColor || undefined}
+                                ctaTextColor={ctaTextColor || undefined}
+                                ctaBgColor={ctaBgColor || undefined}
                                 textPosition={textPosition}
                                 textAlign={textAlign}
                                 logoUrl={brandLogoAsset?.url}
