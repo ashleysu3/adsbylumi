@@ -98,8 +98,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { url, brandId } = await req.json();
-    if (!url || typeof url !== "string") {
+    const { url, brandId, repairExisting = false } = await req.json();
+    if ((!url || typeof url !== "string") && !repairExisting) {
       return new Response(
         JSON.stringify({ error: "missing url" }),
         { status: 200, headers: { ...cors, "content-type": "application/json" } },
@@ -126,24 +126,35 @@ Deno.serve(async (req) => {
     }
 
 
-    const er = await fetch(`${ENGINE_URL.replace(/\/$/, "")}/extract-assets`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-api-key": ENGINE_KEY },
-      body: JSON.stringify({ url }),
-    });
-    if (!er.ok) {
-      const txt = await er.text();
-      return new Response(
-        JSON.stringify({ error: `engine error ${er.status}: ${txt.slice(0, 300)}` }),
-        { status: 200, headers: { ...cors, "content-type": "application/json" } },
-      );
-    }
-    const data = await er.json();
-    const assets = (data?.assets || []).slice(0, 40);
     const { data: currentAssets } = await admin
       .from("brand_assets")
       .select("id,url,source_url,width,height")
       .eq("brand_id", brandId);
+    let assets: Array<{ url: string; roleGuess?: string; width?: number; height?: number }>;
+    if (repairExisting) {
+      assets = (currentAssets || [])
+        .filter((row) => !!row.source_url)
+        .map((row) => ({
+          url: row.source_url,
+          width: row.width,
+          height: row.height,
+        }));
+    } else {
+      const er = await fetch(`${ENGINE_URL.replace(/\/$/, "")}/extract-assets`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-api-key": ENGINE_KEY },
+        body: JSON.stringify({ url }),
+      });
+      if (!er.ok) {
+        const txt = await er.text();
+        return new Response(
+          JSON.stringify({ error: `engine error ${er.status}: ${txt.slice(0, 300)}` }),
+          { status: 200, headers: { ...cors, "content-type": "application/json" } },
+        );
+      }
+      const data = await er.json();
+      assets = (data?.assets || []).slice(0, 40);
+    }
     let saved = 0;
     let existing = 0;
     let skipped = 0;
@@ -200,7 +211,7 @@ Deno.serve(async (req) => {
           brand_id: brandId,
           url: pub.publicUrl,
           source_url: sourceUrl,
-          role: a.roleGuess,
+          ...(a.roleGuess ? { role: a.roleGuess } : {}),
           ...dimensions,
         };
         const { error: insertError } = existingAsset
