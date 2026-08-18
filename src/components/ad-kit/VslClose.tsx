@@ -61,10 +61,24 @@ export function useKitCheckout(brandId?: string | null) {
       });
       if (error) throw error;
       if (data?.url) {
-        window.location.href = data.url;
+        // Stripe refuses to be framed, so an in-iframe (preview/embed)
+        // navigation silently bounces back to the kit. Break out to the top
+        // window when we can, and fall back to a new tab.
+        const framed = window.top !== window.self;
+        if (framed) {
+          try {
+            window.top!.location.href = data.url;
+          } catch {
+            window.open(data.url, "_blank", "noopener");
+            setCheckoutLoading(false);
+          }
+        } else {
+          window.location.href = data.url;
+        }
       } else {
         throw new Error("Checkout didn't return a URL");
       }
+
     } catch (err) {
       console.error("[ad-kit] checkout error", err);
       toast.error("Could not start checkout. Please try again.");
