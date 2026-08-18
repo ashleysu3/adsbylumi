@@ -107,7 +107,18 @@ function writeSlotColor(c: Colors, key: ColorSlot, v: string): Colors {
 type SingleOption = Record<string, string>;
 type Slide = Record<string, string>;
 type CarouselOption = { slides: Slide[] };
-type Photo = { id: string; path: string; url: string; source?: "upload" | "brand"; role?: string; isDefault?: boolean };
+type Photo = {
+  id: string;
+  path: string;
+  /** Full-resolution original — always used unless a cutout is explicitly wanted. */
+  url: string;
+  /** Background-removed version. Providers return these at reduced resolution,
+   *  so it must never stand in for the original on full-bleed templates. */
+  cutoutUrl?: string;
+  source?: "upload" | "brand";
+  role?: string;
+  isDefault?: boolean;
+};
 type BrandAssetRow = { id: string; url: string; role: string };
 type LogoCorner = "tl" | "tr" | "bl" | "br";
 type RenderImage = { placement: string; width: number; height: number; base64: string; label?: string };
