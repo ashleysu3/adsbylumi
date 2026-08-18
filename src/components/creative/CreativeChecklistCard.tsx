@@ -244,12 +244,7 @@ export function CreativeChecklistCard({
   
   return (
     <TooltipProvider>
-    <QuickFixDialog
-      open={brollFixOpen}
-      onOpenChange={setBrollFixOpen}
-      kind="broll"
-      brandId={(brand as any)?.id}
-    />
+
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card className={cn(
         "transition-all border-l-4",
