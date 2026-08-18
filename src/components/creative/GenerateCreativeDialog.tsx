@@ -1200,18 +1200,18 @@ export function GenerateCreativeDialog() {
         fx: number, fy: number, z: number, frame: "feed" | "story",
       ): Promise<string | undefined> => {
         if (!selectedPhoto) return undefined;
-        if (fx === 50 && fy === 50 && z === 1) return selectedPhoto.url;
+        if (fx === 50 && fy === 50 && z === 1) return selectedPhotoUrl!;
         try {
           setProgress("Applying image framing…");
-          return await cropImageToFocal(selectedPhoto.url, fx, fy, z, photoFrameAspect(template, frame));
+          return await cropImageToFocal(selectedPhotoUrl!, fx, fy, z, photoFrameAspect(template, frame));
         } catch {
-          return selectedPhoto.url;
+          return selectedPhotoUrl!;
         }
       };
       // Only the engine path needs a pre-cropped photo; the WYSIWYG export
       // captures the preview, which already applies focal point + zoom.
-      const photoUrlForRender = activeCustom ? await cropFor(focalX, focalY, photoZoom, "feed") : selectedPhoto?.url;
-      const storyPhotoUrl = activeCustom ? await cropFor(storyFocalX, storyFocalY, storyZoom, "story") : selectedPhoto?.url;
+      const photoUrlForRender = activeCustom ? await cropFor(focalX, focalY, photoZoom, "feed") : selectedPhotoUrl;
+      const storyPhotoUrl = activeCustom ? await cropFor(storyFocalX, storyFocalY, storyZoom, "story") : selectedPhotoUrl;
 
       setRenderedFraming({
         focalX, focalY, photoZoom,
@@ -1293,7 +1293,7 @@ export function GenerateCreativeDialog() {
           colors,
           displayFamily,
           bodyFamily,
-          photoUrl: selectedPhoto?.url,
+          photoUrl: selectedPhotoUrl,
           backgroundUrl: bgSelectedUrl || undefined,
           textCase,
           headlineScale,
@@ -2052,7 +2052,7 @@ export function GenerateCreativeDialog() {
         colors={colors}
         displayFamily={displayFamily}
         bodyFamily={bodyFamily}
-        photoUrl={selectedPhoto?.url}
+        photoUrl={selectedPhotoUrl}
         backgroundUrl={bgSelectedUrl || undefined}
         textCase={textCase}
         headlineScale={headlineScale}
@@ -2485,7 +2485,7 @@ export function GenerateCreativeDialog() {
                                 colors={colors}
                                 displayFamily={displayFamily}
                                 bodyFamily={bodyFamily}
-                                photoUrl={selectedPhoto?.url}
+                                photoUrl={selectedPhotoUrl}
                                 backgroundUrl={bgSelectedUrl || undefined}
                                 textCase={textCase}
                                 headlineScale={headlineScale}
