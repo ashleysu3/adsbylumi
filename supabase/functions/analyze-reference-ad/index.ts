@@ -34,6 +34,12 @@ const TEMPLATE_PERSONALITIES: Record<string, string> = {
   nativecaption: "Full photo with plain bold caption text directly on it, no card or badge. Native, minimal, authentic.",
   nativestroke: "Full photo with bold white text with a black stroke outline directly on it, no card. Native, punchy, works on any photo since the stroke itself carries contrast.",
   nativebubbles: "Full photo with 2-3 short phrases stacked as separate white caption bubbles over it, no single shared card. Native, conversational, like a real creator's caption overlay.",
+  markeroverlay: "Full photo under a light wash, with an all-caps handwritten MARKER headline across the middle — one phrase gets a highlighter stroke, the closing phrase turns the accent color. Scrappy, hand-made, opinionated.",
+  typewriterbars: "Full photo with a solid black bar of TYPEWRITER text at the top and an accent-colored bar at the bottom. Meme/POV energy, deadpan, low-gloss.",
+  headlineblock: "Copy on the top half in extremely heavy sans type, photo filling the bottom half, CTA tab flush to the left edge. Blunt, confident, poster-like.",
+  solidstatement: "No photo — one huge statement in heavy sans on a near-black frame, a single word in the accent color, small @handle at the foot. Declarative, manifesto energy.",
+  messagethread: "No photo — a DESIGNED direct-message card: one objection in a white bubble, the answer in an accent bubble. Like chatproof but branded and objection-led rather than screenshot-mimicking.",
+  starquote: "No photo — a testimonial in TYPEWRITER type with square rating marks and the result phrase highlighted, on a cream frame with an accent rule across the top. The scrappy counterpart to testimonial's polished serif card.",
 };
 
 const SYSTEM_PROMPT = `You are a senior art director. You're shown ONE reference ad image. Your job is to figure out which of LUMI's existing ad templates would best recreate its STRUCTURE and FEEL — not its content, since the content will be replaced with a different brand's own offer and copy.

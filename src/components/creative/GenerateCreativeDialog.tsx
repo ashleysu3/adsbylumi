@@ -124,6 +124,7 @@ type CustomTemplate = {
 const BUILT_IN_TEMPLATES = [
   "spotlight", "framed", "split", "overlay", "devicemockup", "testimonial", "statgrid", "checklist", "chatproof", "event", "offer", "bigtype", "collage", "carousel",
   "notesapp", "textthread", "nativecaption", "nativestroke", "nativebubbles",
+  "markeroverlay", "typewriterbars", "headlineblock", "solidstatement", "messagethread", "starquote",
 ] as const;
 
 const BUILT_IN_LABELS: Record<string, string> = {
@@ -146,6 +147,12 @@ const BUILT_IN_LABELS: Record<string, string> = {
   nativecaption: "Photo caption (native)",
   nativestroke: "Bold caption (native)",
   nativebubbles: "Caption bubbles (native)",
+  markeroverlay: "Marker overlay (editorial)",
+  typewriterbars: "Typewriter bars (editorial)",
+  headlineblock: "Bold headline block (editorial)",
+  solidstatement: "Solid statement (editorial)",
+  messagethread: "Message thread (editorial)",
+  starquote: "Star quote (editorial)",
 };
 
 const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
@@ -153,6 +160,7 @@ const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
   overlay: "with-background",
   devicemockup: "with-background", testimonial: "with-background",
   nativecaption: "with-background", nativestroke: "with-background", nativebubbles: "with-background",
+  markeroverlay: "with-background", typewriterbars: "with-background", headlineblock: "with-background",
 };
 
 // Templates that never render a photo — the copy carries the whole design.
@@ -161,6 +169,7 @@ const PHOTO_TREATMENT: Record<string, "cutout" | "with-background"> = {
 const NO_PHOTO_TEMPLATES = new Set([
   "testimonial", "statgrid", "checklist", "chatproof", "event", "offer", "bigtype",
   "notesapp", "textthread",
+  "solidstatement", "messagethread", "starquote",
 ]);
 
 // The external rendering engine only ships with these built-in template names.
@@ -177,6 +186,10 @@ const ENGINE_SUPPORTED_TEMPLATES = new Set([
   // Native phone-screenshot formats (require the lumi-engine native-templates
   // build to be deployed).
   "notesapp", "textthread", "nativecaption", "nativestroke", "nativebubbles",
+  // Editorial family from the design canvas. Same deploy dependency: these
+  // only exist once the lumi-engine PR that adds them is merged (Railway
+  // auto-deploys from that repo's main), so merge the engine side FIRST.
+  "markeroverlay", "typewriterbars", "headlineblock", "solidstatement", "messagethread", "starquote",
 ]);
 const RENDER_FALLBACK: Record<string, string> = {
   statgrid: "spotlight",
@@ -247,8 +260,10 @@ const SLOT_LABELS: Record<string, string> = {
   body: "Note text", contactName: "Contact name", contactLoc: "Contact location",
   line1: "Line 1", line2: "Line 2",
   bubble1: "Bubble 1", bubble2: "Bubble 2", bubble3: "Bubble 3",
+  quotePre: "Quote start", quoteHL: "Highlighted result", quotePost: "Quote end",
 };
-const MULTILINE_KEYS = new Set(["sub", "accent", "msg1", "msg2", "msg3", "msg4", "meta", "body", "line1", "line2", "bubble1", "bubble2", "bubble3"]);
+const MULTILINE_KEYS = new Set(["sub", "accent", "msg1", "msg2", "msg3", "msg4", "meta", "body", "line1", "line2", "bubble1", "bubble2", "bubble3",
+  "quotePre", "quotePost"]);
 
 // Local fallback: mirror the compose-ad mapping so the UI can guess a template
 function mapStyleToTemplate(styleHint?: string, format?: string): string {
@@ -270,6 +285,12 @@ function mapStyleToTemplate(styleHint?: string, format?: string): string {
     nativecaption: "nativecaption", caption: "nativecaption",
     nativestroke: "nativestroke", stroke: "nativestroke", strokecaption: "nativestroke",
     nativebubbles: "nativebubbles", bubbles: "nativebubbles", captionbubbles: "nativebubbles",
+    markeroverlay: "markeroverlay", marker: "markeroverlay", handwritten: "markeroverlay",
+    typewriterbars: "typewriterbars", typewriter: "typewriterbars", pov: "typewriterbars",
+    headlineblock: "headlineblock", boldheadline: "headlineblock", heavytype: "headlineblock",
+    solidstatement: "solidstatement", statement: "solidstatement", manifesto: "solidstatement",
+    messagethread: "messagethread", dm: "messagethread", objection: "messagethread",
+    starquote: "starquote", quote: "starquote", starproof: "starquote",
   };
   return (styleHint && m[styleHint]) || "bigtype";
 }

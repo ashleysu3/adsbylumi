@@ -35,10 +35,17 @@ export const OBJECTIVE_PLAIN: Record<string, string> = {
 
 // A compose-ad option's headline lives in different slots depending on the
 // template it was written for.
+export const SEGMENTED_HEADLINE_TEMPLATES = new Set([
+  "bigtype", "framed", "markeroverlay", "solidstatement",
+]);
+
 export function kitHeadline(template: string | undefined, opt: Record<string, any> | undefined | null): string {
   if (!opt) return "";
-  if (template === "bigtype" || template === "framed") {
+  if (template && SEGMENTED_HEADLINE_TEMPLATES.has(template)) {
     return [opt.headlinePre, opt.headlineHL, opt.headlinePost].filter(Boolean).join(" ").trim();
+  }
+  if (template === "starquote") {
+    return [opt.quotePre, opt.quoteHL, opt.quotePost].filter(Boolean).join(" ").trim();
   }
   return String(opt.headline || opt.quote || "").trim();
 }
