@@ -940,8 +940,6 @@ export default function GuidedOnboarding() {
 
         {/* ============== STEP 2 — Reveal page (streams in live) ============== */}
         {step === 2 && (() => {
-          const colors: string[] = (brand?._kit?.colors as string[] | undefined) || [];
-          const accentColor = pickAccentColor(colors);
           // Voice tone chips — prefer structured, standalone descriptors.
           // analyze-brand-voice actually writes this array as `tone_descriptors`
           // (see supabase/functions/analyze-brand-voice), each entry a short
@@ -989,14 +987,6 @@ export default function GuidedOnboarding() {
           const testimonialTeaser = testimonialItems[TESTIMONIAL_FREE_COUNT] || null;
           const testimonialRemaining = Math.max(0, testimonialItems.length - TESTIMONIAL_FREE_COUNT - (testimonialTeaser ? 1 : 0));
 
-          const previewPhotos = assets.filter((a) => PHOTO_PREVIEW_ROLES.includes((a.role || "").toLowerCase()));
-          const PHOTO_FREE_COUNT = 3;
-          const photosShown = previewPhotos.slice(0, PHOTO_FREE_COUNT);
-          const photoTeaser = previewPhotos[PHOTO_FREE_COUNT] || null;
-          const photoRemaining = Math.max(0, previewPhotos.length - PHOTO_FREE_COUNT - (photoTeaser ? 1 : 0));
-
-          const hasFoundContent = testimonialsShown.length > 0 || photosShown.length > 0;
-          const showFoundSection = hasFoundContent || loadingAssets;
 
           const brandDisplayName = brand?.name && brand.name !== placeholderNameRef.current ? brand.name : "";
           const siteHost = brand?.website_url ? brand.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "") : "";
@@ -1045,11 +1035,9 @@ export default function GuidedOnboarding() {
                   </div>
                   <div className="flex flex-wrap gap-1.5 text-[10px] font-medium">
                     {[
-                      { key: "design", label: "Palette", loading: loadingBrandBasics },
                       { key: "basics", label: "Voice", loading: loadingBrandBasics },
                       { key: "audience", label: "Audience", loading: loadingAudience },
                       { key: "proof", label: "Proof", loading: loadingProof },
-                      { key: "images", label: "Photos", loading: loadingAssets },
                     ].map((s) => {
                       // Reflects whether the NETWORK CALL settled, not whether we chose
                       // to reveal its content — a quality-gated section (e.g. audience,
@@ -1226,41 +1214,6 @@ export default function GuidedOnboarding() {
                       </div>
                     </div>
                   )}
-                  {/* Your palette */}
-                  {revealed.design && (
-                    <div className="animate-fade-in space-y-3">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                        <Palette className="h-4 w-4 text-muted-foreground" /> Your palette
-                      </div>
-                      {colors.length > 0 ? (
-                        <div className="flex flex-wrap gap-3">
-                          {colors.slice(0, 8).map((c, i) => (
-                            <div key={`${c}-${i}`} className="flex flex-col items-center gap-1.5">
-                              <div
-                                className="h-14 w-14 rounded-2xl border shadow-sm"
-                                style={{ backgroundColor: c }}
-                                aria-label={c}
-                              />
-                              <span className="text-[10px] font-mono text-muted-foreground uppercase">{c.replace("#", "")}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">Nothing loud came through — we'll use a neutral palette to start.</p>
-                      )}
-                      {colors.length > 0 && (brand?._kit as any)?.genericPalette && (
-                        <p className="text-xs text-muted-foreground">
-                          That page uses its funnel builder's stock colors — swap in your real brand colors below so the ad looks like you.
-                        </p>
-                      )}
-
-                    </div>
-                  )}
-
-                  {revealed.design && (revealed.basics || revealed.audience) && (
-                    <div className="h-px bg-border" />
-                  )}
-
                   {/* Your voice */}
                   {revealed.basics && (
                     <div className="animate-fade-in space-y-3">
@@ -1344,8 +1297,8 @@ export default function GuidedOnboarding() {
                                   key={i}
                                   className="rounded-2xl p-3 text-sm text-foreground leading-snug border-l-4"
                                   style={{
-                                    borderLeftColor: accentColor || "#ec4899",
-                                    backgroundColor: accentColor ? `${accentColor}14` : "rgba(236,72,153,0.06)",
+                                    borderLeftColor: "#ec4899",
+                                    backgroundColor: "rgba(236,72,153,0.06)",
                                   }}
                                 >
                                   {h}
@@ -1364,7 +1317,7 @@ export default function GuidedOnboarding() {
                     </>
                   )}
 
-                  {(revealed.proof || revealed.images) && showFoundSection && <div className="h-px bg-border" />}
+                  {revealed.proof && showFoundSection && <div className="h-px bg-border" />}
 
                   {/* Found on your site — a real taste (up to 3 photos, up to 2
                       testimonials), never a bare count and never an announced
@@ -1373,39 +1326,11 @@ export default function GuidedOnboarding() {
                       trial to see the rest" reads as a reason to convert, not
                       a wall. Renders nothing at all if there's genuinely
                       nothing found and nothing still in flight. */}
-                  {(revealed.proof || revealed.images) && showFoundSection && (
+                  {revealed.proof && showFoundSection && (
                     <div className="animate-fade-in space-y-4">
                       <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <Sparkles className="h-4 w-4 text-muted-foreground" /> Found on your site
                       </div>
-
-                      {photosShown.length > 0 && (
-                        <div className="grid grid-cols-4 gap-2">
-                          {photosShown.map((a) => (
-                            <div key={a.id} className="aspect-square rounded-xl overflow-hidden bg-muted border">
-                              <img src={a.signedUrl || a.url} alt="" className="w-full h-full object-cover" />
-                            </div>
-                          ))}
-                          {photoTeaser && (
-                            <div className="relative aspect-square rounded-xl overflow-hidden border">
-                              <img
-                                src={photoTeaser.signedUrl || photoTeaser.url}
-                                alt=""
-                                className="w-full h-full object-cover blur-md scale-110"
-                              />
-                              <div className="absolute inset-0 bg-black/55 flex flex-col items-center justify-center gap-1 text-white text-center px-1">
-                                <Lock className="h-3.5 w-3.5" />
-                                {photoRemaining > 0 && (
-                                  <span className="text-[10px] font-semibold leading-tight">+{photoRemaining} more</span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {photosShown.length === 0 && loadingAssets && (
-                        <p className="text-xs text-muted-foreground">Harvesting photos…</p>
-                      )}
 
                       {testimonialsShown.length > 0 && (
                         <div className="grid sm:grid-cols-2 gap-2">
