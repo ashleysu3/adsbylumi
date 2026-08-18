@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireAuthedUser } from "../_shared/check-subscription.ts";
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { assertBrandOfferAccess } from '../_shared/access.ts';
+import { buildBrandVoiceBlock } from '../_shared/brand-voice-block.ts';
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
