@@ -2263,58 +2263,6 @@ function OfferRowEditor({ offer, brand, onSave }: { offer: any; brand?: any; onS
           <Textarea rows={2} value={outcome} onChange={(e) => setOutcome(e.target.value)} placeholder="Before: … After: …" />
         </div>
 
-        {/* Design guide */}
-        <div className="rounded-md border bg-muted/20 p-3 space-y-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 text-sm font-medium"><Palette className="h-4 w-4" /> Design guide</div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {styleOverride ? "Custom colors & fonts for this offer." : "Using your brand's default design guide."}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Label htmlFor={`style-${offer.id}`} className="text-xs">Custom</Label>
-              <Switch id={`style-${offer.id}`} checked={styleOverride} onCheckedChange={onToggleStyle} />
-            </div>
-          </div>
-
-          {!styleOverride ? (
-            <div className="space-y-2">
-              <div className="flex flex-wrap gap-1.5">
-                {brandColors.slice(0, 8).map((c, i) => (
-                  <div key={i} className="h-6 w-6 rounded border" style={{ background: c }} title={c} />
-                ))}
-                {brandColors.length === 0 && <span className="text-xs text-muted-foreground italic">No brand colors set yet.</span>}
-              </div>
-              {brandFonts.length > 0 && (
-                <div className="text-xs text-muted-foreground">Fonts: <span className="font-medium text-foreground">{brandFonts.join(", ")}</span></div>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div>
-                <Label className="text-xs">Offer colors (comma-separated hex)</Label>
-                <Input value={colors} onChange={(e) => setColors(e.target.value)} placeholder="#000000, #FFFFFF" />
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {parsedColors.slice(0, 12).map((c, i) => (
-                    <div key={i} className="h-7 w-7 rounded border" style={{ background: c }} title={c} />
-                  ))}
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs">Offer fonts</Label>
-                <Input value={fonts} onChange={(e) => setFonts(e.target.value)} placeholder="Inter, Playfair Display" />
-              </div>
-              {offer.url && (
-                <Button type="button" size="sm" variant="outline" onClick={pullOfferDesign} disabled={pullingDesign}>
-                  {pullingDesign ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Palette className="h-3 w-3 mr-1" />}
-                  {pullingDesign ? "Pulling design…" : "Re-pull design from this page"}
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* Offer-specific audience psychology */}
         <div className="rounded-md border bg-muted/20 p-3 space-y-3">
           <div>
