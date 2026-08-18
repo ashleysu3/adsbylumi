@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
       .from("brand_assets")
       .select("id,url,source_url,width,height,role")
       .eq("brand_id", brandId);
-    let assets: Array<{ url: string; roleGuess?: string; width?: number; height?: number }>;
+    let assets: Array<{ id?: string; url: string; roleGuess?: string; width?: number; height?: number }>;
     if (repairExisting) {
       assets = (currentAssets || [])
         .filter((row) =>
@@ -150,6 +150,7 @@ Deno.serve(async (req) => {
         )
         .slice(Math.max(0, Number(repairOffset) || 0), Math.max(0, Number(repairOffset) || 0) + 12)
         .map((row) => ({
+          id: row.id,
           url: row.source_url,
           width: row.width,
           height: row.height,
@@ -181,11 +182,13 @@ Deno.serve(async (req) => {
         }
         const sourceUrl = upgradeShowitUrl(a.url);
         const assetKey = showitAssetKey(a.url);
-        const existingAsset = (currentAssets || []).find((row) =>
-          row.source_url === a.url ||
-          row.source_url === sourceUrl ||
-          (assetKey && showitAssetKey(row.source_url || "") === assetKey)
-        );
+        const existingAsset = a.id
+          ? (currentAssets || []).find((row) => row.id === a.id)
+          : (currentAssets || []).find((row) =>
+              row.source_url === a.url ||
+              row.source_url === sourceUrl ||
+              (assetKey && showitAssetKey(row.source_url || "") === assetKey)
+            );
         const alreadyLarge = !!existingAsset &&
           (existingAsset.width || 0) >= 1080 &&
           (existingAsset.height || 0) >= 1080;
