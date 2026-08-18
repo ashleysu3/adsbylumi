@@ -162,11 +162,51 @@ export function BRollTextEditor({
       }
     : style;
 
+  // New text always starts after the last one ends. (Previously every added
+  // block defaulted to 3-6s, so blocks stacked on top of each other and only
+  // the last one was visible in the rendered video.)
   const addOverlay = () => {
+    const lastEnd = overlays.reduce((acc, o) => {
+      const t = parseTimingRange(o.timing || '');
+      return t ? Math.max(acc, t.end) : acc;
+    }, 0);
+    const start = +lastEnd.toFixed(2);
     setOverlays([
       ...overlays,
-      { text: '', timing: '3-6s', type: 'insight' },
+      { text: '', timing: `${start}-${+(start + 3).toFixed(2)}s`, type: 'insight' },
     ]);
+  };
+
+  // Any block whose window overlaps an earlier block — those get painted over
+  // in the final MP4, which is the classic "my first texts disappeared" bug.
+  const overlappingIdx = useMemo(() => {
+    const set = new Set<number>();
+    const ranges = overlays.map(o => parseTimingRange(o.timing || ''));
+    for (let i = 0; i < ranges.length; i++) {
+      for (let j = i + 1; j < ranges.length; j++) {
+        const a = ranges[i];
+        const b = ranges[j];
+        if (a && b && a.start < b.end - 0.01 && b.start < a.end - 0.01) {
+          set.add(i);
+          set.add(j);
+        }
+      }
+    }
+    return set;
+  }, [overlays]);
+
+  // Lay every block out back-to-back, keeping each one's current length.
+  const restackTimings = () => {
+    let cursor = 0;
+    setOverlays(
+      overlays.map(o => {
+        const t = parseTimingRange(o.timing || '');
+        const dur = t ? Math.max(0.5, t.end - t.start) : 3;
+        const start = +cursor.toFixed(2);
+        cursor = start + dur;
+        return { ...o, timing: `${start}-${+cursor.toFixed(2)}s` };
+      }),
+    );
   };
   const updateOverlay = (i: number, patch: Partial<TextOverlay>) => {
     setOverlays(overlays.map((o, idx) => (idx === i ? { ...o, ...patch } : o)));
@@ -319,13 +359,27 @@ export function BRollTextEditor({
               </Button>
             </div>
 
+            {overlappingIdx.size > 0 && (
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-[12px] space-y-2">
+                <p>
+                  Some of your text blocks share the same seconds, so they'd stack on top of each
+                  other and only the last one would show in the video.
+                </p>
+                <Button size="sm" variant="outline" onClick={restackTimings}>
+                  Space them out for me
+                </Button>
+              </div>
+            )}
+
             {overlays.map((o, i) => {
               const timing = parseTimingRange(o.timing || '');
               const timingInvalid = (o.timing || '').length > 0 && !timing;
               return (
                 <div
                   key={i}
-                  className="p-3 border rounded-xl bg-muted/20 space-y-2"
+                  className={`p-3 border rounded-xl bg-muted/20 space-y-2 ${
+                    overlappingIdx.has(i) ? 'border-amber-500/60' : ''
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <Label className="text-xs text-muted-foreground uppercase font-semibold tracking-wide">
