@@ -984,6 +984,7 @@ export default function GuidedOnboarding() {
           const testimonialItems = getTestimonialQuotes(brand?.social_proof);
           const TESTIMONIAL_FREE_COUNT = 2;
           const testimonialsShown = testimonialItems.slice(0, TESTIMONIAL_FREE_COUNT);
+          const showFoundSection = testimonialsShown.length > 0;
           const testimonialTeaser = testimonialItems[TESTIMONIAL_FREE_COUNT] || null;
           const testimonialRemaining = Math.max(0, testimonialItems.length - TESTIMONIAL_FREE_COUNT - (testimonialTeaser ? 1 : 0));
 
@@ -1360,7 +1361,7 @@ export default function GuidedOnboarding() {
                         </div>
                       )}
 
-                      {(photoTeaser || testimonialTeaser) && (
+                      {testimonialTeaser && (
                         <p className="text-[11px] text-muted-foreground text-center pt-1">
                           Unlock everything we found when you sign up — 50% off your first month.
                         </p>
