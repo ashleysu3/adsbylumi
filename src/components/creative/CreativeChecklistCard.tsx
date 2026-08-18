@@ -907,14 +907,8 @@ export function CreativeChecklistCard({
                     </div>
                   )}
 
-                  {/* B-Roll Source Toggle + Preview */}
+                  {/* Upload the b-roll video you filmed */}
                   {(() => {
-                    const brollClips: any[] = (brand as any)?.broll_library || [];
-                    const oStyle: OverlayStyle = (brand as any)?.overlay_style || DEFAULT_OVERLAY_STYLE;
-                    const tOverlays: TextOverlay[] = (item.text_overlays || []).map((o: any) =>
-                      typeof o === "string" ? { text: o } : o
-                    );
-
                     const handleBrollFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
@@ -950,262 +944,61 @@ export function CreativeChecklistCard({
 
                     return (
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h5 className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
-                            <Film className="h-3.5 w-3.5" />
-                            B-Roll Creative
-                          </h5>
-                        </div>
+                        <h5 className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
+                          <Film className="h-3.5 w-3.5" />
+                          Your B-Roll Video
+                        </h5>
+                        <p className="text-xs text-muted-foreground">
+                          Film the shots above, add the text overlays in your editing app, then upload the finished 9:16 video here.
+                        </p>
 
-                        {/* Source toggle */}
-                        <div className="flex gap-1.5">
-                          <Button
-                            variant={brollSource === "lumi" ? "default" : "outline"}
-                            size="sm"
-                            className="h-7 text-[11px] flex-1"
-                            onClick={() => {
-                              // "lumi" is already the default brollSource, so re-clicking
-                              // it while already selected is a same-value setState — React
-                              // bails the re-render. The clips-uploaded toast below only
-                              // covered the empty-library case, so a click with clips
-                              // already present still looked completely dead. Always give
-                              // the click visible feedback, regardless of clip state.
-                              setBrollSource("lumi");
-                              if (brollClips.length === 0) {
-                                // Tell them AND get them there in one click — a text-only
-                                // message still leaves the user to go find "My Brand" > "Style"
-                                // on their own.
-                                toast.info("You don't have b-roll clips yet — add a few right here.", {
-                                  action: {
-                                    label: "Upload b-roll",
-                                    onClick: () => setBrollFixOpen(true),
-                                  },
-                                });
-                              } else {
-                                toast.success(`Using your uploaded b-roll — pick a clip below and hit "Make my video".`);
-                              }
-                            }}
-                          >
-                            <Sparkles className="h-3 w-3 mr-1" />
-                            Make it for me
-                          </Button>
-                          <Button
-                            variant={brollSource === "upload" ? "default" : "outline"}
-                            size="sm"
-                            className="h-7 text-[11px] flex-1"
-                            onClick={() => setBrollSource("upload")}
-                          >
-                            <Upload className="h-3 w-3 mr-1" />
-                            Upload My Own
-                          </Button>
-                        </div>
-
-                        {brollSource === "lumi" ? (
-                          <>
-                            {brollClips.length > 0 ? (
-                              <>
-                                <div className="flex items-center justify-between gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 text-[11px] gap-1"
-                                    disabled={rendering}
-                                    onClick={() => {
-                                      const best = pickBestBroll(tOverlays, brollClips);
-                                      if (best) {
-                                        setSelectedBrollClipId(best.id);
-                                        toast.success(`Lumi picked "${brollClips.find((c: any) => c.id === best.id)?.file_name}" · ${best.reason}`);
-                                      }
-                                    }}
-                                  >
-                                    <Wand2 className="h-3 w-3" />
-                                    Let Lumi pick
-                                  </Button>
-                                  <Select
-                                    value={selectedBrollClipId || brollClips[0]?.id}
-                                    onValueChange={setSelectedBrollClipId}
-                                    disabled={rendering}
-                                  >
-                                    <SelectTrigger className="w-[140px] h-7 text-[11px]">
-                                      <SelectValue placeholder="Swap clip" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {brollClips.map((c: any) => (
-                                        <SelectItem key={c.id} value={c.id} className="text-xs">
-                                          {c.file_name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                {(() => {
-                                  const clipId = selectedBrollClipId || brollClips[0]?.id;
-                                  const clip = brollClips.find((c: any) => c.id === clipId);
-                                  if (!clip) return null;
-                                  return (
-                                    <>
-                                      <div className="mx-auto w-[180px]">
-                                        {tOverlays.length > 0 ? (
-                                          <VideoTextPreview
-                                            videoUrl={clip.file_url}
-                                            overlays={tOverlays}
-                                            style={oStyle}
-                                            compact
-                                            editable
-                                            onOverlayPositionChange={(idx, xy) => {
-                                              const updated = [...(item.text_overlays || [])];
-                                              updated[idx] = { ...updated[idx], xy };
-                                              onOverlaysChange?.(updated as TextOverlay[]);
-                                            }}
-                                            onOverlayResize={(idx, patch) => {
-                                              const updated = [...(item.text_overlays || [])];
-                                              updated[idx] = { ...updated[idx], ...patch };
-                                              onOverlaysChange?.(updated as TextOverlay[]);
-                                            }}
-                                            loopVideo={false}
-                                            trimEnd={getLastOverlayEnd(tOverlays)}
-                                          />
-                                        ) : (
-                                          <PlayableVideo
-                                            src={clip.file_url}
-                                            className="w-full aspect-[9/16] object-contain rounded-lg bg-black"
-                                            controls muted playsInline preload="metadata"
-                                          />
-                                        )}
-                                      </div>
-                                      {tOverlays.length > 0 && (
-                                        <Button
-                                          variant="lumi"
-                                          size="sm"
-                                          className="w-full gap-1.5 h-8 text-[11px]"
-                                          onClick={() => {
-                                            onMakeVideo?.({
-                                              videoUrl: clip.file_url,
-                                              sourceClipName: clip.file_name,
-                                              overlays: tOverlays,
-                                              style: oStyle as unknown as RenderStyle,
-                                               trimStart: 0,
-                                               trimEnd: getLastOverlayEnd(tOverlays),
-                                            });
-                                          }}
-                                        >
-                                          <Film className="h-3 w-3" />
-                                          Make my video
-                                        </Button>
-                                      )}
-                                    </>
-                                  );
-                                })()}
-                              </>
-                            ) : (
-                              <Alert>
-                                <Info className="h-4 w-4" />
-                                <AlertDescription className="text-xs flex items-center justify-between gap-2">
-                                  <span>Upload b-roll clips to see Lumi-matched previews here.</span>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-6 text-[11px] shrink-0"
-                                    onClick={() => setBrollFixOpen(true)}
-                                  >
-                                    Upload b-roll
-                                  </Button>
-                                </AlertDescription>
-                              </Alert>
-                            )}
-                          </>
+                        {customBrollUrl ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground truncate max-w-[180px]">
+                                {customBrollName}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 text-[10px]"
+                                onClick={() => { setCustomBrollUrl(null); setCustomBrollName(null); }}
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                Remove
+                              </Button>
+                            </div>
+                            <div className="mx-auto w-[180px]">
+                              <video
+                                src={customBrollUrl}
+                                className="w-full aspect-[9/16] object-contain rounded-lg bg-black"
+                                controls muted playsInline preload="metadata"
+                              />
+                            </div>
+                          </div>
                         ) : (
-                          <>
-                            {customBrollUrl ? (
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs text-muted-foreground truncate max-w-[180px]">
-                                    {customBrollName}
-                                  </span>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 text-[10px]"
-                                    onClick={() => { setCustomBrollUrl(null); setCustomBrollName(null); }}
-                                  >
-                                    <Trash2 className="h-3 w-3 mr-1" />
-                                    Remove
-                                  </Button>
-                                </div>
-                                <div className="mx-auto w-[180px]">
-                                  {tOverlays.length > 0 ? (
-                                    <VideoTextPreview
-                                      videoUrl={customBrollUrl}
-                                      overlays={tOverlays}
-                                      style={oStyle}
-                                      compact
-                                      editable
-                                      onOverlayPositionChange={(idx, xy) => {
-                                        const updated = [...(item.text_overlays || [])];
-                                        updated[idx] = { ...updated[idx], xy };
-                                        onOverlaysChange?.(updated as TextOverlay[]);
-                                      }}
-                                      onOverlayResize={(idx, patch) => {
-                                        const updated = [...(item.text_overlays || [])];
-                                        updated[idx] = { ...updated[idx], ...patch };
-                                        onOverlaysChange?.(updated as TextOverlay[]);
-                                      }}
-                                      loopVideo={false}
-                                      trimEnd={getLastOverlayEnd(tOverlays)}
-                                    />
-                                  ) : (
-                                    <video
-                                      src={customBrollUrl}
-                                      className="w-full aspect-[9/16] object-contain rounded-lg bg-black"
-                                      controls muted playsInline preload="metadata"
-                                    />
-                                  )}
-                                </div>
-                                {tOverlays.length > 0 && (
-                                  <Button
-                                    variant="lumi"
-                                    size="sm"
-                                    className="w-full gap-1.5 h-8 text-[11px]"
-                                    onClick={() => {
-                                      onMakeVideo?.({
-                                        videoUrl: customBrollUrl,
-                                        sourceClipName: customBrollName || undefined,
-                                        overlays: tOverlays,
-                                        style: oStyle as unknown as RenderStyle,
-                                         trimStart: 0,
-                                         trimEnd: getLastOverlayEnd(tOverlays),
-                                      });
-                                    }}
-                                  >
-                                    <Film className="h-3 w-3" />
-                                    Make my video
-                                  </Button>
-                                )}
-                              </div>
+                          <label className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
+                            {uploadingBroll ? (
+                              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                             ) : (
-                              <label className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
-                                {uploadingBroll ? (
-                                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                                ) : (
-                                  <>
-                                    <Upload className="h-5 w-5 text-muted-foreground" />
-                                    <span className="text-xs text-muted-foreground">Upload 9:16 video (max 150MB)</span>
-                                  </>
-                                )}
-                                <input
-                                  type="file"
-                                  accept="video/*"
-                                  className="hidden"
-                                  onChange={handleBrollFileUpload}
-                                  disabled={uploadingBroll}
-                                />
-                              </label>
+                              <>
+                                <Upload className="h-5 w-5 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">Upload 9:16 video (max 150MB)</span>
+                              </>
                             )}
-                          </>
+                            <input
+                              type="file"
+                              accept="video/*"
+                              className="hidden"
+                              onChange={handleBrollFileUpload}
+                              disabled={uploadingBroll}
+                            />
+                          </label>
                         )}
                       </div>
                     );
                   })()}
+
 
                   {/* Why This Works - Psychology for B-Roll */}
                   {(item.psychology_trigger || item.why_this_works) && (
