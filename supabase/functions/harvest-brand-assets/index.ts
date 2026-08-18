@@ -43,6 +43,33 @@ function storagePathFromUrl(raw: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+function imageDimensions(buf: Uint8Array, contentType: string): { width: number; height: number } | null {
+  // PNG stores width/height as big-endian uint32 values in the IHDR chunk.
+  if (contentType.includes("png") && buf.length >= 24) {
+    const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+    return { width: view.getUint32(16), height: view.getUint32(20) };
+  }
+  // Walk JPEG markers until a Start Of Frame marker supplies dimensions.
+  if ((contentType.includes("jpeg") || contentType.includes("jpg")) && buf.length >= 4) {
+    let offset = 2;
+    while (offset + 9 < buf.length) {
+      if (buf[offset] !== 0xff) { offset++; continue; }
+      const marker = buf[offset + 1];
+      if (marker === 0xd8 || marker === 0xd9) { offset += 2; continue; }
+      const length = (buf[offset + 2] << 8) + buf[offset + 3];
+      if (length < 2 || offset + length + 2 > buf.length) break;
+      if ([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(marker)) {
+        return {
+          height: (buf[offset + 5] << 8) + buf[offset + 6],
+          width: (buf[offset + 7] << 8) + buf[offset + 8],
+        };
+      }
+      offset += length + 2;
+    }
+  }
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
@@ -167,12 +194,7 @@ Deno.serve(async (req) => {
           continue;
         }
         const { data: pub } = admin.storage.from("brand-assets").getPublicUrl(filename);
-        const dimensions = sourceUrl !== a.url && a.width && a.height
-          ? {
-              width: 1600,
-              height: Math.max(1, Math.round((a.height / a.width) * 1600)),
-            }
-          : { width: a.width, height: a.height };
+        const dimensions = imageDimensions(buf, ct) || { width: a.width, height: a.height };
         const payload = {
           user_id: user.id,
           brand_id: brandId,
@@ -185,7 +207,7 @@ Deno.serve(async (req) => {
           ? await admin.from("brand_assets").update(payload).eq("id", existingAsset.id)
           : await admin.from("brand_assets").insert(payload);
         if (insertError) {
-          await admin.storage.from("brand-assets").remove([filename]);
+          if (!existingAsset) await admin.storage.from("brand-assets").remove([filename]);
           skipped++;
           continue;
         }
