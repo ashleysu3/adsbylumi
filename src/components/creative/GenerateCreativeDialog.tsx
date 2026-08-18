@@ -1104,6 +1104,32 @@ export function GenerateCreativeDialog() {
     [pickerImages, selectedPhotoId],
   );
 
+  // The URL actually painted into the ad. Cutouts are low-resolution by nature,
+  // so they're only used when the user asked for a background-removed subject.
+  const selectedPhotoUrl = useMemo(() => {
+    if (!selectedPhoto) return undefined;
+    if (removeBackground && selectedPhoto.cutoutUrl) return selectedPhoto.cutoutUrl;
+    return selectedPhoto.url;
+  }, [selectedPhoto, removeBackground]);
+
+  // Warn before export when the source image can't fill a 1080px ad frame —
+  // no capture pipeline can invent detail that isn't in the file.
+  const [photoPixels, setPhotoPixels] = useState<{ w: number; h: number } | null>(null);
+  useEffect(() => {
+    setPhotoPixels(null);
+    if (!selectedPhotoUrl) return;
+    let dead = false;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      if (!dead) setPhotoPixels({ w: img.naturalWidth, h: img.naturalHeight });
+    };
+    img.src = selectedPhotoUrl;
+    return () => { dead = true; };
+  }, [selectedPhotoUrl]);
+  const photoIsLowRes = !!photoPixels && Math.min(photoPixels.w, photoPixels.h) < 1080;
+
+
   const setDefaultPhoto = async (photoId: string) => {
     const brandId = activeBrand?.id;
     if (!brandId) return;
