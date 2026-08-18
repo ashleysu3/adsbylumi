@@ -427,8 +427,55 @@ serve(async (req) => {
       return json(400, { error: "url is required" });
     }
 
-    // Fetch site meta (title, og:site_name, description) in parallel with branding
-    const [fc, meta] = await Promise.all([firecrawlBranding(url), fetchSiteMeta(url)]);
+    // Funnel/page-builder URL → also scrape the brand's own domain, whose
+    // palette we prefer over the builder's template colors.
+    const brandDomain = brandDomainFromFunnelUrl(url);
+    const [fcPage, meta, fcBrandDomain] = await Promise.all([
+      firecrawlBranding(url),
+      fetchSiteMeta(url),
+      brandDomain
+        ? firecrawlBranding(brandDomain).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+    const paletteIsBuilderDefault = (r: typeof fcPage) => {
+      if (!r || !("suggested" in r)) return false;
+      const c = r.suggested.colors;
+      const list = [c?.accent, ...(c?.pops ?? [])].filter(Boolean) as string[];
+      return list.length > 0 && list.every((h) => BUILDER_DEFAULT_COLORS.has(h.toLowerCase()));
+    };
+
+    let fc = fcPage;
+    if (
+      fcBrandDomain && "suggested" in fcBrandDomain &&
+      (paletteIsBuilderDefault(fcPage) || !fcPage || !("suggested" in fcPage))
+    ) {
+      console.log("[extract-brand] using brand-domain palette from", brandDomain);
+      fc = fcBrandDomain;
+    } else if (fcBrandDomain && "suggested" in fcBrandDomain && fcPage && "suggested" in fcPage) {
+      // Keep the funnel page's palette but strip builder defaults, backfilling
+      // from the brand domain so the ad still reads as theirs.
+      const pagePops = (fcPage.suggested.colors?.pops ?? []).filter(
+        (h) => !BUILDER_DEFAULT_COLORS.has(h.toLowerCase()),
+      );
+      const pageAccent = fcPage.suggested.colors?.accent;
+      const accentIsDefault = !!pageAccent && BUILDER_DEFAULT_COLORS.has(pageAccent.toLowerCase());
+      if (accentIsDefault || pagePops.length !== (fcPage.suggested.colors?.pops ?? []).length) {
+        const bd = fcBrandDomain.suggested.colors;
+        fc = {
+          ...fcPage,
+          suggested: {
+            ...fcPage.suggested,
+            colors: {
+              ...fcPage.suggested.colors,
+              accent: accentIsDefault ? (bd?.accent ?? pagePops[0]) : pageAccent,
+              pops: Array.from(new Set([...pagePops, ...(bd?.pops ?? [])])).slice(0, 4),
+            },
+          },
+        };
+      }
+    }
+
 
     // Firecrawl detected a bot-protection wall → return a clear signal FAST so the
     // frontend can trigger its fallback flow (OG meta, Instagram, quick questions)
