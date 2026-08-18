@@ -578,9 +578,11 @@ export default function GuidedOnboarding() {
               colors: kitPatch.colors || prev?._kit?.colors,
               fonts: kitPatch.fonts || prev?._kit?.fonts,
               logo_url: kitPatch.logo_url || prev?._kit?.logo_url,
+              genericPalette: !!d.genericPalette,
             },
           }));
         }
+
       }).catch(() => {}).finally(() => { clearBrandCap(); setLoadingBrandBasics(false); });
 
       // Fire all extractors IN PARALLEL — total wait ≈ slowest one, not the sum.
