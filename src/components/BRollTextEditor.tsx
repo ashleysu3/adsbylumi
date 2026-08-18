@@ -377,7 +377,9 @@ export function BRollTextEditor({
               return (
                 <div
                   key={i}
-                  className="p-3 border rounded-xl bg-muted/20 space-y-2"
+                  className={`p-3 border rounded-xl bg-muted/20 space-y-2 ${
+                    overlappingIdx.has(i) ? 'border-amber-500/60' : ''
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <Label className="text-xs text-muted-foreground uppercase font-semibold tracking-wide">
