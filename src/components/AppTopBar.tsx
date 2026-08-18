@@ -37,7 +37,6 @@ import { LadybugIcon } from "@/components/LadybugIcon";
 import { IntentBar } from "@/components/IntentBar";
 import { BugReportModal } from "@/components/BugReportModal";
 import { BrandSelector } from "@/components/BrandSelector";
-import { RenderQueueBell } from "@/components/RenderQueueBell";
 import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -274,7 +273,6 @@ export function AppTopBar({ isAdmin }: AppTopBarProps) {
           </div>
 
           <div className="shrink-0 flex items-center gap-1">
-            <RenderQueueBell />
 
 
             {/* Quiet: account, brand, agency, support, admin */}

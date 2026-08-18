@@ -3,7 +3,6 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Wrench, Lock } from "lucide-react";
 import { TemplatesTab } from "@/components/creative-toolkit/TemplatesTab";
-import { BRollTab } from "@/components/creative-toolkit/BRollTab";
 import { MusicToolsTab } from "@/components/creative-toolkit/MusicToolsTab";
 
 import { Badge } from "@/components/ui/badge";
@@ -55,18 +54,11 @@ export default function CreativeToolkit({ embedded = false }: { embedded?: boole
         <Tabs defaultValue="templates" className="w-full">
           <TabsList className="w-full sm:w-auto overflow-x-auto">
             <TabsTrigger value="templates">Templates</TabsTrigger>
-            <TabsTrigger value="broll">B-Roll</TabsTrigger>
             <TabsTrigger value="music-tools">Music & Tools</TabsTrigger>
           </TabsList>
 
           <TabsContent value="templates">
             <TemplatesTab templates={config?.templates} />
-          </TabsContent>
-          <TabsContent value="broll">
-            <BRollTab
-              brollSources={config?.broll_sources}
-              shotLists={config?.shot_lists}
-            />
           </TabsContent>
           <TabsContent value="music-tools">
             <MusicToolsTab

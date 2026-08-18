@@ -10,7 +10,7 @@ import {
   Video, Film, Image, Eye, FolderOpen, Maximize2,
   Sparkles, Loader2, Filter, Library, Info, Download,
   Archive, Trash2, ChevronDown, Star, Printer, CheckSquare, Square, XCircle,
-  Share2, Repeat, FastForward, MoreHorizontal, FileDown
+  Share2, Repeat, MoreHorizontal, FileDown
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -26,9 +26,6 @@ import { ShareWithClientDialog } from "./ShareWithClientDialog";
 import { ClientActivityFeed } from "./ClientActivityFeed";
 import { ProductionChecklistWizard } from "./ProductionChecklistWizard";
 import { format } from "date-fns";
-import { useRenderQueue, type AttachedRenderInfo } from "@/contexts/RenderQueueContext";
-import type { RenderStyle } from "@/lib/ffmpeg-renderer";
-import type { TextOverlay } from "@/components/VideoTextPreview";
 
 interface RankedItem extends ProductionItem {
   rank: number;
@@ -55,27 +52,6 @@ interface ProductionManagerProps {
   onOpenCreativeBrief?: () => void;
   brand?: any;
 
-}
-
-function parseOverlayTiming(raw?: string): { start: number; end: number } | null {
-  const m = (raw || "").match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*s?/i);
-  if (!m) return null;
-  const start = parseFloat(m[1]);
-  const end = parseFloat(m[2]);
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
-  return { start, end };
-}
-
-function readVideoDuration(videoUrl: string): Promise<number> {
-  return new Promise((resolve) => {
-    const video = document.createElement("video");
-    video.preload = "metadata";
-    video.muted = true;
-    video.crossOrigin = "anonymous";
-    video.src = videoUrl;
-    video.onloadedmetadata = () => resolve(Number.isFinite(video.duration) ? video.duration : 0);
-    video.onerror = () => resolve(0);
-  });
 }
 
 export function ProductionManager({
@@ -119,103 +95,10 @@ export function ProductionManager({
   );
   const [movingToLibrary, setMovingToLibrary] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
-  const [namedLibraries, setNamedLibraries] = useState<Array<{ id: string; name: string; clips: any[] }>>([]);
-  const [selectedLibraryId, setSelectedLibraryId] = useState<string | null>(
-    (workspace as any)?.broll_library_id || null
-  );
-  const [pendingShortVideoRender, setPendingShortVideoRender] = useState<{
-    item: ProductionItem;
-    videoUrl: string;
-    sourceClipName?: string;
-    overlays: TextOverlay[];
-    style: RenderStyle;
-    trimStart?: number;
-    trimEnd?: number;
-    videoDuration: number;
-    maxOverlayEnd: number;
-  } | null>(null);
   const [pushingToAd, setPushingToAd] = useState(false);
   const [pushConfirmOpen, setPushConfirmOpen] = useState(false);
 
 
-  // Load named b-roll libraries for this brand
-  useEffect(() => {
-    const bId = brandId || (brand as any)?.id;
-    if (!bId) return;
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from("broll_libraries")
-        .select("id, name, clips")
-        .eq("brand_id", bId)
-        .order("created_at", { ascending: true });
-      if (cancelled || error) return;
-      setNamedLibraries(
-        (data || []).map((r: any) => ({
-          id: r.id,
-          name: r.name,
-          clips: Array.isArray(r.clips) ? r.clips : [],
-        }))
-      );
-    })();
-    return () => { cancelled = true; };
-  }, [brandId, brand]);
-
-  // Sync local state if workspace prop changes
-  useEffect(() => {
-    setSelectedLibraryId((workspace as any)?.broll_library_id || null);
-  }, [(workspace as any)?.broll_library_id]);
-
-  const handleSelectLibrary = async (value: string) => {
-    const newVal = value === "__brand__" ? null : value;
-    setSelectedLibraryId(newVal);
-    const wsId = (workspace as any)?.id;
-    if (!wsId) return;
-    const { error } = await supabase
-      .from("campaign_workspaces")
-      .update({ broll_library_id: newVal })
-      .eq("id", wsId);
-    if (error) {
-      toast.error("Failed to save library selection");
-      return;
-    }
-    onUpdateWorkspace?.({ broll_library_id: newVal });
-    const libName = newVal
-      ? namedLibraries.find((l) => l.id === newVal)?.name
-      : "Brand-wide library";
-    toast.success(`B-roll source: ${libName || "Brand-wide library"}`);
-  };
-
-  // Build merged b-roll clip list: brand-wide + selected named library.
-  const mergedBrand = (() => {
-    if (!brand) return brand;
-    const brandClips: any[] = Array.isArray((brand as any).broll_library)
-      ? (brand as any).broll_library
-      : [];
-    const extra = selectedLibraryId
-      ? namedLibraries.find((l) => l.id === selectedLibraryId)?.clips || []
-      : [];
-    const dedupe = (clips: any[]) => {
-      const seen = new Set<string>();
-      return clips.filter((c: any) => {
-        if (!c?.id) return true;
-        if (seen.has(c.id)) return false;
-        seen.add(c.id);
-        return true;
-      });
-    };
-    // Dedupe by id, keep extras first so library-specific clips appear first
-    let merged = dedupe([...extra, ...brandClips]);
-    // Fallback: if the scoped source (brand-wide + selected library) is empty
-    // but the brand DOES have clips in other named libraries, surface those so
-    // a user who uploaded into a library that isn't the workspace's selected
-    // source still sees their clips — otherwise the generator shows an empty
-    // "upload b-roll" state even though they already uploaded.
-    if (merged.length === 0 && namedLibraries.length > 0) {
-      merged = dedupe(namedLibraries.flatMap((l) => l.clips || []));
-    }
-    return { ...brand, broll_library: merged };
-  })();
   const [previousOpen, setPreviousOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -1253,157 +1136,6 @@ export function ProductionManager({
   };
 
 
-  const { enqueue } = useRenderQueue();
-
-  // Patch #17: queue a "Make my video" render from a creative card. Checks for
-  // an existing uploaded asset on this concept and confirms replacement
-  // before starting; on completion, auto-attaches the rendered MP4 to the
-  // concept so the user doesn't have to download + re-upload.
-  const queueMakeVideo = (args: {
-    item: ProductionItem;
-    videoUrl: string;
-    sourceClipName?: string;
-    overlays: TextOverlay[];
-    style: RenderStyle;
-    trimStart?: number;
-    trimEnd?: number;
-  }, fitMode: 'loop' | 'speed' | null = null) => {
-    const maxOverlayEnd = args.overlays.reduce((max, overlay) => {
-      const timing = parseOverlayTiming(overlay.timing);
-      return timing ? Math.max(max, timing.end) : max;
-    }, 0);
-    const duration = pendingShortVideoRender?.videoUrl === args.videoUrl
-      ? pendingShortVideoRender.videoDuration
-      : 0;
-    const speedFactor = fitMode === 'speed' && duration > 0 && maxOverlayEnd > 0
-      ? duration / maxOverlayEnd
-      : 1;
-    const specs = args.overlays
-      .map(o => {
-        const timing = parseOverlayTiming(o.timing);
-        if (!timing) return null;
-        return {
-          text: o.text,
-          startSeconds: Number((timing.start * speedFactor).toFixed(2)),
-          endSeconds: Number((timing.end * speedFactor).toFixed(2)),
-          type: o.type,
-          xy: o.xy,
-          width: (o as any).width,
-          scale: (o as any).scale,
-        };
-      })
-      .filter((x): x is NonNullable<typeof x> => !!x);
-
-    if (specs.length === 0) {
-      toast.error('No overlays with valid timing — edit the timings and try again.');
-      return;
-    }
-
-    const existing = uploadedAssets.find((a: any) => a.linked_concept_id === args.item.id);
-    if (existing) {
-      const label = (args.item as any).hook || (args.item as any).angle_name || 'this creative';
-      const ok = window.confirm(
-        `"${label}" already has a video uploaded. Replace it with the new rendered version when it's done?`
-      );
-      if (!ok) return;
-    }
-
-    setPendingShortVideoRender(null);
-
-    enqueue({
-      title: `${(args.item as any).angle_name || 'Creative'} — ${args.sourceClipName || 'b-roll'}`,
-      sourceClipName: args.sourceClipName,
-      videoUrl: args.videoUrl,
-      overlays: specs,
-      style: args.style,
-      loopVideo: fitMode === 'loop',
-      trimStart: args.trimStart,
-      trimEnd: args.trimEnd,
-      context: brandId
-        ? { brandId, workspaceId: workspace?.id, creativeItemId: args.item.id }
-        : { creativeItemId: args.item.id },
-      onAttached: async (info: AttachedRenderInfo) => {
-        const newAsset = {
-          id: `asset_${Date.now()}`,
-          file_name: info.filename,
-          file_type: 'video/mp4',
-          file_size: 0,
-          file_url: info.url,
-          storage_path: info.storagePath,
-          uploaded_at: new Date().toISOString(),
-          linked_concept_id: args.item.id,
-          linked_concept_title: (args.item as any).hook || null,
-        };
-
-        // Read CURRENT user_uploaded_assets fresh from the DB. Renders take
-        // ~2 minutes; during that window the user may have uploaded other
-        // assets (manually or via another auto-attach). Using the closure-
-        // captured `uploadedAssets` would silently overwrite those changes.
-        let current: any[] = uploadedAssets;
-        if (workspace?.id) {
-          const { data: row, error: readErr } = await supabase
-            .from('campaign_workspaces')
-            .select('user_uploaded_assets')
-            .eq('id', workspace.id)
-            .single();
-          if (readErr) {
-            console.error('Failed to re-read user_uploaded_assets, falling back to local state:', readErr);
-          } else {
-            current = (row?.user_uploaded_assets as any[]) || [];
-          }
-        }
-
-        const filtered = current.filter(
-          (a: any) => a.linked_concept_id !== args.item.id,
-        );
-        const updated = [...filtered, newAsset];
-
-        if (workspace?.id) {
-          await supabase
-            .from('campaign_workspaces')
-            .update({
-              user_uploaded_assets: updated,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', workspace.id);
-        }
-        onUpdateWorkspace({ user_uploaded_assets: updated });
-      },
-    });
-  };
-
-  const handleMakeVideo = async (args: {
-    item: ProductionItem;
-    videoUrl: string;
-    sourceClipName?: string;
-    overlays: TextOverlay[];
-    style: RenderStyle;
-    trimStart?: number;
-    trimEnd?: number;
-  }) => {
-    const maxOverlayEnd = args.overlays.reduce((max, overlay) => {
-      const timing = parseOverlayTiming(overlay.timing);
-      return timing ? Math.max(max, timing.end) : max;
-    }, 0);
-
-    if (maxOverlayEnd === 0) {
-      toast.error('No overlays with valid timing — edit the timings and try again.');
-      return;
-    }
-
-    const videoDuration = await readVideoDuration(args.videoUrl);
-    if (videoDuration > 0 && maxOverlayEnd > videoDuration + 0.05) {
-      setPendingShortVideoRender({ ...args, videoDuration, maxOverlayEnd });
-      return;
-    }
-
-    queueMakeVideo({
-      ...args,
-      trimStart: args.trimStart ?? 0,
-      trimEnd: args.trimEnd ?? (videoDuration > maxOverlayEnd + 0.05 ? maxOverlayEnd : undefined),
-    });
-  };
-
   if (productionItems.length === 0) {
     return (
       <Card>
@@ -1773,8 +1505,7 @@ export function ProductionManager({
                           angleCopy={getCopyForItem(item)}
                           onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                           onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
-                          onMakeVideo={(args) => handleMakeVideo({ ...args, item })}
-                          brand={mergedBrand}
+                          brand={brand}
                         />
                       );
                     })}
@@ -1815,8 +1546,7 @@ export function ProductionManager({
                               angleCopy={getCopyForItem(item)}
                               onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                               onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
-                              onMakeVideo={(args) => handleMakeVideo({ ...args, item })}
-                              brand={mergedBrand}
+                                  brand={brand}
                             />
                           );
                         })}
@@ -1875,8 +1605,7 @@ export function ProductionManager({
                                   angleCopy={getCopyForItem(item)}
                                   onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                                   onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
-                                  onMakeVideo={(args) => handleMakeVideo({ ...args, item })}
-                                  brand={mergedBrand}
+                                          brand={brand}
                                 />
                               ))}
                             </div>
@@ -2123,46 +1852,6 @@ export function ProductionManager({
         </DialogContent>
       </Dialog>
 
-
-      <Dialog open={!!pendingShortVideoRender} onOpenChange={(open) => !open && setPendingShortVideoRender(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Choose how to fit your text</DialogTitle>
-            <DialogDescription>
-              This video is {pendingShortVideoRender?.videoDuration.toFixed(1)}s, but the final text ends at {pendingShortVideoRender?.maxOverlayEnd.toFixed(1)}s. Pick one option so every text block shows.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-2 sm:grid-cols-3">
-            <Button
-              variant="outline"
-              className="h-auto flex-col gap-2 py-3"
-              onClick={() => pendingShortVideoRender && queueMakeVideo(pendingShortVideoRender, 'loop')}
-            >
-              <Repeat className="h-4 w-4" />
-              Loop video
-            </Button>
-            <Button
-              variant="outline"
-              className="h-auto flex-col gap-2 py-3"
-              onClick={() => pendingShortVideoRender && queueMakeVideo(pendingShortVideoRender, 'speed')}
-            >
-              <FastForward className="h-4 w-4" />
-              Speed up text
-            </Button>
-            <Button
-              variant="outline"
-              className="h-auto flex-col gap-2 py-3"
-              onClick={() => {
-                setPendingShortVideoRender(null);
-                toast.info('Choose a longer b-roll clip, then make the video again.');
-              }}
-            >
-              <Upload className="h-4 w-4" />
-              Replace video
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Export Checklist Modal */}
       <ExportChecklistModal

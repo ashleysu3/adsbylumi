@@ -12,8 +12,8 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import {
   Loader2, ArrowRight, ChevronLeft, CheckCircle2, Sparkles,
-  Upload, Image as ImageIcon, Palette, MessageSquare, Brain, Target, Quote, ListChecks, Trash2, Check, Film,
-  Pencil, Type, Award, BarChart3, Newspaper, GraduationCap, Users, Briefcase, Lock
+  MessageSquare, Brain, Target, Quote, ListChecks, Check,
+  Pencil, Award, BarChart3, Newspaper, GraduationCap, Users, Briefcase, Lock
 } from "lucide-react";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { PayoffAdScreen } from "@/components/onboarding/PayoffAdScreen";
@@ -36,13 +36,6 @@ const STEPS = [
   "Strategy & launch",
 ];
 const TOTAL = STEPS.length;
-type AssetRow = { id: string; url: string; role: string | null; kept: boolean; source_url?: string | null; signedUrl?: string };
-
-// Roles that read as "real photos of you/your work" for the onboarding preview —
-// deliberately excludes logo/texture/graphic/background, which aren't what a
-// user means by "example images."
-const PHOTO_PREVIEW_ROLES = ["headshot", "lifestyle", "full_body", "product"];
-
 // Goal-specific copy for the "give us a link" follow-up — a real URL beats a
 // hand-typed description: LUMI reads the actual page (extract-offer-info) for
 // a real price/page_goal, which is what lets recommend-strategy pick a lead
@@ -64,11 +57,6 @@ const AD_LINK_COPY: Record<"booked_calls" | "leads" | "sales", { label: string; 
   },
 };
 
-function pathFromUrl(url: string): string | null {
-  const m = url.match(/\/storage\/v1\/object\/(?:public|sign)\/brand-assets\/([^?]+)/);
-  return m ? decodeURIComponent(m[1]) : null;
-}
-
 function domainName(url: string): string {
   try {
     const h = new URL(url).hostname.replace(/^www\./, "");
@@ -76,31 +64,14 @@ function domainName(url: string): string {
   } catch { return "My brand"; }
 }
 
-// Picks a real accent from the brand's own extracted palette instead of a
-// generic app color, so the "Why they'll say yes" cards read as THIS brand's
-// colors, not LUMI's. Same luma-window approach PayoffAdScreen's
-// toEngineColors uses for the same reason (skip near-black/near-white swatches).
-function pickAccentColor(colors: string[]): string | null {
-  const valid = colors.filter((c) => /^#[0-9a-fA-F]{6}$/.test(c));
-  if (!valid.length) return null;
-  const luma = (h: string) => {
-    const r = parseInt(h.slice(1, 3), 16), g = parseInt(h.slice(3, 5), 16), b = parseInt(h.slice(5, 7), 16);
-    return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  };
-  const mids = valid.filter((c) => { const l = luma(c); return l > 0.15 && l < 0.85; });
-  return mids[0] || valid[0];
-}
-
 const WITTY_LINES = [
   "🔍 Getting the lay of your site…",
-  "🎨 Pulling your color palette…",
   "🧠 Mapping out your dream client…",
   "✍️ Learning how your brand actually sounds…",
   "💬 Digging up your testimonials…",
-  "📸 Finding your best logos and photos…",
   "🪄 Comparing notes with brands like yours…",
 ];
-const REVEAL_SECTIONS = ["basics", "design", "audience", "proof", "images"] as const;
+const REVEAL_SECTIONS = ["basics", "audience", "proof"] as const;
 type RevealKey = typeof REVEAL_SECTIONS[number];
 const FIRST_DELAY_MS = 500;
 const STAGGER_MS = 800;
@@ -139,19 +110,18 @@ export default function GuidedOnboarding() {
   const [loadingVoice, setLoadingVoice] = useState(false);
   const [loadingAudience, setLoadingAudience] = useState(false);
   const [loadingProof, setLoadingProof] = useState(false);
-  const [loadingAssets, setLoadingAssetsHarvest] = useState(false);
   const step1Fired = useRef(false);
 
   // Reveal orchestration — placeholder name (domain slug) is INTERNAL ONLY; never shown.
   const placeholderNameRef = useRef<string>("");
   const [revealStartedAt, setRevealStartedAt] = useState<number | null>(null);
   const [revealed, setRevealed] = useState<Record<RevealKey, boolean>>({
-    basics: false, design: false, audience: false, proof: false, images: false,
+    basics: false, audience: false, proof: false,
   });
   // Sections whose extractor timed out — we still reveal them, but with a friendly
   // "couldn't pull this one" hint above the editable card.
   const [failed, setFailed] = useState<Record<RevealKey, boolean>>({
-    basics: false, design: false, audience: false, proof: false, images: false,
+    basics: false, audience: false, proof: false,
   });
   const [slowMode, setSlowMode] = useState(false);
   const [narrationIdx, setNarrationIdx] = useState(0);
@@ -189,16 +159,6 @@ export default function GuidedOnboarding() {
   const [offers, setOffers] = useState<any[]>([]);
   const [offerBusy, setOfferBusy] = useState(false);
   const [offerStatusMsg, setOfferStatusMsg] = useState<string | null>(null);
-
-  // Reveal — assets
-  const [assets, setAssets] = useState<AssetRow[]>([]);
-  const [headshotUrl, setHeadshotUrl] = useState<string | null>(null);
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [assetsLoading, setAssetsLoading] = useState(false);
-  const [classifying, setClassifying] = useState(false);
-  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
-  const [brollIdeas, setBrollIdeas] = useState<any[] | null>(null);
-  const assetsInitRef = useRef(false);
 
   // Strategy
   const [strategy, setStrategy] = useState<any>(null);
@@ -245,14 +205,6 @@ export default function GuidedOnboarding() {
   }, [revealStartedAt, loadingBrandBasics, revealed.basics, markRevealed]);
 
   useEffect(() => {
-    if (!revealStartedAt || revealed.design) return;
-    if (loadingBrandBasics) return;
-    const wait = Math.max(0, revealStartedAt + FIRST_DELAY_MS - Date.now());
-    const t = setTimeout(() => markRevealed("design"), wait);
-    return () => clearTimeout(t);
-  }, [revealStartedAt, loadingBrandBasics, revealed.design, markRevealed]);
-
-  useEffect(() => {
     if (!revealStartedAt || revealed.audience) return;
     if (loadingAudience) return;
     // Only reveal once the psychology is actually grounded (real source material,
@@ -276,23 +228,14 @@ export default function GuidedOnboarding() {
     return () => clearTimeout(t);
   }, [revealStartedAt, loadingProof, revealed.proof, markRevealed]);
 
-  useEffect(() => {
-    if (!revealStartedAt || revealed.images) return;
-    if (loadingAssets) return;
-    const t = setTimeout(() => markRevealed("images"), 0);
-    return () => clearTimeout(t);
-  }, [revealStartedAt, loadingAssets, revealed.images, markRevealed]);
-
   const revealedCount = REVEAL_SECTIONS.filter((k) => revealed[k]).length;
   const allRevealed = revealedCount === REVEAL_SECTIONS.length;
   // The user is held on the reading screen (feature loading overlay up) until
   // EVERY extractor has settled or the hard cap fires — no half-read brands
   // sliding into the first ad.
-  const hasCoreBrandData =
-    ((brand?._kit?.colors as string[] | undefined)?.length ?? 0) > 0 ||
-    !!(brand?.name && brand.name !== placeholderNameRef.current);
+  const hasCoreBrandData = !!(brand?.name && brand.name !== placeholderNameRef.current);
   const stillExtracting =
-    loadingBrandBasics || loadingVoice || loadingAudience || loadingProof || loadingAssets;
+    loadingBrandBasics || loadingVoice || loadingAudience || loadingProof;
   // Once every extractor has settled ('done'), the user must be able to move on
   // even if a single card never revealed (e.g. audience psychology came back
   // ungrounded) — otherwise they're trapped on the reading screen forever.
@@ -486,9 +429,8 @@ export default function GuidedOnboarding() {
       setLoadingVoice(true);
       setLoadingAudience(true);
       setLoadingProof(true);
-      setLoadingAssetsHarvest(true);
-      setRevealed({ basics: false, design: false, audience: false, proof: false, images: false });
-      setFailed({ basics: false, design: false, audience: false, proof: false, images: false });
+      setRevealed({ basics: false, audience: false, proof: false });
+      setFailed({ basics: false, audience: false, proof: false });
       setSlowMode(false);
       setRevealStartedAt(Date.now());
       setNarrationIdx(0);
@@ -524,14 +466,12 @@ export default function GuidedOnboarding() {
       const voiceSettled = { done: false };
       const audSettled = { done: false };
       const proofSettled = { done: false };
-      const assetsSettled = { done: false };
-      const clearBrandCap = armCap("extract-brand", ["basics", "design"], setLoadingBrandBasics, brandSettled);
+      const clearBrandCap = armCap("extract-brand", ["basics"], setLoadingBrandBasics, brandSettled);
       const clearVoiceCap = armCap("analyze-brand-voice", ["basics"], setLoadingVoice, voiceSettled);
       const clearAudCap = armCap("generate-audience-psychology", ["audience"], setLoadingAudience, audSettled);
       const clearProofCap = armCap("extract-social-proof", ["proof"], setLoadingProof, proofSettled);
-      const clearAssetsCap = armCap("harvest-brand-assets", ["images"], setLoadingAssetsHarvest, assetsSettled);
 
-      // extract-brand → colors/logo/fonts/description (the first thing to render)
+      // extract-brand → name/description (the first thing to render)
       const pBrand = supabase.functions.invoke("extract-brand", { body: { url: websiteForCall } }).then(async (r) => {
         const d: any = r.data;
         if (!d || r.error) return;
@@ -541,7 +481,7 @@ export default function GuidedOnboarding() {
         // the full 25s escape-hatch timer.
         if (d.blocked) {
           console.warn("[onboarding] extract-brand returned blocked:true — using fallback flow");
-          setFailed((f) => ({ ...f, basics: true, design: true }));
+          setFailed((f) => ({ ...f, basics: true }));
           // Still capture og:title/description if the server managed to read them.
           const brandPatch: any = {};
           if (d.name) brandPatch.name = d.name;
@@ -552,17 +492,6 @@ export default function GuidedOnboarding() {
           }
           return;
         }
-        const kitPatch: any = {
-          user_id: user.id, brand_id: brandIdLocal, source_url: websiteForCall, status: "extracted",
-        };
-        if (d.colors?.length) kitPatch.colors = d.colors;
-        if (d.fonts?.length) kitPatch.fonts = d.fonts;
-        if (d.logoUrl) kitPatch.logo_url = d.logoUrl;
-        const { error: kitErr } = await supabase
-          .from("brand_kits" as any)
-          .upsert(kitPatch, { onConflict: "user_id,brand_id" });
-        if (kitErr) console.warn("brand_kits upsert failed", kitErr);
-
         const brandPatch: any = {};
         if (d.name) brandPatch.name = d.name;
         if (d.description) brandPatch.value_proposition = d.description;
@@ -571,18 +500,6 @@ export default function GuidedOnboarding() {
           if (brErr) console.warn("brand update failed", brErr);
           else setBrand((prev: any) => ({ ...(prev || {}), ...brandPatch }));
         }
-        if (kitPatch.colors || kitPatch.fonts || kitPatch.logo_url) {
-          setBrand((prev: any) => ({
-            ...(prev || {}),
-            _kit: {
-              colors: kitPatch.colors || prev?._kit?.colors,
-              fonts: kitPatch.fonts || prev?._kit?.fonts,
-              logo_url: kitPatch.logo_url || prev?._kit?.logo_url,
-              genericPalette: !!d.genericPalette,
-            },
-          }));
-        }
-
       }).catch(() => {}).finally(() => { clearBrandCap(); setLoadingBrandBasics(false); });
 
       // Fire all extractors IN PARALLEL — total wait ≈ slowest one, not the sum.
@@ -615,10 +532,6 @@ export default function GuidedOnboarding() {
           }
         }).catch(() => {}).finally(() => { clearProofCap(); setLoadingProof(false); });
 
-      const pAssets = supabase.functions.invoke("harvest-brand-assets", { body: { url: websiteForCall, brandId: brandIdLocal } })
-        .catch(() => {})
-        .finally(() => { clearAssetsCap(); setLoadingAssetsHarvest(false); });
-
       // Background enrichment: reads the site like a human (via the engine's real
       // browser, multi-page — home/about/offers/results) and feeds real text +
       // screenshots to a vision model for a much juicier audience_psychology than
@@ -649,13 +562,10 @@ export default function GuidedOnboarding() {
         .catch(() => {});
 
       // When everything settles, flag the phase as done so the resume logic stops trying.
-      Promise.allSettled([pBrand, pVoice, pAud, pProof, pAssets]).then(async () => {
+      Promise.allSettled([pBrand, pVoice, pAud, pProof]).then(async () => {
         try {
-          const [{ data: b }, { data: k }] = await Promise.all([
-            supabase.from("brands").select("*").eq("id", brandIdLocal).maybeSingle(),
-            supabase.from("brand_kits" as any).select("colors, fonts, logo_url").eq("brand_id", brandIdLocal).maybeSingle(),
-          ]);
-          if (b) setBrand((prev: any) => ({ ...(b as any), _kit: k || (prev?._kit ?? null) }));
+          const { data: b } = await supabase.from("brands").select("*").eq("id", brandIdLocal).maybeSingle();
+          if (b) setBrand((prev: any) => ({ ...(prev || {}), ...(b as any) }));
         } catch { /* ignore */ }
         setExtractionPhase('done');
       });
@@ -670,33 +580,16 @@ export default function GuidedOnboarding() {
       setLoadingVoice(false);
       setLoadingAudience(false);
       setLoadingProof(false);
-      setLoadingAssetsHarvest(false);
     } finally {
       setStep1Busy(false);
     }
   };
 
-  // =================== Reveal page — keep brand_kit in sync ===================
-  useEffect(() => {
-    if (step !== 2 || !brandId) return;
-    let cancelled = false;
-    (async () => {
-      const [{ data: b }, { data: k }] = await Promise.all([
-        supabase.from("brands").select("*").eq("id", brandId).maybeSingle(),
-        supabase.from("brand_kits" as any).select("colors, fonts, logo_url").eq("brand_id", brandId).maybeSingle(),
-      ]);
-      if (!cancelled && b) setBrand((prev: any) => ({ ...(b as any), _kit: k || prev?._kit || null }));
-    })();
-    return () => { cancelled = true; };
-  }, [step, brandId]);
-
   const updateBrand = async (patch: Record<string, any>) => {
     if (!brandId) return;
     setBrand((prev: any) => ({ ...(prev || {}), ...patch }));
-    // _kit is local-only state (mirrors brand_kits) — never push it to the brands table.
-    const { _kit, ...dbPatch } = patch as any;
-    if (Object.keys(dbPatch).length) {
-      await supabase.from("brands").update(dbPatch).eq("id", brandId);
+    if (Object.keys(patch).length) {
+      await supabase.from("brands").update(patch).eq("id", brandId);
     }
   };
 
@@ -838,187 +731,6 @@ export default function GuidedOnboarding() {
   const updateOffer = async (offerId: string, patch: Record<string, any>) => {
     setOffers((prev) => prev.map((o) => (o.id === offerId ? { ...o, ...patch } : o)));
     await supabase.from("offers").update(patch).eq("id", offerId);
-  };
-
-  // =================== STEP 4 — assets w/ signed URLs + classify ===================
-  const loadAssets = useCallback(async () => {
-    if (!brandId) return;
-    setAssetsLoading(true);
-    try {
-      const { data: rows } = await supabase
-        .from("brand_assets" as any).select("*")
-        .eq("brand_id", brandId).order("created_at", { ascending: false });
-      const list = ((rows || []) as unknown) as AssetRow[];
-      const paths = list.map((r) => pathFromUrl(r.url));
-      const validPaths = paths.filter(Boolean) as string[];
-      const signedMap = new Map<string, string>();
-      if (validPaths.length) {
-        const { data: s } = await supabase.storage.from("brand-assets").createSignedUrls(validPaths, 60 * 60);
-        (s || []).forEach((entry: any, i) => {
-          if (entry?.signedUrl) signedMap.set(validPaths[i], entry.signedUrl);
-        });
-      }
-      const withSigned = list.map((r) => {
-        const p = pathFromUrl(r.url);
-        return { ...r, signedUrl: (p && signedMap.get(p)) || r.url };
-      });
-      setAssets(withSigned);
-
-      const { data: uaRaw } = await supabase
-        .from("user_assets" as any).select("*").eq("brand_id", brandId);
-      const ua = (uaRaw as any[]) || [];
-      const headshotRow = ua.find((a: any) => a.kind === "headshot");
-      setHeadshotUrl(headshotRow?.original_url || headshotRow?.cutout_url || null);
-      const { data: kit } = await supabase.from("brand_kits" as any)
-        .select("logo_url").eq("brand_id", brandId).maybeSingle();
-      setLogoUrl((kit as any)?.logo_url || null);
-    } finally {
-      setAssetsLoading(false);
-    }
-  }, [brandId]);
-
-  useEffect(() => {
-    if (step !== 2 || !brandId) return;
-    if (assetsInitRef.current) { loadAssets(); return; }
-    assetsInitRef.current = true;
-    (async () => {
-      await loadAssets();
-      // Classify any assets without a role
-      const { data: needs } = await supabase
-        .from("brand_assets" as any).select("id,role").eq("brand_id", brandId);
-      const ids = ((needs as any[]) || []).filter((a) => !a.role).map((a) => a.id);
-      if (ids.length) {
-        setClassifying(true);
-        try {
-          await supabase.functions.invoke("classify-brand-asset", { body: { brandId, assetIds: ids } });
-          await loadAssets();
-        } catch { /* ignore */ }
-        finally { setClassifying(false); }
-      }
-      // B-roll ideas
-      try {
-        const { data } = await supabase.functions.invoke("generate-broll-ideas", { body: { brandId } });
-        const ideas = (data as any)?.ideas || (data as any) || null;
-        if (Array.isArray(ideas)) setBrollIdeas(ideas.slice(0, 10));
-      } catch { /* ignore */ }
-    })();
-  }, [step, brandId, loadAssets]);
-
-  // Re-load the library once the harvest extractor finishes streaming in new images.
-  useEffect(() => {
-    if (step !== 2 || !brandId) return;
-    if (loadingAssets) return;
-    if (!assetsInitRef.current) return;
-    loadAssets();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadingAssets]);
-
-  const grouped = useMemo(() => {
-    const map: Record<string, AssetRow[]> = {
-      logo: [], headshot: [], lifestyle: [], full_body: [], product: [], texture: [], graphic: [], background: [], other: [],
-    };
-    for (const a of assets) {
-      let k = (a.role || "other").toLowerCase();
-      // Back-compat: older rows used "background" as a catch-all for lifestyle.
-      if (!(k in map)) k = "other";
-      map[k].push(a);
-    }
-    return map;
-  }, [assets]);
-
-  const toggleKept = async (id: string, kept: boolean) => {
-    setAssets((prev) => prev.map((a) => (a.id === id ? { ...a, kept } : a)));
-    await supabase.from("brand_assets" as any).update({ kept }).eq("id", id);
-  };
-  const removeAsset = async (id: string) => {
-    setAssets((prev) => prev.filter((a) => a.id !== id));
-    await supabase.from("brand_assets" as any).delete().eq("id", id);
-  };
-  const setRole = async (id: string, role: string) => {
-    setAssets((prev) => prev.map((a) => (a.id === id ? { ...a, role } : a)));
-    await supabase.from("brand_assets" as any).update({ role }).eq("id", id);
-  };
-
-  const uploadFile = async (
-    file: File,
-    role: "logo" | "headshot" | "lifestyle" | "full_body" | "product" | "texture" | "graphic" | "background" | "other"
-  ) => {
-    if (!brandId) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const ext = file.name.split(".").pop() || "png";
-    const path = `${user.id}/${brandId}/${role}-${Date.now()}.${ext}`;
-    if (role === "headshot") {
-      const { error } = await supabase.storage.from("ad-photos").upload(path, file, { upsert: true });
-      if (error) { toast.error(error.message); return; }
-      const { data: pub } = supabase.storage.from("ad-photos").getPublicUrl(path);
-      const { data: assetRow } = await supabase.from("user_assets" as any).insert({
-        user_id: user.id, brand_id: brandId, kind: "headshot", original_url: pub.publicUrl,
-      }).select("id").maybeSingle();
-      setHeadshotUrl(pub.publicUrl);
-      // Cut the background out ONCE, now, instead of re-running removal inside
-      // every render that uses a cutout template. Fire-and-forget: the upload is
-      // already done and usable, so a slow or failed cutout must never block
-      // onboarding — renders simply fall back to removing it on the fly.
-      const newAssetId = (assetRow as any)?.id;
-      if (newAssetId) {
-        supabase.functions
-          .invoke("generate-cutout", { body: { assetId: newAssetId } })
-          .catch(() => { /* falls back to per-render removal */ });
-      }
-    } else {
-      const { error } = await supabase.storage.from("brand-assets").upload(path, file, { upsert: true });
-      if (error) { toast.error(error.message); return; }
-      const { data: pub } = supabase.storage.from("brand-assets").getPublicUrl(path);
-      await supabase.from("brand_assets" as any).insert({
-        user_id: user.id, brand_id: brandId, url: pub.publicUrl, role, kept: true,
-      });
-      if (role === "logo") {
-        await supabase.from("brand_kits" as any).upsert(
-          { user_id: user.id, brand_id: brandId, logo_url: pub.publicUrl, status: "approved" },
-          { onConflict: "brand_id" }
-        );
-        setLogoUrl(pub.publicUrl);
-      }
-      await loadAssets();
-    }
-    toast.success("Uploaded");
-  };
-
-  const uploadBroll = async (file: File) => {
-    if (!brandId) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const ext = file.name.split(".").pop() || "mp4";
-    const path = `${user.id}/${brandId}/broll-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("broll-library").upload(path, file, { upsert: true });
-    if (error) { toast.error(error.message); return; }
-    toast.success("B-roll uploaded");
-  };
-
-  const uploadAny = async (file: File) => {
-    if (file.type.startsWith("video/")) {
-      await uploadBroll(file);
-    } else {
-      await uploadFile(file, "other");
-    }
-  };
-
-  const saveShotList = async () => {
-    if (!brollIdeas?.length) return;
-    const list = brollIdeas.map((i: any, idx: number) => {
-      const scene = i.scene || i.title || "Shot idea";
-      const direction = i.direction || i.description || "";
-      const emoji = i.emoji ? `${i.emoji} ` : "";
-      return `${idx + 1}. ${emoji}${scene}${direction ? ` — ${direction}` : ""}`;
-    }).join("\n");
-    await seedDeferredTask({
-      title: "Film your suggested b-roll shot list",
-      description: list.slice(0, 1500),
-      link_to: "/creative-studio",
-      brand_id: brandId,
-    });
-    toast.success("Shot list saved to your tasks");
   };
 
   // =================== STEP 5 — strategy choice ===================
@@ -1228,8 +940,6 @@ export default function GuidedOnboarding() {
 
         {/* ============== STEP 2 — Reveal page (streams in live) ============== */}
         {step === 2 && (() => {
-          const colors: string[] = (brand?._kit?.colors as string[] | undefined) || [];
-          const accentColor = pickAccentColor(colors);
           // Voice tone chips — prefer structured, standalone descriptors.
           // analyze-brand-voice actually writes this array as `tone_descriptors`
           // (see supabase/functions/analyze-brand-voice), each entry a short
@@ -1274,17 +984,10 @@ export default function GuidedOnboarding() {
           const testimonialItems = getTestimonialQuotes(brand?.social_proof);
           const TESTIMONIAL_FREE_COUNT = 2;
           const testimonialsShown = testimonialItems.slice(0, TESTIMONIAL_FREE_COUNT);
+          const showFoundSection = testimonialsShown.length > 0;
           const testimonialTeaser = testimonialItems[TESTIMONIAL_FREE_COUNT] || null;
           const testimonialRemaining = Math.max(0, testimonialItems.length - TESTIMONIAL_FREE_COUNT - (testimonialTeaser ? 1 : 0));
 
-          const previewPhotos = assets.filter((a) => PHOTO_PREVIEW_ROLES.includes((a.role || "").toLowerCase()));
-          const PHOTO_FREE_COUNT = 3;
-          const photosShown = previewPhotos.slice(0, PHOTO_FREE_COUNT);
-          const photoTeaser = previewPhotos[PHOTO_FREE_COUNT] || null;
-          const photoRemaining = Math.max(0, previewPhotos.length - PHOTO_FREE_COUNT - (photoTeaser ? 1 : 0));
-
-          const hasFoundContent = testimonialsShown.length > 0 || photosShown.length > 0;
-          const showFoundSection = hasFoundContent || loadingAssets;
 
           const brandDisplayName = brand?.name && brand.name !== placeholderNameRef.current ? brand.name : "";
           const siteHost = brand?.website_url ? brand.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "") : "";
@@ -1333,11 +1036,9 @@ export default function GuidedOnboarding() {
                   </div>
                   <div className="flex flex-wrap gap-1.5 text-[10px] font-medium">
                     {[
-                      { key: "design", label: "Palette", loading: loadingBrandBasics },
                       { key: "basics", label: "Voice", loading: loadingBrandBasics },
                       { key: "audience", label: "Audience", loading: loadingAudience },
                       { key: "proof", label: "Proof", loading: loadingProof },
-                      { key: "images", label: "Photos", loading: loadingAssets },
                     ].map((s) => {
                       // Reflects whether the NETWORK CALL settled, not whether we chose
                       // to reveal its content — a quality-gated section (e.g. audience,
@@ -1514,41 +1215,6 @@ export default function GuidedOnboarding() {
                       </div>
                     </div>
                   )}
-                  {/* Your palette */}
-                  {revealed.design && (
-                    <div className="animate-fade-in space-y-3">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                        <Palette className="h-4 w-4 text-muted-foreground" /> Your palette
-                      </div>
-                      {colors.length > 0 ? (
-                        <div className="flex flex-wrap gap-3">
-                          {colors.slice(0, 8).map((c, i) => (
-                            <div key={`${c}-${i}`} className="flex flex-col items-center gap-1.5">
-                              <div
-                                className="h-14 w-14 rounded-2xl border shadow-sm"
-                                style={{ backgroundColor: c }}
-                                aria-label={c}
-                              />
-                              <span className="text-[10px] font-mono text-muted-foreground uppercase">{c.replace("#", "")}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">Nothing loud came through — we'll use a neutral palette to start.</p>
-                      )}
-                      {colors.length > 0 && (brand?._kit as any)?.genericPalette && (
-                        <p className="text-xs text-muted-foreground">
-                          That page uses its funnel builder's stock colors — swap in your real brand colors below so the ad looks like you.
-                        </p>
-                      )}
-
-                    </div>
-                  )}
-
-                  {revealed.design && (revealed.basics || revealed.audience) && (
-                    <div className="h-px bg-border" />
-                  )}
-
                   {/* Your voice */}
                   {revealed.basics && (
                     <div className="animate-fade-in space-y-3">
@@ -1632,8 +1298,8 @@ export default function GuidedOnboarding() {
                                   key={i}
                                   className="rounded-2xl p-3 text-sm text-foreground leading-snug border-l-4"
                                   style={{
-                                    borderLeftColor: accentColor || "#ec4899",
-                                    backgroundColor: accentColor ? `${accentColor}14` : "rgba(236,72,153,0.06)",
+                                    borderLeftColor: "#ec4899",
+                                    backgroundColor: "rgba(236,72,153,0.06)",
                                   }}
                                 >
                                   {h}
@@ -1652,7 +1318,7 @@ export default function GuidedOnboarding() {
                     </>
                   )}
 
-                  {(revealed.proof || revealed.images) && showFoundSection && <div className="h-px bg-border" />}
+                  {revealed.proof && showFoundSection && <div className="h-px bg-border" />}
 
                   {/* Found on your site — a real taste (up to 3 photos, up to 2
                       testimonials), never a bare count and never an announced
@@ -1661,39 +1327,11 @@ export default function GuidedOnboarding() {
                       trial to see the rest" reads as a reason to convert, not
                       a wall. Renders nothing at all if there's genuinely
                       nothing found and nothing still in flight. */}
-                  {(revealed.proof || revealed.images) && showFoundSection && (
+                  {revealed.proof && showFoundSection && (
                     <div className="animate-fade-in space-y-4">
                       <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <Sparkles className="h-4 w-4 text-muted-foreground" /> Found on your site
                       </div>
-
-                      {photosShown.length > 0 && (
-                        <div className="grid grid-cols-4 gap-2">
-                          {photosShown.map((a) => (
-                            <div key={a.id} className="aspect-square rounded-xl overflow-hidden bg-muted border">
-                              <img src={a.signedUrl || a.url} alt="" className="w-full h-full object-cover" />
-                            </div>
-                          ))}
-                          {photoTeaser && (
-                            <div className="relative aspect-square rounded-xl overflow-hidden border">
-                              <img
-                                src={photoTeaser.signedUrl || photoTeaser.url}
-                                alt=""
-                                className="w-full h-full object-cover blur-md scale-110"
-                              />
-                              <div className="absolute inset-0 bg-black/55 flex flex-col items-center justify-center gap-1 text-white text-center px-1">
-                                <Lock className="h-3.5 w-3.5" />
-                                {photoRemaining > 0 && (
-                                  <span className="text-[10px] font-semibold leading-tight">+{photoRemaining} more</span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {photosShown.length === 0 && loadingAssets && (
-                        <p className="text-xs text-muted-foreground">Harvesting photos…</p>
-                      )}
 
                       {testimonialsShown.length > 0 && (
                         <div className="grid sm:grid-cols-2 gap-2">
@@ -1723,7 +1361,7 @@ export default function GuidedOnboarding() {
                         </div>
                       )}
 
-                      {(photoTeaser || testimonialTeaser) && (
+                      {testimonialTeaser && (
                         <p className="text-[11px] text-muted-foreground text-center pt-1">
                           Unlock everything we found when you sign up — 50% off your first month.
                         </p>
@@ -2167,118 +1805,6 @@ function RevealRow({ label, value }: { label: string; value: any }) {
   );
 }
 
-function ReviewDesignCard({ brand, onSave }: { brand: any; onSave: (p: any) => Promise<void> }) {
-  const kitColors: string[] = brand?._kit?.colors || [];
-  const kitFonts: string[] = brand?._kit?.fonts || [];
-  const [editing, setEditing] = useState(false);
-  const [colors, setColors] = useState<string>(kitColors.join(", "));
-  const [fonts, setFonts] = useState<string>(kitFonts.join(", "));
-  const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    setColors((brand?._kit?.colors || []).join(", "));
-    setFonts((brand?._kit?.fonts || []).join(", "));
-  }, [brand?._kit?.colors, brand?._kit?.fonts]);
-
-  const parsedColors = (editing ? colors.split(",").map((s) => s.trim()).filter(Boolean) : kitColors);
-  const parsedFonts = (editing ? fonts.split(",").map((s) => s.trim()).filter(Boolean) : kitFonts);
-
-  const save = async () => {
-    if (!brand?.id || !brand?.user_id) return;
-    setSaving(true);
-    try {
-      const patch: any = {
-        user_id: brand.user_id,
-        brand_id: brand.id,
-        colors: colors.split(",").map((s) => s.trim()).filter(Boolean),
-        fonts: fonts.split(",").map((s) => s.trim()).filter(Boolean),
-        status: "confirmed",
-      };
-      const { error } = await supabase
-        .from("brand_kits" as any)
-        .upsert(patch, { onConflict: "user_id,brand_id" });
-      if (error) throw error;
-      await onSave({ _kit: { ...(brand?._kit || {}), colors: patch.colors, fonts: patch.fonts } });
-      setEditing(false);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between space-y-0">
-        <div>
-          <CardTitle className="flex items-center gap-2 text-base"><Palette className="h-4 w-4" /> Design guide</CardTitle>
-          <CardDescription className="text-xs">Pulled from your website — edit anything that's off.</CardDescription>
-        </div>
-        {!editing && (
-          <Button size="sm" variant="ghost" onClick={() => setEditing(true)} className="h-7">
-            <Pencil className="h-3 w-3 mr-1" /> Edit
-          </Button>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-5">
-        {/* Colors */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            <Palette className="h-3 w-3" /> Brand colors
-          </div>
-          {parsedColors.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {parsedColors.slice(0, 12).map((c, i) => (
-                <div key={i} className="flex items-center gap-2 rounded-md border bg-card p-2">
-                  <div className="h-8 w-8 rounded shrink-0 border" style={{ background: c }} />
-                  <span className="text-xs font-mono uppercase truncate">{c}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground italic">No colors found — add your own below.</p>
-          )}
-          {editing && (
-            <Input value={colors} onChange={(e) => setColors(e.target.value)} placeholder="#000000, #FFFFFF" className="mt-2" />
-          )}
-        </div>
-
-        {/* Fonts */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            <Type className="h-3 w-3" /> Brand fonts
-          </div>
-          {parsedFonts.length > 0 ? (
-            <div className="space-y-2">
-              {parsedFonts.slice(0, 4).map((f, i) => (
-                <div key={i} className="rounded-md border bg-card px-3 py-2">
-                  <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{f}</div>
-                  <div className="text-xl leading-tight" style={{ fontFamily: `'${f}', system-ui, sans-serif` }}>
-                    The quick brown fox
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground italic">No fonts detected — add your own below.</p>
-          )}
-          {editing && (
-            <Input value={fonts} onChange={(e) => setFonts(e.target.value)} placeholder="Inter, Playfair Display" className="mt-2" />
-          )}
-        </div>
-
-        {editing && (
-          <div className="flex gap-2">
-            <Button size="sm" variant="lumi" onClick={save} disabled={saving}>
-              {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-              Save
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setColors(kitColors.join(", ")); setFonts(kitFonts.join(", ")); }}>
-              Cancel
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
 
 function ReviewVoiceCard({ brand, onSave }: { brand: any; onSave: (p: any) => Promise<void> }) {
   const [voice, setVoice] = useState<string>(brand?.brand_voice || "");
@@ -2737,58 +2263,6 @@ function OfferRowEditor({ offer, brand, onSave }: { offer: any; brand?: any; onS
           <Textarea rows={2} value={outcome} onChange={(e) => setOutcome(e.target.value)} placeholder="Before: … After: …" />
         </div>
 
-        {/* Design guide */}
-        <div className="rounded-md border bg-muted/20 p-3 space-y-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 text-sm font-medium"><Palette className="h-4 w-4" /> Design guide</div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {styleOverride ? "Custom colors & fonts for this offer." : "Using your brand's default design guide."}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Label htmlFor={`style-${offer.id}`} className="text-xs">Custom</Label>
-              <Switch id={`style-${offer.id}`} checked={styleOverride} onCheckedChange={onToggleStyle} />
-            </div>
-          </div>
-
-          {!styleOverride ? (
-            <div className="space-y-2">
-              <div className="flex flex-wrap gap-1.5">
-                {brandColors.slice(0, 8).map((c, i) => (
-                  <div key={i} className="h-6 w-6 rounded border" style={{ background: c }} title={c} />
-                ))}
-                {brandColors.length === 0 && <span className="text-xs text-muted-foreground italic">No brand colors set yet.</span>}
-              </div>
-              {brandFonts.length > 0 && (
-                <div className="text-xs text-muted-foreground">Fonts: <span className="font-medium text-foreground">{brandFonts.join(", ")}</span></div>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div>
-                <Label className="text-xs">Offer colors (comma-separated hex)</Label>
-                <Input value={colors} onChange={(e) => setColors(e.target.value)} placeholder="#000000, #FFFFFF" />
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {parsedColors.slice(0, 12).map((c, i) => (
-                    <div key={i} className="h-7 w-7 rounded border" style={{ background: c }} title={c} />
-                  ))}
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs">Offer fonts</Label>
-                <Input value={fonts} onChange={(e) => setFonts(e.target.value)} placeholder="Inter, Playfair Display" />
-              </div>
-              {offer.url && (
-                <Button type="button" size="sm" variant="outline" onClick={pullOfferDesign} disabled={pullingDesign}>
-                  {pullingDesign ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Palette className="h-3 w-3 mr-1" />}
-                  {pullingDesign ? "Pulling design…" : "Re-pull design from this page"}
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* Offer-specific audience psychology */}
         <div className="rounded-md border bg-muted/20 p-3 space-y-3">
           <div>
@@ -2984,97 +2458,6 @@ function ReviewProofCard({ brand, onSave, loading }: { brand: any; onSave: (p: a
   );
 }
 
-function BrandHeroCard({ brand }: { brand: any }) {
-  const logo: string | undefined = brand?._kit?.logo_url || brand?.logo_url || undefined;
-  const colors: string[] = (brand?._kit?.colors || []).slice(0, 6);
-  const fonts: string[] = brand?._kit?.fonts || [];
-  const name: string = brand?.name && brand.name.trim() ? brand.name : "Your brand";
-  const tagline: string = brand?.value_proposition || "";
-  const headingFont = fonts[0] ? `"${fonts[0]}", system-ui, sans-serif` : undefined;
-  const accent = colors[0];
-
-  return (
-    <Card
-      className="relative overflow-hidden border-0"
-      style={{
-        background: accent
-          ? `linear-gradient(135deg, ${accent}14 0%, ${accent}05 60%, transparent 100%)`
-          : undefined,
-      }}
-    >
-      {accent && (
-        <div
-          aria-hidden
-          className="absolute inset-x-0 top-0 h-1"
-          style={{ backgroundColor: accent }}
-        />
-      )}
-      <CardContent className="pt-6 pb-5">
-        <div className="flex items-start gap-4">
-          {logo ? (
-            <div className="shrink-0 h-16 w-16 rounded-xl bg-background border flex items-center justify-center overflow-hidden p-2">
-              <img src={logo} alt={`${name} logo`} className="max-h-full max-w-full object-contain" />
-            </div>
-          ) : (
-            <div
-              className="shrink-0 h-16 w-16 rounded-xl flex items-center justify-center text-xl font-semibold text-white"
-              style={{ backgroundColor: accent || "hsl(var(--primary))" }}
-            >
-              {name.charAt(0).toUpperCase()}
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
-              Here's
-            </div>
-            <h2
-              className="text-2xl md:text-3xl font-semibold leading-tight truncate"
-              style={{ fontFamily: headingFont, color: accent || undefined }}
-            >
-              {name}
-            </h2>
-            {tagline && (
-              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{tagline}</p>
-            )}
-          </div>
-        </div>
-
-        {colors.length > 0 && (
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mr-1">Palette</span>
-            {colors.map((c, i) => (
-              <div
-                key={`${c}-${i}`}
-                className="group relative h-8 w-8 rounded-md border shadow-sm"
-                style={{ backgroundColor: c }}
-                title={c}
-              >
-                <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] font-mono text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                  {c}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {fonts.length > 0 && (
-          <div className="mt-5 flex flex-wrap items-baseline gap-3">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Type</span>
-            {fonts.slice(0, 2).map((f, i) => (
-              <span
-                key={`${f}-${i}`}
-                className="text-sm text-foreground/80"
-                style={{ fontFamily: `"${f}", system-ui, sans-serif` }}
-              >
-                {f}
-              </span>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
 
 function PersonaSummary({ demographics, topDesire, topPain }: { demographics?: string; topDesire?: string; topPain?: string }) {
   if (!demographics && !topDesire && !topPain) return null;
@@ -3109,21 +2492,3 @@ function PersonaSummary({ demographics, topDesire, topPain }: { demographics?: s
 
 
 
-function UploadBtn({ id, label, onFile, accept = "image/*", multiple = false }: { id: string; label: string; onFile: (f: File) => void; accept?: string; multiple?: boolean }) {
-  return (
-    <label htmlFor={id} className="cursor-pointer">
-      <input
-        id={id} type="file" accept={accept} multiple={multiple} className="hidden"
-        onChange={(e) => {
-          const files = Array.from(e.target.files || []);
-          files.forEach((f) => onFile(f));
-          e.target.value = "";
-        }}
-      />
-      <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed py-6 text-xs hover:bg-muted/50">
-        <Upload className="h-4 w-4" />
-        {label}
-      </div>
-    </label>
-  );
-}
