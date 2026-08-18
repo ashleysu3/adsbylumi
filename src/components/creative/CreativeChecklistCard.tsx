@@ -647,7 +647,6 @@ export function CreativeChecklistCard({
 
                   {/* Upload your recorded talking head + preview + Make my video */}
                   {(() => {
-                    const oStyle: OverlayStyle = (brand as any)?.overlay_style || DEFAULT_OVERLAY_STYLE;
                     const tOverlays: TextOverlay[] = (item.text_overlays || []).map((o: any) =>
                       typeof o === "string" ? { text: o } : o
                     );
@@ -709,54 +708,12 @@ export function CreativeChecklistCard({
                               </Button>
                             </div>
                             <div className="mx-auto w-[180px]">
-                              {tOverlays.length > 0 ? (
-                                <VideoTextPreview
-                                  videoUrl={customBrollUrl}
-                                  overlays={tOverlays}
-                                  style={oStyle}
-                                  compact
-                                  editable
-                                  onOverlayPositionChange={(idx, xy) => {
-                                    const updated = [...(item.text_overlays || [])];
-                                    updated[idx] = { ...updated[idx], xy };
-                                    onOverlaysChange?.(updated as TextOverlay[]);
-                                  }}
-                                  onOverlayResize={(idx, patch) => {
-                                    const updated = [...(item.text_overlays || [])];
-                                    updated[idx] = { ...updated[idx], ...patch };
-                                    onOverlaysChange?.(updated as TextOverlay[]);
-                                  }}
-                                  loopVideo={false}
-                                  trimEnd={getLastOverlayEnd(tOverlays)}
-                                />
-                              ) : (
-                                <video
-                                  src={customBrollUrl}
-                                  className="w-full aspect-[9/16] object-contain rounded-lg bg-black"
-                                  controls muted playsInline preload="metadata"
-                                />
-                              )}
+                              <video
+                                src={customBrollUrl}
+                                className="w-full aspect-[9/16] object-contain rounded-lg bg-black"
+                                controls muted playsInline preload="metadata"
+                              />
                             </div>
-                            {tOverlays.length > 0 && (
-                              <Button
-                                variant="lumi"
-                                size="sm"
-                                className="w-full gap-1.5 h-8 text-[11px]"
-                                onClick={() => {
-                                  onMakeVideo?.({
-                                    videoUrl: customBrollUrl,
-                                    sourceClipName: customBrollName || undefined,
-                                    overlays: tOverlays,
-                                    style: oStyle as unknown as RenderStyle,
-                                     trimStart: 0,
-                                     trimEnd: getLastOverlayEnd(tOverlays),
-                                  });
-                                }}
-                              >
-                                <Film className="h-3 w-3" />
-                                Make my video
-                              </Button>
-                            )}
                           </div>
                         ) : (
                           <label className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
