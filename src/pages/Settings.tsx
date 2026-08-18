@@ -173,9 +173,18 @@ export default function Settings() {
       const effectiveUserId = await getEffectiveUserId();
       if (!effectiveUserId) return;
 
+      // Users can own more than one brand (and brand-new accounts own none),
+      // so never use .single() here — it 406s and the whole Settings page
+      // silently loses its brand-scoped sections.
       const [profileRes, brandRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', effectiveUserId).single(),
-        supabase.from('brands').select('*').eq('user_id', effectiveUserId).single(),
+        supabase.from('profiles').select('*').eq('id', effectiveUserId).maybeSingle(),
+        supabase
+          .from('brands')
+          .select('*')
+          .eq('user_id', effectiveUserId)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle(),
       ]);
 
       setProfile(profileRes.data);

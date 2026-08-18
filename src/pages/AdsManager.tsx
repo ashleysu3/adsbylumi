@@ -84,14 +84,20 @@ export default function AdsManager() {
     const { data: existingClients } = await supabase.from('agency_clients').select('*');
     const existingBrandIds = new Set((existingClients || []).map((c: any) => c.brand_id));
 
-    // 2. Auto-create agency_client entries for brands not yet added
+    // 2. Auto-create agency_client entries for brands not yet added.
+    // Upsert (ignore duplicates) instead of insert: a row can already exist
+    // without being visible in the select above, which used to throw a 409
+    // and abort the whole page load.
     const missingBrands = (brands || []).filter(b => !existingBrandIds.has(b.id));
     if (missingBrands.length > 0) {
       const inserts = missingBrands.map(b => ({
         brand_id: b.id,
         health_status: 'healthy',
       }));
-      await supabase.from('agency_clients').insert(inserts);
+      const { error: insertError } = await supabase
+        .from('agency_clients')
+        .upsert(inserts, { onConflict: 'brand_id', ignoreDuplicates: true });
+      if (insertError) console.warn('Could not add clients:', insertError.message);
     }
 
     // 3. Re-fetch all clients after potential inserts
@@ -105,7 +111,7 @@ export default function AdsManager() {
     const enrichedClients = await Promise.all(
       ((clientsRes.data as any[]) || []).map(async (client: any) => {
         const [brandRes, campaignsRes, goalsRes] = await Promise.all([
-          supabase.from('brands').select('id, name, meta_account_id, last_review_date, next_report_due').eq('id', client.brand_id).single(),
+          supabase.from('brands').select('id, name, meta_account_id, last_review_date, next_report_due').eq('id', client.brand_id).maybeSingle(),
           supabase.from('campaign_workspaces')
             .select('id, name, progress_status, meta_campaign_status, meta_campaign_ids, performance_report_latest, template_id')
             .eq('brand_id', client.brand_id)
