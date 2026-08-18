@@ -25,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 import { toast } from "sonner";
 import { trackLumiEvent } from "@/lib/lumi-pixel";
+import { redirectToCheckout } from "@/lib/redirect-to-checkout";
 import TestimonialCarousel from "@/components/TestimonialCarousel";
 import lumiLogo from "@/assets/lumi-logo.png";
 
