@@ -23,10 +23,6 @@ import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { ContentAssetsEditor } from "@/components/ContentAssetsEditor";
 import { OfferManager } from "@/components/OfferManager";
 import { BrandVoiceCard } from "@/components/BrandVoiceCard";
-import { BRollLibrary } from "@/components/BRollLibrary";
-import { OverlayStylePicker } from "@/components/OverlayStylePicker";
-import type { OverlayStyle } from "@/components/VideoTextPreview";
-import { DEFAULT_OVERLAY_STYLE } from "@/components/VideoTextPreview";
 import { BrandOnboardingWizard } from "@/components/BrandOnboardingWizard";
 import { ArchetypeDiagnosisCard } from "@/components/ArchetypeDiagnosisCard";
 import { Building2, Globe, Target, Edit, CheckCircle2, Brain, Package, Link, Smile, X, Loader2, Clock, Sparkles } from "lucide-react";
@@ -64,8 +60,6 @@ export default function Dashboard() {
   });
   const [newEmoji, setNewEmoji] = useState('');
   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
-  const [overlayStyle, setOverlayStyle] = useState<OverlayStyle>(DEFAULT_OVERLAY_STYLE);
-  const [brollClips, setBrollClips] = useState<any[]>([]);
   const [hasPublishedAd, setHasPublishedAd] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [reportModalText, setReportModalText] = useState<string | undefined>(undefined);
@@ -260,8 +254,6 @@ export default function Dashboard() {
           brand_emojis: brandData.brand_emojis ?? DEFAULT_EMOJIS,
           bullet_emoji: brandData.bullet_emoji ?? '✅',
         });
-        setBrollClips((brandData as any).broll_library || []);
-        setOverlayStyle((brandData as any).overlay_style || DEFAULT_OVERLAY_STYLE);
       }
 
       const { data: subData } = await supabase
