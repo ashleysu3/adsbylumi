@@ -83,8 +83,62 @@ const isVividHex = (hex: string): boolean => {
   return l > 0.03 && l < 0.75;
 };
 
+// Funnel / page-builder hosts. Pages on these serve the BUILDER's default
+// template palette (e.g. Kartra's #2e88dc button blue), not the customer's
+// brand. When we see one, we also scrape the brand's own domain, derived from
+// the subdomain label (thepianopath.kartra.com -> thepianopath.com), and let
+// that palette win.
+const FUNNEL_HOSTS = [
+  "kartra.com",
+  "mykajabi.com",
+  "clickfunnels.com",
+  "leadpages.co",
+  "lpages.co",
+  "systeme.io",
+  "gohighlevel.com",
+  "funnels.co",
+  "podia.com",
+  "teachable.com",
+  "thinkific.com",
+  "convertkit.com",
+  "ck.page",
+  "hubspotpagebuilder.com",
+  "webflow.io",
+  "squarespace.com",
+  "wixsite.com",
+  "myshopify.com",
+  "notion.site",
+  "carrd.co",
+];
+
+// Default palettes shipped by those builders — never treat as brand colors.
+const BUILDER_DEFAULT_COLORS = new Set([
+  "#2e88dc", // Kartra primary blue
+  "#212839", // Kartra dark
+  "#4a90e2",
+  "#1a73e8",
+  "#007bff", // Bootstrap
+  "#3b82f6", // Tailwind blue-500
+  "#0d6efd",
+]);
+
+function brandDomainFromFunnelUrl(rawUrl: string): string | null {
+  try {
+    const u = new URL(rawUrl.startsWith("http") ? rawUrl : `https://${rawUrl}`);
+    const host = u.hostname.toLowerCase().replace(/^www\./, "");
+    const match = FUNNEL_HOSTS.find((h) => host === h || host.endsWith(`.${h}`));
+    if (!match) return null;
+    const label = host.slice(0, host.length - match.length - 1).split(".").pop();
+    if (!label || label.length < 3 || label === "www" || label === "app") return null;
+    return `https://${label}.com`;
+  } catch {
+    return null;
+  }
+}
+
 const DESKTOP_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
 
 // Signals that a scrape hit a bot-protection wall (Cloudflare, Akamai, PerimeterX,
 // Wix/Squarespace challenge pages, etc.) so we can bail fast instead of retrying.
