@@ -208,7 +208,7 @@ const App = () => {
                   <Route path="/settings/digest-preview" element={<WeeklyDigestPreview />} />
                   <Route path="/content-library" element={<ContentLibrary />} />
                   <Route path="/offers" element={<Offers />} />
-                  <Route path="/style" element={<Navigate to="/settings" replace />} />} />
+                  <Route path="/style" element={<Navigate to="/settings" replace />} />
                   <Route path="/creative-studio" element={<CreativeStudio />} />
                   <Route path="/lab" element={<Navigate to="/creative-studio?mode=lab" replace />} />
                   <Route path="/my-creatives" element={<MyCreatives />} />
@@ -223,7 +223,7 @@ const App = () => {
                   <Route path="/report/:shareToken" element={<SharedReport />} />
                   <Route path="/refer" element={<Refer />} />
                   <Route path="/partner-dashboard" element={<PartnerDashboard />} />
-                  <Route path="/admin/knowledge" element={<AdminKnowledge />} />} />
+                  <Route path="/admin/knowledge" element={<AdminKnowledge />} />
                   <Route path="/admin/demo-ads" element={<AdminDemoAds />} />
                   <Route path="/admin/approvals" element={<AdminApprovals />} />
                   <Route path="/admin/affiliates" element={<AdminAffiliates />} />

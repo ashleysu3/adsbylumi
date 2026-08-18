@@ -10,7 +10,7 @@ import {
   Video, Film, Image, Eye, FolderOpen, Maximize2,
   Sparkles, Loader2, Filter, Library, Info, Download,
   Archive, Trash2, ChevronDown, Star, Printer, CheckSquare, Square, XCircle,
-  Share2, Repeat, FastForward, MoreHorizontal, FileDown
+  Share2, Repeat, MoreHorizontal, FileDown
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -26,9 +26,6 @@ import { ShareWithClientDialog } from "./ShareWithClientDialog";
 import { ClientActivityFeed } from "./ClientActivityFeed";
 import { ProductionChecklistWizard } from "./ProductionChecklistWizard";
 import { format } from "date-fns";
-import { useRenderQueue, type AttachedRenderInfo } from "@/contexts/RenderQueueContext";
-import type { RenderStyle } from "@/lib/ffmpeg-renderer";
-import type { TextOverlay } from "@/components/VideoTextPreview";
 
 interface RankedItem extends ProductionItem {
   rank: number;
@@ -64,18 +61,6 @@ function parseOverlayTiming(raw?: string): { start: number; end: number } | null
   const end = parseFloat(m[2]);
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
   return { start, end };
-}
-
-function readVideoDuration(videoUrl: string): Promise<number> {
-  return new Promise((resolve) => {
-    const video = document.createElement("video");
-    video.preload = "metadata";
-    video.muted = true;
-    video.crossOrigin = "anonymous";
-    video.src = videoUrl;
-    video.onloadedmetadata = () => resolve(Number.isFinite(video.duration) ? video.duration : 0);
-    video.onerror = () => resolve(0);
-  });
 }
 
 export function ProductionManager({
