@@ -9,7 +9,6 @@ import { LumiProvider } from "@/contexts/LumiContext";
 import { BrandProvider } from "@/contexts/BrandContext";
 import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
 import { LumiAssistantProvider } from "@/components/LumiAssistant";
-import { RenderQueueProvider } from "@/contexts/RenderQueueContext";
 import { CampaignDraftProvider } from "@/contexts/CampaignDraftContext";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { GlobalAnnouncementBanner } from "@/components/GlobalAnnouncementBanner";
@@ -49,7 +48,6 @@ const AdminCoupons = lazy(() => import("./pages/admin/Coupons"));
 const AdminUpdates = lazy(() => import("./pages/admin/Updates"));
 const AdminUpdatesResults = lazy(() => import("./pages/admin/UpdatesResults"));
 const AdminFeatures = lazy(() => import("./pages/admin/Features"));
-const AdminStockBroll = lazy(() => import("./pages/admin/StockBroll"));
 const AdminDemoAds = lazy(() => import("./pages/admin/DemoAds"));
 const AdminApprovals = lazy(() => import("./pages/admin/Approvals"));
 import { useReferralCapture } from "./hooks/useReferralCapture";
@@ -64,7 +62,6 @@ import TrackingSetup from "./pages/TrackingSetup";
 import WeeklyDigestPreview from "./pages/WeeklyDigestPreview";
 
 import Offers from "./pages/Offers";
-import Style from "./pages/Style";
 import ContentLibrary from "./pages/ContentLibrary";
 const CreativeStudio = lazy(() => import("./pages/CreativeStudio"));
 import Glossary from "./pages/Glossary";
@@ -145,7 +142,6 @@ const App = () => {
         <SubscriptionProvider>
           <LumiProvider>
               <BrandProvider>
-              <RenderQueueProvider>
               <CampaignDraftProvider>
               <SplashScreen isVisible={showSplash} />
               <Toaster />
@@ -212,7 +208,7 @@ const App = () => {
                   <Route path="/settings/digest-preview" element={<WeeklyDigestPreview />} />
                   <Route path="/content-library" element={<ContentLibrary />} />
                   <Route path="/offers" element={<Offers />} />
-                  <Route path="/style" element={<Style />} />
+                  <Route path="/style" element={<Navigate to="/settings" replace />} />} />
                   <Route path="/creative-studio" element={<CreativeStudio />} />
                   <Route path="/lab" element={<Navigate to="/creative-studio?mode=lab" replace />} />
                   <Route path="/my-creatives" element={<MyCreatives />} />
@@ -227,8 +223,7 @@ const App = () => {
                   <Route path="/report/:shareToken" element={<SharedReport />} />
                   <Route path="/refer" element={<Refer />} />
                   <Route path="/partner-dashboard" element={<PartnerDashboard />} />
-                  <Route path="/admin/knowledge" element={<AdminKnowledge />} />
-                  <Route path="/admin/stock-broll" element={<AdminStockBroll />} />
+                  <Route path="/admin/knowledge" element={<AdminKnowledge />} />} />
                   <Route path="/admin/demo-ads" element={<AdminDemoAds />} />
                   <Route path="/admin/approvals" element={<AdminApprovals />} />
                   <Route path="/admin/affiliates" element={<AdminAffiliates />} />
@@ -280,7 +275,6 @@ const App = () => {
               </LumiAssistantProvider>
             </BrowserRouter>
               </CampaignDraftProvider>
-              </RenderQueueProvider>
               </BrandProvider>
         </LumiProvider>
       </SubscriptionProvider>

@@ -17,10 +17,9 @@ import { cn } from "@/lib/utils";
 import { LabCopy } from "./LabCopy";
 import { LabAngles } from "./LabAngles";
 import { LabConcepts } from "./LabConcepts";
-import { LabBRoll } from "./LabBRoll";
 import { LabTrends } from "./LabTrends";
 
-type ToolKey = "copy" | "angles" | "concepts" | "broll" | "trends";
+type ToolKey = "copy" | "angles" | "concepts" | "trends";
 
 const TOOLS: Array<{
   key: ToolKey;
@@ -50,13 +49,6 @@ const TOOLS: Array<{
     desc: "Ad concepts — graphic, carousel, b-roll, talking head.",
     icon: Layers,
     accent: "from-purple-500/15 to-purple-500/0 text-purple-600",
-  },
-  {
-    key: "broll",
-    title: "B-Roll",
-    desc: "Shot ideas and clips you can save and reuse.",
-    icon: Film,
-    accent: "from-rose-500/15 to-rose-500/0 text-rose-600",
   },
   {
     key: "trends",
@@ -116,7 +108,6 @@ export function TheLab() {
             {active === "copy" && <LabCopy seedId={seed} />}
             {active === "angles" && <LabAngles seedId={seed} />}
             {active === "concepts" && <LabConcepts seedId={seed} />}
-            {active === "broll" && <LabBRoll seedId={seed} />}
             {active === "trends" && <LabTrends seedId={seed} />}
           </CardContent>
         </Card>
