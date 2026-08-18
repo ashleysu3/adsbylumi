@@ -104,103 +104,10 @@ export function ProductionManager({
   );
   const [movingToLibrary, setMovingToLibrary] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
-  const [namedLibraries, setNamedLibraries] = useState<Array<{ id: string; name: string; clips: any[] }>>([]);
-  const [selectedLibraryId, setSelectedLibraryId] = useState<string | null>(
-    (workspace as any)?.broll_library_id || null
-  );
-  const [pendingShortVideoRender, setPendingShortVideoRender] = useState<{
-    item: ProductionItem;
-    videoUrl: string;
-    sourceClipName?: string;
-    overlays: TextOverlay[];
-    style: RenderStyle;
-    trimStart?: number;
-    trimEnd?: number;
-    videoDuration: number;
-    maxOverlayEnd: number;
-  } | null>(null);
   const [pushingToAd, setPushingToAd] = useState(false);
   const [pushConfirmOpen, setPushConfirmOpen] = useState(false);
 
 
-  // Load named b-roll libraries for this brand
-  useEffect(() => {
-    const bId = brandId || (brand as any)?.id;
-    if (!bId) return;
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from("broll_libraries")
-        .select("id, name, clips")
-        .eq("brand_id", bId)
-        .order("created_at", { ascending: true });
-      if (cancelled || error) return;
-      setNamedLibraries(
-        (data || []).map((r: any) => ({
-          id: r.id,
-          name: r.name,
-          clips: Array.isArray(r.clips) ? r.clips : [],
-        }))
-      );
-    })();
-    return () => { cancelled = true; };
-  }, [brandId, brand]);
-
-  // Sync local state if workspace prop changes
-  useEffect(() => {
-    setSelectedLibraryId((workspace as any)?.broll_library_id || null);
-  }, [(workspace as any)?.broll_library_id]);
-
-  const handleSelectLibrary = async (value: string) => {
-    const newVal = value === "__brand__" ? null : value;
-    setSelectedLibraryId(newVal);
-    const wsId = (workspace as any)?.id;
-    if (!wsId) return;
-    const { error } = await supabase
-      .from("campaign_workspaces")
-      .update({ broll_library_id: newVal })
-      .eq("id", wsId);
-    if (error) {
-      toast.error("Failed to save library selection");
-      return;
-    }
-    onUpdateWorkspace?.({ broll_library_id: newVal });
-    const libName = newVal
-      ? namedLibraries.find((l) => l.id === newVal)?.name
-      : "Brand-wide library";
-    toast.success(`B-roll source: ${libName || "Brand-wide library"}`);
-  };
-
-  // Build merged b-roll clip list: brand-wide + selected named library.
-  const mergedBrand = (() => {
-    if (!brand) return brand;
-    const brandClips: any[] = Array.isArray((brand as any).broll_library)
-      ? (brand as any).broll_library
-      : [];
-    const extra = selectedLibraryId
-      ? namedLibraries.find((l) => l.id === selectedLibraryId)?.clips || []
-      : [];
-    const dedupe = (clips: any[]) => {
-      const seen = new Set<string>();
-      return clips.filter((c: any) => {
-        if (!c?.id) return true;
-        if (seen.has(c.id)) return false;
-        seen.add(c.id);
-        return true;
-      });
-    };
-    // Dedupe by id, keep extras first so library-specific clips appear first
-    let merged = dedupe([...extra, ...brandClips]);
-    // Fallback: if the scoped source (brand-wide + selected library) is empty
-    // but the brand DOES have clips in other named libraries, surface those so
-    // a user who uploaded into a library that isn't the workspace's selected
-    // source still sees their clips — otherwise the generator shows an empty
-    // "upload b-roll" state even though they already uploaded.
-    if (merged.length === 0 && namedLibraries.length > 0) {
-      merged = dedupe(namedLibraries.flatMap((l) => l.clips || []));
-    }
-    return { ...brand, broll_library: merged };
-  })();
   const [previousOpen, setPreviousOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -1758,8 +1665,7 @@ export function ProductionManager({
                           angleCopy={getCopyForItem(item)}
                           onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                           onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
-                          onMakeVideo={(args) => handleMakeVideo({ ...args, item })}
-                          brand={mergedBrand}
+                          brand={brand}
                         />
                       );
                     })}
@@ -1800,8 +1706,7 @@ export function ProductionManager({
                               angleCopy={getCopyForItem(item)}
                               onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                               onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
-                              onMakeVideo={(args) => handleMakeVideo({ ...args, item })}
-                              brand={mergedBrand}
+                                  brand={brand}
                             />
                           );
                         })}
@@ -1860,8 +1765,7 @@ export function ProductionManager({
                                   angleCopy={getCopyForItem(item)}
                                   onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                                   onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
-                                  onMakeVideo={(args) => handleMakeVideo({ ...args, item })}
-                                  brand={mergedBrand}
+                                          brand={brand}
                                 />
                               ))}
                             </div>
