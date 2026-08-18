@@ -83,8 +83,62 @@ const isVividHex = (hex: string): boolean => {
   return l > 0.03 && l < 0.75;
 };
 
+// Funnel / page-builder hosts. Pages on these serve the BUILDER's default
+// template palette (e.g. Kartra's #2e88dc button blue), not the customer's
+// brand. When we see one, we also scrape the brand's own domain, derived from
+// the subdomain label (thepianopath.kartra.com -> thepianopath.com), and let
+// that palette win.
+const FUNNEL_HOSTS = [
+  "kartra.com",
+  "mykajabi.com",
+  "clickfunnels.com",
+  "leadpages.co",
+  "lpages.co",
+  "systeme.io",
+  "gohighlevel.com",
+  "funnels.co",
+  "podia.com",
+  "teachable.com",
+  "thinkific.com",
+  "convertkit.com",
+  "ck.page",
+  "hubspotpagebuilder.com",
+  "webflow.io",
+  "squarespace.com",
+  "wixsite.com",
+  "myshopify.com",
+  "notion.site",
+  "carrd.co",
+];
+
+// Default palettes shipped by those builders — never treat as brand colors.
+const BUILDER_DEFAULT_COLORS = new Set([
+  "#2e88dc", // Kartra primary blue
+  "#212839", // Kartra dark
+  "#4a90e2",
+  "#1a73e8",
+  "#007bff", // Bootstrap
+  "#3b82f6", // Tailwind blue-500
+  "#0d6efd",
+]);
+
+function brandDomainFromFunnelUrl(rawUrl: string): string | null {
+  try {
+    const u = new URL(rawUrl.startsWith("http") ? rawUrl : `https://${rawUrl}`);
+    const host = u.hostname.toLowerCase().replace(/^www\./, "");
+    const match = FUNNEL_HOSTS.find((h) => host === h || host.endsWith(`.${h}`));
+    if (!match) return null;
+    const label = host.slice(0, host.length - match.length - 1).split(".").pop();
+    if (!label || label.length < 3 || label === "www" || label === "app") return null;
+    return `https://${label}.com`;
+  } catch {
+    return null;
+  }
+}
+
 const DESKTOP_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
 
 // Signals that a scrape hit a bot-protection wall (Cloudflare, Akamai, PerimeterX,
 // Wix/Squarespace challenge pages, etc.) so we can bail fast instead of retrying.
@@ -373,8 +427,55 @@ serve(async (req) => {
       return json(400, { error: "url is required" });
     }
 
-    // Fetch site meta (title, og:site_name, description) in parallel with branding
-    const [fc, meta] = await Promise.all([firecrawlBranding(url), fetchSiteMeta(url)]);
+    // Funnel/page-builder URL → also scrape the brand's own domain, whose
+    // palette we prefer over the builder's template colors.
+    const brandDomain = brandDomainFromFunnelUrl(url);
+    const [fcPage, meta, fcBrandDomain] = await Promise.all([
+      firecrawlBranding(url),
+      fetchSiteMeta(url),
+      brandDomain
+        ? firecrawlBranding(brandDomain).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+    const paletteIsBuilderDefault = (r: typeof fcPage) => {
+      if (!r || !("suggested" in r)) return false;
+      const c = r.suggested.colors;
+      const list = [c?.accent, ...(c?.pops ?? [])].filter(Boolean) as string[];
+      return list.length > 0 && list.every((h) => BUILDER_DEFAULT_COLORS.has(h.toLowerCase()));
+    };
+
+    let fc = fcPage;
+    if (
+      fcBrandDomain && "suggested" in fcBrandDomain &&
+      (paletteIsBuilderDefault(fcPage) || !fcPage || !("suggested" in fcPage))
+    ) {
+      console.log("[extract-brand] using brand-domain palette from", brandDomain);
+      fc = fcBrandDomain;
+    } else if (fcBrandDomain && "suggested" in fcBrandDomain && fcPage && "suggested" in fcPage) {
+      // Keep the funnel page's palette but strip builder defaults, backfilling
+      // from the brand domain so the ad still reads as theirs.
+      const pagePops = (fcPage.suggested.colors?.pops ?? []).filter(
+        (h) => !BUILDER_DEFAULT_COLORS.has(h.toLowerCase()),
+      );
+      const pageAccent = fcPage.suggested.colors?.accent;
+      const accentIsDefault = !!pageAccent && BUILDER_DEFAULT_COLORS.has(pageAccent.toLowerCase());
+      if (accentIsDefault || pagePops.length !== (fcPage.suggested.colors?.pops ?? []).length) {
+        const bd = fcBrandDomain.suggested.colors;
+        fc = {
+          ...fcPage,
+          suggested: {
+            ...fcPage.suggested,
+            colors: {
+              ...fcPage.suggested.colors,
+              accent: accentIsDefault ? (bd?.accent ?? pagePops[0]) : pageAccent,
+              pops: Array.from(new Set([...pagePops, ...(bd?.pops ?? [])])).slice(0, 4),
+            },
+          },
+        };
+      }
+    }
+
 
     // Firecrawl detected a bot-protection wall → return a clear signal FAST so the
     // frontend can trigger its fallback flow (OG meta, Instagram, quick questions)
@@ -418,17 +519,27 @@ serve(async (req) => {
         ))
       : [];
     if (fc && "suggested" in fc && fcHasUsefulColors && fcVivid) {
-      console.log("[extract-brand] palette source: firecrawl", JSON.stringify(fcFlatColors));
+      // Flag palettes that are just the page builder's stock template colors so
+      // the UI can ask the user to confirm instead of quietly branding the ad
+      // in someone else's blue.
+      const genericPalette = paletteIsBuilderDefault(fc);
+      console.log(
+        "[extract-brand] palette source: firecrawl",
+        JSON.stringify(fcFlatColors),
+        genericPalette ? "(builder-default)" : "",
+      );
       return json(200, {
         name: meta.name,
         description: meta.description,
         colors: fcFlatColors,
         fonts: fcFlatFonts,
+        genericPalette,
         logoUrl: fc.suggested.imagery?.ogImage,
         suggested: fc.suggested,
         raw: fc.raw,
       });
     }
+
     if (fc && "suggested" in fc && fcHasUsefulColors && !fcVivid) {
       console.log(
         "[extract-brand] firecrawl palette is neutrals-only, trying engine",

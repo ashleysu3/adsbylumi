@@ -578,9 +578,11 @@ export default function GuidedOnboarding() {
               colors: kitPatch.colors || prev?._kit?.colors,
               fonts: kitPatch.fonts || prev?._kit?.fonts,
               logo_url: kitPatch.logo_url || prev?._kit?.logo_url,
+              genericPalette: !!d.genericPalette,
             },
           }));
         }
+
       }).catch(() => {}).finally(() => { clearBrandCap(); setLoadingBrandBasics(false); });
 
       // Fire all extractors IN PARALLEL — total wait ≈ slowest one, not the sum.
@@ -1534,6 +1536,12 @@ export default function GuidedOnboarding() {
                       ) : (
                         <p className="text-sm text-muted-foreground">Nothing loud came through — we'll use a neutral palette to start.</p>
                       )}
+                      {colors.length > 0 && (brand?._kit as any)?.genericPalette && (
+                        <p className="text-xs text-muted-foreground">
+                          That page uses its funnel builder's stock colors — swap in your real brand colors below so the ad looks like you.
+                        </p>
+                      )}
+
                     </div>
                   )}
 
