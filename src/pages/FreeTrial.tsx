@@ -172,7 +172,7 @@ const FreeTrial = () => {
       }
 
       if (data?.url) {
-        window.location.href = data.url;
+        redirectToCheckout(data.url);
       }
     } catch (err) {
       console.error("Checkout error:", err);

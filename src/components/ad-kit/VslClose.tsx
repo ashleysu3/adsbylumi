@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 import { trackLumiEvent } from "@/lib/lumi-pixel";
 import { toast } from "sonner";
+import { redirectToCheckout } from "@/lib/redirect-to-checkout";
 
 // The funnel close, shared by the kit page hero and the onboarding
 // save-unfold so the two can never drift apart: guest checkout with
