@@ -77,7 +77,7 @@ const statsOf = (copy: Copy) =>
 type Family =
   | "split" | "framed" | "spotlight" | "overlay" | "device" | "collage"
   | "bigtype" | "offer" | "event" | "checklist" | "statgrid"
-  | "testimonial" | "chat" | "notes" | "bubbles";
+  | "testimonial" | "chat" | "notes" | "bubbles" | "stacked";
 
 const FAMILY: Record<string, Family> = {
   split: "split",
@@ -101,6 +101,15 @@ const FAMILY: Record<string, Family> = {
   notesapp: "notes",
   nativebubbles: "bubbles",
   carousel: "overlay",
+  // Editorial family. Mapped onto the closest existing preview family so the
+  // in-app preview stays roughly truthful about where the copy and photo sit;
+  // the engine render is what carries their actual styling.
+  markeroverlay: "overlay",
+  typewriterbars: "overlay",
+  headlineblock: "stacked",
+  solidstatement: "bigtype",
+  messagethread: "chat",
+  starquote: "testimonial",
 };
 
 // Width/height ratio of the photo slot inside each layout family, based on a
@@ -112,6 +121,8 @@ const FRAME_ASPECT: Partial<Record<Family, number>> = {
   device: 0.5,
   spotlight: 1,
   collage: 1,
+  // Copy on top, photo filling the bottom half — a wide, short frame.
+  stacked: 2,
 };
 
 export function photoFrameAspect(template?: string, frame: "feed" | "story" = "feed"): number {
@@ -366,6 +377,25 @@ export function LiveAdPreview({
       );
       break;
 
+    case "stacked":
+      // Engine layout (headlineblock): heavy copy across the top half, photo
+      // filling the bottom half with the CTA tab flush to the left edge.
+      body = (
+        <div className="grid h-full grid-rows-2">
+          <div className="flex flex-col justify-between gap-2 p-4">
+            <Eyebrow />
+            <Headline size={1.5} />
+          </div>
+          <div className="relative">
+            <Photo className="h-full w-full" />
+            <div className="absolute bottom-4 left-0">
+              <Cta className="rounded-none rounded-r-sm" />
+            </div>
+          </div>
+        </div>
+      );
+      break;
+
     case "framed":
       // Engine layout: photo fills the left half, copy panel on the right in
       // the background color, with a thin accent frame inset over the whole
@@ -544,13 +574,26 @@ export function LiveAdPreview({
         <div className="flex h-full flex-col justify-center gap-3 p-6">
           <p className="font-serif leading-none" style={{ color: colors.accent, fontSize: "2.5rem" }}>&ldquo;</p>
           <p className="font-medium leading-snug" style={{ color: colors.ink, ...hFont, ...hSize(1.05) }}>
-            {T(firstText(active, ["quote", "headline", "body"]))}
+            {/* starquote splits the testimonial into three runs so the middle
+                one can carry a highlighter; stitch them back together (and
+                tint the highlighted run) rather than showing an empty card. */}
+            {active.quoteHL?.trim() ? (
+              <>
+                {active.quotePre?.trim() && <span>{T(active.quotePre.trim())} </span>}
+                <span style={{ backgroundColor: colors.highlight || colors.accent }}>
+                  {T(active.quoteHL.trim())}
+                </span>
+                {active.quotePost?.trim() && <span>{T(active.quotePost.trim())}</span>}
+              </>
+            ) : (
+              T(firstText(active, ["quote", "quotePre", "headline", "body"]))
+            )}
           </p>
           <div className="flex items-center gap-2">
             {bgImage && <img src={bgImage} alt="" style={{ objectPosition: `${focalX}% ${focalY}%` }} className="h-8 w-8 rounded-full object-cover" />}
             <div>
               <p className="text-[11px] font-semibold" style={{ color: colors.ink, ...bFont }}>
-                {firstText(active, ["attribution", "name", "sub"])}
+                {firstText(active, ["attribution", "name", "author", "sub"])}
               </p>
               <p className="text-[10px] opacity-70" style={{ color: colors.ink, ...bFont }}>
                 {firstText(active, ["role", "meta"])}

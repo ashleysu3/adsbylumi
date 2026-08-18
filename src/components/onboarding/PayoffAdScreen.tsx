@@ -22,6 +22,7 @@ import { ScriptBlock } from "@/components/ad-kit/ScriptBlock";
 import { BrollBlock } from "@/components/ad-kit/BrollBlock";
 import { VslCloseSection, useKitCheckout } from "@/components/ad-kit/VslClose";
 import type { ScriptBeat } from "@/components/ad-kit/types";
+import { SEGMENTED_HEADLINE_TEMPLATES } from "@/components/ad-kit/types";
 import {
   rankPhotoCandidates,
   bestCopyIndex,
@@ -301,8 +302,11 @@ function pickPhotoTemplate(seed: string): PhotoTemplate {
 // Extract a headline preview string from a compose-ad option for a given template.
 function optionToHeadline(template: string, opt: any): string {
   if (!opt || typeof opt !== "object") return "";
-  if (template === "bigtype" || template === "framed") {
+  if (SEGMENTED_HEADLINE_TEMPLATES.has(template)) {
     return [opt.headlinePre, opt.headlineHL, opt.headlinePost].filter(Boolean).join(" ").trim();
+  }
+  if (template === "starquote") {
+    return [opt.quotePre, opt.quoteHL, opt.quotePost].filter(Boolean).join(" ").trim();
   }
   return String(opt.headline || opt.quote || "").trim();
 }

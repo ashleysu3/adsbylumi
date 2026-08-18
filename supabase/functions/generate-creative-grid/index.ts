@@ -629,7 +629,7 @@ ADDITIONAL FIELDS FOR graphic AND carousel FORMATS (REQUIRED — this is the str
   - cta: the action (e.g. "Save your seat", "Watch free training", "Book a call")
   - audience: who this is for, in a phrase
   - proofPoint: optional result/testimonial/stat string, or null
-  - styleHint: one of "photo-forward" | "type-led" | "testimonial" | "card" | "framed" | "stats" | "checklist" | "overlay" | "device" | "chat" | "event" | "offer" | "bigtype" | "collage"
+  - styleHint: one of "photo-forward" | "type-led" | "testimonial" | "card" | "framed" | "stats" | "checklist" | "overlay" | "device" | "chat" | "event" | "offer" | "bigtype" | "collage" | "markeroverlay" | "typewriterbars" | "headlineblock" | "solidstatement" | "messagethread" | "starquote"
   - photoTreatment: one of "with-background" | "none"
   - slideCount: 1 for single_graphic; 3 to 6 for carousel
   - slidePlan: for carousel ONLY, an array of slideCount objects each with a "role" — choose from "hook" | "problem" | "framework" | "proof" | "cta" — in narrative order. Omit for single_graphic.
@@ -647,6 +647,13 @@ ADDITIONAL FIELDS FOR graphic AND carousel FORMATS (REQUIRED — this is the str
   - "offer" — a sale, discount, or limited-time concept. Bold price or offer callout with urgency. Set imageSource to "none" and photoTreatment to "none" unless a real product photo fits.
   - "bigtype" — a single huge-type hook with almost no other elements. One dominant headline, massive type, maximum scroll-stopping impact. Set imageSource to "none" and photoTreatment to "none".
   - "collage" — a multi-photo or multi-element grid concept. Great for showing variety, before/after sequences, or "here's what's inside" reveals. Set imageSource to "none" and photoTreatment to "none".
+  - EDITORIAL STYLE PICKS — a louder, scrappier visual family. Reach for these when the concept wants to sound like a person with an opinion rather than a polished brand:
+    • "markeroverlay" — a handwritten marker line over a real photo, one phrase highlighted, the punchline in the accent color. Best for calling out a belief or a stall. Use imageSource "user-photo", photoTreatment "with-background".
+    • "typewriterbars" — a POV/observation in a black typewriter bar over a real photo, with a short question bar at the bottom. Best for relatable "this could be your life" hooks. Use imageSource "user-photo", photoTreatment "with-background".
+    • "headlineblock" — one blunt claim in very heavy type on the top half, photo on the bottom half. Best for a flat, confident promise. Use imageSource "user-photo", photoTreatment "with-background".
+    • "solidstatement" — a manifesto line on a near-black frame, one word in the accent color. Set imageSource to "none" and photoTreatment to "none".
+    • "messagethread" — one customer objection answered in a designed DM card. Best when a specific fear is the barrier. Set imageSource to "none" and photoTreatment to "none".
+    • "starquote" — a testimonial in typewriter type with the result phrase highlighted. Use only when there is a REAL proofPoint. Set imageSource to "none" and photoTreatment to "none".
 
 
 == AD COPY FORMATTING CONVENTIONS (STRICT) ===

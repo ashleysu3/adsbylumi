@@ -69,11 +69,27 @@ const SLOTS: Record<string,string> = {
   nativecaption: `line1 (the setup line, plain and matter-of-fact, <=10 words), line2 (the punchline/reveal, a bolder statement, <=10 words), cta (optional tiny caption-style line, <=6 words, or "" to skip)`,
   nativestroke: `line1 (the setup line, plain and matter-of-fact, <=10 words), line2 (the punchline/reveal, a bolder statement, <=10 words), cta (optional tiny caption-style line, <=6 words, or "" to skip)`,
   nativebubbles: `bubble1 (a short standalone phrase or reaction, <=8 words — like a real caption bubble, not a headline), bubble2 (the next beat — the specific result or proof, <=10 words), bubble3 (optional closing bubble — a soft ask like "comment X" or a punchy final line, <=8 words, or "" to use just 2 bubbles)`,
+
+  // Editorial family — the six design-canvas templates. Louder, blunter copy
+  // than the house set: these layouts are built around one big statement, so
+  // an eyebrow/sub/CTA stack has nowhere to go in most of them.
+  markeroverlay: `headlinePre (the setup, <=12 words — plain observation, no hype), headlineHL (the pivot word or short phrase that gets the highlighter stroke, 1-3 words, often a question like "problem?"), headlinePost (the punchline, shown in the accent color — the turn that names their real situation, <=7 words). The three read as ONE continuous sentence in that order and are set in handwriting, so keep the whole thing under ~24 words`,
+  typewriterbars: `headline (the hook, written as a POV/observation a person would actually think, <=16 words — it sits in a black bar over a photo, so no eyebrow and no brand voice), ${CTA_RULE}`,
+  headlineblock: `eyebrow (<=3 words, the format label, e.g. "Free training"), headline (the claim, <=12 words — set in very heavy type across the top half, so it must read as one blunt statement), ${CTA_RULE}`,
+  solidstatement: `eyebrow (<=4 words, a framing line, e.g. "Read this twice"), headlinePre (the lead-in, <=8 words), headlineHL (the ONE word or short phrase carrying the whole idea — it gets the accent color, 1-3 words), headlinePost (the tail, <=7 words), sub (the brand's @handle if the brief gives one, else ""). The three headline parts read as one sentence; keep the whole thing under ~16 words — this is a type-only frame with nothing else to look at`,
+  messagethread: `eyebrow (the card's label, <=3 words, e.g. "New message"), msg1 (the objection in the customer's own words, in quotes, <=18 words — a real thing they'd say, not a marketing paraphrase), msg2 (the reply that dissolves it, <=18 words — direct and warm, not a pitch), cta (the closing line under the thread — written plainly, like "Link in bio → start today", NOT as a button label, <=8 words)`,
+  starquote: `quotePre (the opening of the testimonial including the opening quote mark, <=10 words), quoteHL (the specific result phrase that gets highlighted — the number or outcome, <=6 words), quotePost (the rest of the quote, starting with the closing quote mark, <=14 words), author (first name + last initial), role (title or business, 2-4 words). The three quote parts read as ONE sentence in order`,
 };
 
 function mapStyle(styleHint?: string, format?: string): string {
   if (format === "carousel") return "carousel";
-  const m: Record<string,string> = { "photo-forward":"spotlight","card":"spotlight","framed":"framed","type-led":"split","testimonial":"testimonial","stats":"statgrid","data":"statgrid","checklist":"checklist","list":"checklist","steps":"checklist","chat":"chatproof","proof":"chatproof","testimonialchat":"chatproof","event":"event","webinar":"event","offer":"offer","sale":"offer","discount":"offer","bigtype":"bigtype","type-hero":"bigtype","collage":"collage","grid":"collage","overlay":"overlay","device":"devicemockup","devicemockup":"devicemockup","mockup":"devicemockup","notesapp":"notesapp","notes":"notesapp","textthread":"textthread","texts":"textthread","imessage":"textthread","nativecaption":"nativecaption","caption":"nativecaption","nativestroke":"nativestroke","stroke":"nativestroke","strokecaption":"nativestroke","nativebubbles":"nativebubbles","bubbles":"nativebubbles","captionbubbles":"nativebubbles" };
+  const m: Record<string,string> = { "photo-forward":"spotlight","card":"spotlight","framed":"framed","type-led":"split","testimonial":"testimonial","stats":"statgrid","data":"statgrid","checklist":"checklist","list":"checklist","steps":"checklist","chat":"chatproof","proof":"chatproof","testimonialchat":"chatproof","event":"event","webinar":"event","offer":"offer","sale":"offer","discount":"offer","bigtype":"bigtype","type-hero":"bigtype","collage":"collage","grid":"collage","overlay":"overlay","device":"devicemockup","devicemockup":"devicemockup","mockup":"devicemockup","notesapp":"notesapp","notes":"notesapp","textthread":"textthread","texts":"textthread","imessage":"textthread","nativecaption":"nativecaption","caption":"nativecaption","nativestroke":"nativestroke","stroke":"nativestroke","strokecaption":"nativestroke","nativebubbles":"nativebubbles","bubbles":"nativebubbles","captionbubbles":"nativebubbles",
+    "markeroverlay":"markeroverlay","marker":"markeroverlay","handwritten":"markeroverlay",
+    "typewriterbars":"typewriterbars","typewriter":"typewriterbars","pov":"typewriterbars",
+    "headlineblock":"headlineblock","boldheadline":"headlineblock","heavytype":"headlineblock",
+    "solidstatement":"solidstatement","statement":"solidstatement","manifesto":"solidstatement",
+    "messagethread":"messagethread","dm":"messagethread","objection":"messagethread",
+    "starquote":"starquote","quote":"starquote","starproof":"starquote" };
   return (styleHint && m[styleHint]) || "bigtype";
 }
 

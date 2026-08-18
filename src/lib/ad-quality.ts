@@ -6,6 +6,8 @@
 // ever renders — no favicon-as-hero, no white-on-white palette, no headline
 // that opens with "Unlock the power of".
 
+import { SEGMENTED_HEADLINE_TEMPLATES } from "@/components/ad-kit/types";
+
 export type ProbedPhoto = {
   url: string;
   label?: string;
@@ -101,8 +103,11 @@ const HEADLINE_SWEET_SPOT: [number, number] = [18, 60];
 
 function headlineOf(template: string, opt: any): string {
   if (!opt || typeof opt !== "object") return "";
-  if (template === "bigtype" || template === "framed") {
+  if (SEGMENTED_HEADLINE_TEMPLATES.has(template)) {
     return [opt.headlinePre, opt.headlineHL, opt.headlinePost].filter(Boolean).join(" ").trim();
+  }
+  if (template === "starquote") {
+    return [opt.quotePre, opt.quoteHL, opt.quotePost].filter(Boolean).join(" ").trim();
   }
   return String(opt.headline || opt.quote || "").trim();
 }

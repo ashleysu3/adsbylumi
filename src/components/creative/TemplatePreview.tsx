@@ -133,6 +133,81 @@ export function TemplatePreview({ kind }: { kind: string }) {
           <rect x="22" y="62" width="56" height="12" rx="6" fill="white" />
         </svg>
       );
+    case "markeroverlay":
+      return (
+        <svg {...common}>
+          <rect width="100" height="100" fill={photo} />
+          {/* light band scrim behind handwritten lines */}
+          <rect x="0" y="30" width="100" height="42" fill="white" opacity="0.35" />
+          <rect x="10" y="36" width="72" height="7" rx="3" fill={fg} />
+          <rect x="10" y="47" width="64" height="7" rx="3" fill={fg} />
+          {/* highlighter stroke under the pivot word */}
+          <rect x="10" y="61" width="30" height="4" fill="#d7e63c" />
+          <rect x="44" y="58" width="38" height="7" rx="3" fill={accent} />
+        </svg>
+      );
+    case "typewriterbars":
+      return (
+        <svg {...common}>
+          <rect width="100" height="100" fill={photo} />
+          <rect x="10" y="8" width="80" height="20" fill="#0b0b0b" />
+          <rect x="18" y="14" width="64" height="3" rx="1" fill="white" />
+          <rect x="24" y="20" width="52" height="3" rx="1" fill="white" />
+          <rect x="24" y="80" width="52" height="12" fill={accent} />
+        </svg>
+      );
+    case "headlineblock":
+      return (
+        <svg {...common}>
+          <rect width="100" height="100" fill={bg} />
+          <rect x="10" y="10" width="26" height="3" rx="1" fill={accent} />
+          <rect x="10" y="20" width="76" height="9" rx="1" fill={fg} />
+          <rect x="10" y="32" width="64" height="9" rx="1" fill={fg} />
+          <rect x="0" y="50" width="100" height="50" fill={photo} />
+          <rect x="0" y="80" width="36" height="11" fill={accent} />
+        </svg>
+      );
+    case "solidstatement":
+      return (
+        <svg {...common}>
+          <rect width="100" height="100" fill={fg} />
+          <rect x="10" y="12" width="26" height="3" rx="1" fill={soft} />
+          <rect x="10" y="34" width="76" height="10" rx="1" fill={bg} />
+          <rect x="10" y="48" width="44" height="10" rx="1" fill={accent} />
+          <rect x="10" y="62" width="60" height="10" rx="1" fill={bg} />
+          <rect x="10" y="86" width="5" height="5" fill={accent} />
+          <rect x="19" y="87" width="26" height="3" rx="1" fill={soft} />
+        </svg>
+      );
+    case "messagethread":
+      return (
+        <svg {...common}>
+          <rect width="100" height="100" fill={bg} />
+          <circle cx="15" cy="14" r="6" fill={soft} />
+          <rect x="25" y="12" width="30" height="4" rx="1" fill={fg} />
+          <rect x="8" y="24" width="84" height="1" fill={soft} />
+          <rect x="8" y="38" width="56" height="18" rx="8" fill="white" stroke={soft} />
+          <rect x="36" y="60" width="56" height="18" rx="8" fill={accent} />
+          <rect x="8" y="88" width="40" height="3" rx="1" fill={soft} />
+        </svg>
+      );
+    case "starquote":
+      return (
+        <svg {...common}>
+          <rect width="100" height="100" fill={bg} />
+          <rect x="0" y="0" width="100" height="5" fill={accent} />
+          {[10, 18, 26, 34, 42].map((x) => (
+            <rect key={x} x={x} y="14" width="5" height="5" fill={fg} />
+          ))}
+          <rect x="10" y="34" width="60" height="6" rx="1" fill={fg} />
+          <rect x="10" y="44" width="52" height="6" fill="#d7e63c" />
+          <rect x="12" y="45" width="48" height="4" rx="1" fill={fg} />
+          <rect x="10" y="54" width="44" height="6" rx="1" fill={fg} />
+          <circle cx="17" cy="82" r="8" fill={soft} />
+          <rect x="30" y="77" width="30" height="4" rx="1" fill={fg} />
+          <rect x="30" y="85" width="22" height="3" rx="1" fill={soft} />
+        </svg>
+      );
     default:
       return (
         <svg {...common}>
