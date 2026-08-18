@@ -519,17 +519,27 @@ serve(async (req) => {
         ))
       : [];
     if (fc && "suggested" in fc && fcHasUsefulColors && fcVivid) {
-      console.log("[extract-brand] palette source: firecrawl", JSON.stringify(fcFlatColors));
+      // Flag palettes that are just the page builder's stock template colors so
+      // the UI can ask the user to confirm instead of quietly branding the ad
+      // in someone else's blue.
+      const genericPalette = paletteIsBuilderDefault(fc);
+      console.log(
+        "[extract-brand] palette source: firecrawl",
+        JSON.stringify(fcFlatColors),
+        genericPalette ? "(builder-default)" : "",
+      );
       return json(200, {
         name: meta.name,
         description: meta.description,
         colors: fcFlatColors,
         fonts: fcFlatFonts,
+        genericPalette,
         logoUrl: fc.suggested.imagery?.ogImage,
         suggested: fc.suggested,
         raw: fc.raw,
       });
     }
+
     if (fc && "suggested" in fc && fcHasUsefulColors && !fcVivid) {
       console.log(
         "[extract-brand] firecrawl palette is neutrals-only, trying engine",
