@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { QuickFixDialog } from "@/components/QuickFixDialog";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,16 +14,22 @@ import {
   MessageSquare, RefreshCw, FileText, Pencil, Check,
   Wand2
 } from "lucide-react";
-import { useRenderQueue } from "@/contexts/RenderQueueContext";
-import type { RenderStyle } from "@/lib/ffmpeg-renderer";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ProductionItem } from "./ProductionChecklistPanel";
-import { VideoTextPreview, DEFAULT_OVERLAY_STYLE } from "@/components/VideoTextPreview";
-import type { OverlayStyle, TextOverlay } from "@/components/VideoTextPreview";
-import { PlayableVideo } from "@/components/PlayableVideo";
+
+// Text overlay copy shown to the user as plain text they can copy — the
+// generator that used to render this onto video/graphics is gone.
+interface TextOverlay {
+  text: string;
+  type?: string;
+  timing?: string;
+  xy?: { x: number; y: number };
+  width?: number;
+  scale?: number;
+}
 
 const formatIcons = { talking_head: Video, broll: Film, graphic: Image, carousel: Image };
 const formatLabels = { talking_head: "Talking Head", broll: "B-Roll", graphic: "Graphic", carousel: "Carousel" };
@@ -83,19 +88,6 @@ interface CreativeChecklistCardProps {
   angleCopy?: AngleCopyData;
   onCopyChange?: (updatedCopy: AngleCopyData) => void;
   onOverlaysChange?: (overlays: TextOverlay[]) => void;
-  /**
-   * Called when the user clicks "Make my video". The parent wires this
-   * to the render queue + auto-attach logic. The card just collects the
-   * inputs (clip, overlays, brand style) and hands them up.
-   */
-  onMakeVideo?: (args: {
-    videoUrl: string;
-    sourceClipName?: string;
-    overlays: TextOverlay[];
-    style: RenderStyle;
-    trimStart?: number;
-    trimEnd?: number;
-  }) => void;
   brand?: any;
 }
 
@@ -184,24 +176,15 @@ export function CreativeChecklistCard({
   angleCopy,
   onCopyChange,
   onOverlaysChange,
-  onMakeVideo,
   brand,
 }: CreativeChecklistCardProps) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [justFocused, setJustFocused] = useState(false);
   const [showRationale, setShowRationale] = useState(false);
-  const [selectedBrollClipId, setSelectedBrollClipId] = useState<string | null>(null);
-  const [brollSource, setBrollSource] = useState<"lumi" | "upload">("lumi");
   const [customBrollUrl, setCustomBrollUrl] = useState<string | null>(null);
   const [customBrollName, setCustomBrollName] = useState<string | null>(null);
   const [uploadingBroll, setUploadingBroll] = useState(false);
-  // Missing b-roll gets fixed in a modal on this screen — no navigating away.
-  const [brollFixOpen, setBrollFixOpen] = useState(false);
-  // Render queue for "Queue Render" — user clicks, we enqueue the job,
-  // they keep working. Toast + bell icon + email notify on completion.
-  const { enqueue, jobs } = useRenderQueue();
-  const rendering = jobs.some(j => j.status === 'pending' || j.status === 'rendering');
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [isRefining, setIsRefining] = useState(false);

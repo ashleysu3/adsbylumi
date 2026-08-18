@@ -12,8 +12,8 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import {
   Loader2, ArrowRight, ChevronLeft, CheckCircle2, Sparkles,
-  Upload, Image as ImageIcon, Palette, MessageSquare, Brain, Target, Quote, ListChecks, Trash2, Check, Film,
-  Pencil, Type, Award, BarChart3, Newspaper, GraduationCap, Users, Briefcase, Lock
+  MessageSquare, Brain, Target, Quote, ListChecks, Check,
+  Pencil, Award, BarChart3, Newspaper, GraduationCap, Users, Briefcase, Lock
 } from "lucide-react";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { PayoffAdScreen } from "@/components/onboarding/PayoffAdScreen";
@@ -36,13 +36,6 @@ const STEPS = [
   "Strategy & launch",
 ];
 const TOTAL = STEPS.length;
-type AssetRow = { id: string; url: string; role: string | null; kept: boolean; source_url?: string | null; signedUrl?: string };
-
-// Roles that read as "real photos of you/your work" for the onboarding preview —
-// deliberately excludes logo/texture/graphic/background, which aren't what a
-// user means by "example images."
-const PHOTO_PREVIEW_ROLES = ["headshot", "lifestyle", "full_body", "product"];
-
 // Goal-specific copy for the "give us a link" follow-up — a real URL beats a
 // hand-typed description: LUMI reads the actual page (extract-offer-info) for
 // a real price/page_goal, which is what lets recommend-strategy pick a lead
@@ -64,11 +57,6 @@ const AD_LINK_COPY: Record<"booked_calls" | "leads" | "sales", { label: string; 
   },
 };
 
-function pathFromUrl(url: string): string | null {
-  const m = url.match(/\/storage\/v1\/object\/(?:public|sign)\/brand-assets\/([^?]+)/);
-  return m ? decodeURIComponent(m[1]) : null;
-}
-
 function domainName(url: string): string {
   try {
     const h = new URL(url).hostname.replace(/^www\./, "");
@@ -76,31 +64,14 @@ function domainName(url: string): string {
   } catch { return "My brand"; }
 }
 
-// Picks a real accent from the brand's own extracted palette instead of a
-// generic app color, so the "Why they'll say yes" cards read as THIS brand's
-// colors, not LUMI's. Same luma-window approach PayoffAdScreen's
-// toEngineColors uses for the same reason (skip near-black/near-white swatches).
-function pickAccentColor(colors: string[]): string | null {
-  const valid = colors.filter((c) => /^#[0-9a-fA-F]{6}$/.test(c));
-  if (!valid.length) return null;
-  const luma = (h: string) => {
-    const r = parseInt(h.slice(1, 3), 16), g = parseInt(h.slice(3, 5), 16), b = parseInt(h.slice(5, 7), 16);
-    return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  };
-  const mids = valid.filter((c) => { const l = luma(c); return l > 0.15 && l < 0.85; });
-  return mids[0] || valid[0];
-}
-
 const WITTY_LINES = [
   "🔍 Getting the lay of your site…",
-  "🎨 Pulling your color palette…",
   "🧠 Mapping out your dream client…",
   "✍️ Learning how your brand actually sounds…",
   "💬 Digging up your testimonials…",
-  "📸 Finding your best logos and photos…",
   "🪄 Comparing notes with brands like yours…",
 ];
-const REVEAL_SECTIONS = ["basics", "design", "audience", "proof", "images"] as const;
+const REVEAL_SECTIONS = ["basics", "audience", "proof"] as const;
 type RevealKey = typeof REVEAL_SECTIONS[number];
 const FIRST_DELAY_MS = 500;
 const STAGGER_MS = 800;
@@ -139,19 +110,18 @@ export default function GuidedOnboarding() {
   const [loadingVoice, setLoadingVoice] = useState(false);
   const [loadingAudience, setLoadingAudience] = useState(false);
   const [loadingProof, setLoadingProof] = useState(false);
-  const [loadingAssets, setLoadingAssetsHarvest] = useState(false);
   const step1Fired = useRef(false);
 
   // Reveal orchestration — placeholder name (domain slug) is INTERNAL ONLY; never shown.
   const placeholderNameRef = useRef<string>("");
   const [revealStartedAt, setRevealStartedAt] = useState<number | null>(null);
   const [revealed, setRevealed] = useState<Record<RevealKey, boolean>>({
-    basics: false, design: false, audience: false, proof: false, images: false,
+    basics: false, audience: false, proof: false,
   });
   // Sections whose extractor timed out — we still reveal them, but with a friendly
   // "couldn't pull this one" hint above the editable card.
   const [failed, setFailed] = useState<Record<RevealKey, boolean>>({
-    basics: false, design: false, audience: false, proof: false, images: false,
+    basics: false, audience: false, proof: false,
   });
   const [slowMode, setSlowMode] = useState(false);
   const [narrationIdx, setNarrationIdx] = useState(0);
@@ -189,16 +159,6 @@ export default function GuidedOnboarding() {
   const [offers, setOffers] = useState<any[]>([]);
   const [offerBusy, setOfferBusy] = useState(false);
   const [offerStatusMsg, setOfferStatusMsg] = useState<string | null>(null);
-
-  // Reveal — assets
-  const [assets, setAssets] = useState<AssetRow[]>([]);
-  const [headshotUrl, setHeadshotUrl] = useState<string | null>(null);
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [assetsLoading, setAssetsLoading] = useState(false);
-  const [classifying, setClassifying] = useState(false);
-  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
-  const [brollIdeas, setBrollIdeas] = useState<any[] | null>(null);
-  const assetsInitRef = useRef(false);
 
   // Strategy
   const [strategy, setStrategy] = useState<any>(null);
@@ -245,14 +205,6 @@ export default function GuidedOnboarding() {
   }, [revealStartedAt, loadingBrandBasics, revealed.basics, markRevealed]);
 
   useEffect(() => {
-    if (!revealStartedAt || revealed.design) return;
-    if (loadingBrandBasics) return;
-    const wait = Math.max(0, revealStartedAt + FIRST_DELAY_MS - Date.now());
-    const t = setTimeout(() => markRevealed("design"), wait);
-    return () => clearTimeout(t);
-  }, [revealStartedAt, loadingBrandBasics, revealed.design, markRevealed]);
-
-  useEffect(() => {
     if (!revealStartedAt || revealed.audience) return;
     if (loadingAudience) return;
     // Only reveal once the psychology is actually grounded (real source material,
@@ -276,23 +228,14 @@ export default function GuidedOnboarding() {
     return () => clearTimeout(t);
   }, [revealStartedAt, loadingProof, revealed.proof, markRevealed]);
 
-  useEffect(() => {
-    if (!revealStartedAt || revealed.images) return;
-    if (loadingAssets) return;
-    const t = setTimeout(() => markRevealed("images"), 0);
-    return () => clearTimeout(t);
-  }, [revealStartedAt, loadingAssets, revealed.images, markRevealed]);
-
   const revealedCount = REVEAL_SECTIONS.filter((k) => revealed[k]).length;
   const allRevealed = revealedCount === REVEAL_SECTIONS.length;
   // The user is held on the reading screen (feature loading overlay up) until
   // EVERY extractor has settled or the hard cap fires — no half-read brands
   // sliding into the first ad.
-  const hasCoreBrandData =
-    ((brand?._kit?.colors as string[] | undefined)?.length ?? 0) > 0 ||
-    !!(brand?.name && brand.name !== placeholderNameRef.current);
+  const hasCoreBrandData = !!(brand?.name && brand.name !== placeholderNameRef.current);
   const stillExtracting =
-    loadingBrandBasics || loadingVoice || loadingAudience || loadingProof || loadingAssets;
+    loadingBrandBasics || loadingVoice || loadingAudience || loadingProof;
   // Once every extractor has settled ('done'), the user must be able to move on
   // even if a single card never revealed (e.g. audience psychology came back
   // ungrounded) — otherwise they're trapped on the reading screen forever.
@@ -486,9 +429,8 @@ export default function GuidedOnboarding() {
       setLoadingVoice(true);
       setLoadingAudience(true);
       setLoadingProof(true);
-      setLoadingAssetsHarvest(true);
-      setRevealed({ basics: false, design: false, audience: false, proof: false, images: false });
-      setFailed({ basics: false, design: false, audience: false, proof: false, images: false });
+      setRevealed({ basics: false, audience: false, proof: false });
+      setFailed({ basics: false, audience: false, proof: false });
       setSlowMode(false);
       setRevealStartedAt(Date.now());
       setNarrationIdx(0);
@@ -524,14 +466,12 @@ export default function GuidedOnboarding() {
       const voiceSettled = { done: false };
       const audSettled = { done: false };
       const proofSettled = { done: false };
-      const assetsSettled = { done: false };
-      const clearBrandCap = armCap("extract-brand", ["basics", "design"], setLoadingBrandBasics, brandSettled);
+      const clearBrandCap = armCap("extract-brand", ["basics"], setLoadingBrandBasics, brandSettled);
       const clearVoiceCap = armCap("analyze-brand-voice", ["basics"], setLoadingVoice, voiceSettled);
       const clearAudCap = armCap("generate-audience-psychology", ["audience"], setLoadingAudience, audSettled);
       const clearProofCap = armCap("extract-social-proof", ["proof"], setLoadingProof, proofSettled);
-      const clearAssetsCap = armCap("harvest-brand-assets", ["images"], setLoadingAssetsHarvest, assetsSettled);
 
-      // extract-brand → colors/logo/fonts/description (the first thing to render)
+      // extract-brand → name/description (the first thing to render)
       const pBrand = supabase.functions.invoke("extract-brand", { body: { url: websiteForCall } }).then(async (r) => {
         const d: any = r.data;
         if (!d || r.error) return;
@@ -541,7 +481,7 @@ export default function GuidedOnboarding() {
         // the full 25s escape-hatch timer.
         if (d.blocked) {
           console.warn("[onboarding] extract-brand returned blocked:true — using fallback flow");
-          setFailed((f) => ({ ...f, basics: true, design: true }));
+          setFailed((f) => ({ ...f, basics: true }));
           // Still capture og:title/description if the server managed to read them.
           const brandPatch: any = {};
           if (d.name) brandPatch.name = d.name;
@@ -552,17 +492,6 @@ export default function GuidedOnboarding() {
           }
           return;
         }
-        const kitPatch: any = {
-          user_id: user.id, brand_id: brandIdLocal, source_url: websiteForCall, status: "extracted",
-        };
-        if (d.colors?.length) kitPatch.colors = d.colors;
-        if (d.fonts?.length) kitPatch.fonts = d.fonts;
-        if (d.logoUrl) kitPatch.logo_url = d.logoUrl;
-        const { error: kitErr } = await supabase
-          .from("brand_kits" as any)
-          .upsert(kitPatch, { onConflict: "user_id,brand_id" });
-        if (kitErr) console.warn("brand_kits upsert failed", kitErr);
-
         const brandPatch: any = {};
         if (d.name) brandPatch.name = d.name;
         if (d.description) brandPatch.value_proposition = d.description;
@@ -571,18 +500,6 @@ export default function GuidedOnboarding() {
           if (brErr) console.warn("brand update failed", brErr);
           else setBrand((prev: any) => ({ ...(prev || {}), ...brandPatch }));
         }
-        if (kitPatch.colors || kitPatch.fonts || kitPatch.logo_url) {
-          setBrand((prev: any) => ({
-            ...(prev || {}),
-            _kit: {
-              colors: kitPatch.colors || prev?._kit?.colors,
-              fonts: kitPatch.fonts || prev?._kit?.fonts,
-              logo_url: kitPatch.logo_url || prev?._kit?.logo_url,
-              genericPalette: !!d.genericPalette,
-            },
-          }));
-        }
-
       }).catch(() => {}).finally(() => { clearBrandCap(); setLoadingBrandBasics(false); });
 
       // Fire all extractors IN PARALLEL — total wait ≈ slowest one, not the sum.
@@ -615,10 +532,6 @@ export default function GuidedOnboarding() {
           }
         }).catch(() => {}).finally(() => { clearProofCap(); setLoadingProof(false); });
 
-      const pAssets = supabase.functions.invoke("harvest-brand-assets", { body: { url: websiteForCall, brandId: brandIdLocal } })
-        .catch(() => {})
-        .finally(() => { clearAssetsCap(); setLoadingAssetsHarvest(false); });
-
       // Background enrichment: reads the site like a human (via the engine's real
       // browser, multi-page — home/about/offers/results) and feeds real text +
       // screenshots to a vision model for a much juicier audience_psychology than
@@ -649,13 +562,10 @@ export default function GuidedOnboarding() {
         .catch(() => {});
 
       // When everything settles, flag the phase as done so the resume logic stops trying.
-      Promise.allSettled([pBrand, pVoice, pAud, pProof, pAssets]).then(async () => {
+      Promise.allSettled([pBrand, pVoice, pAud, pProof]).then(async () => {
         try {
-          const [{ data: b }, { data: k }] = await Promise.all([
-            supabase.from("brands").select("*").eq("id", brandIdLocal).maybeSingle(),
-            supabase.from("brand_kits" as any).select("colors, fonts, logo_url").eq("brand_id", brandIdLocal).maybeSingle(),
-          ]);
-          if (b) setBrand((prev: any) => ({ ...(b as any), _kit: k || (prev?._kit ?? null) }));
+          const { data: b } = await supabase.from("brands").select("*").eq("id", brandIdLocal).maybeSingle();
+          if (b) setBrand((prev: any) => ({ ...(prev || {}), ...(b as any) }));
         } catch { /* ignore */ }
         setExtractionPhase('done');
       });
@@ -670,33 +580,16 @@ export default function GuidedOnboarding() {
       setLoadingVoice(false);
       setLoadingAudience(false);
       setLoadingProof(false);
-      setLoadingAssetsHarvest(false);
     } finally {
       setStep1Busy(false);
     }
   };
 
-  // =================== Reveal page — keep brand_kit in sync ===================
-  useEffect(() => {
-    if (step !== 2 || !brandId) return;
-    let cancelled = false;
-    (async () => {
-      const [{ data: b }, { data: k }] = await Promise.all([
-        supabase.from("brands").select("*").eq("id", brandId).maybeSingle(),
-        supabase.from("brand_kits" as any).select("colors, fonts, logo_url").eq("brand_id", brandId).maybeSingle(),
-      ]);
-      if (!cancelled && b) setBrand((prev: any) => ({ ...(b as any), _kit: k || prev?._kit || null }));
-    })();
-    return () => { cancelled = true; };
-  }, [step, brandId]);
-
   const updateBrand = async (patch: Record<string, any>) => {
     if (!brandId) return;
     setBrand((prev: any) => ({ ...(prev || {}), ...patch }));
-    // _kit is local-only state (mirrors brand_kits) — never push it to the brands table.
-    const { _kit, ...dbPatch } = patch as any;
-    if (Object.keys(dbPatch).length) {
-      await supabase.from("brands").update(dbPatch).eq("id", brandId);
+    if (Object.keys(patch).length) {
+      await supabase.from("brands").update(patch).eq("id", brandId);
     }
   };
 
@@ -838,187 +731,6 @@ export default function GuidedOnboarding() {
   const updateOffer = async (offerId: string, patch: Record<string, any>) => {
     setOffers((prev) => prev.map((o) => (o.id === offerId ? { ...o, ...patch } : o)));
     await supabase.from("offers").update(patch).eq("id", offerId);
-  };
-
-  // =================== STEP 4 — assets w/ signed URLs + classify ===================
-  const loadAssets = useCallback(async () => {
-    if (!brandId) return;
-    setAssetsLoading(true);
-    try {
-      const { data: rows } = await supabase
-        .from("brand_assets" as any).select("*")
-        .eq("brand_id", brandId).order("created_at", { ascending: false });
-      const list = ((rows || []) as unknown) as AssetRow[];
-      const paths = list.map((r) => pathFromUrl(r.url));
-      const validPaths = paths.filter(Boolean) as string[];
-      const signedMap = new Map<string, string>();
-      if (validPaths.length) {
-        const { data: s } = await supabase.storage.from("brand-assets").createSignedUrls(validPaths, 60 * 60);
-        (s || []).forEach((entry: any, i) => {
-          if (entry?.signedUrl) signedMap.set(validPaths[i], entry.signedUrl);
-        });
-      }
-      const withSigned = list.map((r) => {
-        const p = pathFromUrl(r.url);
-        return { ...r, signedUrl: (p && signedMap.get(p)) || r.url };
-      });
-      setAssets(withSigned);
-
-      const { data: uaRaw } = await supabase
-        .from("user_assets" as any).select("*").eq("brand_id", brandId);
-      const ua = (uaRaw as any[]) || [];
-      const headshotRow = ua.find((a: any) => a.kind === "headshot");
-      setHeadshotUrl(headshotRow?.original_url || headshotRow?.cutout_url || null);
-      const { data: kit } = await supabase.from("brand_kits" as any)
-        .select("logo_url").eq("brand_id", brandId).maybeSingle();
-      setLogoUrl((kit as any)?.logo_url || null);
-    } finally {
-      setAssetsLoading(false);
-    }
-  }, [brandId]);
-
-  useEffect(() => {
-    if (step !== 2 || !brandId) return;
-    if (assetsInitRef.current) { loadAssets(); return; }
-    assetsInitRef.current = true;
-    (async () => {
-      await loadAssets();
-      // Classify any assets without a role
-      const { data: needs } = await supabase
-        .from("brand_assets" as any).select("id,role").eq("brand_id", brandId);
-      const ids = ((needs as any[]) || []).filter((a) => !a.role).map((a) => a.id);
-      if (ids.length) {
-        setClassifying(true);
-        try {
-          await supabase.functions.invoke("classify-brand-asset", { body: { brandId, assetIds: ids } });
-          await loadAssets();
-        } catch { /* ignore */ }
-        finally { setClassifying(false); }
-      }
-      // B-roll ideas
-      try {
-        const { data } = await supabase.functions.invoke("generate-broll-ideas", { body: { brandId } });
-        const ideas = (data as any)?.ideas || (data as any) || null;
-        if (Array.isArray(ideas)) setBrollIdeas(ideas.slice(0, 10));
-      } catch { /* ignore */ }
-    })();
-  }, [step, brandId, loadAssets]);
-
-  // Re-load the library once the harvest extractor finishes streaming in new images.
-  useEffect(() => {
-    if (step !== 2 || !brandId) return;
-    if (loadingAssets) return;
-    if (!assetsInitRef.current) return;
-    loadAssets();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadingAssets]);
-
-  const grouped = useMemo(() => {
-    const map: Record<string, AssetRow[]> = {
-      logo: [], headshot: [], lifestyle: [], full_body: [], product: [], texture: [], graphic: [], background: [], other: [],
-    };
-    for (const a of assets) {
-      let k = (a.role || "other").toLowerCase();
-      // Back-compat: older rows used "background" as a catch-all for lifestyle.
-      if (!(k in map)) k = "other";
-      map[k].push(a);
-    }
-    return map;
-  }, [assets]);
-
-  const toggleKept = async (id: string, kept: boolean) => {
-    setAssets((prev) => prev.map((a) => (a.id === id ? { ...a, kept } : a)));
-    await supabase.from("brand_assets" as any).update({ kept }).eq("id", id);
-  };
-  const removeAsset = async (id: string) => {
-    setAssets((prev) => prev.filter((a) => a.id !== id));
-    await supabase.from("brand_assets" as any).delete().eq("id", id);
-  };
-  const setRole = async (id: string, role: string) => {
-    setAssets((prev) => prev.map((a) => (a.id === id ? { ...a, role } : a)));
-    await supabase.from("brand_assets" as any).update({ role }).eq("id", id);
-  };
-
-  const uploadFile = async (
-    file: File,
-    role: "logo" | "headshot" | "lifestyle" | "full_body" | "product" | "texture" | "graphic" | "background" | "other"
-  ) => {
-    if (!brandId) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const ext = file.name.split(".").pop() || "png";
-    const path = `${user.id}/${brandId}/${role}-${Date.now()}.${ext}`;
-    if (role === "headshot") {
-      const { error } = await supabase.storage.from("ad-photos").upload(path, file, { upsert: true });
-      if (error) { toast.error(error.message); return; }
-      const { data: pub } = supabase.storage.from("ad-photos").getPublicUrl(path);
-      const { data: assetRow } = await supabase.from("user_assets" as any).insert({
-        user_id: user.id, brand_id: brandId, kind: "headshot", original_url: pub.publicUrl,
-      }).select("id").maybeSingle();
-      setHeadshotUrl(pub.publicUrl);
-      // Cut the background out ONCE, now, instead of re-running removal inside
-      // every render that uses a cutout template. Fire-and-forget: the upload is
-      // already done and usable, so a slow or failed cutout must never block
-      // onboarding — renders simply fall back to removing it on the fly.
-      const newAssetId = (assetRow as any)?.id;
-      if (newAssetId) {
-        supabase.functions
-          .invoke("generate-cutout", { body: { assetId: newAssetId } })
-          .catch(() => { /* falls back to per-render removal */ });
-      }
-    } else {
-      const { error } = await supabase.storage.from("brand-assets").upload(path, file, { upsert: true });
-      if (error) { toast.error(error.message); return; }
-      const { data: pub } = supabase.storage.from("brand-assets").getPublicUrl(path);
-      await supabase.from("brand_assets" as any).insert({
-        user_id: user.id, brand_id: brandId, url: pub.publicUrl, role, kept: true,
-      });
-      if (role === "logo") {
-        await supabase.from("brand_kits" as any).upsert(
-          { user_id: user.id, brand_id: brandId, logo_url: pub.publicUrl, status: "approved" },
-          { onConflict: "brand_id" }
-        );
-        setLogoUrl(pub.publicUrl);
-      }
-      await loadAssets();
-    }
-    toast.success("Uploaded");
-  };
-
-  const uploadBroll = async (file: File) => {
-    if (!brandId) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const ext = file.name.split(".").pop() || "mp4";
-    const path = `${user.id}/${brandId}/broll-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("broll-library").upload(path, file, { upsert: true });
-    if (error) { toast.error(error.message); return; }
-    toast.success("B-roll uploaded");
-  };
-
-  const uploadAny = async (file: File) => {
-    if (file.type.startsWith("video/")) {
-      await uploadBroll(file);
-    } else {
-      await uploadFile(file, "other");
-    }
-  };
-
-  const saveShotList = async () => {
-    if (!brollIdeas?.length) return;
-    const list = brollIdeas.map((i: any, idx: number) => {
-      const scene = i.scene || i.title || "Shot idea";
-      const direction = i.direction || i.description || "";
-      const emoji = i.emoji ? `${i.emoji} ` : "";
-      return `${idx + 1}. ${emoji}${scene}${direction ? ` — ${direction}` : ""}`;
-    }).join("\n");
-    await seedDeferredTask({
-      title: "Film your suggested b-roll shot list",
-      description: list.slice(0, 1500),
-      link_to: "/creative-studio",
-      brand_id: brandId,
-    });
-    toast.success("Shot list saved to your tasks");
   };
 
   // =================== STEP 5 — strategy choice ===================

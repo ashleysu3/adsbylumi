@@ -54,15 +54,6 @@ interface ProductionManagerProps {
 
 }
 
-function parseOverlayTiming(raw?: string): { start: number; end: number } | null {
-  const m = (raw || "").match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*s?/i);
-  if (!m) return null;
-  const start = parseFloat(m[1]);
-  const end = parseFloat(m[2]);
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
-  return { start, end };
-}
-
 export function ProductionManager({
   workspace,
   productionItems,
