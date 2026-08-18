@@ -563,7 +563,15 @@ export function GenerateCreativeDialog() {
         if (saved.template) setTemplate(saved.template);
         setCustomTemplateId(saved.customTemplateId || "");
         if (typeof saved.slideCount === "number") setSlideCount(saved.slideCount);
-        if (Array.isArray(saved.singleOptions)) setSingleOptions(saved.singleOptions);
+        if (Array.isArray(saved.singleOptions)) {
+          // Write the user's edited copy back into the option they came from
+          // so the "sync editor to selected option" effect can't clobber it.
+          const idx = typeof saved.selectedOptionIdx === "number" ? saved.selectedOptionIdx : 0;
+          const opts = saved.singleOptions.map((o: any, i: number) =>
+            i === idx && saved.editedSingle ? { ...o, ...saved.editedSingle } : o,
+          );
+          setSingleOptions(opts);
+        }
         if (Array.isArray(saved.carouselOptions)) {
           // Write the user's edited slides back into the option they came from
           // so the "sync editor to selected option" effect can't clobber them.
