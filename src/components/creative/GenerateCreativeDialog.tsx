@@ -728,21 +728,35 @@ export function GenerateCreativeDialog() {
           .order("created_at", { ascending: false });
         if (error) throw error;
         const rows = (data || []) as unknown as Array<{ id: string; original_url: string; cutout_url: string | null; is_default: boolean | null }>;
-        // Prefer the background-removed cutout when available so headshots
-        // composite cleanly inside the template's avatar/circle slot.
-        const paths = rows.map((r) => r.cutout_url || r.original_url);
-        let signed: { signedUrl: string }[] = [];
+        // Sign the ORIGINAL and the cutout separately. The cutout comes back
+        // from the background-removal provider at a much smaller size, so using
+        // it as the general-purpose photo is what made exported ads look soft.
+        // It's now only used when the template actually asks for a cutout.
+        const normalize = (u: string) => {
+          const marker = "/ad-photos/";
+          if (!u.startsWith("http")) return u;
+          return u.includes(marker) ? decodeURIComponent(u.split(marker)[1].split("?")[0]) : u;
+        };
+        const paths = rows.flatMap((r) => [normalize(r.original_url), r.cutout_url ? normalize(r.cutout_url) : null])
+          .filter(Boolean) as string[];
+        let signedMap = new Map<string, string>();
         if (paths.length) {
           const { data: s } = await supabase.storage
             .from("ad-photos")
             .createSignedUrls(paths, 60 * 60);
-          signed = (s || []) as { signedUrl: string }[];
+          signedMap = new Map(
+            ((s || []) as { path?: string | null; signedUrl: string }[]).map((x, i) => [
+              x.path || paths[i],
+              x.signedUrl,
+            ]),
+          );
         }
         if (cancelled) return;
-        const next: Photo[] = rows.map((r, i) => ({
+        const next: Photo[] = rows.map((r) => ({
           id: r.id as string,
-          path: r.cutout_url || r.original_url,
-          url: signed[i]?.signedUrl || "",
+          path: r.original_url,
+          url: signedMap.get(normalize(r.original_url)) || "",
+          cutoutUrl: r.cutout_url ? signedMap.get(normalize(r.cutout_url)) || undefined : undefined,
           isDefault: !!r.is_default,
         }));
         setPhotos(next);
