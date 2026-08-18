@@ -38,6 +38,16 @@ function showitAssetKey(raw: string): string | null {
   }
 }
 
+function isShowitThumbnail(raw: string): boolean {
+  try {
+    const parsed = new URL(raw);
+    const requested = parsed.pathname.split("/").filter(Boolean)[0];
+    return parsed.hostname === "static.showit.co" && /^\d+$/.test(requested) && Number(requested) < 1080;
+  } catch {
+    return false;
+  }
+}
+
 function storagePathFromUrl(raw: string): string | null {
   const match = raw.match(/\/storage\/v1\/object\/(?:public|sign)\/brand-assets\/([^?]+)/);
   return match ? decodeURIComponent(match[1]) : null;
@@ -136,7 +146,7 @@ Deno.serve(async (req) => {
         .filter((row) =>
           row.role === "photo" &&
           !!row.source_url &&
-          ((row.width || 0) < 1080 || (row.height || 0) < 1080)
+          isShowitThumbnail(row.source_url)
         )
         .slice(Math.max(0, Number(repairOffset) || 0), Math.max(0, Number(repairOffset) || 0) + 12)
         .map((row) => ({
