@@ -32,7 +32,7 @@ export async function cropImageToFocal(
   const sx = (img.naturalWidth - cropW) * (Math.min(100, Math.max(0, focalX)) / 100);
   const sy = (img.naturalHeight - cropH) * (Math.min(100, Math.max(0, focalY)) / 100);
 
-  const outW = Math.round(Math.min(1600, cropW));
+  const outW = Math.round(Math.min(2400, cropW));
   const outH = Math.max(1, Math.round(outW / a));
 
   const canvas = document.createElement("canvas");
@@ -42,7 +42,7 @@ export async function cropImageToFocal(
   if (!ctx) throw new Error("Canvas not supported");
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(img, sx, sy, cropW, cropH, 0, 0, outW, outH);
-  return canvas.toDataURL("image/jpeg", 0.92);
+  return canvas.toDataURL("image/jpeg", 0.95);
 }
 
 function loadImage(url: string): Promise<HTMLImageElement> {

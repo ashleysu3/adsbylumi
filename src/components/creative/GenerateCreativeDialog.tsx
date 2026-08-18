@@ -107,7 +107,18 @@ function writeSlotColor(c: Colors, key: ColorSlot, v: string): Colors {
 type SingleOption = Record<string, string>;
 type Slide = Record<string, string>;
 type CarouselOption = { slides: Slide[] };
-type Photo = { id: string; path: string; url: string; source?: "upload" | "brand"; role?: string; isDefault?: boolean };
+type Photo = {
+  id: string;
+  path: string;
+  /** Full-resolution original — always used unless a cutout is explicitly wanted. */
+  url: string;
+  /** Background-removed version. Providers return these at reduced resolution,
+   *  so it must never stand in for the original on full-bleed templates. */
+  cutoutUrl?: string;
+  source?: "upload" | "brand";
+  role?: string;
+  isDefault?: boolean;
+};
 type BrandAssetRow = { id: string; url: string; role: string };
 type LogoCorner = "tl" | "tr" | "bl" | "br";
 type RenderImage = { placement: string; width: number; height: number; base64: string; label?: string };
@@ -717,21 +728,35 @@ export function GenerateCreativeDialog() {
           .order("created_at", { ascending: false });
         if (error) throw error;
         const rows = (data || []) as unknown as Array<{ id: string; original_url: string; cutout_url: string | null; is_default: boolean | null }>;
-        // Prefer the background-removed cutout when available so headshots
-        // composite cleanly inside the template's avatar/circle slot.
-        const paths = rows.map((r) => r.cutout_url || r.original_url);
-        let signed: { signedUrl: string }[] = [];
+        // Sign the ORIGINAL and the cutout separately. The cutout comes back
+        // from the background-removal provider at a much smaller size, so using
+        // it as the general-purpose photo is what made exported ads look soft.
+        // It's now only used when the template actually asks for a cutout.
+        const normalize = (u: string) => {
+          const marker = "/ad-photos/";
+          if (!u.startsWith("http")) return u;
+          return u.includes(marker) ? decodeURIComponent(u.split(marker)[1].split("?")[0]) : u;
+        };
+        const paths = rows.flatMap((r) => [normalize(r.original_url), r.cutout_url ? normalize(r.cutout_url) : null])
+          .filter(Boolean) as string[];
+        let signedMap = new Map<string, string>();
         if (paths.length) {
           const { data: s } = await supabase.storage
             .from("ad-photos")
             .createSignedUrls(paths, 60 * 60);
-          signed = (s || []) as { signedUrl: string }[];
+          signedMap = new Map(
+            ((s || []) as { path?: string | null; signedUrl: string }[]).map((x, i) => [
+              x.path || paths[i],
+              x.signedUrl,
+            ]),
+          );
         }
         if (cancelled) return;
-        const next: Photo[] = rows.map((r, i) => ({
+        const next: Photo[] = rows.map((r) => ({
           id: r.id as string,
-          path: r.cutout_url || r.original_url,
-          url: signed[i]?.signedUrl || "",
+          path: r.original_url,
+          url: signedMap.get(normalize(r.original_url)) || "",
+          cutoutUrl: r.cutout_url ? signedMap.get(normalize(r.cutout_url)) || undefined : undefined,
           isDefault: !!r.is_default,
         }));
         setPhotos(next);
@@ -1079,6 +1104,32 @@ export function GenerateCreativeDialog() {
     [pickerImages, selectedPhotoId],
   );
 
+  // The URL actually painted into the ad. Cutouts are low-resolution by nature,
+  // so they're only used when the user asked for a background-removed subject.
+  const selectedPhotoUrl = useMemo(() => {
+    if (!selectedPhoto) return undefined;
+    if (removeBackground && selectedPhoto.cutoutUrl) return selectedPhoto.cutoutUrl;
+    return selectedPhoto.url;
+  }, [selectedPhoto, removeBackground]);
+
+  // Warn before export when the source image can't fill a 1080px ad frame —
+  // no capture pipeline can invent detail that isn't in the file.
+  const [photoPixels, setPhotoPixels] = useState<{ w: number; h: number } | null>(null);
+  useEffect(() => {
+    setPhotoPixels(null);
+    if (!selectedPhotoUrl) return;
+    let dead = false;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      if (!dead) setPhotoPixels({ w: img.naturalWidth, h: img.naturalHeight });
+    };
+    img.src = selectedPhotoUrl;
+    return () => { dead = true; };
+  }, [selectedPhotoUrl]);
+  const photoIsLowRes = !!photoPixels && Math.min(photoPixels.w, photoPixels.h) < 1080;
+
+
   const setDefaultPhoto = async (photoId: string) => {
     const brandId = activeBrand?.id;
     if (!brandId) return;
@@ -1149,18 +1200,18 @@ export function GenerateCreativeDialog() {
         fx: number, fy: number, z: number, frame: "feed" | "story",
       ): Promise<string | undefined> => {
         if (!selectedPhoto) return undefined;
-        if (fx === 50 && fy === 50 && z === 1) return selectedPhoto.url;
+        if (fx === 50 && fy === 50 && z === 1) return selectedPhotoUrl!;
         try {
           setProgress("Applying image framing…");
-          return await cropImageToFocal(selectedPhoto.url, fx, fy, z, photoFrameAspect(template, frame));
+          return await cropImageToFocal(selectedPhotoUrl!, fx, fy, z, photoFrameAspect(template, frame));
         } catch {
-          return selectedPhoto.url;
+          return selectedPhotoUrl!;
         }
       };
       // Only the engine path needs a pre-cropped photo; the WYSIWYG export
       // captures the preview, which already applies focal point + zoom.
-      const photoUrlForRender = activeCustom ? await cropFor(focalX, focalY, photoZoom, "feed") : selectedPhoto?.url;
-      const storyPhotoUrl = activeCustom ? await cropFor(storyFocalX, storyFocalY, storyZoom, "story") : selectedPhoto?.url;
+      const photoUrlForRender = activeCustom ? await cropFor(focalX, focalY, photoZoom, "feed") : selectedPhotoUrl;
+      const storyPhotoUrl = activeCustom ? await cropFor(storyFocalX, storyFocalY, storyZoom, "story") : selectedPhotoUrl;
 
       setRenderedFraming({
         focalX, focalY, photoZoom,
@@ -1242,7 +1293,7 @@ export function GenerateCreativeDialog() {
           colors,
           displayFamily,
           bodyFamily,
-          photoUrl: selectedPhoto?.url,
+          photoUrl: selectedPhotoUrl,
           backgroundUrl: bgSelectedUrl || undefined,
           textCase,
           headlineScale,
@@ -1926,7 +1977,14 @@ export function GenerateCreativeDialog() {
                 Drag the photo right in the preview to choose what stays in frame.
                 Feed and story are framed separately — switch above to set each one.
               </p>
+              {photoIsLowRes && photoPixels && (
+                <p className="rounded bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-400">
+                  This photo is only {photoPixels.w}×{photoPixels.h}px — ads export at 1080×1080,
+                  so it will look soft. Upload a larger version for a crisp ad.
+                </p>
+              )}
             </div>
+
           )}
 
 
@@ -2001,7 +2059,7 @@ export function GenerateCreativeDialog() {
         colors={colors}
         displayFamily={displayFamily}
         bodyFamily={bodyFamily}
-        photoUrl={selectedPhoto?.url}
+        photoUrl={selectedPhotoUrl}
         backgroundUrl={bgSelectedUrl || undefined}
         textCase={textCase}
         headlineScale={headlineScale}
@@ -2434,7 +2492,7 @@ export function GenerateCreativeDialog() {
                                 colors={colors}
                                 displayFamily={displayFamily}
                                 bodyFamily={bodyFamily}
-                                photoUrl={selectedPhoto?.url}
+                                photoUrl={selectedPhotoUrl}
                                 backgroundUrl={bgSelectedUrl || undefined}
                                 textCase={textCase}
                                 headlineScale={headlineScale}
