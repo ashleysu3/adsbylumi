@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { url, brandId, repairExisting = false } = await req.json();
+    const { url, brandId, repairExisting = false, repairOffset = 0 } = await req.json();
     if ((!url || typeof url !== "string") && !repairExisting) {
       return new Response(
         JSON.stringify({ error: "missing url" }),
@@ -128,12 +128,17 @@ Deno.serve(async (req) => {
 
     const { data: currentAssets } = await admin
       .from("brand_assets")
-      .select("id,url,source_url,width,height")
+      .select("id,url,source_url,width,height,role")
       .eq("brand_id", brandId);
     let assets: Array<{ url: string; roleGuess?: string; width?: number; height?: number }>;
     if (repairExisting) {
       assets = (currentAssets || [])
-        .filter((row) => !!row.source_url)
+        .filter((row) =>
+          row.role === "photo" &&
+          !!row.source_url &&
+          ((row.width || 0) < 1080 || (row.height || 0) < 1080)
+        )
+        .slice(Math.max(0, Number(repairOffset) || 0), Math.max(0, Number(repairOffset) || 0) + 12)
         .map((row) => ({
           url: row.source_url,
           width: row.width,
