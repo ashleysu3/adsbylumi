@@ -118,6 +118,8 @@ type Photo = {
   source?: "upload" | "brand";
   role?: string;
   isDefault?: boolean;
+  width?: number | null;
+  height?: number | null;
 };
 type BrandAssetRow = { id: string; url: string; role: string };
 type LogoCorner = "tl" | "tr" | "bl" | "br";
@@ -773,12 +775,12 @@ export function GenerateCreativeDialog() {
       try {
         const { data, error } = await supabase
           .from("brand_assets" as any)
-          .select("id, url, role, kept")
+          .select("id, url, role, kept, width, height")
           .eq("brand_id", activeBrand.id)
           .eq("kept", true)
           .order("created_at", { ascending: false });
         if (error) throw error;
-        const rows = (data || []) as unknown as Array<BrandAssetRow & { kept: boolean }>;
+        const rows = (data || []) as unknown as Array<BrandAssetRow & { kept: boolean; width: number | null; height: number | null }>;
         const pathFromUrl = (u: string): string | null => {
           const m = u.match(/\/storage\/v1\/object\/(?:public|sign)\/brand-assets\/([^?]+)/);
           return m ? decodeURIComponent(m[1]) : null;
@@ -795,10 +797,20 @@ export function GenerateCreativeDialog() {
         const resolved: Photo[] = rows.map((r) => {
           const hasPath = !!pathFromUrl(r.url);
           const url = hasPath ? signed[i++]?.signedUrl || r.url : r.url;
-          return { id: `ba:${r.id}`, path: r.url, url, source: "brand", role: r.role };
+          return {
+            id: `ba:${r.id}`,
+            path: r.url,
+            url,
+            source: "brand",
+            role: r.role,
+            width: r.width,
+            height: r.height,
+          };
         });
         if (cancelled) return;
-        setBrandPhotoAssets(resolved.filter((a) => a.role === "photo"));
+        const byResolution = (a: Photo, b: Photo) =>
+          ((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0));
+        setBrandPhotoAssets(resolved.filter((a) => a.role === "photo").sort(byResolution));
         setBrandBackgroundAssets(
           resolved.filter((a) => a.role === "background" || a.role === "texture"),
         );
