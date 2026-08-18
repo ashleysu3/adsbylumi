@@ -1977,7 +1977,14 @@ export function GenerateCreativeDialog() {
                 Drag the photo right in the preview to choose what stays in frame.
                 Feed and story are framed separately — switch above to set each one.
               </p>
+              {photoIsLowRes && photoPixels && (
+                <p className="rounded bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-400">
+                  This photo is only {photoPixels.w}×{photoPixels.h}px — ads export at 1080×1080,
+                  so it will look soft. Upload a larger version for a crisp ad.
+                </p>
+              )}
             </div>
+
           )}
 
 
