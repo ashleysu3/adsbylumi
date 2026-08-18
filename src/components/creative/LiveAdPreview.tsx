@@ -151,6 +151,11 @@ export function LiveAdPreview({
   bodyScale = 1,
   textBoxStyle = "none",
   textBoxColor,
+  headlineColor,
+  subColor,
+  eyebrowColor,
+  ctaTextColor,
+  ctaBgColor,
   textBoxOpacity = 0.85,
   textPosition = "bottom",
   textAlign = "left",
@@ -180,6 +185,12 @@ export function LiveAdPreview({
   bodyScale?: number;
   textBoxStyle?: "none" | "box" | "scrim";
   textBoxColor?: string;
+  /** Per-slot font color overrides. When set they win over the template's default color. */
+  headlineColor?: string;
+  subColor?: string;
+  eyebrowColor?: string;
+  ctaTextColor?: string;
+  ctaBgColor?: string;
   textBoxOpacity?: number;
   textPosition?: "top" | "middle" | "bottom";
   textAlign?: "left" | "center" | "right";
@@ -260,7 +271,7 @@ export function LiveAdPreview({
     eyebrow ? (
       <p
         className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${className}`}
-        style={{ color: colors.accent, ...bFont }}
+        style={{ color: eyebrowColor || colors.accent, ...bFont }}
       >
         {T(eyebrow)}
       </p>
@@ -275,13 +286,14 @@ export function LiveAdPreview({
     (active.headlinePost && active.headlinePost.trim())
   );
 
-  const Headline = ({ size = 1.5, color = colors.ink, className = "" }: { size?: number; color?: string; className?: string }) => {
+  const Headline = ({ size = 1.5, color: colorProp = colors.ink, className = "" }: { size?: number; color?: string; className?: string }) => {
+    const color = headlineColor || colorProp;
     if (hasSegments) {
       return (
         <p className={`font-bold leading-[1.06] ${className}`} style={{ color, ...hFont, ...hSize(size) }}>
           {active.headlinePre?.trim() && <span>{T(active.headlinePre.trim())} </span>}
           {active.headlineHL?.trim() && (
-            <span style={{ color: colors.accent }}>{T(active.headlineHL.trim())} </span>
+            <span style={{ color: headlineColor || colors.accent }}>{T(active.headlineHL.trim())} </span>
           )}
           {active.headlinePost?.trim() && <span>{T(active.headlinePost.trim())}</span>}
         </p>
@@ -297,7 +309,7 @@ export function LiveAdPreview({
 
   const Sub = ({ color = colors.ink, className = "" }: { color?: string; className?: string }) =>
     sub ? (
-      <p className={`leading-snug opacity-85 ${className}`} style={{ color, ...bFont, ...bSize(0.8125) }}>
+      <p className={`leading-snug opacity-85 ${className}`} style={{ color: subColor || color, ...bFont, ...bSize(0.8125) }}>
         {T(sub)}
       </p>
     ) : null;
@@ -306,7 +318,7 @@ export function LiveAdPreview({
     cta ? (
       <span
         className={`inline-flex w-fit rounded-full px-3 py-1.5 text-[11px] font-semibold ${className}`}
-        style={{ backgroundColor: colors.accent, color: colors.cream, ...bFont }}
+        style={{ backgroundColor: ctaBgColor || colors.accent, color: ctaTextColor || colors.cream, ...bFont }}
       >
         {T(cta)}
       </span>

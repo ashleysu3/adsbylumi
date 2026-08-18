@@ -418,6 +418,12 @@ export function GenerateCreativeDialog() {
   const [textBoxStyle, setTextBoxStyle] = useState<"none" | "box" | "scrim">("none");
   const [textBoxColor, setTextBoxColor] = useState<string>("");
   const [textBoxOpacity, setTextBoxOpacity] = useState<number>(0.85);
+  // Per-slot font color overrides ("" = use the template/brand default).
+  const [headlineColor, setHeadlineColor] = useState<string>("");
+  const [subColor, setSubColor] = useState<string>("");
+  const [eyebrowColor, setEyebrowColor] = useState<string>("");
+  const [ctaTextColor, setCtaTextColor] = useState<string>("");
+  const [ctaBgColor, setCtaBgColor] = useState<string>("");
   const [textPosition, setTextPosition] = useState<"top" | "middle" | "bottom">("bottom");
   const [textAlign, setTextAlign] = useState<"left" | "center" | "right">("left");
   // Image framing: focal point + zoom so the user controls what stays visible
@@ -566,6 +572,11 @@ export function GenerateCreativeDialog() {
         if (saved.textBoxStyle) setTextBoxStyle(saved.textBoxStyle);
         if (saved.textBoxColor !== undefined) setTextBoxColor(saved.textBoxColor);
         if (typeof saved.textBoxOpacity === "number") setTextBoxOpacity(saved.textBoxOpacity);
+        if (saved.headlineColor !== undefined) setHeadlineColor(saved.headlineColor);
+        if (saved.subColor !== undefined) setSubColor(saved.subColor);
+        if (saved.eyebrowColor !== undefined) setEyebrowColor(saved.eyebrowColor);
+        if (saved.ctaTextColor !== undefined) setCtaTextColor(saved.ctaTextColor);
+        if (saved.ctaBgColor !== undefined) setCtaBgColor(saved.ctaBgColor);
         if (saved.textPosition) setTextPosition(saved.textPosition);
         if (saved.textAlign) setTextAlign(saved.textAlign);
         if (typeof saved.focalX === "number") setFocalX(saved.focalX);
@@ -596,6 +607,7 @@ export function GenerateCreativeDialog() {
       selectedPhotoId, imageSource, bgSelectedUrl,
       textCase, headlineScale, bodyScale,
       textBoxStyle, textBoxColor, textBoxOpacity, textPosition, textAlign,
+      headlineColor, subColor, eyebrowColor, ctaTextColor, ctaBgColor,
       focalX, focalY, photoZoom, storyFocalX, storyFocalY, storyZoom,
       placeLogo, logoCorner, textColor, textBackdrop,
       savedAt: Date.now(),
@@ -607,6 +619,7 @@ export function GenerateCreativeDialog() {
     selectedPhotoId, imageSource, bgSelectedUrl,
     textCase, headlineScale, bodyScale,
     textBoxStyle, textBoxColor, textBoxOpacity, textPosition, textAlign,
+    headlineColor, subColor, eyebrowColor, ctaTextColor, ctaBgColor,
     focalX, focalY, photoZoom, storyFocalX, storyFocalY, storyZoom,
     placeLogo, logoCorner, textColor, textBackdrop,
   ]);
@@ -1237,6 +1250,11 @@ export function GenerateCreativeDialog() {
           textBoxStyle,
           textBoxColor: textBoxColor || colors.bg,
           textBoxOpacity,
+          headlineColor: headlineColor || undefined,
+          subColor: subColor || undefined,
+          eyebrowColor: eyebrowColor || undefined,
+          ctaTextColor: ctaTextColor || undefined,
+          ctaBgColor: ctaBgColor || undefined,
           textPosition,
           textAlign,
           logoUrl: brandLogoAsset?.url,
@@ -1789,6 +1807,74 @@ export function GenerateCreativeDialog() {
               </div>
             )}
 
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Font colors</p>
+                {(headlineColor || subColor || eyebrowColor || ctaTextColor || ctaBgColor) && (
+                  <button
+                    type="button"
+                    className="text-[10px] text-muted-foreground underline"
+                    onClick={() => {
+                      setHeadlineColor(""); setSubColor(""); setEyebrowColor("");
+                      setCtaTextColor(""); setCtaBgColor("");
+                    }}
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {([
+                  { label: "Headline", value: headlineColor, fallback: colors.ink, set: setHeadlineColor },
+                  { label: "Body text", value: subColor, fallback: colors.ink, set: setSubColor },
+                  { label: "Eyebrow", value: eyebrowColor, fallback: colors.accent, set: setEyebrowColor },
+                  { label: "Button text", value: ctaTextColor, fallback: colors.cream, set: setCtaTextColor },
+                  { label: "Button fill", value: ctaBgColor, fallback: colors.accent, set: setCtaBgColor },
+                ]).map((c) => (
+                  <div key={c.label} className="min-w-0">
+                    <p className="mb-1 truncate text-[10px] text-muted-foreground">{c.label}</p>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label={`Edit ${c.label} color`}
+                          className="h-8 w-full rounded-md border border-border shadow-sm"
+                          style={{ backgroundColor: c.value || c.fallback }}
+                        />
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-3" align="start">
+                        <HexColorPicker color={c.value || c.fallback} onChange={c.set} />
+                        <Input
+                          value={c.value || c.fallback}
+                          onChange={(e) => c.set(e.target.value)}
+                          className="mt-2 h-7 text-xs font-mono"
+                        />
+                        <div className="mt-2 flex gap-1">
+                          {["#000000", "#FFFFFF", colors.ink, colors.accent, colors.bg].map((sw, i) => (
+                            <button
+                              key={`${sw}-${i}`}
+                              type="button"
+                              aria-label={`Use ${sw}`}
+                              className="h-6 w-6 rounded border border-border"
+                              style={{ backgroundColor: sw }}
+                              onClick={() => c.set(sw)}
+                            />
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          className="mt-2 w-full text-[10px] text-muted-foreground underline"
+                          onClick={() => c.set("")}
+                        >
+                          Use template default
+                        </button>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Text position</p>
@@ -1923,6 +2009,11 @@ export function GenerateCreativeDialog() {
         textBoxStyle={textBoxStyle}
         textBoxColor={textBoxColor || colors.bg}
         textBoxOpacity={textBoxOpacity}
+        headlineColor={headlineColor || undefined}
+        subColor={subColor || undefined}
+        eyebrowColor={eyebrowColor || undefined}
+        ctaTextColor={ctaTextColor || undefined}
+        ctaBgColor={ctaBgColor || undefined}
         textPosition={textPosition}
         textAlign={textAlign}
         logoUrl={brandLogoAsset?.url}
@@ -2351,6 +2442,11 @@ export function GenerateCreativeDialog() {
                                 textBoxStyle={textBoxStyle}
                                 textBoxColor={textBoxColor || colors.bg}
                                 textBoxOpacity={textBoxOpacity}
+                                headlineColor={headlineColor || undefined}
+                                subColor={subColor || undefined}
+                                eyebrowColor={eyebrowColor || undefined}
+                                ctaTextColor={ctaTextColor || undefined}
+                                ctaBgColor={ctaBgColor || undefined}
                                 textPosition={textPosition}
                                 textAlign={textAlign}
                                 logoUrl={brandLogoAsset?.url}
