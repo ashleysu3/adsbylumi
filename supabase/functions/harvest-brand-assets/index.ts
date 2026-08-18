@@ -12,6 +12,74 @@ const cors = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+function upgradeShowitUrl(raw: string): string {
+  try {
+    const parsed = new URL(raw);
+    if (parsed.hostname !== "static.showit.co") return raw;
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    if (parts.length < 4 || !/^\d+$/.test(parts[0])) return raw;
+    parts[0] = "1600";
+    parsed.pathname = `/${parts.join("/")}`;
+    return parsed.toString();
+  } catch {
+    return raw;
+  }
+}
+
+function showitAssetKey(raw: string): string | null {
+  try {
+    const parsed = new URL(raw);
+    if (parsed.hostname !== "static.showit.co") return null;
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    // Showit URL: /<requested-size>/<transform-id>/<site-id>/<filename>
+    return parts.length >= 4 ? parts.slice(2).join("/") : null;
+  } catch {
+    return null;
+  }
+}
+
+function isShowitThumbnail(raw: string): boolean {
+  try {
+    const parsed = new URL(raw);
+    const requested = parsed.pathname.split("/").filter(Boolean)[0];
+    return parsed.hostname === "static.showit.co" && /^\d+$/.test(requested) && Number(requested) < 1080;
+  } catch {
+    return false;
+  }
+}
+
+function storagePathFromUrl(raw: string): string | null {
+  const match = raw.match(/\/storage\/v1\/object\/(?:public|sign)\/brand-assets\/([^?]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function imageDimensions(buf: Uint8Array, contentType: string): { width: number; height: number } | null {
+  // PNG stores width/height as big-endian uint32 values in the IHDR chunk.
+  if (contentType.includes("png") && buf.length >= 24) {
+    const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+    return { width: view.getUint32(16), height: view.getUint32(20) };
+  }
+  // Walk JPEG markers until a Start Of Frame marker supplies dimensions.
+  if ((contentType.includes("jpeg") || contentType.includes("jpg")) && buf.length >= 4) {
+    let offset = 2;
+    while (offset + 9 < buf.length) {
+      if (buf[offset] !== 0xff) { offset++; continue; }
+      const marker = buf[offset + 1];
+      if (marker === 0xd8 || marker === 0xd9) { offset += 2; continue; }
+      const length = (buf[offset + 2] << 8) + buf[offset + 3];
+      if (length < 2 || offset + length + 2 > buf.length) break;
+      if ([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(marker)) {
+        return {
+          height: (buf[offset + 5] << 8) + buf[offset + 6],
+          width: (buf[offset + 7] << 8) + buf[offset + 8],
+        };
+      }
+      offset += length + 2;
+    }
+  }
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
@@ -40,8 +108,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { url, brandId } = await req.json();
-    if (!url || typeof url !== "string") {
+    const { url, brandId, repairExisting = false, repairOffset = 0 } = await req.json();
+    if ((!url || typeof url !== "string") && !repairExisting) {
       return new Response(
         JSON.stringify({ error: "missing url" }),
         { status: 200, headers: { ...cors, "content-type": "application/json" } },
@@ -68,20 +136,41 @@ Deno.serve(async (req) => {
     }
 
 
-    const er = await fetch(`${ENGINE_URL.replace(/\/$/, "")}/extract-assets`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-api-key": ENGINE_KEY },
-      body: JSON.stringify({ url }),
-    });
-    if (!er.ok) {
-      const txt = await er.text();
-      return new Response(
-        JSON.stringify({ error: `engine error ${er.status}: ${txt.slice(0, 300)}` }),
-        { status: 200, headers: { ...cors, "content-type": "application/json" } },
-      );
+    const { data: currentAssets } = await admin
+      .from("brand_assets")
+      .select("id,url,source_url,width,height,role")
+      .eq("brand_id", brandId);
+    let assets: Array<{ id?: string; url: string; roleGuess?: string; width?: number; height?: number }>;
+    if (repairExisting) {
+      assets = (currentAssets || [])
+        .filter((row) =>
+          row.role === "photo" &&
+          !!row.source_url &&
+          isShowitThumbnail(row.source_url)
+        )
+        .slice(Math.max(0, Number(repairOffset) || 0), Math.max(0, Number(repairOffset) || 0) + 12)
+        .map((row) => ({
+          id: row.id,
+          url: row.source_url,
+          width: row.width,
+          height: row.height,
+        }));
+    } else {
+      const er = await fetch(`${ENGINE_URL.replace(/\/$/, "")}/extract-assets`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-api-key": ENGINE_KEY },
+        body: JSON.stringify({ url }),
+      });
+      if (!er.ok) {
+        const txt = await er.text();
+        return new Response(
+          JSON.stringify({ error: `engine error ${er.status}: ${txt.slice(0, 300)}` }),
+          { status: 200, headers: { ...cors, "content-type": "application/json" } },
+        );
+      }
+      const data = await er.json();
+      assets = (data?.assets || []).slice(0, 40);
     }
-    const data = await er.json();
-    const assets = (data?.assets || []).slice(0, 40);
     let saved = 0;
     let existing = 0;
     let skipped = 0;
@@ -91,17 +180,23 @@ Deno.serve(async (req) => {
           skipped++;
           continue;
         }
-        const { data: existingAsset } = await admin
-          .from("brand_assets")
-          .select("id")
-          .eq("brand_id", brandId)
-          .eq("source_url", a.url)
-          .maybeSingle();
-        if (existingAsset) {
+        const sourceUrl = upgradeShowitUrl(a.url);
+        const assetKey = showitAssetKey(a.url);
+        const existingAsset = a.id
+          ? (currentAssets || []).find((row) => row.id === a.id)
+          : (currentAssets || []).find((row) =>
+              row.source_url === a.url ||
+              row.source_url === sourceUrl ||
+              (assetKey && showitAssetKey(row.source_url || "") === assetKey)
+            );
+        const alreadyLarge = !!existingAsset &&
+          (existingAsset.width || 0) >= 1080 &&
+          (existingAsset.height || 0) >= 1080;
+        if (alreadyLarge) {
           existing++;
           continue;
         }
-        const resp = await fetch(a.url);
+        const resp = await fetch(sourceUrl);
         if (!resp.ok) {
           skipped++;
           continue;
@@ -117,24 +212,31 @@ Deno.serve(async (req) => {
           continue;
         }
         const ext = ct.includes("png") ? "png" : ct.includes("svg") ? "svg" : ct.includes("webp") ? "webp" : "jpg";
-        const filename = `${user.id}/${brandId}/${crypto.randomUUID()}.${ext}`;
-        const up = await admin.storage.from("brand-assets").upload(filename, buf, { contentType: ct, upsert: false });
+        const existingPath = existingAsset ? storagePathFromUrl(existingAsset.url) : null;
+        const filename = existingPath || `${user.id}/${brandId}/${crypto.randomUUID()}.${ext}`;
+        const up = await admin.storage.from("brand-assets").upload(filename, buf, {
+          contentType: ct,
+          upsert: !!existingPath,
+        });
         if (up.error) {
           skipped++;
           continue;
         }
         const { data: pub } = admin.storage.from("brand-assets").getPublicUrl(filename);
-        const { error: insertError } = await admin.from("brand_assets").insert({
+        const dimensions = imageDimensions(buf, ct) || { width: a.width, height: a.height };
+        const payload = {
           user_id: user.id,
           brand_id: brandId,
           url: pub.publicUrl,
-          source_url: a.url,
-          role: a.roleGuess,
-          width: a.width,
-          height: a.height,
-        });
+          source_url: sourceUrl,
+          ...(a.roleGuess ? { role: a.roleGuess } : {}),
+          ...dimensions,
+        };
+        const { error: insertError } = existingAsset
+          ? await admin.from("brand_assets").update(payload).eq("id", existingAsset.id)
+          : await admin.from("brand_assets").insert(payload);
         if (insertError) {
-          await admin.storage.from("brand-assets").remove([filename]);
+          if (!existingAsset) await admin.storage.from("brand-assets").remove([filename]);
           skipped++;
           continue;
         }
