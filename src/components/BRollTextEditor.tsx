@@ -359,6 +359,18 @@ export function BRollTextEditor({
               </Button>
             </div>
 
+            {overlappingIdx.size > 0 && (
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-[12px] space-y-2">
+                <p>
+                  Some of your text blocks share the same seconds, so they'd stack on top of each
+                  other and only the last one would show in the video.
+                </p>
+                <Button size="sm" variant="outline" onClick={restackTimings}>
+                  Space them out for me
+                </Button>
+              </div>
+            )}
+
             {overlays.map((o, i) => {
               const timing = parseTimingRange(o.timing || '');
               const timingInvalid = (o.timing || '').length > 0 && !timing;
