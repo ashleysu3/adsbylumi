@@ -185,6 +185,12 @@ export function LiveAdPreview({
   bodyScale?: number;
   textBoxStyle?: "none" | "box" | "scrim";
   textBoxColor?: string;
+  /** Per-slot font color overrides. When set they win over the template's default color. */
+  headlineColor?: string;
+  subColor?: string;
+  eyebrowColor?: string;
+  ctaTextColor?: string;
+  ctaBgColor?: string;
   textBoxOpacity?: number;
   textPosition?: "top" | "middle" | "bottom";
   textAlign?: "left" | "center" | "right";
