@@ -84,10 +84,12 @@ export async function captureAdPreview(
   try {
     await new Promise<void>((resolve) => {
       root.render(
-        // The preview is laid out at BASE_WIDTH but visually scaled up to the
-        // real ad size BEFORE rasterizing. Rasterizing a small node and then
-        // upscaling (pixelRatio) resamples photos from their CSS size, which
-        // is what made brand photos look soft/blurry in the exported ad.
+        // The preview is laid out at BASE_WIDTH but blown up to the real ad
+        // size BEFORE rasterizing. We use CSS `zoom` (not `transform: scale`)
+        // on purpose: `transform` rasterizes the subtree at its small layout
+        // size and then magnifies that bitmap, which is what made brand photos
+        // look grainy. `zoom` re-lays the subtree out at the larger size, so
+        // photos decode at full resolution.
         <div
           style={{
             width: size.width,
@@ -98,13 +100,13 @@ export async function captureAdPreview(
           <div
             style={{
               width: BASE_WIDTH,
-              transform: `scale(${scale})`,
-              transformOrigin: "top left",
-            }}
+              zoom: scale,
+            } as React.CSSProperties}
           >
             <LiveAdPreview {...props} frame={frame} bare onFocalChange={undefined} />
           </div>
         </div>,
+
       );
       // Let React commit + layout settle.
       requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
