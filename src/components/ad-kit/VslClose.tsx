@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 import { trackLumiEvent } from "@/lib/lumi-pixel";
 import { toast } from "sonner";
+import { redirectToCheckout } from "@/lib/redirect-to-checkout";
 
 // The funnel close, shared by the kit page hero and the onboarding
 // save-unfold so the two can never drift apart: guest checkout with
@@ -61,10 +62,13 @@ export function useKitCheckout(brandId?: string | null) {
       });
       if (error) throw error;
       if (data?.url) {
-        window.location.href = data.url;
+        const navigated = redirectToCheckout(data.url);
+        if (!navigated) setCheckoutLoading(false);
       } else {
         throw new Error("Checkout didn't return a URL");
       }
+
+
     } catch (err) {
       console.error("[ad-kit] checkout error", err);
       toast.error("Could not start checkout. Please try again.");
