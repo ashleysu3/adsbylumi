@@ -620,12 +620,21 @@ Deno.serve(async (req) => {
         : 0;
 
       for (const ad of adList) {
+        // Snapshot rows from fetch-meta-performance carry `adId`; some older
+        // snapshots only have `id`, which can be a creative slug (e.g.
+        // "be_your_own_hero_trust_broll"). Meta only accepts numeric ad IDs,
+        // so resolve one and skip ad-level actionable recs when we can't.
+        const rawAdId = ad.adId ?? ad.ad_id ?? ad.id;
+        const metaAdId = /^\d+$/.test(String(rawAdId ?? '')) ? String(rawAdId) : null;
+        if (!metaAdId) continue;
+
         const adReach = ad.reach || ad.impressions || 0;
         const adAge = ad.created_time
           ? Math.floor((Date.now() - new Date(ad.created_time).getTime()) / (1000 * 60 * 60 * 24))
           : 7;
 
         if (adReach < 500 || adAge < 3) continue;
+
 
         const adCtr = ad.ctr || 0;
         const adFrequency = ad.frequency || 0;
