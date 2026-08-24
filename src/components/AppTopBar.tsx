@@ -18,7 +18,7 @@ import {
   Link2,
   BookOpen,
   LayoutGrid,
-  Paintbrush,
+  
   HelpCircle,
   Settings as SettingsIcon,
   PenLine,
@@ -74,7 +74,6 @@ const creativeItems: MenuItem[] = [
 
 const brandItems: MenuItem[] = [
   { label: "Initial Setup", to: "/initial-setup", icon: PenLine },
-  { label: "Style", to: "/style", icon: Paintbrush },
   { label: "Voice + Examples", to: "/voice", icon: Mic },
   { label: "Audience", to: "/audience", icon: Users },
   { label: "Offers", to: "/offers", icon: Package },
