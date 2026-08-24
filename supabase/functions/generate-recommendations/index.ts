@@ -620,12 +620,21 @@ Deno.serve(async (req) => {
         : 0;
 
       for (const ad of adList) {
+        // Snapshot rows from fetch-meta-performance carry `adId`; some older
+        // snapshots only have `id`, which can be a creative slug (e.g.
+        // "be_your_own_hero_trust_broll"). Meta only accepts numeric ad IDs,
+        // so resolve one and skip ad-level actionable recs when we can't.
+        const rawAdId = ad.adId ?? ad.ad_id ?? ad.id;
+        const metaAdId = /^\d+$/.test(String(rawAdId ?? '')) ? String(rawAdId) : null;
+        if (!metaAdId) continue;
+
         const adReach = ad.reach || ad.impressions || 0;
         const adAge = ad.created_time
           ? Math.floor((Date.now() - new Date(ad.created_time).getTime()) / (1000 * 60 * 60 * 24))
           : 7;
 
         if (adReach < 500 || adAge < 3) continue;
+
 
         const adCtr = ad.ctr || 0;
         const adFrequency = ad.frequency || 0;
@@ -638,26 +647,26 @@ Deno.serve(async (req) => {
 
         if (ad.status === 'ACTIVE' && isBudgetHog) {
           recommendations.push({
-            id: `budget-hog-${ad.id || ad.name}`,
+            id: `budget-hog-${metaAdId}`,
             type: 'pause_ad',
             title: `Pause "${ad.name}" — eating budget, underdelivering`,
             description: `This ad is spending ${((adSpend / totalAdSpend) * 100).toFixed(0)}% of your campaign budget at $${adCPR.toFixed(2)} CPR — ${((adCPR / avgCPR - 1) * 100).toFixed(0)}% worse than your other ads. It's pulling budget away from better performers.`,
             impact: `Redirecting this budget to better ads could cut your overall CPR`,
             confidence: adReach >= 2000 ? 'high' : 'medium',
             requiresDoubleApproval: false,
-            actionPayload: { workspaceId, adId: ad.id, action: 'pause' },
+            actionPayload: { workspaceId, adId: metaAdId, action: 'pause' },
             priority: priority++,
           });
         } else if (ad.status === 'ACTIVE' && isLowCtrAd) {
           recommendations.push({
-            id: `low-ctr-ad-${ad.id || ad.name}`,
+            id: `low-ctr-ad-${metaAdId}`,
             type: 'pause_ad',
             title: `Pause "${ad.name}" — CTR half the campaign average`,
             description: `This ad has ${adCtr.toFixed(2)}% CTR vs. your campaign average of ${campaignCtr.toFixed(2)}%. After ${adReach.toLocaleString()} impressions, that gap is statistically significant. This creative isn't resonating with your audience.`,
             impact: 'Pausing weak ads forces Meta to spend on your better performers',
             confidence: adReach >= 2000 ? 'high' : 'medium',
             requiresDoubleApproval: false,
-            actionPayload: { workspaceId, adId: ad.id, action: 'pause' },
+            actionPayload: { workspaceId, adId: metaAdId, action: 'pause' },
             priority: priority++,
           });
         }
@@ -666,7 +675,7 @@ Deno.serve(async (req) => {
           const availableBench = bench.filter((b: any) => b.auto_rotate_approved && b.meta_ad_id);
           if (availableBench.length > 0) {
             recommendations.push({
-              id: `ad-fatigue-swap-${ad.id || ad.name}`,
+              id: `ad-fatigue-swap-${metaAdId}`,
               type: 'swap_creative',
               title: `Swap "${ad.name}" — frequency ${adFrequency.toFixed(1)}`,
               description: `This specific ad has a frequency of ${adFrequency.toFixed(1)}. Swap it with bench creative to keep delivery fresh without turning off the whole campaign.`,
@@ -676,7 +685,7 @@ Deno.serve(async (req) => {
               actionPayload: {
                 workspaceId,
                 brandId,
-                fatigueAdId: ad.id,
+                fatigueAdId: metaAdId,
                 benchAdId: availableBench[0].meta_ad_id,
               },
               priority: priority++,
@@ -686,14 +695,14 @@ Deno.serve(async (req) => {
 
         if (ad.status === 'PAUSED' && adCtr >= 1.5 && adReach >= 1000) {
           recommendations.push({
-            id: `resume-${ad.id || ad.name}`,
+            id: `resume-${metaAdId}`,
             type: 'resume_ad',
             title: `Resume "${ad.name}" — had strong CTR`,
             description: `This ad was paused but had ${adCtr.toFixed(2)}% CTR before stopping — that's strong. If it was paused for fatigue reasons and frequency has since reset, it may be worth reactivating.`,
             impact: 'Reactivating a proven creative can quickly restore campaign momentum',
             confidence: 'medium',
             requiresDoubleApproval: false,
-            actionPayload: { workspaceId, adId: ad.id, action: 'unpause' },
+            actionPayload: { workspaceId, adId: metaAdId, action: 'unpause' },
             priority: priority++,
           });
         }
