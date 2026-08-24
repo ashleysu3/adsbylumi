@@ -121,6 +121,21 @@ serve(async (req) => {
       const targetId = entityId || campaignId;
       const targetType = entityType || 'campaign';
 
+      // Meta object IDs are numeric. Callers have historically passed creative
+      // slugs (e.g. "be_your_own_hero_trust_broll") from stale snapshots, which
+      // Meta rejects with a confusing "Object with ID does not exist" error.
+      if (!/^\d+$/.test(String(targetId ?? ''))) {
+        console.error('Rejecting non-numeric Meta entity id:', targetId, targetType);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: `We couldn't find the Meta ID for this ${targetType}. Refresh your performance data and try again.`,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+
       let endpoint = '';
       if (targetType === 'campaign') {
         endpoint = `https://graph.facebook.com/v25.0/${targetId}`;
