@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Search, Loader2, Shield, Copy, Printer, User, CreditCard,
-  Calendar, FileText, AlertTriangle, CheckCircle, XCircle
+  Calendar, FileText, AlertTriangle, CheckCircle, XCircle, Activity
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,6 +41,26 @@ interface SubData {
   current_period_end: string | null;
 }
 
+interface ActivityItem {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  timestamp: string;
+}
+
+interface AccessSummary {
+  email_confirmed_at: string | null;
+  last_sign_in_at: string | null;
+  created_at: string | null;
+  sign_in_provider: string | null;
+  brand_created_at: string | null;
+  campaigns_created: number;
+  campaigns_published: number;
+  offers_created: number;
+  last_activity_at: string | null;
+}
+
 interface CancelRequest {
   id: string;
   created_at: string;
@@ -57,12 +77,17 @@ export default function DisputeEvidence() {
   const [subData, setSubData] = useState<SubData | null>(null);
   const [stripeData, setStripeData] = useState<StripeData | null>(null);
   const [cancelRequests, setCancelRequests] = useState<CancelRequest[]>([]);
+  const [activityLog, setActivityLog] = useState<ActivityItem[]>([]);
+  const [access, setAccess] = useState<AccessSummary | null>(null);
   const [supportNotes, setSupportNotes] = useState("");
   const [disputeSummary, setDisputeSummary] = useState("");
   const summaryRef = useRef<HTMLTextAreaElement>(null);
 
   const formatDate = (d: string | null) =>
     d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+
+  const formatDateTime = (d: string | null) =>
+    d ? new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }) : "—";
 
   const formatCurrency = (cents: number, currency = "usd") =>
     new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
@@ -76,6 +101,8 @@ export default function DisputeEvidence() {
     setSubData(null);
     setStripeData(null);
     setCancelRequests([]);
+    setActivityLog([]);
+    setAccess(null);
     setDisputeSummary("");
 
     try {
@@ -96,13 +123,19 @@ export default function DisputeEvidence() {
       setProfile(p);
 
       // Fetch subscription, cancellation requests, and Stripe data in parallel
-      const [subResult, cancelResult, stripeResult] = await Promise.all([
+      const [subResult, cancelResult, stripeResult, activityResult] = await Promise.all([
         supabase.from("subscriptions").select("*").eq("user_id", p.id).limit(1).single(),
         (supabase.from("cancellation_requests" as any) as any).select("*").eq("user_id", p.id).order("created_at", { ascending: false }),
         supabase.functions.invoke("stripe-admin", {
           body: { action: "get_dispute_evidence", email: p.email },
         }),
+        supabase.functions.invoke("admin-user-management", {
+          body: { action: "get_user_activity", userId: p.id },
+        }),
       ]);
+
+      if (activityResult?.data?.activities) setActivityLog(activityResult.data.activities);
+      if (activityResult?.data?.access) setAccess(activityResult.data.access);
 
       if (subResult.data) setSubData(subResult.data as unknown as SubData);
       if (cancelResult.data) setCancelRequests(cancelResult.data || []);
@@ -199,15 +232,42 @@ export default function DisputeEvidence() {
     }
     lines.push("");
 
+    // Access activity log
+    lines.push("6. PRODUCT ACCESS ACTIVITY LOG");
+    lines.push("───────────────────────────────────────");
+    if (access) {
+      lines.push(`Email Confirmed:      ${formatDateTime(access.email_confirmed_at)}`);
+      lines.push(`Last Sign-In:         ${formatDateTime(access.last_sign_in_at)}`);
+      lines.push(`Sign-In Method:       ${access.sign_in_provider || "email"}`);
+      lines.push(`Last Activity:        ${formatDateTime(access.last_activity_at)}`);
+      lines.push(`Brand Set Up:         ${formatDateTime(access.brand_created_at)}`);
+      lines.push(`Campaigns Created:    ${access.campaigns_created}`);
+      lines.push(`Campaigns Published:  ${access.campaigns_published}`);
+      lines.push(`Offers Created:       ${access.offers_created}`);
+      lines.push("");
+    }
+    if (activityLog.length > 0) {
+      lines.push("Activity timeline (most recent first):");
+      activityLog.slice(0, 50).forEach((a) => {
+        lines.push(`${formatDateTime(a.timestamp)}  ${a.title} — ${a.description}`);
+      });
+      lines.push("");
+      lines.push("The above records show the customer accessed and actively used the");
+      lines.push("product after purchase.");
+    } else {
+      lines.push("No product activity on record.");
+    }
+    lines.push("");
+
     // Support notes
-    lines.push("6. SUPPORT CONTACT LOG");
+    lines.push("7. SUPPORT CONTACT LOG");
     lines.push("───────────────────────────────────────");
     lines.push(supportNotes.trim() || "No support interactions noted.");
     lines.push("");
 
     // Active disputes
     if (stripeData?.disputes?.length) {
-      lines.push("7. ACTIVE DISPUTES");
+      lines.push("8. ACTIVE DISPUTES");
       lines.push("───────────────────────────────────────");
       stripeData.disputes.forEach((d) => {
         lines.push(`Dispute: ${d.id}`);
@@ -434,6 +494,47 @@ export default function DisputeEvidence() {
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">No subscription records found.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Access Activity Log */}
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" />
+                  Access Activity Log
+                </CardTitle>
+                <CardDescription>Evidence the customer accessed and used the product</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {access && (
+                  <div className="grid gap-2 sm:grid-cols-2 text-sm">
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Email confirmed</span><span>{formatDateTime(access.email_confirmed_at)}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Last sign-in</span><span>{formatDateTime(access.last_sign_in_at)}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Sign-in method</span><span className="capitalize">{access.sign_in_provider || "email"}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Last activity</span><span>{formatDateTime(access.last_activity_at)}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Campaigns created</span><span>{access.campaigns_created}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Campaigns published</span><span>{access.campaigns_published}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Offers created</span><span>{access.offers_created}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Brand set up</span><span>{formatDateTime(access.brand_created_at)}</span></div>
+                  </div>
+                )}
+
+                {activityLog.length > 0 ? (
+                  <div className="max-h-72 overflow-y-auto rounded-lg border divide-y">
+                    {activityLog.map((a) => (
+                      <div key={a.id} className="flex items-start justify-between gap-4 p-3 text-sm">
+                        <div>
+                          <p className="font-medium">{a.title}</p>
+                          <p className="text-muted-foreground text-xs">{a.description}</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDateTime(a.timestamp)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No product activity on record.</p>
                 )}
               </CardContent>
             </Card>

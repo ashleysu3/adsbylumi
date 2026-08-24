@@ -1052,9 +1052,30 @@ Deno.serve(async (req) => {
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
 
-      return new Response(JSON.stringify({ activities }), {
+      // Access summary (login evidence + usage counts) for dispute rebuttals
+      let access: Record<string, unknown> = {};
+      try {
+        const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+        const campaigns = campaignsResult.data || [];
+        access = {
+          email_confirmed_at: authUser?.user?.email_confirmed_at || null,
+          last_sign_in_at: authUser?.user?.last_sign_in_at || null,
+          created_at: authUser?.user?.created_at || null,
+          sign_in_provider: authUser?.user?.app_metadata?.provider || null,
+          brand_created_at: brand?.created_at || null,
+          campaigns_created: campaigns.length,
+          campaigns_published: campaigns.filter((c: any) => !!c.published_at).length,
+          offers_created: (offersResult.data || []).length,
+          last_activity_at: activities[0]?.timestamp || null,
+        };
+      } catch (err) {
+        logStep("Failed to build access summary", { error: String(err) });
+      }
+
+      return new Response(JSON.stringify({ activities, access }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+
     }
 
     // Delete user account completely
