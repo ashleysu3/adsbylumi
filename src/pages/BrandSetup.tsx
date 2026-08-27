@@ -219,7 +219,7 @@ export default function BrandSetup() {
       if (error) throw error;
       try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       toast.success("Brand saved");
-      navigate("/ad-generator");
+      navigate("/creative");
     } catch (e: any) {
       toast.error(e?.message || "Failed to save");
     } finally {
