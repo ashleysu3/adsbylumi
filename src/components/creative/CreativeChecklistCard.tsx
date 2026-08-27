@@ -1225,15 +1225,92 @@ export function CreativeChecklistCard({
               {/* Upload Section */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <h5 className="text-xs font-semibold text-muted-foreground uppercase">Asset</h5>
+                  <h5 className="text-xs font-semibold text-muted-foreground uppercase">
+                    {item.format === "carousel" && carouselSlides ? "Slides" : "Asset"}
+                  </h5>
                   {item.format === "graphic" && (
                     <span className="text-[10px] text-muted-foreground">Upload square (1080×1080) first, then add a 9:16 version</span>
+                  )}
+                  {item.format === "carousel" && carouselSlides && (
+                    <span className="text-[10px] text-muted-foreground">
+                      Upload one square image per slide (1080×1080) — 2 slides minimum
+                    </span>
                   )}
                   {(item.format === "talking_head" || item.format === "broll") && (
                     <span className="text-[10px] text-muted-foreground">9:16 vertical only</span>
                   )}
                 </div>
-                {hasAsset ? (
+                {item.format === "carousel" && carouselSlides && onUploadSlideClick ? (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {carouselSlides.map((slide) => (
+                        <div
+                          key={slide.index}
+                          className={cn(
+                            "rounded-lg border p-2 space-y-2",
+                            slide.asset
+                              ? "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20"
+                              : "border-dashed",
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[11px] font-semibold">Slide {slide.index + 1}</span>
+                            {slide.asset && <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />}
+                          </div>
+                          {slide.asset ? (
+                            <>
+                              <img
+                                src={slide.asset.file_url}
+                                alt={`Carousel slide ${slide.index + 1}`}
+                                className="w-full aspect-square object-cover rounded-md"
+                                loading="lazy"
+                              />
+                              <div className="flex gap-1">
+                                {onPreview && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 px-2"
+                                    onClick={() => onPreview(slide.asset)}
+                                  >
+                                    <Eye className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() => onUploadSlideClick(slide.index)}
+                                >
+                                  Replace
+                                </Button>
+                              </div>
+                            </>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              className="w-full h-20 border-dashed gap-1 text-xs"
+                              disabled={uploadingSlideIndex === slide.index}
+                              onClick={() => onUploadSlideClick(slide.index)}
+                            >
+                              <Upload className="h-4 w-4" />
+                              {uploadingSlideIndex === slide.index ? "Uploading…" : "Upload"}
+                            </Button>
+                          )}
+                          {(slide.headline || slide.role) && (
+                            <p className="text-[10px] text-muted-foreground line-clamp-2">
+                              {slide.headline || slide.role}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {carouselSlides.filter((s) => s.asset).length} of {carouselSlides.length} slides uploaded.
+                      Empty slides are simply skipped when you publish.
+                    </p>
+                  </div>
+                ) : hasAsset ? (
                   <div className="space-y-2">
                     <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
                       <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
