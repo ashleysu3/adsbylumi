@@ -349,6 +349,59 @@ export function ProductionManager({
     return cards.length >= 2 ? cards : null;
   };
 
+  const DEFAULT_CAROUSEL_SLOTS = 5;
+
+  /**
+   * Slide slots shown on a carousel checklist card. Users previously could only
+   * upload ONE file per concept, so a carousel never got past slide 1. Slots come
+   * from the item's `cards` plan when it exists, otherwise we show a default set
+   * so people can upload every slide themselves.
+   */
+  const getCarouselSlotsForItem = (item: ProductionItem) => {
+    const itemAny = item as any;
+    if (itemAny.format !== "carousel") return null;
+
+    const cardAssets = uploadedAssets.filter(
+      (a: any) => a.linked_concept_id === item.id && typeof a.card_index === "number",
+    );
+    const plan: any[] = Array.isArray(itemAny.cards) ? itemAny.cards : [];
+    const maxUploadedIndex = cardAssets.reduce(
+      (max: number, a: any) => Math.max(max, a.card_index),
+      -1,
+    );
+    const slotCount = Math.max(
+      DEFAULT_CAROUSEL_SLOTS,
+      plan.length,
+      maxUploadedIndex + 1,
+      Number(itemAny.brief?.slideCount) || 0,
+    );
+
+    // Legacy carousels uploaded before per-slide support have one untagged asset;
+    // treat it as slide 1 so nobody loses their first image.
+    const legacyFirst = uploadedAssets.find(
+      (a: any) =>
+        a.linked_concept_id === item.id &&
+        typeof a.card_index !== "number" &&
+        !a.is_vertical_version,
+    );
+
+    return Array.from({ length: slotCount }, (_, index) => {
+      const planned = plan.find((c: any) => c?.index === index) || plan[index] || {};
+      const raw =
+        cardAssets.find((a: any) => a.card_index === index) ||
+        (index === 0 ? legacyFirst : undefined);
+      return {
+        index,
+        headline: planned.headline || "",
+        description: planned.description || "",
+        role: planned.role || "",
+        asset: normalizeUploadedAsset(raw),
+      };
+    });
+  };
+
+
+
   // Relaxed asset lookup for legacy data in Ad Preview only
   const getPreviewAssetForItem = (item: ProductionItem) => {
     const strictAsset = getAssetForItem(item);
