@@ -73,6 +73,16 @@ interface CreativeChecklistCardProps {
   } | null;
   onUploadClick: () => void;
   onUploadVerticalClick?: () => void;
+  /** Carousel only: one slot per slide so every slide can be uploaded. */
+  carouselSlides?: Array<{
+    index: number;
+    headline?: string;
+    description?: string;
+    role?: string;
+    asset?: { id: string; file_name: string; file_url: string; file_type: string } | null;
+  }> | null;
+  onUploadSlideClick?: (index: number) => void;
+  uploadingSlideIndex?: number | null;
   onRemove: () => void;
   onPreview?: (asset: any) => void;
   onAdPreview?: () => void;
@@ -161,6 +171,9 @@ export function CreativeChecklistCard({
   uploadedAssetVertical,
   onUploadClick,
   onUploadVerticalClick,
+  carouselSlides,
+  onUploadSlideClick,
+  uploadingSlideIndex,
   onRemove,
   onPreview,
   onAdPreview,
@@ -1118,93 +1131,6 @@ export function CreativeChecklistCard({
                 </div>
               )}
 
-              {/* Generate this creative — works for ALL graphic/carousel items.
-                  If the item lacks a structured brief (older recommendations),
-                  synthesize one from the hook + creative direction so the
-                  generator gets enough to work with. */}
-              {(item.format === "graphic" || item.format === "carousel") && (
-                <Button
-                  size="sm"
-                  className="w-full gap-2"
-                  onClick={() => {
-                    const isCar = item.format === "carousel";
-                    const synth = item.brief || {
-                      format: isCar ? "carousel" : "single_graphic",
-                      placements: ["feed", "story"],
-                      angle: "outcome",
-                      concept: item.guidance || item.hook,
-                      keyMessage: item.hook,
-                      offer: "",
-                      cta: "Learn more",
-                      audience: item.angleName || "",
-                      proofPoint: item.why_this_works || null,
-                      styleHint: "type-led",
-                      photoTreatment: "with-background",
-                      slideCount: isCar ? 5 : 1,
-                      slidePlan: isCar
-                        ? [
-                            { role: "hook" },
-                            { role: "problem" },
-                            { role: "framework" },
-                            { role: "proof" },
-                            { role: "cta" },
-                          ]
-                        : undefined,
-                    };
-                    // The item's own format wins. Older saved briefs sometimes
-                    // say "single_graphic" for a carousel concept, which is how
-                    // a carousel ended up generating one lone image.
-                    const finalBrief = isCar
-                      ? {
-                          ...synth,
-                          format: "carousel",
-                          slideCount: Math.max(2, (synth as any).slideCount || 5),
-                          slidePlan:
-                            (synth as any).slidePlan || [
-                              { role: "hook" },
-                              { role: "problem" },
-                              { role: "framework" },
-                              { role: "proof" },
-                              { role: "cta" },
-                            ],
-                        }
-                      : synth;
-                    // The concept the user actually picked lives on the item,
-                    // not always in the saved brief — carry it through so the
-                    // copywriter writes THIS concept instead of generic copy.
-                    const conceptDetail = {
-                      hook: item.hook || null,
-                      angleName: item.angleName || null,
-                      guidance: item.guidance || null,
-                      psychologyTrigger: (item as any).psychology_trigger || null,
-                      whyThisWorks: (item as any).why_this_works || null,
-                      textOverlays: Array.isArray((item as any).text_overlays)
-                        ? (item as any).text_overlays
-                        : null,
-                      designDirection: (item as any).design_direction || null,
-                    };
-                    const briefWithConcept = {
-                      ...(finalBrief as any),
-                      concept: (finalBrief as any).concept || item.guidance || item.hook,
-                      keyMessage: (finalBrief as any).keyMessage || item.hook,
-                      conceptDetail,
-                    };
-                    console.log("[creative-brief:generate]", { itemId: item.id, format: (briefWithConcept as any).format, slideCount: (briefWithConcept as any).slideCount });
-                    window.dispatchEvent(
-                      new CustomEvent("creative-brief:generate", {
-                        detail: { itemId: item.id, brief: briefWithConcept },
-                      }),
-                    );
-
-                  }}
-                >
-                  <Wand2 className="h-3.5 w-3.5" />
-                  {item.format === "carousel" &&
-                  (Array.isArray((item as any).cards) ? (item as any).cards.length : hasAsset ? 1 : 0) === 1
-                    ? "Generate remaining slides"
-                    : "Generate this creative (beta)"}
-                </Button>
-              )}
 
               {/* Ad Copy is shown/edited in the Ad Preview, not on the production checklist */}
 
@@ -1212,15 +1138,92 @@ export function CreativeChecklistCard({
               {/* Upload Section */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <h5 className="text-xs font-semibold text-muted-foreground uppercase">Asset</h5>
+                  <h5 className="text-xs font-semibold text-muted-foreground uppercase">
+                    {item.format === "carousel" && carouselSlides ? "Slides" : "Asset"}
+                  </h5>
                   {item.format === "graphic" && (
                     <span className="text-[10px] text-muted-foreground">Upload square (1080×1080) first, then add a 9:16 version</span>
+                  )}
+                  {item.format === "carousel" && carouselSlides && (
+                    <span className="text-[10px] text-muted-foreground">
+                      Upload one square image per slide (1080×1080) — 2 slides minimum
+                    </span>
                   )}
                   {(item.format === "talking_head" || item.format === "broll") && (
                     <span className="text-[10px] text-muted-foreground">9:16 vertical only</span>
                   )}
                 </div>
-                {hasAsset ? (
+                {item.format === "carousel" && carouselSlides && onUploadSlideClick ? (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {carouselSlides.map((slide) => (
+                        <div
+                          key={slide.index}
+                          className={cn(
+                            "rounded-lg border p-2 space-y-2",
+                            slide.asset
+                              ? "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20"
+                              : "border-dashed",
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[11px] font-semibold">Slide {slide.index + 1}</span>
+                            {slide.asset && <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />}
+                          </div>
+                          {slide.asset ? (
+                            <>
+                              <img
+                                src={slide.asset.file_url}
+                                alt={`Carousel slide ${slide.index + 1}`}
+                                className="w-full aspect-square object-cover rounded-md"
+                                loading="lazy"
+                              />
+                              <div className="flex gap-1">
+                                {onPreview && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 px-2"
+                                    onClick={() => onPreview(slide.asset)}
+                                  >
+                                    <Eye className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() => onUploadSlideClick(slide.index)}
+                                >
+                                  Replace
+                                </Button>
+                              </div>
+                            </>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              className="w-full h-20 border-dashed gap-1 text-xs"
+                              disabled={uploadingSlideIndex === slide.index}
+                              onClick={() => onUploadSlideClick(slide.index)}
+                            >
+                              <Upload className="h-4 w-4" />
+                              {uploadingSlideIndex === slide.index ? "Uploading…" : "Upload"}
+                            </Button>
+                          )}
+                          {(slide.headline || slide.role) && (
+                            <p className="text-[10px] text-muted-foreground line-clamp-2">
+                              {slide.headline || slide.role}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {carouselSlides.filter((s) => s.asset).length} of {carouselSlides.length} slides uploaded.
+                      Empty slides are simply skipped when you publish.
+                    </p>
+                  </div>
+                ) : hasAsset ? (
                   <div className="space-y-2">
                     <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
                       <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />

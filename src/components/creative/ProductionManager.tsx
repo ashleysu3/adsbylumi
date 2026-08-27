@@ -109,6 +109,9 @@ export function ProductionManager({
   const [resolvedAssetUrls, setResolvedAssetUrls] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const verticalFileInputRef = useRef<HTMLInputElement>(null);
+  const slideFileInputRef = useRef<HTMLInputElement>(null);
+  // Which carousel slide is currently being uploaded (itemId + 0-based index).
+  const [uploadingSlide, setUploadingSlide] = useState<{ itemId: string; index: number } | null>(null);
   const [orphanRelinkOpen, setOrphanRelinkOpen] = useState(false);
   const [orphanToRelink, setOrphanToRelink] = useState<any>(null);
   const [relinking, setRelinking] = useState<string | null>(null);
@@ -345,6 +348,59 @@ export function ProductionManager({
       .filter((c: any): c is NonNullable<typeof c> => !!c);
     return cards.length >= 2 ? cards : null;
   };
+
+  const DEFAULT_CAROUSEL_SLOTS = 5;
+
+  /**
+   * Slide slots shown on a carousel checklist card. Users previously could only
+   * upload ONE file per concept, so a carousel never got past slide 1. Slots come
+   * from the item's `cards` plan when it exists, otherwise we show a default set
+   * so people can upload every slide themselves.
+   */
+  const getCarouselSlotsForItem = (item: ProductionItem) => {
+    const itemAny = item as any;
+    if (itemAny.format !== "carousel") return null;
+
+    const cardAssets = uploadedAssets.filter(
+      (a: any) => a.linked_concept_id === item.id && typeof a.card_index === "number",
+    );
+    const plan: any[] = Array.isArray(itemAny.cards) ? itemAny.cards : [];
+    const maxUploadedIndex = cardAssets.reduce(
+      (max: number, a: any) => Math.max(max, a.card_index),
+      -1,
+    );
+    const slotCount = Math.max(
+      DEFAULT_CAROUSEL_SLOTS,
+      plan.length,
+      maxUploadedIndex + 1,
+      Number(itemAny.brief?.slideCount) || 0,
+    );
+
+    // Legacy carousels uploaded before per-slide support have one untagged asset;
+    // treat it as slide 1 so nobody loses their first image.
+    const legacyFirst = uploadedAssets.find(
+      (a: any) =>
+        a.linked_concept_id === item.id &&
+        typeof a.card_index !== "number" &&
+        !a.is_vertical_version,
+    );
+
+    return Array.from({ length: slotCount }, (_, index) => {
+      const planned = plan.find((c: any) => c?.index === index) || plan[index] || {};
+      const raw =
+        cardAssets.find((a: any) => a.card_index === index) ||
+        (index === 0 ? legacyFirst : undefined);
+      return {
+        index,
+        headline: planned.headline || "",
+        description: planned.description || "",
+        role: planned.role || "",
+        asset: normalizeUploadedAsset(raw),
+      };
+    });
+  };
+
+
 
   // Relaxed asset lookup for legacy data in Ad Preview only
   const getPreviewAssetForItem = (item: ProductionItem) => {
@@ -766,7 +822,106 @@ export function ProductionManager({
       event.target.value = '';
     }
   };
-  
+
+  // Handle an image upload for ONE carousel slide. Assets are tagged with
+  // card_index so every slide lives alongside the others instead of replacing
+  // the previous upload (which is why carousels used to stop at slide 1).
+  const handleSlideFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    itemId: string,
+    index: number,
+  ) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    if (file.size > 150 * 1024 * 1024) {
+      toast.error("File must be less than 150MB");
+      event.target.value = '';
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast.error("Carousel slides need to be images");
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      const brandId = workspace.brand_id;
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}_slide${index + 1}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${brandId}/${workspace.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('creative-assets')
+        .upload(filePath, file, { cacheControl: '3600', upsert: false });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('creative-assets')
+        .getPublicUrl(filePath);
+
+      const item = productionItems.find((i) => i.id === itemId);
+      const newAsset = {
+        id: `asset_${Date.now()}_c${index}`,
+        file_name: file.name,
+        file_type: file.type,
+        file_size: file.size,
+        file_url: urlData.publicUrl,
+        storage_path: filePath,
+        uploaded_at: new Date().toISOString(),
+        linked_concept_id: itemId,
+        linked_concept_title: item?.hook ? `${item.hook} (slide ${index + 1})` : null,
+        card_index: index,
+      };
+
+      // Replace only the SAME slide; keep every other slide + the 9:16 version.
+      const filteredAssets = uploadedAssets.filter(
+        (a: any) => !(a.linked_concept_id === itemId && a.card_index === index),
+      );
+      const updatedAssets = [...filteredAssets, newAsset];
+
+      // Publish reads the item's ordered `cards` plan, so make sure a card entry
+      // exists for this slide even when the concept was never auto-generated.
+      const slotCount = getCarouselSlotsForItem(item as ProductionItem)?.length || index + 1;
+      const updatedItems = productionItems.map((pi: any) => {
+        if (pi.id !== itemId) return pi;
+        const existing: any[] = Array.isArray(pi.cards) ? pi.cards : [];
+        const cards = Array.from({ length: Math.max(slotCount, index + 1) }, (_, i) => {
+          const found = existing.find((c: any) => c?.index === i) || existing[i] || {};
+          return { ...found, index: i };
+        });
+        return { ...pi, format: 'carousel', cards };
+      });
+
+      await supabase
+        .from('campaign_workspaces')
+        .update({
+          user_uploaded_assets: updatedAssets,
+          production_items: updatedItems as any,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', workspace.id);
+
+      onUpdateWorkspace({ user_uploaded_assets: updatedAssets, production_items: updatedItems });
+      toast.success(`Slide ${index + 1} uploaded!`);
+    } catch (e: any) {
+      console.error("Slide upload error:", e);
+      toast.error("Failed to upload slide");
+    } finally {
+      setUploadingSlide(null);
+      event.target.value = '';
+    }
+  };
+
+  const handleUploadSlideClick = (itemId: string, index: number) => {
+    setUploadingSlide({ itemId, index });
+    // The input is keyed by slide so React swaps the onChange handler before the
+    // picker opens.
+    setTimeout(() => slideFileInputRef.current?.click(), 0);
+  };
+
+
   const handleUploadClick = (itemId: string) => {
     setUploadingItemId(itemId);
     fileInputRef.current?.click();
@@ -1166,6 +1321,16 @@ export function ProductionManager({
         className="hidden"
         onChange={(e) => uploadingVerticalItemId && handleVerticalFileSelect(e, uploadingVerticalItemId)}
       />
+      <input
+        ref={slideFileInputRef}
+        key={uploadingSlide ? `${uploadingSlide.itemId}-${uploadingSlide.index}` : "slide-input"}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) =>
+          uploadingSlide && handleSlideFileSelect(e, uploadingSlide.itemId, uploadingSlide.index)
+        }
+      />
       
       <div className="space-y-4">
         {/* First-time wizard */}
@@ -1490,6 +1655,9 @@ export function ProductionManager({
                           uploadedAssetVertical={getVerticalAssetForItem(item)}
                           onUploadClick={() => handleUploadClick(item.id)}
                           onUploadVerticalClick={() => handleUploadVerticalClick(item.id)}
+                          carouselSlides={getCarouselSlotsForItem(item)}
+                          onUploadSlideClick={(index) => handleUploadSlideClick(item.id, index)}
+                          uploadingSlideIndex={uploadingSlide?.itemId === item.id ? uploadingSlide.index : null}
                           onRemove={() => onRemoveItem(item.id)}
                           onPreview={setPreviewAsset}
                           onAdPreview={() => setAdPreviewItem(item)}
@@ -1532,6 +1700,9 @@ export function ProductionManager({
                               uploadedAssetVertical={getVerticalAssetForItem(item)}
                               onUploadClick={() => handleUploadClick(item.id)}
                               onUploadVerticalClick={() => handleUploadVerticalClick(item.id)}
+                              carouselSlides={getCarouselSlotsForItem(item)}
+                              onUploadSlideClick={(index) => handleUploadSlideClick(item.id, index)}
+                              uploadingSlideIndex={uploadingSlide?.itemId === item.id ? uploadingSlide.index : null}
                               onRemove={() => onRemoveItem(item.id)}
                               onPreview={setPreviewAsset}
                               onAdPreview={() => setAdPreviewItem(item)}
@@ -1595,6 +1766,9 @@ export function ProductionManager({
                                   uploadedAssetVertical={getVerticalAssetForItem(item)}
                                   onUploadClick={() => handleUploadClick(item.id)}
                                   onUploadVerticalClick={() => handleUploadVerticalClick(item.id)}
+                                  carouselSlides={getCarouselSlotsForItem(item)}
+                                  onUploadSlideClick={(index) => handleUploadSlideClick(item.id, index)}
+                                  uploadingSlideIndex={uploadingSlide?.itemId === item.id ? uploadingSlide.index : null}
                                   onRemove={() => onRemoveItem(item.id)}
                                   onPreview={setPreviewAsset}
                                   onAdPreview={() => setAdPreviewItem(item)}
