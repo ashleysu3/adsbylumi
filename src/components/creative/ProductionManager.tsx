@@ -822,7 +822,106 @@ export function ProductionManager({
       event.target.value = '';
     }
   };
-  
+
+  // Handle an image upload for ONE carousel slide. Assets are tagged with
+  // card_index so every slide lives alongside the others instead of replacing
+  // the previous upload (which is why carousels used to stop at slide 1).
+  const handleSlideFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    itemId: string,
+    index: number,
+  ) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    if (file.size > 150 * 1024 * 1024) {
+      toast.error("File must be less than 150MB");
+      event.target.value = '';
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast.error("Carousel slides need to be images");
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      const brandId = workspace.brand_id;
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}_slide${index + 1}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${brandId}/${workspace.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('creative-assets')
+        .upload(filePath, file, { cacheControl: '3600', upsert: false });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('creative-assets')
+        .getPublicUrl(filePath);
+
+      const item = productionItems.find((i) => i.id === itemId);
+      const newAsset = {
+        id: `asset_${Date.now()}_c${index}`,
+        file_name: file.name,
+        file_type: file.type,
+        file_size: file.size,
+        file_url: urlData.publicUrl,
+        storage_path: filePath,
+        uploaded_at: new Date().toISOString(),
+        linked_concept_id: itemId,
+        linked_concept_title: item?.hook ? `${item.hook} (slide ${index + 1})` : null,
+        card_index: index,
+      };
+
+      // Replace only the SAME slide; keep every other slide + the 9:16 version.
+      const filteredAssets = uploadedAssets.filter(
+        (a: any) => !(a.linked_concept_id === itemId && a.card_index === index),
+      );
+      const updatedAssets = [...filteredAssets, newAsset];
+
+      // Publish reads the item's ordered `cards` plan, so make sure a card entry
+      // exists for this slide even when the concept was never auto-generated.
+      const slotCount = getCarouselSlotsForItem(item as ProductionItem)?.length || index + 1;
+      const updatedItems = productionItems.map((pi: any) => {
+        if (pi.id !== itemId) return pi;
+        const existing: any[] = Array.isArray(pi.cards) ? pi.cards : [];
+        const cards = Array.from({ length: Math.max(slotCount, index + 1) }, (_, i) => {
+          const found = existing.find((c: any) => c?.index === i) || existing[i] || {};
+          return { ...found, index: i };
+        });
+        return { ...pi, format: 'carousel', cards };
+      });
+
+      await supabase
+        .from('campaign_workspaces')
+        .update({
+          user_uploaded_assets: updatedAssets,
+          production_items: updatedItems as any,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', workspace.id);
+
+      onUpdateWorkspace({ user_uploaded_assets: updatedAssets, production_items: updatedItems });
+      toast.success(`Slide ${index + 1} uploaded!`);
+    } catch (e: any) {
+      console.error("Slide upload error:", e);
+      toast.error("Failed to upload slide");
+    } finally {
+      setUploadingSlide(null);
+      event.target.value = '';
+    }
+  };
+
+  const handleUploadSlideClick = (itemId: string, index: number) => {
+    setUploadingSlide({ itemId, index });
+    // The input is keyed by slide so React swaps the onChange handler before the
+    // picker opens.
+    setTimeout(() => slideFileInputRef.current?.click(), 0);
+  };
+
+
   const handleUploadClick = (itemId: string) => {
     setUploadingItemId(itemId);
     fileInputRef.current?.click();
