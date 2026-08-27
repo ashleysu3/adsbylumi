@@ -109,6 +109,9 @@ export function ProductionManager({
   const [resolvedAssetUrls, setResolvedAssetUrls] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const verticalFileInputRef = useRef<HTMLInputElement>(null);
+  const slideFileInputRef = useRef<HTMLInputElement>(null);
+  // Which carousel slide is currently being uploaded (itemId + 0-based index).
+  const [uploadingSlide, setUploadingSlide] = useState<{ itemId: string; index: number } | null>(null);
   const [orphanRelinkOpen, setOrphanRelinkOpen] = useState(false);
   const [orphanToRelink, setOrphanToRelink] = useState<any>(null);
   const [relinking, setRelinking] = useState<string | null>(null);
