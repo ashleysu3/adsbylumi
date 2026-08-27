@@ -73,6 +73,16 @@ interface CreativeChecklistCardProps {
   } | null;
   onUploadClick: () => void;
   onUploadVerticalClick?: () => void;
+  /** Carousel only: one slot per slide so every slide can be uploaded. */
+  carouselSlides?: Array<{
+    index: number;
+    headline?: string;
+    description?: string;
+    role?: string;
+    asset?: { id: string; file_name: string; file_url: string; file_type: string } | null;
+  }> | null;
+  onUploadSlideClick?: (index: number) => void;
+  uploadingSlideIndex?: number | null;
   onRemove: () => void;
   onPreview?: (asset: any) => void;
   onAdPreview?: () => void;
