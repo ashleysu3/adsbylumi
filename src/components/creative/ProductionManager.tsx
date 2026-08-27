@@ -1321,6 +1321,16 @@ export function ProductionManager({
         className="hidden"
         onChange={(e) => uploadingVerticalItemId && handleVerticalFileSelect(e, uploadingVerticalItemId)}
       />
+      <input
+        ref={slideFileInputRef}
+        key={uploadingSlide ? `${uploadingSlide.itemId}-${uploadingSlide.index}` : "slide-input"}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) =>
+          uploadingSlide && handleSlideFileSelect(e, uploadingSlide.itemId, uploadingSlide.index)
+        }
+      />
       
       <div className="space-y-4">
         {/* First-time wizard */}
