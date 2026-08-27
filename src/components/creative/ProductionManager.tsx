@@ -1655,6 +1655,9 @@ export function ProductionManager({
                           uploadedAssetVertical={getVerticalAssetForItem(item)}
                           onUploadClick={() => handleUploadClick(item.id)}
                           onUploadVerticalClick={() => handleUploadVerticalClick(item.id)}
+                          carouselSlides={getCarouselSlotsForItem(item)}
+                          onUploadSlideClick={(index) => handleUploadSlideClick(item.id, index)}
+                          uploadingSlideIndex={uploadingSlide?.itemId === item.id ? uploadingSlide.index : null}
                           onRemove={() => onRemoveItem(item.id)}
                           onPreview={setPreviewAsset}
                           onAdPreview={() => setAdPreviewItem(item)}
@@ -1697,6 +1700,9 @@ export function ProductionManager({
                               uploadedAssetVertical={getVerticalAssetForItem(item)}
                               onUploadClick={() => handleUploadClick(item.id)}
                               onUploadVerticalClick={() => handleUploadVerticalClick(item.id)}
+                              carouselSlides={getCarouselSlotsForItem(item)}
+                              onUploadSlideClick={(index) => handleUploadSlideClick(item.id, index)}
+                              uploadingSlideIndex={uploadingSlide?.itemId === item.id ? uploadingSlide.index : null}
                               onRemove={() => onRemoveItem(item.id)}
                               onPreview={setPreviewAsset}
                               onAdPreview={() => setAdPreviewItem(item)}
@@ -1760,6 +1766,9 @@ export function ProductionManager({
                                   uploadedAssetVertical={getVerticalAssetForItem(item)}
                                   onUploadClick={() => handleUploadClick(item.id)}
                                   onUploadVerticalClick={() => handleUploadVerticalClick(item.id)}
+                                  carouselSlides={getCarouselSlotsForItem(item)}
+                                  onUploadSlideClick={(index) => handleUploadSlideClick(item.id, index)}
+                                  uploadingSlideIndex={uploadingSlide?.itemId === item.id ? uploadingSlide.index : null}
                                   onRemove={() => onRemoveItem(item.id)}
                                   onPreview={setPreviewAsset}
                                   onAdPreview={() => setAdPreviewItem(item)}
