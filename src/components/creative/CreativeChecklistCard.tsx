@@ -195,9 +195,6 @@ export function CreativeChecklistCard({
   const [isOpen, setIsOpen] = useState(false);
   const [justFocused, setJustFocused] = useState(false);
   const [showRationale, setShowRationale] = useState(false);
-  const [customBrollUrl, setCustomBrollUrl] = useState<string | null>(null);
-  const [customBrollName, setCustomBrollName] = useState<string | null>(null);
-  const [uploadingBroll, setUploadingBroll] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [isRefining, setIsRefining] = useState(false);
@@ -650,112 +647,16 @@ export function CreativeChecklistCard({
                     </div>
                   )}
 
-                  {/* How this works — record + caption + upload, Lumi adds overlays */}
+                  {/* How this works — record + caption + upload */}
                   <Alert className="border-amber-500/30 bg-amber-500/5">
                     <Volume2 className="h-4 w-4 text-amber-600" />
                     <AlertDescription className="text-amber-700 text-sm">
-                      Record yourself reading the script, burn in captions (85% of viewers watch muted), then upload below — Lumi layers the text overlays on top for you.
+                      Record yourself reading the script, burn in captions (85% of viewers watch muted) and the text overlays above into the video yourself, then upload it in the Asset section below.
                     </AlertDescription>
                   </Alert>
-
-                  {/* Upload your recorded talking head + preview + Make my video */}
-                  {(() => {
-                    const tOverlays: TextOverlay[] = (item.text_overlays || []).map((o: any) =>
-                      typeof o === "string" ? { text: o } : o
-                    );
-
-                    const handleTalkingHeadUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      if (!file.type.startsWith("video/")) {
-                        toast.error("Please upload a video file");
-                        return;
-                      }
-                      if (file.size > 150 * 1024 * 1024) {
-                        toast.error("File must be under 150MB");
-                        return;
-                      }
-                      setUploadingBroll(true);
-                      try {
-                        const { supabase } = await import("@/integrations/supabase/client");
-                        const brandId = (brand as any)?.id;
-                        const path = `${brandId}/talking-head/${Date.now()}_${file.name}`;
-                        const { error: uploadError } = await supabase.storage
-                          .from("creative-assets")
-                          .upload(path, file);
-                        if (uploadError) throw uploadError;
-                        const { data: urlData } = supabase.storage
-                          .from("creative-assets")
-                          .getPublicUrl(path);
-                        setCustomBrollUrl(urlData.publicUrl);
-                        setCustomBrollName(file.name);
-                        toast.success("Video uploaded!");
-                      } catch (err: any) {
-                        toast.error(err?.message || "Upload failed");
-                      } finally {
-                        setUploadingBroll(false);
-                      }
-                    };
-
-                    return (
-                      <div className="space-y-2">
-                        <h5 className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
-                          <Video className="h-3.5 w-3.5" />
-                          Your Recorded Talking Head
-                        </h5>
-
-                        {customBrollUrl ? (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground truncate max-w-[180px]">
-                                {customBrollName}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 text-[10px]"
-                                onClick={() => { setCustomBrollUrl(null); setCustomBrollName(null); }}
-                              >
-                                <Trash2 className="h-3 w-3 mr-1" />
-                                Remove
-                              </Button>
-                            </div>
-                            <div className="mx-auto w-[180px]">
-                              <video
-                                src={customBrollUrl}
-                                className="w-full aspect-[9/16] object-contain rounded-lg bg-black"
-                                controls muted playsInline preload="metadata"
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <label className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
-                            {uploadingBroll ? (
-                              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                            ) : (
-                              <>
-                                <Upload className="h-5 w-5 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground text-center">
-                                  Upload your recorded talking head (with captions)
-                                </span>
-                                <span className="text-[10px] text-muted-foreground">9:16 vertical · MP4 · up to 150MB</span>
-                              </>
-                            )}
-                            <input
-                              type="file"
-                              accept="video/*"
-                              className="hidden"
-                              onChange={handleTalkingHeadUpload}
-                              disabled={uploadingBroll}
-                            />
-                          </label>
-                        )}
-                      </div>
-                    );
-                  })()}
                 </div>
               )}
-              
+
               {item.format === "broll" && (
                 <div className="space-y-4">
                   {/* Visual Direction */}
@@ -872,98 +773,11 @@ export function CreativeChecklistCard({
                     </div>
                   )}
 
-                  {/* Upload the b-roll video you filmed */}
-                  {(() => {
-                    const handleBrollFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      if (!file.type.startsWith("video/")) {
-                        toast.error("Please upload a video file");
-                        return;
-                      }
-                      if (file.size > 150 * 1024 * 1024) {
-                        toast.error("File must be under 150MB");
-                        return;
-                      }
-                      setUploadingBroll(true);
-                      try {
-                        const { supabase } = await import("@/integrations/supabase/client");
-                        const brandId = (brand as any)?.id;
-                        const path = `${brandId}/broll-custom/${Date.now()}_${file.name}`;
-                        const { error: uploadError } = await supabase.storage
-                          .from("creative-assets")
-                          .upload(path, file);
-                        if (uploadError) throw uploadError;
-                        const { data: urlData } = supabase.storage
-                          .from("creative-assets")
-                          .getPublicUrl(path);
-                        setCustomBrollUrl(urlData.publicUrl);
-                        setCustomBrollName(file.name);
-                        toast.success("Video uploaded!");
-                      } catch (err: any) {
-                        toast.error(err?.message || "Upload failed");
-                      } finally {
-                        setUploadingBroll(false);
-                      }
-                    };
-
-                    return (
-                      <div className="space-y-2">
-                        <h5 className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
-                          <Film className="h-3.5 w-3.5" />
-                          Your B-Roll Video
-                        </h5>
-                        <p className="text-xs text-muted-foreground">
-                          Film the shots above, add the text overlays in your editing app, then upload the finished 9:16 video here.
-                        </p>
-
-                        {customBrollUrl ? (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground truncate max-w-[180px]">
-                                {customBrollName}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 text-[10px]"
-                                onClick={() => { setCustomBrollUrl(null); setCustomBrollName(null); }}
-                              >
-                                <Trash2 className="h-3 w-3 mr-1" />
-                                Remove
-                              </Button>
-                            </div>
-                            <div className="mx-auto w-[180px]">
-                              <video
-                                src={customBrollUrl}
-                                className="w-full aspect-[9/16] object-contain rounded-lg bg-black"
-                                controls muted playsInline preload="metadata"
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <label className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
-                            {uploadingBroll ? (
-                              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                            ) : (
-                              <>
-                                <Upload className="h-5 w-5 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground">Upload 9:16 video (max 150MB)</span>
-                              </>
-                            )}
-                            <input
-                              type="file"
-                              accept="video/*"
-                              className="hidden"
-                              onChange={handleBrollFileUpload}
-                              disabled={uploadingBroll}
-                            />
-                          </label>
-                        )}
-                      </div>
-                    );
-                  })()}
-
+                  {/* Note: filming guidance for the b-roll video — actual upload happens in the Asset section below */}
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <Film className="h-3.5 w-3.5 shrink-0" />
+                    Film the shots above, add the text overlays in your editing app, then upload the finished 9:16 video in the Asset section below.
+                  </p>
 
                   {/* Why This Works - Psychology for B-Roll */}
                   {(item.psychology_trigger || item.why_this_works) && (
