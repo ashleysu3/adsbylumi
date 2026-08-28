@@ -269,6 +269,46 @@ async function fetchWithTimeout(
   throw lastErr instanceof Error ? lastErr : new Error(`${label} failed`);
 }
 
+// ---------------------------------------------------------------------------
+// resolveVideoThumbnail: Meta requires video_data.image_hash or image_url in
+// object_story_spec, but a just-uploaded video hasn't finished processing —
+// its generated `thumbnails` are frequently not ready the instant the upload
+// call returns, which is what produced "Your ad needs a video thumbnail"
+// even though the ad had a video. Poll briefly for a generated thumbnail,
+// falling back to the video's `picture` field (a static frame Meta renders
+// well before full transcoding completes) before giving up.
+// ---------------------------------------------------------------------------
+async function resolveVideoThumbnail(videoId: string, accessToken: string): Promise<string> {
+  const ATTEMPTS = 5;
+  const DELAY_MS = 2000;
+
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    try {
+      const thumbResponse = await fetch(
+        `https://graph.facebook.com/v25.0/${videoId}?fields=thumbnails,picture&access_token=${accessToken}`
+      );
+      const thumbData = await thumbResponse.json();
+
+      const generatedThumb = thumbData?.thumbnails?.data?.find((t: any) => t?.is_preferred)?.uri
+        || thumbData?.thumbnails?.data?.[0]?.uri;
+      if (generatedThumb) return generatedThumb;
+
+      // `picture` is a faster-available static frame; use it if this is our
+      // last attempt and no proper thumbnail ever showed up.
+      if (attempt === ATTEMPTS - 1 && thumbData?.picture) {
+        return thumbData.picture;
+      }
+    } catch (e) {
+      console.log(`Thumbnail fetch attempt ${attempt + 1} for video ${videoId} failed:`, e);
+    }
+
+    if (attempt < ATTEMPTS - 1) {
+      await new Promise((r) => setTimeout(r, DELAY_MS));
+    }
+  }
+
+  return '';
+}
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -1282,35 +1322,32 @@ Deno.serve(async (req) => {
         let objectStorySpec: any;
         
         if (assetType === 'video') {
-          // Fetch video thumbnail from Meta API
-          let videoThumbnailUrl = '';
-          try {
-            const thumbResponse = await fetch(
-              `https://graph.facebook.com/v25.0/${assetId}?fields=thumbnails&access_token=${metaAccessToken}`
-            );
-            const thumbData = await thumbResponse.json();
-            if (thumbData.thumbnails?.data?.[0]?.uri) {
-              videoThumbnailUrl = thumbData.thumbnails.data[0].uri;
-            }
-          } catch (e) {
-            console.log('Could not fetch video thumbnail, Meta will auto-generate');
+          // Meta requires video_data.image_hash/image_url. Poll (with a
+          // `picture` fallback) since a freshly uploaded video's thumbnails
+          // often aren't generated yet — see resolveVideoThumbnail above.
+          const videoThumbnailUrl = await resolveVideoThumbnail(assetId, metaAccessToken);
+
+          if (!videoThumbnailUrl) {
+            result.failedAds.push({
+              conceptId: item.id,
+              conceptTitle: item.concept?.title || descriptor,
+              error: `Meta is still processing the video for "${descriptor}" and hasn't generated a thumbnail yet. Wait a minute and republish — Meta needs a little time to finish processing newly uploaded videos before they can be used in an ad.`,
+            });
+            continue;
           }
-          
+
           const videoData: any = {
             video_id: assetId,
             title: copy.headline || 'Watch Now',
             message: copy.primaryText || '',
             link_description: copy.description || '',
+            image_url: videoThumbnailUrl,
             call_to_action: {
               type: (copy.cta || 'LEARN_MORE').toUpperCase().replace(/ /g, '_'),
               value: { link: destinationUrl }
             }
           };
-          
-          if (videoThumbnailUrl) {
-            videoData.image_url = videoThumbnailUrl;
-          }
-          
+
           objectStorySpec = {
             page_id: pageId,
             video_data: videoData
