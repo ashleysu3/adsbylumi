@@ -23,6 +23,7 @@ import { LumiThinkingInline } from "@/components/LumiThinking";
 import { LumiPageLoader } from "@/components/LumiLoader";
 import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
 import { useBrand } from "@/contexts/BrandContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { seedDeferredTask, seedFirstCampaignTasks } from "@/lib/onboarding-tasks";
 import { getTestimonialQuotes } from "@/lib/social-proof";
 import lumiLogo from "@/assets/lumi-logo.png";
@@ -93,6 +94,25 @@ export default function GuidedOnboarding() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const { refreshBrands, setActiveBrand } = useBrand();
+  const { refreshSubscription } = useSubscription();
+  // This page is the success_url for the already-signed-in /pricing checkout
+  // flow (create-checkout). Unlike the guest-checkout path (Auth.tsx), nothing
+  // here reconciled the new Stripe subscription — the user relied entirely on
+  // the async webhook, which if delayed/missed left a paid account stuck in
+  // read-only "preview mode" with no way to self-heal. Reconcile immediately
+  // from the Stripe session, same as the guest-checkout flow does.
+  const checkoutSessionIdAtMountRef = useRef<string | null>(searchParams.get("session_id"));
+  useEffect(() => {
+    const sessionId = checkoutSessionIdAtMountRef.current;
+    if (!sessionId) return;
+    supabase.functions
+      .invoke('reconcile-subscription', { body: { session_id: sessionId } })
+      .then((res) => {
+        if ((res.data as any)?.reconciled) refreshSubscription();
+      })
+      .catch(() => { /* ignore — the periodic SubscriptionContext poll will catch up */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [step, setStep] = useState(1);
   const [brandId, setBrandId] = useState<string | null>(null);
