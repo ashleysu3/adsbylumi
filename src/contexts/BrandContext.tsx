@@ -61,7 +61,7 @@ export function BrandProvider({ children }: { children: ReactNode }) {
         .from('profiles')
         .select('is_agency_user')
         .eq('id', effectiveUserId)
-        .single();
+        .maybeSingle();
 
       const isAgency = profileData?.is_agency_user ?? false;
       setIsAgencyUser(isAgency);
