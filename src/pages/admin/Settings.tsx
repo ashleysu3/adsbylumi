@@ -112,7 +112,7 @@ import { Megaphone, Save, Eye, Video, Upload, Loader2 } from "lucide-react";
          .from("site_settings")
          .select("value")
          .eq("key", "announcement_banner")
-         .single();
+         .maybeSingle();
  
        if (error && error.code !== "PGRST116") {
          throw error;
@@ -137,7 +137,7 @@ import { Megaphone, Save, Eye, Video, Upload, Loader2 } from "lucide-react";
          .from("site_settings")
         .select("id")
         .eq("key", "announcement_banner")
-        .single();
+        .maybeSingle();
  
       if (existing) {
         const { error } = await supabase
