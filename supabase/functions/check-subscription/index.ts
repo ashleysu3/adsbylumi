@@ -128,11 +128,33 @@ Deno.serve(async (req) => {
       logStep("Stripe key verified, checking Stripe");
 
       const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-      
-      if (customers.data.length > 0) {
-        const customerId = customers.data[0].id;
+
+      // Resolve the Stripe customer from the stored IDs FIRST. Email lookup is a
+      // last resort: the Stripe customer email often drifts from the login email
+      // (alt email, typo, casing), which used to strand paying users in preview mode.
+      let customerId: string | null = localSub?.stripe_customer_id || null;
+
+      if (!customerId && localSub?.stripe_subscription_id) {
+        try {
+          const storedSub = await stripe.subscriptions.retrieve(localSub.stripe_subscription_id);
+          customerId = typeof storedSub.customer === "string"
+            ? storedSub.customer
+            : (storedSub.customer as any)?.id || null;
+          logStep("Resolved customer from stored subscription id", { customerId });
+        } catch (subErr) {
+          logStep("Stored subscription id lookup failed", { error: String(subErr) });
+        }
+      }
+
+      if (!customerId) {
+        const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+        customerId = customers.data[0]?.id || null;
+      }
+
+      if (customerId) {
         logStep("Found Stripe customer", { customerId });
+
+
 
         const subscriptions = await stripe.subscriptions.list({
           customer: customerId,
@@ -245,10 +267,16 @@ Deno.serve(async (req) => {
       const now = new Date();
       const periodEnd = localSub.current_period_end ? new Date(localSub.current_period_end) : null;
       const trialEnd = localSub.trial_end ? new Date(localSub.trial_end) : null;
-      const stillValid = (periodEnd && periodEnd > now) || (trialEnd && trialEnd > now);
+      // A paid row with no recorded period end means the webhook never wrote one —
+      // a bookkeeping gap, not an expired subscription. Don't strand a paying
+      // customer in preview mode over it; only a recorded window that has actually
+      // passed revokes access.
+      const hasWindow = !!periodEnd || !!trialEnd;
+      const stillValid = !hasWindow || (!!periodEnd && periodEnd > now) || (!!trialEnd && trialEnd > now);
 
-      // Comps have no billing period to check; paid rows must still be in-window.
+      // Comps have no billing period to check.
       if (isCodeBased || stillValid) {
+
         logStep("No live Stripe sub, honoring local subscription row", {
           tier: localSub.tier, status: localSub.status, isCodeBased, stillValid,
         });
