@@ -82,7 +82,7 @@
          .from("site_settings")
          .select("value")
          .eq("key", "announcement_banner")
-         .single();
+         .maybeSingle();
  
        if (error) {
          if (error.code !== "PGRST116") {

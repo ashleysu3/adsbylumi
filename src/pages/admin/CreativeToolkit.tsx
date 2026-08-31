@@ -119,7 +119,7 @@ export default function AdminCreativeToolkit() {
   const fetchConfig = async () => {
     try {
       const { data, error } = await supabase
-        .from("site_settings").select("value").eq("key", "creative_toolkit_config").single();
+        .from("site_settings").select("value").eq("key", "creative_toolkit_config").maybeSingle();
       if (error && error.code !== "PGRST116") throw error;
       if (data?.value) setConfig({ ...defaultConfig, ...(data.value as unknown as ToolkitConfig) });
     } catch (e) { console.error(e); } finally { setLoading(false); }
@@ -129,7 +129,7 @@ export default function AdminCreativeToolkit() {
     setSaving(true);
     try {
       const { data: existing } = await supabase
-        .from("site_settings").select("id").eq("key", "creative_toolkit_config").single();
+        .from("site_settings").select("id").eq("key", "creative_toolkit_config").maybeSingle();
       if (existing) {
         const { error } = await supabase.from("site_settings")
           .update({ value: config as unknown as Json, updated_at: new Date().toISOString() })

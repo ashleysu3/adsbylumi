@@ -21,7 +21,7 @@ export default function CreativeToolkit({ embedded = false }: { embedded?: boole
       .from("site_settings")
       .select("value")
       .eq("key", "creative_toolkit_config")
-      .single()
+      .maybeSingle()
       .then(({ data, error }) => {
         if (data?.value) {
           setConfig(data.value as unknown as ToolkitConfig);
