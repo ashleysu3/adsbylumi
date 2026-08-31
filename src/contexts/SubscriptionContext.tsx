@@ -162,7 +162,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         .from('profiles')
         .select('is_agency_user')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
 
       const isAgencyUser = profileData?.is_agency_user ?? false;
 

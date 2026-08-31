@@ -85,9 +85,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       const effectiveUserId = await getEffectiveUserId();
       if (!effectiveUserId) return;
 
-      supabase.from("profiles").select("*").eq("id", effectiveUserId).single().then(({ data }) => setProfile(data));
-      supabase.from("brands").select("*").eq("user_id", effectiveUserId).order("created_at", { ascending: false }).limit(1).single().then(({ data }) => setBrand(data));
-      supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").single().then(({ data }) => setIsAdmin(!!data));
+      supabase.from("profiles").select("*").eq("id", effectiveUserId).maybeSingle().then(({ data }) => setProfile(data));
+      supabase.from("brands").select("*").eq("user_id", effectiveUserId).order("created_at", { ascending: false }).limit(1).maybeSingle().then(({ data }) => setBrand(data));
+      supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle().then(({ data }) => setIsAdmin(!!data));
       supabase
         .from("partner_access_tokens")
         .select("id")
