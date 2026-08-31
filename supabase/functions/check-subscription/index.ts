@@ -267,10 +267,16 @@ Deno.serve(async (req) => {
       const now = new Date();
       const periodEnd = localSub.current_period_end ? new Date(localSub.current_period_end) : null;
       const trialEnd = localSub.trial_end ? new Date(localSub.trial_end) : null;
-      const stillValid = (periodEnd && periodEnd > now) || (trialEnd && trialEnd > now);
+      // A paid row with no recorded period end means the webhook never wrote one —
+      // a bookkeeping gap, not an expired subscription. Don't strand a paying
+      // customer in preview mode over it; only a recorded window that has actually
+      // passed revokes access.
+      const hasWindow = !!periodEnd || !!trialEnd;
+      const stillValid = !hasWindow || (!!periodEnd && periodEnd > now) || (!!trialEnd && trialEnd > now);
 
-      // Comps have no billing period to check; paid rows must still be in-window.
+      // Comps have no billing period to check.
       if (isCodeBased || stillValid) {
+
         logStep("No live Stripe sub, honoring local subscription row", {
           tier: localSub.tier, status: localSub.status, isCodeBased, stillValid,
         });
