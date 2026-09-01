@@ -873,6 +873,8 @@ export default function AdminUsers() {
                         <TableRow>
                           <TableHead>Email</TableHead>
                           <TableHead>Name</TableHead>
+                          <TableHead>Has Brand</TableHead>
+                          <TableHead>Has Offer</TableHead>
                           <TableHead>Role</TableHead>
                           <TableHead>Plan</TableHead>
                           <TableHead>Status</TableHead>
