@@ -49,6 +49,8 @@ interface Profile {
   archived?: boolean;
   archived_at?: string | null;
   roles?: string[];
+  has_brand?: boolean;
+  has_offer?: boolean;
   subscription?: {
     tier: string;
     status: string;
