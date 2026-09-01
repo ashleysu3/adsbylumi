@@ -856,10 +856,34 @@ Deno.serve(async (req) => {
         rolesMap.set(r.user_id, existing);
       });
 
+      // Build brand/offer presence maps per user
+      const { data: allBrands } = await supabaseAdmin
+        .from("brands")
+        .select("id, user_id");
+
+      const userHasBrand = new Map<string, boolean>();
+      const brandToUser = new Map<string, string>();
+      allBrands?.forEach((b: any) => {
+        userHasBrand.set(b.user_id, true);
+        brandToUser.set(b.id, b.user_id);
+      });
+
+      const { data: allOffers } = await supabaseAdmin
+        .from("offers")
+        .select("brand_id");
+
+      const userHasOffer = new Map<string, boolean>();
+      allOffers?.forEach((o: any) => {
+        const userId = brandToUser.get(o.brand_id);
+        if (userId) userHasOffer.set(userId, true);
+      });
+
       let combinedUsers = profiles?.map((profile: any) => ({
         ...profile,
         subscription: subscriptionMap.get(profile.id) || null,
         roles: rolesMap.get(profile.id) || [],
+        has_brand: userHasBrand.get(profile.id) || false,
+        has_offer: userHasOffer.get(profile.id) || false,
       })) || [];
 
       // Filter by subscription status

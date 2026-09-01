@@ -49,6 +49,8 @@ interface Profile {
   archived?: boolean;
   archived_at?: string | null;
   roles?: string[];
+  has_brand?: boolean;
+  has_offer?: boolean;
   subscription?: {
     tier: string;
     status: string;
@@ -606,10 +608,18 @@ export default function AdminUsers() {
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredUsers = users
+    .filter(user =>
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      const aMissing = !a.has_brand || !a.has_offer;
+      const bMissing = !b.has_brand || !b.has_offer;
+      if (aMissing && !bMissing) return -1;
+      if (!aMissing && bMissing) return 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
 
   // Stat calculations
   const totalUsers = users.length;
@@ -863,6 +873,8 @@ export default function AdminUsers() {
                         <TableRow>
                           <TableHead>Email</TableHead>
                           <TableHead>Name</TableHead>
+                          <TableHead>Has Brand</TableHead>
+                          <TableHead>Has Offer</TableHead>
                           <TableHead>Role</TableHead>
                           <TableHead>Plan</TableHead>
                           <TableHead>Status</TableHead>
@@ -878,6 +890,8 @@ export default function AdminUsers() {
                               {user.archived && <Badge variant="outline" className="ml-2 text-xs">Archived</Badge>}
                             </TableCell>
                             <TableCell>{user.full_name || "—"}</TableCell>
+                            <TableCell>{user.has_brand ? "yes" : "no"}</TableCell>
+                            <TableCell>{user.has_offer ? "yes" : "no"}</TableCell>
                             <TableCell>
                               {user.roles && user.roles.length > 0 ? (
                                 <div className="flex gap-1">
