@@ -890,6 +890,8 @@ export default function AdminUsers() {
                               {user.archived && <Badge variant="outline" className="ml-2 text-xs">Archived</Badge>}
                             </TableCell>
                             <TableCell>{user.full_name || "—"}</TableCell>
+                            <TableCell>{user.has_brand ? "yes" : "no"}</TableCell>
+                            <TableCell>{user.has_offer ? "yes" : "no"}</TableCell>
                             <TableCell>
                               {user.roles && user.roles.length > 0 ? (
                                 <div className="flex gap-1">
