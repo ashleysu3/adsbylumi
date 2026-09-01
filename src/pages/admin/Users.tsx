@@ -608,10 +608,18 @@ export default function AdminUsers() {
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredUsers = users
+    .filter(user =>
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      const aMissing = !a.has_brand || !a.has_offer;
+      const bMissing = !b.has_brand || !b.has_offer;
+      if (aMissing && !bMissing) return -1;
+      if (!aMissing && bMissing) return 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
 
   // Stat calculations
   const totalUsers = users.length;
